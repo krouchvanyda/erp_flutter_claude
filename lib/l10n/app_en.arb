@@ -1,0 +1,105 @@
+{
+  "@@locale": "en",
+
+  "appName": "ERP Mobile",
+  "@appName": {
+    "description": "Application title shown on splash and home screens"
+  },
+
+  "loginAppBarTitle": "Sign in",
+  "@loginAppBarTitle": {
+    "description": "Title bar on the login screen"
+  },
+
+  "loginButton": "Sign in (placeholder)",
+  "@loginButton": {
+    "description": "Primary button on the login form. Placeholder copy until Module 1 ships the real OAuth flow."
+  },
+
+  "dashboardTitle": "Dashboard",
+  "@dashboardTitle": {
+    "description": "Title bar on the dashboard / home screen"
+  },
+
+  "dashboardPlaceholder": "Dashboard placeholder — Module 2 will fill this in.",
+  "@dashboardPlaceholder": {
+    "description": "Body text on the dashboard while Module 2 is unimplemented"
+  },
+
+  "signOutTooltip": "Sign out",
+  "@signOutTooltip": {
+    "description": "Tooltip on the sign-out icon button in the dashboard app bar"
+  },
+
+  "notFoundTitle": "Not found",
+  "@notFoundTitle": {
+    "description": "Title bar on the 404 / no-route-matched page"
+  },
+
+  "notFoundBody": "No route matches \"{location}\"",
+  "@notFoundBody": {
+    "description": "Body text on the 404 page; explains which path the router could not resolve",
+    "placeholders": {
+      "location": {
+        "type": "String",
+        "example": "/finance/invoices/42"
+      }
+    }
+  },
+
+  "goHome": "Go home",
+  "@goHome": {
+    "description": "Action button that returns the user to the splash / home route"
+  },
+
+  "loginOtpDemoLink": "[demo] Try MFA code",
+  "@loginOtpDemoLink": {
+    "description": "Subtle text button on the login page that navigates to the OTP demo route (Slice 1.2.1)"
+  },
+
+  "otpPageTitle": "Verification",
+  "@otpPageTitle": {
+    "description": "Title bar on the OTP / TOTP entry page"
+  },
+
+  "otpSubtitle": "Enter the 6-digit code from your authenticator app or SMS.",
+  "@otpSubtitle": {
+    "description": "Body copy under the OTP page icon, instructing the user"
+  },
+
+  "otpDevHint": "Demo: enter {code} to continue",
+  "@otpDevHint": {
+    "description": "Italic hint reminding the user of the dev backdoor code while the real verifier is not wired",
+    "placeholders": {
+      "code": {
+        "type": "String",
+        "example": "123456"
+      }
+    }
+  },
+
+  "otpVerifyButton": "Verify",
+  "@otpVerifyButton": {
+    "description": "Primary action button on the OTP page"
+  },
+
+  "otpErrorIncorrect": "Code is incorrect. Please try again.",
+  "@otpErrorIncorrect": {
+    "description": "Error shown under the OTP boxes when the entered code does not match"
+  },
+
+  "otpErrorExpired": "This code has expired. Request a new one.",
+  "@otpErrorExpired": {
+    "description": "Error shown when the OTP validity window has elapsed"
+  },
+
+  "otpErrorTooManyAttempts": "Too many attempts. Please try again later.",
+  "@otpErrorTooManyAttempts": {
+    "description": "Error shown when the server throttles further OTP attempts"
+  },
+
+  "otpErrorNetwork": "Couldn't reach the server. Check your connection.",
+  "@otpErrorNetwork": {
+    "description": "Error shown when the OTP verifier is unreachable"
+  }
+}

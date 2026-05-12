@@ -1,0 +1,23 @@
+{
+  "@@locale": "km",
+
+  "appName": "ERP Mobile",
+  "loginAppBarTitle": "ចូលគណនី",
+  "loginButton": "ចូល (សាកល្បង)",
+  "dashboardTitle": "ផ្ទាំងគ្រប់គ្រង",
+  "dashboardPlaceholder": "ផ្ទាំងគ្រប់គ្រងសាកល្បង — Module 2 នឹងបំពេញ។",
+  "signOutTooltip": "ចាកចេញ",
+  "notFoundTitle": "រកមិនឃើញ",
+  "notFoundBody": "មិនមានផ្លូវសម្រាប់ \"{location}\"",
+  "goHome": "ទៅទំព័រដើម",
+
+  "loginOtpDemoLink": "[demo] សាកល្បងលេខកូដ MFA",
+  "otpPageTitle": "ផ្ទៀងផ្ទាត់",
+  "otpSubtitle": "បញ្ចូលលេខកូដ ៦ ខ្ទង់ពីកម្មវិធីផ្ទៀងផ្ទាត់ឬ SMS។",
+  "otpDevHint": "សាកល្បង៖ បញ្ចូល {code} ដើម្បីបន្ត",
+  "otpVerifyButton": "ផ្ទៀងផ្ទាត់",
+  "otpErrorIncorrect": "លេខកូដខុស។ សូមព្យាយាមម្ដងទៀត។",
+  "otpErrorExpired": "លេខកូដនេះបានផុតកំណត់។ សូមស្នើសុំលេខកូដថ្មី។",
+  "otpErrorTooManyAttempts": "ការព្យាយាមច្រើនពេក។ សូមព្យាយាមនៅពេលក្រោយ។",
+  "otpErrorNetwork": "មិនអាចទាក់ទងម៉ាស៊ីនមេបាន។ ពិនិត្យការតភ្ជាប់របស់អ្នក។"
+}

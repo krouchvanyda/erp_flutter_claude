@@ -1,0 +1,41 @@
+/// Application-wide environment / build-time configuration.
+///
+/// Pure value object — no framework deps. Registered into the DI graph by
+/// [`AppModule`](register_module.dart) so we can supply literal defaults
+/// instead of asking injectable to resolve every primitive.
+class AppEnv {
+  const AppEnv({
+    required this.apiBaseUrl,
+    required this.connectTimeoutMs,
+    required this.receiveTimeoutMs,
+    required this.enableNetworkLogging,
+    this.oauthClientId = 'erp-mobile-dev',
+    this.oauthRedirectUri = 'erpmobile://oauth/callback',
+  });
+
+  /// Default profile used when no explicit environment is selected.
+  factory AppEnv.defaults() => const AppEnv(
+        apiBaseUrl: 'https://api.example.com',
+        connectTimeoutMs: 15000,
+        receiveTimeoutMs: 20000,
+        enableNetworkLogging: true,
+      );
+
+  final String apiBaseUrl;
+  final int connectTimeoutMs;
+  final int receiveTimeoutMs;
+  final bool enableNetworkLogging;
+
+  // ── OAuth (Slice 1.2.2 PKCE) ─────────────────────────────────
+  /// Public client identifier registered with the auth server. Per
+  /// PKCE, this is **not** a secret — the proof comes from the
+  /// `code_verifier`, not from a client secret.
+  final String oauthClientId;
+
+  /// Where the auth server redirects after the user signs in. Resolved
+  /// natively on the device via a custom URI scheme + deep-link
+  /// receiver (separate slice). The verifier-side use case sends this
+  /// URI back to the server during code exchange so the server can
+  /// confirm the redirect target hasn't been swapped.
+  final String oauthRedirectUri;
+}

@@ -1,0 +1,66 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+
+import '../theme/app_radii.dart';
+import '../theme/app_spacing.dart';
+
+/// Friendly replacement for Flutter's red-screen `ErrorWidget`.
+///
+/// Bound globally by `runWithCrashHooks` via `ErrorWidget.builder`. Renders
+/// the exception details in **debug**/**profile** so engineers see what
+/// happened, and a generic apology in **release** so users don't see a
+/// stack trace.
+class ErrorBoundaryWidget extends StatelessWidget {
+  const ErrorBoundaryWidget({super.key, required this.details});
+
+  final FlutterErrorDetails details;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final showDetails = !kReleaseMode;
+
+    final body = Padding(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.error_outline,
+                  color: theme.colorScheme.error, size: 28),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Something went wrong',
+                  style: theme.textTheme.titleMedium,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          if (showDetails) ...[
+            const SizedBox(height: AppSpacing.md),
+            SelectableText(
+              details.exceptionAsString(),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              maxLines: 6,
+            ),
+          ],
+        ],
+      ),
+    );
+
+    return Material(
+      color: theme.colorScheme.errorContainer.withValues(alpha: 0.1),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        side: BorderSide(color: theme.colorScheme.error),
+      ),
+      child: body,
+    );
+  }
+}
