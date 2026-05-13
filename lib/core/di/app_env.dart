@@ -11,6 +11,8 @@ class AppEnv {
     required this.enableNetworkLogging,
     this.oauthClientId = 'erp-mobile-dev',
     this.oauthRedirectUri = 'erpmobile://oauth/callback',
+    this.realtimeUrl = 'wss://api.example.com/realtime',
+    this.realtimeEnabled = false,
   });
 
   /// Default profile used when no explicit environment is selected.
@@ -38,4 +40,18 @@ class AppEnv {
   /// URI back to the server during code exchange so the server can
   /// confirm the redirect target hasn't been swapped.
   final String oauthRedirectUri;
+
+  // ── Realtime (Slice 2.2.4) ───────────────────────────────────
+  /// WebSocket endpoint for the dashboard real-time stream. Defaults
+  /// to a placeholder; overridden per environment (staging / prod).
+  final String realtimeUrl;
+
+  /// Master switch — when `false` the dashboard skips `connect()` so a
+  /// placeholder [realtimeUrl] (e.g. `api.example.com`) doesn't burn
+  /// DNS lookups and battery on every reconnect attempt.
+  ///
+  /// Defaults to `false`: real WebSocket traffic only kicks in once
+  /// an env profile sets both [realtimeUrl] AND `realtimeEnabled: true`.
+  /// The status pill in the AppBar will read `Offline` until then.
+  final bool realtimeEnabled;
 }

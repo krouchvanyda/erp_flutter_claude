@@ -96,9 +96,28 @@ DataSource (Remote API / Local DB)
 - Slice 0.2.4: Network connectivity checker (`connectivity_plus`)
 
 #### Phase 0.3 — Local Database
-- Slice 0.3.1: `drift` database setup, migration strategy
+- Slice 0.3.1: `drift` database setup, migration strategy — register `CachedUser` + `UserPermissions` + `SyncQueue` tables
 - Slice 0.3.2: Generic DAO base class
 - Slice 0.3.3: Cache invalidation policy (TTL-based)
+- Slice 0.3.4: `AuthDao` — upsertUser, getUser, deleteUser, upsertPermissions, getPermissions, deletePermissions
+
+**drift tables for auth:**
+```
+TABLE: cached_user
+  id             TEXT PRIMARY KEY
+  name           TEXT
+  email          TEXT
+  avatar_url     TEXT
+  biometric_on   BOOLEAN
+  last_login_at  DATETIME
+  cached_at      DATETIME   ← TTL invalidation
+
+TABLE: user_permissions
+  user_id        TEXT
+  module         TEXT       ← e.g. "finance", "inventory"
+  scope          TEXT       ← e.g. "read", "write", "approve"
+  cached_at      DATETIME
+```
 
 #### Phase 0.4 — Offline-First Sync Engine
 - Slice 0.4.1: Sync queue (pending operations stored in drift)
@@ -116,27 +135,60 @@ DataSource (Remote API / Local DB)
 
 ### MODULE 1 — Authentication & Identity
 
-### Phase 1.1 — Auth Core
-- Slice 1.1.1 — Login page (MVVM + BLoC)
-- Slice 1.1.2 — JWT token storage → `flutter_secure_storage` only (never drift)
-- Slice 1.1.2b — Cache user profile + permissions → drift `cached_user` + `user_permissions` tables ← NEW
-- Slice 1.1.3 — Token refresh logic in interceptor (reads user_id from drift for context)
-- Slice 1.1.4 — Logout + revocation + drift wipe (`deleteUser` + `deletePermissions`)
+#### Phase 1.1 — Auth Core
+- Slice 1.1.1: Login page (MVVM + BLoC)
+- Slice 1.1.2: JWT token storage (`flutter_secure_storage`) — tokens only, never in drift
+- Slice 1.1.2b: Cache user profile + permissions → drift (`cached_user` + `user_permissions` tables) ← **NEW**
+- Slice 1.1.3: Token refresh logic in interceptor — reads `user_id` from drift to re-attach context
+- Slice 1.1.4: Logout + token revocation + drift wipe (`deleteUser` + `deletePermissions`)
 
-**Storage rule for 1.1:**
-- Tokens (access, refresh) → `flutter_secure_storage`
-- User profile + permissions → `drift`
-- Nothing sensitive ever touches drift
+**Storage boundary for Phase 1.1:**
+```
+Login API response
+   ├── access_token  + refresh_token ──→ flutter_secure_storage  (secrets)
+   ├── user profile                  ──→ drift: cached_user       (structural)
+   └── permissions                   ──→ drift: user_permissions  (structural)
+```
 
-### Phase 1.2 — Multi-Factor & SSO
-- Slice 1.2.1 — TOTP/OTP input screen (memory only — no drift, no secure storage)
-- Slice 1.2.2 — OAuth2 PKCE flow (verifier/challenge in memory, resulting tokens → `flutter_secure_storage`)
-- Slice 1.2.3 — Biometric unlock: read `biometric_on` from drift, keys stay in OS keychain
+#### Phase 1.2 — Multi-Factor & SSO
+- Slice 1.2.1: TOTP/OTP input screen — ephemeral, memory only, no drift
+- Slice 1.2.2: OAuth2 PKCE flow (`oauth2` package) — PKCE verifier/challenge in memory only, resulting tokens → `flutter_secure_storage`
+- Slice 1.2.3: Biometric unlock (`local_auth`) — reads `biometric_on` flag from drift, biometric keys stay in OS keychain
 
-### Phase 1.3 — Role-Based Access Control (RBAC)
-- Slice 1.3.1 — Permission model (roles, scopes) cached to drift `user_permissions`
-- Slice 1.3.2 — Permission-aware route guard (reads drift — works offline)
-- Slice 1.3.3 — Widget-level `PermissionGuard` widget
+**Storage boundary for Phase 1.2:**
+```
+OTP code          → memory only (ephemeral)
+PKCE verifier     → memory only (ephemeral)
+OAuth2 tokens     → flutter_secure_storage
+biometric_on flag → drift: cached_user
+```
+
+#### Phase 1.3 — Role-Based Access Control (RBAC)
+- Slice 1.3.1: Permission model (roles, scopes) from API — cached to drift `user_permissions`
+- Slice 1.3.2: Permission-aware route guard — reads from drift so it works offline
+- Slice 1.3.3: Widget-level permission gating (`PermissionGuard` widget)
+
+**Full storage map — Module 1:**
+```
+                flutter_secure_storage    drift                  Memory
+                ──────────────────────   ──────────────────────  ──────────────
+Login           access_token             cached_user             —
+                refresh_token            user_permissions
+                                         last_login_at
+
+Token refresh   (reads/writes tokens)    reads user_id           —
+
+Biometric       —                        biometric_on (r/w)      —
+                                         last_login_at
+
+OTP / PKCE      —                        —                       verifier
+                                                                  challenge
+                                                                  OTP code
+
+Logout          deleteAll()              deleteUser()            cleared
+                                         deletePermissions()
+```
+
 ---
 
 ### MODULE 2 — Dashboard & Home
@@ -172,6 +224,74 @@ DataSource (Remote API / Local DB)
 - Slice 3.2.2: Invoice detail view + PDF preview
 - Slice 3.2.3: Create/edit invoice form with validation
 - Slice 3.2.4: Approve/reject workflow action
+
+##### Slice 3.2.4 — Approve/Reject Workflow Detail
+
+**Invoice status state machine:**
+```
+DRAFT → PENDING_APPROVAL → APPROVED
+                         → REJECTED → DRAFT (re-open for revision)
+                                        └──→ PENDING_APPROVAL (re-submitted)
+```
+
+**Domain layer:**
+- `ApproveInvoiceUseCase` — takes `invoiceId` + `approverId`; validates `finance.approve` permission scope before executing
+- `RejectInvoiceUseCase` — takes `invoiceId` + `approverId` + `reason: String`; same permission check; reason is mandatory at domain level
+
+**Repository / DataSource:**
+- Online: `PATCH /invoices/{id}/approve` or `PATCH /invoices/{id}/reject` with body `{ approver_id, reason? }`
+- Offline: write action to `SyncQueue` (Phase 0.4.1) with full payload; retry on connectivity restore (Phase 0.4.3)
+
+**BLoC:**
+- Events: `InvoiceActionEvent.approve(invoiceId)` / `InvoiceActionEvent.reject(invoiceId, reason)`
+- States: `InvoiceActionLoading` → `InvoiceActionSuccess` / `InvoiceActionFailure`
+- On success → dispatches refresh event to invoice list BLoC to update status chip
+
+**UI:**
+- Approve: single tap → confirmation bottom sheet → dispatch event
+- Reject: tap → bottom sheet with mandatory `reason` text field (`FormBLoC` with field-level validation) → dispatch event
+- Both buttons wrapped in `PermissionGuard` checking `finance.approve` scope from drift `user_permissions`
+- Once status is `APPROVED` or `REJECTED` both buttons are disabled — status chip acts as visual lock
+
+**drift — additional columns on `cached_invoices`:**
+```
+TABLE: cached_invoices  (add to existing schema)
+  status           TEXT       ← DRAFT / PENDING_APPROVAL / APPROVED / REJECTED
+  approved_by      TEXT       ← user_id FK → cached_user
+  rejected_reason  TEXT
+  actioned_at      DATETIME
+```
+
+**SyncQueue entry shape (Phase 0.4.1):**
+```
+SyncQueue row
+  operation   TEXT   ← "invoice.approve" / "invoice.reject"
+  payload     TEXT   ← JSON: { invoice_id, approver_id, reason? }
+  status      TEXT   ← PENDING / SYNCING / FAILED
+  created_at  DATETIME
+```
+
+**Storage boundary for Slice 3.2.4:**
+```
+                drift                             SyncQueue              Memory
+                ──────────────────────────────   ──────────────────────  ──────────────
+Online          cached_invoices (optimistic       —                       —
+approve/reject  status + actioned_at +
+                approved_by + reason)
+
+Offline         cached_invoices (optimistic       enqueue operation       rejection reason
+approve/reject  status update)                    payload                 (FormBLoC field)
+
+Sync restore    cached_invoices (overwrite        dequeue on success      —
+                with server truth)
+```
+
+**Guardrails for this slice:**
+- Optimistic update on tap — write status to drift immediately, rollback on sync failure
+- RBAC gate enforced at both UseCase level (domain) and widget level (`PermissionGuard`) — never rely on UI alone
+- Rejection reason is mandatory — enforced in `RejectInvoiceUseCase`, not just the form validator
+- No double-action — once `APPROVED` or `REJECTED`, UseCases throw `InvalidStateFailure` if re-triggered
+- Audit trail — `approved_by` + `actioned_at` written to drift so Slice 9.3.2 (audit log viewer) can read offline
 
 #### Phase 3.3 — General Ledger & Reporting
 - Slice 3.3.1: Journal entry list + detail

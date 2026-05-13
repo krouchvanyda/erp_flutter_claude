@@ -15,9 +15,9 @@ void main() {
       await db.close();
     });
 
-    test('schemaVersion is 4 (Slice 1.1.2b added cached_user + user_permissions)',
+    test('schemaVersion is 9 (Slice 5.3.1 added cached_inventory_items + movements)',
         () {
-      expect(db.schemaVersion, 4);
+      expect(db.schemaVersion, 9);
     });
 
     test('appMetadata table is created and accepts inserts', () async {
@@ -78,7 +78,7 @@ void main() {
         // already-applied v2 step doesn't try to re-create its table.
         await expectLater(
           () => db.transaction(() async {
-            await db.migration.onUpgrade(Migrator(db), 4, 99);
+            await db.migration.onUpgrade(Migrator(db), 5, 99);
           }),
           throwsA(
             isA<StateError>().having(

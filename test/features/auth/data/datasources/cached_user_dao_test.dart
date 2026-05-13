@@ -230,6 +230,77 @@ void main() {
     });
   });
 
+  group('replacePermissions (Slice 1.3.1)', () {
+    test('atomically replaces the permission set without touching profile',
+        () async {
+      await dao.cacheUser(_alice);
+      await dao.replacePermissions('u-1', {
+        'finance.invoice.read',
+        'inventory.stock.read',
+      });
+
+      // Permissions are exactly the new set.
+      expect(await dao.getPermissions('u-1'), {
+        'finance.invoice.read',
+        'inventory.stock.read',
+      });
+      // Profile fields untouched.
+      final user = await dao.getUser('u-1');
+      expect(user?.email, _alice.email);
+      expect(user?.displayName, _alice.displayName);
+    });
+
+    test('writing an empty set wipes all permissions', () async {
+      await dao.cacheUser(_alice);
+      await dao.replacePermissions('u-1', const <String>{});
+      expect(await dao.getPermissions('u-1'), isEmpty);
+    });
+
+    test("does not touch other users' permissions", () async {
+      await dao.cacheUser(_alice);
+      const bob = User(
+        id: 'u-2',
+        email: 'bob@example.com',
+        displayName: 'Bob',
+        roles: {'sales.read'},
+      );
+      await dao.cacheUser(bob);
+
+      await dao.replacePermissions('u-1', {'admin'});
+
+      expect(await dao.getPermissions('u-2'), {'sales.read'});
+      expect(await dao.getPermissions('u-1'), {'admin'});
+    });
+  });
+
+  group('watchPermissionsFor (Slice 1.3.1)', () {
+    test('emits as the row set evolves', () async {
+      await dao.cacheUser(_alice);
+
+      final emitted = <Set<String>>[];
+      final sub = dao.watchPermissionsFor('u-1').listen(emitted.add);
+
+      await pumpEventQueue();
+      await dao.replacePermissions('u-1', {'a'});
+      await pumpEventQueue();
+      await dao.replacePermissions('u-1', {'a', 'b'});
+      await pumpEventQueue();
+      await dao.replacePermissions('u-1', const <String>{});
+      await pumpEventQueue();
+
+      await sub.cancel();
+
+      // Initial snapshot may be empty (no rows pre-write) OR `_alice`'s
+      // existing role set, depending on what was seeded above. Assert
+      // progression rather than exact list.
+      // `contains` does reference-equality on Sets, so wrap with `equals`
+      // to get content equality.
+      expect(emitted, contains(equals({'a'})));
+      expect(emitted, contains(equals({'a', 'b'})));
+      expect(emitted.last, isEmpty);
+    });
+  });
+
   group('wipeAll (logout)', () {
     test('clears every cached user and every permission row', () async {
       await dao.cacheUser(_alice);

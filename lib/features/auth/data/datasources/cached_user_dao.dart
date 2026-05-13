@@ -65,6 +65,43 @@ class CachedUserDao extends DatabaseAccessor<AppDatabase>
   Future<int> deletePermissions(String userId) =>
       (delete(userPermissions)..where((r) => r.userId.equals(userId))).go();
 
+  /// Atomically replaces the permission set for [userId] — wipes the
+  /// existing rows then bulk-inserts the new ones in a single
+  /// transaction. Used by the RBAC refresh path (Slice 1.3.1) so a
+  /// server-side downgrade can't leave a "ghost" admin permission
+  /// behind.
+  Future<void> replacePermissions(
+    String userId,
+    Set<String> permissions,
+  ) {
+    return transaction(() async {
+      await (delete(userPermissions)..where((r) => r.userId.equals(userId)))
+          .go();
+      if (permissions.isNotEmpty) {
+        await batch((b) => b.insertAll(
+              userPermissions,
+              permissions
+                  .map((p) => UserPermissionsCompanion.insert(
+                        userId: userId,
+                        permission: p,
+                      ))
+                  .toList(growable: false),
+            ));
+      }
+    });
+  }
+
+  /// Reactive variant of [getPermissions]. Subscribers receive a fresh
+  /// `Set<String>` whenever the user's permission rows change — drives
+  /// the route guard (Slice 1.3.2) and `PermissionGuard` widget (1.3.3)
+  /// rebuilds.
+  Stream<Set<String>> watchPermissionsFor(String userId) {
+    return (select(userPermissions)
+          ..where((r) => r.userId.equals(userId)))
+        .watch()
+        .map((rows) => rows.map((r) => r.permission).toSet());
+  }
+
   /// Drops every cached user and every permission row. Called on logout
   /// (Slice 1.1.4) so a subsequent sign-in starts from a clean slate.
   Future<void> wipeAll() {

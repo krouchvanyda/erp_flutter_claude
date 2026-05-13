@@ -43,6 +43,20 @@ void main() {
         RoutePaths.login,
       );
     });
+
+    test(
+        'auth check wins over permission check: missing access on a protected '
+        'path still routes to /login (not /forbidden) — no session, no '
+        'meaningful permission verdict', () {
+      expect(
+        resolveAuthRedirect(
+          matchedLocation: RoutePaths.adminDemo,
+          isAuthenticated: false,
+          hasRouteAccess: false,
+        ),
+        RoutePaths.login,
+      );
+    });
   });
 
   group('resolveAuthRedirect — signed-in user', () {
@@ -83,6 +97,81 @@ void main() {
           isAuthenticated: true,
         ),
         isNull,
+      );
+    });
+  });
+
+  group('resolveAuthRedirect — RBAC gate (Slice 1.3.2)', () {
+    test('default hasRouteAccess=true does not change behaviour', () {
+      // Sanity — the default arg keeps every pre-1.3.2 call site working.
+      expect(
+        resolveAuthRedirect(
+          matchedLocation: RoutePaths.dashboard,
+          isAuthenticated: true,
+        ),
+        isNull,
+      );
+    });
+
+    test('authenticated + has access → no redirect', () {
+      expect(
+        resolveAuthRedirect(
+          matchedLocation: RoutePaths.adminDemo,
+          isAuthenticated: true,
+          hasRouteAccess: true,
+        ),
+        isNull,
+      );
+    });
+
+    test('authenticated + lacks access → /forbidden', () {
+      expect(
+        resolveAuthRedirect(
+          matchedLocation: RoutePaths.adminDemo,
+          isAuthenticated: true,
+          hasRouteAccess: false,
+        ),
+        RoutePaths.forbidden,
+      );
+    });
+
+    test(
+        '/forbidden itself is exempt from the permission gate so the bounce '
+        'target does not recursively redirect', () {
+      expect(
+        resolveAuthRedirect(
+          matchedLocation: RoutePaths.forbidden,
+          isAuthenticated: true,
+          hasRouteAccess: false,
+        ),
+        isNull,
+      );
+    });
+
+    test(
+        'login bounce wins over permission gate when an authenticated user '
+        'lands on /login (no chance to be "forbidden" from the login page)',
+        () {
+      expect(
+        resolveAuthRedirect(
+          matchedLocation: RoutePaths.login,
+          isAuthenticated: true,
+          hasRouteAccess: false,
+        ),
+        RoutePaths.dashboard,
+      );
+    });
+
+    test(
+        'splash bounce wins over permission gate when an authenticated user '
+        'lands on /splash', () {
+      expect(
+        resolveAuthRedirect(
+          matchedLocation: RoutePaths.splash,
+          isAuthenticated: true,
+          hasRouteAccess: false,
+        ),
+        RoutePaths.dashboard,
       );
     });
   });

@@ -1,0 +1,183 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../core/di/injection.dart';
+import '../../../../l10n/app_localizations.dart';
+import '../../../../shared/validators/validators.dart';
+import '../../domain/entities/contact.dart';
+import '../../domain/repositories/contacts_repository.dart';
+
+/// Add / edit a contact (Slice 6.1.2).
+///
+/// **Edit semantics**: when [initial] is passed, the form is in edit
+/// mode and submit calls [`ContactsRepository.update`]; otherwise it
+/// calls `.create`. The route layer pushes either flavour.
+class ContactFormPage extends StatefulWidget {
+  const ContactFormPage({
+    super.key,
+    required this.customerId,
+    this.initial,
+  });
+
+  final String customerId;
+  final CustomerContact? initial;
+
+  @override
+  State<ContactFormPage> createState() => _ContactFormPageState();
+}
+
+class _ContactFormPageState extends State<ContactFormPage> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _name;
+  late final TextEditingController _role;
+  late final TextEditingController _email;
+  late final TextEditingController _phone;
+  late bool _isPrimary;
+
+  bool get _isEdit => widget.initial != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _name = TextEditingController(text: widget.initial?.name ?? '');
+    _role = TextEditingController(text: widget.initial?.role ?? '');
+    _email = TextEditingController(text: widget.initial?.email ?? '');
+    _phone = TextEditingController(text: widget.initial?.phone ?? '');
+    _isPrimary = widget.initial?.isPrimary ?? false;
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _role.dispose();
+    _email.dispose();
+    _phone.dispose();
+    super.dispose();
+  }
+
+  String _resolve(AppLocalizations l10n, String? code) {
+    return switch (code) {
+      'required' => l10n.validatorRequired,
+      'invalid_email' => l10n.validatorInvalidEmail,
+      _ => '',
+    };
+  }
+
+  Future<void> _submit() async {
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    final repo = getIt<ContactsRepository>();
+    try {
+      if (_isEdit) {
+        await repo.update(widget.initial!.copyWith(
+          name: _name.text.trim(),
+          role: _role.text.trim(),
+          email: _email.text.trim(),
+          phone: _phone.text.trim(),
+          isPrimary: _isPrimary,
+        ));
+      } else {
+        await repo.create(CustomerContact(
+          id: 'tmp',
+          customerId: widget.customerId,
+          name: _name.text.trim(),
+          role: _role.text.trim(),
+          email: _email.text.trim(),
+          phone: _phone.text.trim(),
+          isPrimary: _isPrimary,
+        ));
+      }
+      if (!mounted) return;
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(l10n.salesContactSavedSnack)));
+      if (context.canPop()) context.pop();
+    } catch (e) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+            content: Text(l10n.salesContactSaveFailed(e.toString()))));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_isEdit
+            ? l10n.salesContactEditTitle
+            : l10n.salesContactNewTitle),
+      ),
+      body: Form(
+        key: _formKey,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            TextFormField(
+              controller: _name,
+              decoration: InputDecoration(
+                labelText: l10n.salesContactNameLabel,
+                border: const OutlineInputBorder(),
+              ),
+              validator: (v) =>
+                  _resolve(l10n, Validators.required(v)).ifEmptyToNull(),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _role,
+              decoration: InputDecoration(
+                labelText: l10n.salesContactRoleLabel,
+                border: const OutlineInputBorder(),
+              ),
+              validator: (v) =>
+                  _resolve(l10n, Validators.required(v)).ifEmptyToNull(),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _email,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                labelText: l10n.salesContactEmailLabel,
+                border: const OutlineInputBorder(),
+              ),
+              validator: (v) =>
+                  _resolve(l10n, Validators.email(v)).ifEmptyToNull(),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _phone,
+              keyboardType: TextInputType.phone,
+              decoration: InputDecoration(
+                labelText: l10n.salesContactPhoneLabel,
+                border: const OutlineInputBorder(),
+              ),
+              validator: (v) =>
+                  _resolve(l10n, Validators.required(v)).ifEmptyToNull(),
+            ),
+            const SizedBox(height: 12),
+            SwitchListTile(
+              title: Text(l10n.salesContactPrimaryToggle),
+              subtitle: Text(l10n.salesContactPrimaryDescription),
+              value: _isPrimary,
+              onChanged: (v) => setState(() => _isPrimary = v),
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: _submit,
+              icon: const Icon(Icons.check),
+              label: Text(l10n.salesContactSaveAction),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+extension on String {
+  String? ifEmptyToNull() => isEmpty ? null : this;
+}

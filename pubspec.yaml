@@ -29,6 +29,7 @@ dependencies:
   dio: ^5.7.0
   connectivity_plus: ^6.1.0
   pretty_dio_logger: ^1.4.0
+  web_socket_channel: ^3.0.1
 
   # ── Local persistence ───────────────────────────────────────────
   drift: ^2.21.0
