@@ -1,19 +1,19 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/goods_receipt.dart';
 import '../../domain/entities/purchase_order.dart';
 import '../../domain/repositories/purchase_orders_repository.dart';
 import '../../domain/usecases/validate_goods_receipt.dart';
 
-/// Goods receipt entry form (Slice 4.2.3).
-///
-/// Loads the PO once, lets the user enter a quantity per outstanding
-/// line + a "received by" name + optional note, validates with the
-/// pure [`validateGoodsReceipt`], then persists via the repo.
 class GoodsReceiptFormPage extends StatefulWidget {
   const GoodsReceiptFormPage({super.key, required this.purchaseOrderId});
 
@@ -49,18 +49,15 @@ class _GoodsReceiptFormPageState extends State<GoodsReceiptFormPage> {
     super.dispose();
   }
 
-  TextEditingController _ctrl(String id) =>
-      _qtyByLineId.putIfAbsent(id, TextEditingController.new);
+  TextEditingController _ctrl(String id) => _qtyByLineId.putIfAbsent(id, TextEditingController.new);
 
   String _errorMessage(AppLocalizations l10n, GoodsReceiptError e) {
     return switch (e) {
       GoodsReceiptError.poClosed => l10n.goodsReceiptErrorPoClosed,
       GoodsReceiptError.noLines => l10n.goodsReceiptErrorNoLines,
-      GoodsReceiptError.nonPositiveQuantity =>
-        l10n.goodsReceiptErrorNonPositive,
+      GoodsReceiptError.nonPositiveQuantity => l10n.goodsReceiptErrorNonPositive,
       GoodsReceiptError.unknownLineId => l10n.goodsReceiptErrorUnknownLine,
-      GoodsReceiptError.exceedsOutstanding =>
-        l10n.goodsReceiptErrorExceedsOutstanding,
+      GoodsReceiptError.exceedsOutstanding => l10n.goodsReceiptErrorExceedsOutstanding,
     };
   }
 
@@ -99,43 +96,64 @@ class _GoodsReceiptFormPageState extends State<GoodsReceiptFormPage> {
       if (!mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(l10n.goodsReceiptSavedSnack)));
+        ..showSnackBar(SnackBar(content: Text(l10n.goodsReceiptSavedSnack), behavior: SnackBarBehavior.floating));
       if (context.canPop()) context.pop();
     } catch (e) {
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(
-          content: Text(l10n.goodsReceiptSaveFailed(e.toString())),
-        ));
+        ..showSnackBar(SnackBar(content: Text(l10n.goodsReceiptSaveFailed(e.toString())), behavior: SnackBarBehavior.floating));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.goodsReceiptFormTitle)),
-      body: FutureBuilder<PurchaseOrder?>(
-        future: _poFuture,
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final po = snap.data;
-          if (po == null) {
-            return Center(
-                child: Text(l10n.poDetailNotFound(widget.purchaseOrderId)));
-          }
-          return _Body(
-            po: po,
-            formKey: _formKey,
-            receivedBy: _receivedBy,
-            note: _note,
-            controllerFor: _ctrl,
-            formError: _formError,
-            onSubmit: () => _submit(po),
-          );
-        },
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: l10n.goodsReceiptFormTitle,
+        centerTitle: true,
+        actions: [
+          FutureBuilder<PurchaseOrder?>(
+            future: _poFuture,
+            builder: (context, snap) {
+              final po = snap.data;
+              if (po == null) return const SizedBox.shrink();
+              return TextButton(
+                onPressed: () => _submit(po),
+                child: Text(
+                  l10n.invoiceFormSaveTooltip.toUpperCase(),
+                  style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.w800),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+      body: DynamicStatusBar(
+        child: FutureBuilder<PurchaseOrder?>(
+          future: _poFuture,
+          builder: (context, snap) {
+            if (snap.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final po = snap.data;
+            if (po == null) {
+              return _CenteredMessage(text: l10n.poDetailNotFound(widget.purchaseOrderId), icon: Icons.search_off_rounded);
+            }
+            return _Body(
+              po: po,
+              formKey: _formKey,
+              receivedBy: _receivedBy,
+              note: _note,
+              controllerFor: _ctrl,
+              formError: _formError,
+              onSubmit: () => _submit(po),
+            );
+          },
+        ),
       ),
     );
   }
@@ -168,60 +186,132 @@ class _Body extends StatelessWidget {
       key: formKey,
       autovalidateMode: AutovalidateMode.onUserInteraction,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.only(
+          top: MediaQuery.of(context).padding.top + kToolbarHeight + 16,
+          left: 16,
+          right: 16,
+          bottom: 100,
+        ),
         children: [
-          Text(l10n.goodsReceiptFormForPo(po.number),
-              style: theme.textTheme.titleMedium),
-          const SizedBox(height: 4),
-          Text(po.vendorName,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              )),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: receivedBy,
-            decoration: InputDecoration(
-              labelText: l10n.goodsReceiptReceivedByLabel,
-              border: const OutlineInputBorder(),
-            ),
-            validator: (v) => (v == null || v.trim().isEmpty)
-                ? l10n.validatorRequired
-                : null,
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: note,
-            maxLines: 2,
-            decoration: InputDecoration(
-              labelText: l10n.goodsReceiptNoteLabel,
-              border: const OutlineInputBorder(),
-            ),
-          ),
+          _Section(
+            title: 'RECEIPT DETAILS',
+            children: [
+              Text(
+                l10n.goodsReceiptFormForPo(po.number).toUpperCase(),
+                style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w900, color: theme.colorScheme.primary),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                po.vendorName,
+                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 20),
+              TextFormField(
+                controller: receivedBy,
+                decoration: _inputDecoration(context, l10n.goodsReceiptReceivedByLabel, Icons.person_rounded),
+                validator: (v) => (v == null || v.trim().isEmpty) ? l10n.validatorRequired : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: note,
+                maxLines: 2,
+                decoration: _inputDecoration(context, l10n.goodsReceiptNoteLabel, Icons.note_rounded),
+              ),
+            ],
+          ).animate().fadeIn().slideY(begin: 0.1, end: 0),
           const SizedBox(height: 24),
-          Text(l10n.goodsReceiptLinesHeading,
-              style: theme.textTheme.titleSmall),
-          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 12),
+            child: Text(
+              l10n.goodsReceiptLinesHeading.toUpperCase(),
+              style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+            ),
+          ),
           for (final line in po.lineItems)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: _LineRow(line: line, controller: controllerFor(line.id)),
+              child: _LineRow(line: line, controller: controllerFor(line.id))
+                  .animate()
+                  .fadeIn(delay: 100.ms)
+                  .slideY(begin: 0.1, end: 0),
             ),
           if (formError != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              formError!,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.error),
-            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.errorContainer.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(AppRadii.md),
+                border: Border.all(color: theme.colorScheme.error.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.error_rounded, color: theme.colorScheme.error, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(formError!, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            ).animate().shake(),
           ],
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: onSubmit,
-            icon: const Icon(Icons.local_shipping_outlined),
-            label: Text(l10n.goodsReceiptSubmitAction),
-          ),
+          const SizedBox(height: 40),
+          SizedBox(
+            height: 56,
+            child: FilledButton.icon(
+              onPressed: onSubmit,
+              icon: const Icon(Icons.local_shipping_rounded),
+              label: Text(l10n.goodsReceiptSubmitAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+              style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md))),
+            ),
+          ).animate().fadeIn(delay: 200.ms).scale(curve: Curves.easeOutBack),
         ],
       ),
+    );
+  }
+
+  InputDecoration _inputDecoration(BuildContext context, String label, IconData icon) {
+    final theme = Theme.of(context);
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, size: 20),
+      filled: true,
+      fillColor: theme.colorScheme.surface,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.outlineVariant)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5))),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.primary, width: 2)),
+    );
+  }
+}
+
+class _Section extends StatelessWidget {
+  const _Section({required this.title, required this.children});
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 12),
+          child: Text(
+            title,
+            style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3)),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
+        ),
+      ],
     );
   }
 }
@@ -236,40 +326,90 @@ class _LineRow extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final outstanding = line.outstandingQuantity;
-    return Card(
-      margin: EdgeInsets.zero,
+    final isDisabled = outstanding == 0;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDisabled ? theme.colorScheme.surfaceContainerLow : theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      line.description,
+                      style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: isDisabled ? theme.colorScheme.outline : null),
+                    ),
+                    if (line.sku != null) ...[
+                      const SizedBox(height: 4),
+                      Text('SKU: ${line.sku}', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline)),
+                    ],
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: (isDisabled ? theme.colorScheme.outline : theme.colorScheme.primary).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                ),
+                child: Text(
+                  l10n.poLineOutstandingLabel(outstanding.toString()).toUpperCase(),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: isDisabled ? theme.colorScheme.outline : theme.colorScheme.primary,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: controller,
+            enabled: !isDisabled,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+            decoration: InputDecoration(
+              labelText: l10n.goodsReceiptQuantityLabel,
+              prefixIcon: const Icon(Icons.add_shopping_cart_rounded, size: 18),
+              isDense: true,
+              filled: true,
+              fillColor: isDisabled ? theme.colorScheme.surfaceContainerLow : theme.colorScheme.surface,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CenteredMessage extends StatelessWidget {
+  const _CenteredMessage({required this.text, this.icon});
+  final String text;
+  final IconData? icon;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(40),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(line.description, style: theme.textTheme.bodyMedium),
-            if (line.sku != null)
-              Text(line.sku!, style: theme.textTheme.labelSmall),
-            const SizedBox(height: 4),
-            Text(
-              l10n.poLineOutstandingLabel(outstanding.toString()),
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: outstanding == 0
-                    ? theme.colorScheme.outline
-                    : theme.colorScheme.primary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: controller,
-              enabled: outstanding > 0,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-              ],
-              decoration: InputDecoration(
-                labelText: l10n.goodsReceiptQuantityLabel,
-                border: const OutlineInputBorder(),
-                isDense: true,
-              ),
-            ),
+            Icon(icon ?? Icons.local_shipping_rounded, size: 64, color: theme.colorScheme.outline.withValues(alpha: 0.5)),
+            const SizedBox(height: 24),
+            Text(text, textAlign: TextAlign.center, style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
           ],
         ),
       ),

@@ -1,13 +1,17 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/validators/validators.dart';
 import '../../domain/entities/vendor.dart';
 import '../../domain/repositories/vendors_repository.dart';
 
-/// Vendor onboarding form (Slice 4.3.2).
 class VendorFormPage extends StatefulWidget {
   const VendorFormPage({super.key});
 
@@ -59,9 +63,7 @@ class _VendorFormPageState extends State<VendorFormPage> {
       address: _address.text.trim(),
       status: VendorStatus.active,
       onboardedAt: DateTime.now().toUtc(),
-      contactPerson: _contactPerson.text.trim().isEmpty
-          ? null
-          : _contactPerson.text.trim(),
+      contactPerson: _contactPerson.text.trim().isEmpty ? null : _contactPerson.text.trim(),
       notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
     );
 
@@ -70,80 +72,106 @@ class _VendorFormPageState extends State<VendorFormPage> {
       if (!mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(l10n.vendorFormSavedSnack)));
+        ..showSnackBar(SnackBar(content: Text(l10n.vendorFormSavedSnack), behavior: SnackBarBehavior.floating));
       if (context.canPop()) context.pop();
     } catch (e) {
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(
-          content: Text(l10n.vendorFormSaveFailed(e.toString())),
-        ));
+        ..showSnackBar(SnackBar(content: Text(l10n.vendorFormSaveFailed(e.toString())), behavior: SnackBarBehavior.floating));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.vendorFormTitle),
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: l10n.vendorFormTitle,
+        centerTitle: true,
         actions: [
-          IconButton(
-            tooltip: l10n.vendorFormSaveTooltip,
-            icon: const Icon(Icons.save_outlined),
+          TextButton(
             onPressed: _submit,
+            child: Text(
+              l10n.vendorFormSaveTooltip.toUpperCase(),
+              style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.w800),
+            ),
           ),
         ],
       ),
-      body: Form(
-        key: _formKey,
-        autovalidateMode: AutovalidateMode.onUserInteraction,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _field(_name, l10n.vendorFormNameLabel, Validators.required, l10n),
-            const SizedBox(height: 12),
-            _field(_taxId, l10n.vendorFormTaxIdLabel, Validators.required, l10n),
-            const SizedBox(height: 12),
-            _field(_email, l10n.vendorFormEmailLabel, Validators.email, l10n,
-                keyboardType: TextInputType.emailAddress),
-            const SizedBox(height: 12),
-            _field(_phone, l10n.vendorFormPhoneLabel, Validators.required, l10n,
-                keyboardType: TextInputType.phone),
-            const SizedBox(height: 12),
-            _field(
-              _address,
-              l10n.vendorFormAddressLabel,
-              Validators.required,
-              l10n,
-              maxLines: 2,
+      body: DynamicStatusBar(
+        child: Form(
+          key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          child: ListView(
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).padding.top + kToolbarHeight + 16,
+              left: 16,
+              right: 16,
+              bottom: 100,
             ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _contactPerson,
-              decoration: InputDecoration(
-                labelText: l10n.vendorFormContactPersonLabel,
-                border: const OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _notes,
-              maxLines: 3,
-              decoration: InputDecoration(
-                labelText: l10n.vendorFormNotesLabel,
-                border: const OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: _submit,
-              icon: const Icon(Icons.check),
-              label: Text(l10n.vendorFormSaveAction),
-            ),
-          ],
+            children: [
+              _Section(
+                title: 'BUSINESS INFORMATION',
+                children: [
+                  _field(_name, l10n.vendorFormNameLabel, Validators.required, l10n, Icons.business_rounded),
+                  const SizedBox(height: 16),
+                  _field(_taxId, l10n.vendorFormTaxIdLabel, Validators.required, l10n, Icons.badge_rounded),
+                ],
+              ).animate().fadeIn().slideY(begin: 0.1, end: 0),
+              const SizedBox(height: 24),
+              _Section(
+                title: 'CONTACT DETAILS',
+                children: [
+                  _field(_email, l10n.vendorFormEmailLabel, Validators.email, l10n, Icons.alternate_email_rounded, keyboardType: TextInputType.emailAddress),
+                  const SizedBox(height: 16),
+                  _field(_phone, l10n.vendorFormPhoneLabel, Validators.required, l10n, Icons.phone_rounded, keyboardType: TextInputType.phone),
+                  const SizedBox(height: 16),
+                  _field(_contactPerson, l10n.vendorFormContactPersonLabel, (v) => null, l10n, Icons.person_rounded),
+                  const SizedBox(height: 16),
+                  _field(_address, l10n.vendorFormAddressLabel, Validators.required, l10n, Icons.location_on_rounded, maxLines: 2),
+                ],
+              ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1, end: 0),
+              const SizedBox(height: 24),
+              _Section(
+                title: 'ADDITIONAL NOTES',
+                children: [
+                  TextFormField(
+                    controller: _notes,
+                    maxLines: 3,
+                    decoration: _inputDecoration(l10n.vendorFormNotesLabel, Icons.note_rounded),
+                  ),
+                ],
+              ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1, end: 0),
+              const SizedBox(height: 40),
+              SizedBox(
+                height: 56,
+                child: FilledButton.icon(
+                  onPressed: _submit,
+                  icon: const Icon(Icons.check_circle_rounded),
+                  label: Text(l10n.vendorFormSaveAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+                  style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md))),
+                ),
+              ).animate().fadeIn(delay: 300.ms).scale(curve: Curves.easeOutBack),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  InputDecoration _inputDecoration(String label, IconData icon) {
+    final theme = Theme.of(context);
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, size: 20),
+      filled: true,
+      fillColor: theme.colorScheme.surface,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.outlineVariant)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5))),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.primary, width: 2)),
     );
   }
 
@@ -151,7 +179,8 @@ class _VendorFormPageState extends State<VendorFormPage> {
     TextEditingController controller,
     String label,
     String? Function(String?) rule,
-    AppLocalizations l10n, {
+    AppLocalizations l10n,
+    IconData icon, {
     TextInputType? keyboardType,
     int maxLines = 1,
   }) {
@@ -159,16 +188,45 @@ class _VendorFormPageState extends State<VendorFormPage> {
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-      ),
+      decoration: _inputDecoration(label, icon),
       validator: (v) {
         final code = rule(v);
         if (code == null) return null;
         final msg = _resolveError(l10n, code);
         return msg.isEmpty ? null : msg;
       },
+    );
+  }
+}
+
+class _Section extends StatelessWidget {
+  const _Section({required this.title, required this.children});
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 12),
+          child: Text(
+            title,
+            style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3)),
+          ),
+          child: Column(children: children),
+        ),
+      ],
     );
   }
 }

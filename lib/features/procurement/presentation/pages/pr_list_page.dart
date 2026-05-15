@@ -1,18 +1,21 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/route_paths.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/purchase_request.dart';
 import '../bloc/pr_list_bloc.dart';
 import '../bloc/pr_list_event.dart';
 import '../bloc/pr_list_state.dart';
 
-/// Purchase request list (Slice 4.1.1) — search + status chips + sort +
-/// scrollable list, mirroring the invoice list at parity.
 class PurchaseRequestListPage extends StatelessWidget {
   const PurchaseRequestListPage({super.key});
 
@@ -32,22 +35,51 @@ class _ListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.prListTitle),
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: l10n.prListTitle,
         actions: [
-          IconButton(
-            tooltip: l10n.prListNewTooltip,
-            icon: const Icon(Icons.add),
-            onPressed: () =>
-                context.goNamed(RoutePaths.purchaseRequestNewName),
-          ),
+          _SortAction(),
         ],
       ),
-      body: const Column(
-        children: [
-          _Toolbar(),
-          Expanded(child: _Body()),
+      body: DynamicStatusBar(
+        child: Column(
+          children: [
+            _Toolbar(),
+            const Expanded(child: _Body()),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.goNamed(RoutePaths.purchaseRequestNewName),
+        icon: const Icon(Icons.add_rounded),
+        label: Text(l10n.prListNewTooltip),
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.lg)),
+      ).animate().scale(delay: 400.ms, curve: Curves.easeOutBack),
+    );
+  }
+}
+
+class _SortAction extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return BlocBuilder<PurchaseRequestListBloc, PurchaseRequestListState>(
+      buildWhen: (a, b) => a.sort != b.sort,
+      builder: (context, state) => PopupMenuButton<PurchaseRequestSort>(
+        tooltip: l10n.prListSortTooltip,
+        icon: const Icon(Icons.sort_rounded),
+        initialValue: state.sort,
+        onSelected: (s) => context
+            .read<PurchaseRequestListBloc>()
+            .add(PurchaseRequestListSortChanged(s)),
+        itemBuilder: (_) => [
+          for (final s in PurchaseRequestSort.values)
+            PopupMenuItem(value: s, child: Text(_sortLabel(l10n, s))),
         ],
       ),
     );
@@ -61,76 +93,77 @@ class _Toolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final bloc = context.read<PurchaseRequestListBloc>();
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+    final theme = Theme.of(context);
+    
+    return Container(
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + kToolbarHeight + 16,
+        left: 16,
+        right: 16,
+        bottom: 12,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextField(
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.search),
-              hintText: l10n.prListSearchHint,
-              border: const OutlineInputBorder(),
-              isDense: true,
-            ),
-            onChanged: (q) =>
-                bloc.add(PurchaseRequestListSearchChanged(q)),
-          ),
-          const SizedBox(height: 8),
-          BlocBuilder<PurchaseRequestListBloc, PurchaseRequestListState>(
-            buildWhen: (a, b) =>
-                a.statusFilter != b.statusFilter || a.sort != b.sort,
-            builder: (context, state) => Row(
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        for (final s in PurchaseRequestStatus.values)
-                          Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: FilterChip(
-                              label: Text(prStatusLabel(l10n, s)),
-                              selected: state.statusFilter.contains(s),
-                              onSelected: (_) => bloc.add(
-                                PurchaseRequestListStatusToggled(s),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
+          Container(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
-                const SizedBox(width: 8),
-                _SortMenu(current: state.sort),
               ],
             ),
-          ),
+            child: TextField(
+              decoration: InputDecoration(
+                prefixIcon: Icon(Icons.search_rounded, color: theme.colorScheme.primary),
+                hintText: l10n.prListSearchHint,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 15),
+              ),
+              onChanged: (q) => bloc.add(PurchaseRequestListSearchChanged(q)),
+            ),
+          ).animate().fadeIn().slideY(begin: -0.2, end: 0),
+          const SizedBox(height: 16),
+          BlocBuilder<PurchaseRequestListBloc, PurchaseRequestListState>(
+            buildWhen: (a, b) => a.statusFilter != b.statusFilter,
+            builder: (context, state) => SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final s in PurchaseRequestStatus.values)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        label: Text(prStatusLabel(l10n, s)),
+                        selected: state.statusFilter.contains(s),
+                        onSelected: (_) => bloc.add(
+                          PurchaseRequestListStatusToggled(s),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadii.pill),
+                        ),
+                        selectedColor: theme.colorScheme.primary.withValues(alpha: 0.2),
+                        checkmarkColor: theme.colorScheme.primary,
+                        labelStyle: TextStyle(
+                          color: state.statusFilter.contains(s) 
+                              ? theme.colorScheme.primary 
+                              : theme.colorScheme.onSurfaceVariant,
+                          fontWeight: state.statusFilter.contains(s) 
+                              ? FontWeight.bold 
+                              : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ).animate().fadeIn(delay: 100.ms),
         ],
       ),
-    );
-  }
-}
-
-class _SortMenu extends StatelessWidget {
-  const _SortMenu({required this.current});
-  final PurchaseRequestSort current;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return PopupMenuButton<PurchaseRequestSort>(
-      tooltip: l10n.prListSortTooltip,
-      icon: const Icon(Icons.sort),
-      initialValue: current,
-      onSelected: (s) => context
-          .read<PurchaseRequestListBloc>()
-          .add(PurchaseRequestListSortChanged(s)),
-      itemBuilder: (_) => [
-        for (final s in PurchaseRequestSort.values)
-          PopupMenuItem(value: s, child: Text(_sortLabel(l10n, s))),
-      ],
     );
   }
 }
@@ -149,103 +182,137 @@ class _Body extends StatelessWidget {
         if (state.errorMessage != null && state.source.isEmpty) {
           return _CenteredMessage(
             text: l10n.prListError(state.errorMessage!),
+            icon: Icons.error_outline_rounded,
           );
         }
         if (state.visible.isEmpty) {
-          return _CenteredMessage(text: l10n.prListEmpty);
+          return _CenteredMessage(
+            text: l10n.prListEmpty,
+            icon: Icons.shopping_cart_rounded,
+          );
         }
-        return ListView.separated(
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
           itemCount: state.visible.length,
-          separatorBuilder: (_, __) => const Divider(height: 0),
-          itemBuilder: (_, i) => _PurchaseRequestTile(pr: state.visible[i]),
+          itemBuilder: (_, i) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _PurchaseRequestCard(pr: state.visible[i])
+                .animate()
+                .fadeIn(delay: (i * 30).ms)
+                .slideY(begin: 0.05, end: 0),
+          ),
         );
       },
     );
   }
 }
 
-class _PurchaseRequestTile extends StatelessWidget {
-  const _PurchaseRequestTile({required this.pr});
+class _PurchaseRequestCard extends StatelessWidget {
+  const _PurchaseRequestCard({required this.pr});
   final PurchaseRequest pr;
 
-  static final _date = DateFormat('yyyy-MM-dd');
+  static final _date = DateFormat('MMM dd, yyyy');
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor:
-            prStatusColor(theme, pr.status).withValues(alpha: 0.15),
-        foregroundColor: prStatusColor(theme, pr.status),
-        child: const Icon(Icons.shopping_cart_outlined, size: 22),
+    final statusColor = prStatusColor(theme, pr.status);
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+          width: 1,
+        ),
       ),
-      title: Row(
-        children: [
-          Text(
-            pr.number,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              pr.requesterName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.goNamed(
+          RoutePaths.purchaseRequestDetailName,
+          pathParameters: {RoutePaths.purchaseRequestDetailIdParam: pr.id},
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.shopping_cart_rounded, color: statusColor, size: 24),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          pr.number,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          pr.requesterName,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  PurchaseRequestStatusBadge(status: pr.status),
+                ],
               ),
-            ),
+              const SizedBox(height: 16),
+              const Divider(height: 1),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'CREATED: ${_date.format(pr.createdAt)}',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.outline,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'DEPT: ${pr.costCenter.toUpperCase()}',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.outline,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    pr.totalAmount,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: theme.colorScheme.primary,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
-      ),
-      subtitle: Text(
-        '${_date.format(pr.createdAt.toLocal())} · ${pr.costCenter}',
-        style: theme.textTheme.labelSmall,
-      ),
-      trailing: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            pr.totalAmount,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-          const SizedBox(height: 2),
-          PurchaseRequestStatusBadge(status: pr.status),
-        ],
-      ),
-      onTap: () => context.goNamed(
-        RoutePaths.purchaseRequestDetailName,
-        pathParameters: {RoutePaths.purchaseRequestDetailIdParam: pr.id},
-      ),
-    );
-  }
-}
-
-class _CenteredMessage extends StatelessWidget {
-  const _CenteredMessage({required this.text});
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.shopping_cart_outlined,
-                size: 64, color: theme.colorScheme.outline),
-            const SizedBox(height: 12),
-            Text(text, textAlign: TextAlign.center),
-          ],
         ),
       ),
     );
@@ -262,14 +329,62 @@ class PurchaseRequestStatusBadge extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final color = prStatusColor(theme, status);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(4),
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Text(
-        prStatusLabel(l10n, status),
-        style: theme.textTheme.labelSmall?.copyWith(color: color),
+        prStatusLabel(l10n, status).toUpperCase(),
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w900,
+          fontSize: 9,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+}
+
+class _CenteredMessage extends StatelessWidget {
+  const _CenteredMessage({required this.text, this.icon});
+  final String text;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon ?? Icons.shopping_cart_rounded,
+                size: 64, 
+                color: theme.colorScheme.outline.withValues(alpha: 0.5),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              text, 
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

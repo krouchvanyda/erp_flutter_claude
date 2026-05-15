@@ -1,24 +1,23 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/validators/validators.dart';
 import '../../domain/entities/purchase_request.dart';
 import '../../domain/repositories/purchase_requests_repository.dart';
 
-/// Create-PR form (Slice 4.1.2).
-///
-/// **No bloc** — `Form` + per-field controllers + a tiny mutable
-/// list of line items. Validation rules reuse `Validators` from
-/// Slice 3.2.3 so the contract stays single-source.
 class PurchaseRequestFormPage extends StatefulWidget {
   const PurchaseRequestFormPage({super.key});
 
   @override
-  State<PurchaseRequestFormPage> createState() =>
-      _PurchaseRequestFormPageState();
+  State<PurchaseRequestFormPage> createState() => _PurchaseRequestFormPageState();
 }
 
 class _PurchaseRequestFormPageState extends State<PurchaseRequestFormPage> {
@@ -75,8 +74,8 @@ class _PurchaseRequestFormPageState extends State<PurchaseRequestFormPage> {
     }
 
     final draft = PurchaseRequest(
-      id: 'tmp', // overwritten by repo
-      number: 'PR-tmp', // overwritten by repo
+      id: 'tmp',
+      number: 'PR-tmp',
       requesterName: _requester.text.trim(),
       costCenter: _costCenter.text.trim(),
       approverName: _approver.text.trim(),
@@ -84,9 +83,7 @@ class _PurchaseRequestFormPageState extends State<PurchaseRequestFormPage> {
       status: PurchaseRequestStatus.submitted,
       totalAmount: _money(subtotal),
       lineItems: lines,
-      justification: _justification.text.trim().isEmpty
-          ? null
-          : _justification.text.trim(),
+      justification: _justification.text.trim().isEmpty ? null : _justification.text.trim(),
     );
 
     try {
@@ -94,12 +91,12 @@ class _PurchaseRequestFormPageState extends State<PurchaseRequestFormPage> {
       if (!mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(l10n.prFormSavedSnack)));
+        ..showSnackBar(SnackBar(content: Text(l10n.prFormSavedSnack), behavior: SnackBarBehavior.floating));
       if (context.canPop()) context.pop();
     } catch (e) {
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(l10n.prFormSaveFailed(e.toString()))));
+        ..showSnackBar(SnackBar(content: Text(l10n.prFormSaveFailed(e.toString())), behavior: SnackBarBehavior.floating));
     }
   }
 
@@ -129,105 +126,159 @@ class _PurchaseRequestFormPageState extends State<PurchaseRequestFormPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.prFormCreateTitle),
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: l10n.prFormCreateTitle,
+        centerTitle: true,
         actions: [
-          IconButton(
-            tooltip: l10n.prFormSaveTooltip,
-            icon: const Icon(Icons.save_outlined),
+          TextButton(
             onPressed: _submit,
+            child: Text(
+              l10n.prFormSaveTooltip.toUpperCase(),
+              style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.w800),
+            ),
           ),
         ],
       ),
-      body: Form(
-        key: _formKey,
-        autovalidateMode: AutovalidateMode.onUserInteraction,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            TextFormField(
-              controller: _requester,
-              decoration: InputDecoration(
-                labelText: l10n.prFormRequesterLabel,
-                border: const OutlineInputBorder(),
-              ),
-              validator: (v) =>
-                  _resolveError(l10n, Validators.required(v)).ifEmptyToNull(),
+      body: DynamicStatusBar(
+        child: Form(
+          key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          child: ListView(
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).padding.top + kToolbarHeight + 16,
+              left: 16,
+              right: 16,
+              bottom: 100,
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _costCenter,
-                    decoration: InputDecoration(
-                      labelText: l10n.prFormCostCenterLabel,
-                      border: const OutlineInputBorder(),
-                    ),
-                    validator: (v) => _resolveError(
-                            l10n, Validators.required(v))
-                        .ifEmptyToNull(),
+            children: [
+              _Section(
+                title: 'GENERAL INFORMATION',
+                children: [
+                  TextFormField(
+                    controller: _requester,
+                    decoration: _inputDecoration(l10n.prFormRequesterLabel, Icons.person_outline_rounded),
+                    validator: (v) => _resolveError(l10n, Validators.required(v)).ifEmptyToNull(),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextFormField(
-                    controller: _approver,
-                    decoration: InputDecoration(
-                      labelText: l10n.prFormApproverLabel,
-                      border: const OutlineInputBorder(),
-                    ),
-                    validator: (v) => _resolveError(
-                            l10n, Validators.required(v))
-                        .ifEmptyToNull(),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _costCenter,
+                          decoration: _inputDecoration(l10n.prFormCostCenterLabel, Icons.account_balance_outlined),
+                          validator: (v) => _resolveError(l10n, Validators.required(v)).ifEmptyToNull(),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _approver,
+                          decoration: _inputDecoration(l10n.prFormApproverLabel, Icons.how_to_reg_outlined),
+                          validator: (v) => _resolveError(l10n, Validators.required(v)).ifEmptyToNull(),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _justification,
+                    maxLines: 3,
+                    decoration: _inputDecoration(l10n.prFormJustificationLabel, Icons.subject_rounded),
+                  ),
+                ],
+              ).animate().fadeIn().slideY(begin: 0.1, end: 0),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 4),
+                      child: Text(
+                        l10n.prFormLinesHeading.toUpperCase(),
+                        style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+                      ),
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: _addLine,
+                    icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
+                    label: Text(l10n.prFormAddLineAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                  ),
+                ],
+              ).animate().fadeIn(delay: 100.ms),
+              const SizedBox(height: 8),
+              for (var i = 0; i < _lines.length; i++) ...[
+                _LineEditor(
+                  key: ValueKey(_lines[i]),
+                  draft: _lines[i],
+                  index: i,
+                  resolveError: (code) => _resolveError(l10n, code),
+                  onRemove: _lines.length == 1 ? null : () => _removeLine(i),
+                ).animate().fadeIn(delay: (150 + i * 50).ms).slideY(begin: 0.1, end: 0),
+                const SizedBox(height: 12),
               ],
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _justification,
-              maxLines: 3,
-              decoration: InputDecoration(
-                labelText: l10n.prFormJustificationLabel,
-                border: const OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(l10n.prFormLinesHeading,
-                      style: theme.textTheme.titleSmall),
+              const SizedBox(height: 40),
+              SizedBox(
+                height: 56,
+                child: FilledButton.icon(
+                  onPressed: _submit,
+                  icon: const Icon(Icons.send_rounded),
+                  label: Text(l10n.prFormSubmitAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+                  style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md))),
                 ),
-                TextButton.icon(
-                  onPressed: _addLine,
-                  icon: const Icon(Icons.add),
-                  label: Text(l10n.prFormAddLineAction),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            for (var i = 0; i < _lines.length; i++) ...[
-              _LineEditor(
-                key: ValueKey(_lines[i]),
-                draft: _lines[i],
-                index: i,
-                resolveError: (code) => _resolveError(l10n, code),
-                onRemove: _lines.length == 1 ? null : () => _removeLine(i),
-              ),
-              const SizedBox(height: 12),
+              ).animate().fadeIn(delay: 300.ms).scale(curve: Curves.easeOutBack),
             ],
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: _submit,
-              icon: const Icon(Icons.send_outlined),
-              label: Text(l10n.prFormSubmitAction),
-            ),
-          ],
+          ),
         ),
       ),
+    );
+  }
+
+  InputDecoration _inputDecoration(String label, IconData icon) {
+    final theme = Theme.of(context);
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, size: 20),
+      filled: true,
+      fillColor: theme.colorScheme.surface,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.outlineVariant)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5))),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.primary, width: 2)),
+    );
+  }
+}
+
+class _Section extends StatelessWidget {
+  const _Section({required this.title, required this.children});
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 12),
+          child: Text(
+            title,
+            style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3)),
+          ),
+          child: Column(children: children),
+        ),
+      ],
     );
   }
 }
@@ -262,81 +313,79 @@ class _LineEditor extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(l10n.prFormLineHeading(index + 1),
-                    style: theme.textTheme.labelLarge),
-                const Spacer(),
-                if (onRemove != null)
-                  IconButton(
-                    tooltip: l10n.prFormRemoveLineTooltip,
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: onRemove,
-                  ),
-              ],
-            ),
-            TextFormField(
-              controller: draft.description,
-              decoration: InputDecoration(
-                labelText: l10n.prFormLineDescriptionLabel,
-                border: const OutlineInputBorder(),
-                isDense: true,
-              ),
-              validator: (v) =>
-                  resolveError(Validators.required(v)).ifEmptyToNull(),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: draft.quantity,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                    ],
-                    decoration: InputDecoration(
-                      labelText: l10n.prFormLineQuantityLabel,
-                      border: const OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                    validator: (v) =>
-                        resolveError(Validators.positiveNumber(v))
-                            .ifEmptyToNull(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextFormField(
-                    controller: draft.unitPrice,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                    ],
-                    decoration: InputDecoration(
-                      labelText: l10n.prFormLineUnitPriceLabel,
-                      border: const OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                    validator: (v) =>
-                        resolveError(Validators.positiveNumber(v))
-                            .ifEmptyToNull(),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  l10n.prFormLineHeading(index + 1).toUpperCase(),
+                  style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w900),
+                ),
+              ),
+              const Spacer(),
+              if (onRemove != null)
+                IconButton(
+                  tooltip: l10n.prFormRemoveLineTooltip,
+                  icon: Icon(Icons.delete_sweep_rounded, color: theme.colorScheme.error, size: 20),
+                  onPressed: onRemove,
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: draft.description,
+            decoration: _inputDecoration(l10n.prFormLineDescriptionLabel, Icons.description_outlined),
+            validator: (v) => resolveError(Validators.required(v)).ifEmptyToNull(),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: draft.quantity,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+                  decoration: _inputDecoration(l10n.prFormLineQuantityLabel, Icons.format_list_numbered_rounded),
+                  validator: (v) => resolveError(Validators.positiveNumber(v)).ifEmptyToNull(),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextFormField(
+                  controller: draft.unitPrice,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+                  decoration: _inputDecoration(l10n.prFormLineUnitPriceLabel, Icons.payments_outlined),
+                  validator: (v) => resolveError(Validators.positiveNumber(v)).ifEmptyToNull(),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, size: 18),
+      isDense: true,
+      border: const OutlineInputBorder(),
     );
   }
 }

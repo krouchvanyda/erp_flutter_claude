@@ -1,7 +1,13 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/purchase_request.dart';
 import '../../domain/entities/vendor.dart';
@@ -10,24 +16,18 @@ import '../../domain/repositories/purchase_requests_repository.dart';
 import '../../domain/repositories/vendors_repository.dart';
 import '../../domain/usecases/convert_pr_to_po.dart';
 import '../../domain/usecases/pr_approval.dart';
-import 'pr_list_page.dart' show PurchaseRequestStatusBadge, prStatusLabel;
+import 'pr_list_page.dart' show PurchaseRequestStatusBadge, prStatusLabel, prStatusColor;
 
-/// PR detail page (Slice 4.1.3) — header card, line table, totals,
-/// action bar with Approve / Reject (when submitted) or Submit (when
-/// draft). Reject opens a reason dialog reused in spirit from the
-/// invoice approval flow.
 class PurchaseRequestDetailPage extends StatefulWidget {
   const PurchaseRequestDetailPage({super.key, required this.prId});
 
   final String prId;
 
   @override
-  State<PurchaseRequestDetailPage> createState() =>
-      _PurchaseRequestDetailPageState();
+  State<PurchaseRequestDetailPage> createState() => _PurchaseRequestDetailPageState();
 }
 
-class _PurchaseRequestDetailPageState
-    extends State<PurchaseRequestDetailPage> {
+class _PurchaseRequestDetailPageState extends State<PurchaseRequestDetailPage> {
   late PurchaseRequestsRepository _repo;
   late Future<PurchaseRequest?> _future;
   final _approval = const PurchaseRequestApprovalUseCase();
@@ -49,14 +49,12 @@ class _PurchaseRequestDetailPageState
     final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final outcome = _approval.approve(pr);
-    if (outcome.result ==
-        PurchaseRequestApprovalResult.notAllowedFromCurrentStatus) {
+    if (outcome.result == PurchaseRequestApprovalResult.notAllowedFromCurrentStatus) {
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(
-          content: Text(l10n.prApprovalNotAllowed(
-            l10n.prApproveAction.toLowerCase(),
-          )),
+          content: Text(l10n.prApprovalNotAllowed(l10n.prApproveAction.toLowerCase())),
+          behavior: SnackBarBehavior.floating,
         ));
       return;
     }
@@ -66,8 +64,8 @@ class _PurchaseRequestDetailPageState
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(
-          content: Text(
-              l10n.prApprovedSnack(prStatusLabel(l10n, outcome.pr.status))),
+          content: Text(l10n.prApprovedSnack(prStatusLabel(l10n, outcome.pr.status))),
+          behavior: SnackBarBehavior.floating,
         ));
       _reload();
     } catch (e) {
@@ -75,6 +73,7 @@ class _PurchaseRequestDetailPageState
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(
           content: Text(l10n.prApprovalFailed(e.toString())),
+          behavior: SnackBarBehavior.floating,
         ));
     }
   }
@@ -83,14 +82,12 @@ class _PurchaseRequestDetailPageState
     final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final outcome = _approval.submit(pr);
-    if (outcome.result !=
-        PurchaseRequestApprovalResult.ok) {
+    if (outcome.result != PurchaseRequestApprovalResult.ok) {
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(
-          content: Text(l10n.prApprovalNotAllowed(
-            l10n.prSubmitAction.toLowerCase(),
-          )),
+          content: Text(l10n.prApprovalNotAllowed(l10n.prSubmitAction.toLowerCase())),
+          behavior: SnackBarBehavior.floating,
         ));
       return;
     }
@@ -99,13 +96,14 @@ class _PurchaseRequestDetailPageState
       if (!mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(l10n.prSubmittedSnack)));
+        ..showSnackBar(SnackBar(content: Text(l10n.prSubmittedSnack), behavior: SnackBarBehavior.floating));
       _reload();
     } catch (e) {
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(
           content: Text(l10n.prApprovalFailed(e.toString())),
+          behavior: SnackBarBehavior.floating,
         ));
     }
   }
@@ -115,8 +113,7 @@ class _PurchaseRequestDetailPageState
     final messenger = ScaffoldMessenger.of(context);
     final vendors = await getIt<VendorsRepository>().getAll();
     if (!mounted) return;
-    final activeVendors =
-        vendors.where((v) => v.status == VendorStatus.active).toList();
+    final activeVendors = vendors.where((v) => v.status == VendorStatus.active).toList();
     final picked = await showDialog<_ConvertChoice>(
       context: context,
       builder: (_) => _ConvertDialog(vendors: activeVendors),
@@ -132,9 +129,8 @@ class _PurchaseRequestDetailPageState
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(
-          content: Text(l10n.prApprovalNotAllowed(
-            l10n.prConvertAction.toLowerCase(),
-          )),
+          content: Text(l10n.prApprovalNotAllowed(l10n.prConvertAction.toLowerCase())),
+          behavior: SnackBarBehavior.floating,
         ));
       return;
     }
@@ -144,13 +140,14 @@ class _PurchaseRequestDetailPageState
       if (!mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(l10n.prConvertedSnack)));
+        ..showSnackBar(SnackBar(content: Text(l10n.prConvertedSnack), behavior: SnackBarBehavior.floating));
       _reload();
     } catch (e) {
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(
           content: Text(l10n.prApprovalFailed(e.toString())),
+          behavior: SnackBarBehavior.floating,
         ));
     }
   }
@@ -171,9 +168,8 @@ class _PurchaseRequestDetailPageState
         messenger
           ..hideCurrentSnackBar()
           ..showSnackBar(SnackBar(
-            content: Text(l10n.prApprovalNotAllowed(
-              l10n.prRejectAction.toLowerCase(),
-            )),
+            content: Text(l10n.prApprovalNotAllowed(l10n.prRejectAction.toLowerCase())),
+            behavior: SnackBarBehavior.floating,
           ));
         return;
       case PurchaseRequestApprovalResult.ok:
@@ -182,14 +178,14 @@ class _PurchaseRequestDetailPageState
           if (!mounted) return;
           messenger
             ..hideCurrentSnackBar()
-            ..showSnackBar(
-                SnackBar(content: Text(l10n.prRejectedSnack)));
+            ..showSnackBar(SnackBar(content: Text(l10n.prRejectedSnack), behavior: SnackBarBehavior.floating));
           _reload();
         } catch (e) {
           messenger
             ..hideCurrentSnackBar()
             ..showSnackBar(SnackBar(
               content: Text(l10n.prApprovalFailed(e.toString())),
+              behavior: SnackBarBehavior.floating,
             ));
         }
     }
@@ -199,36 +195,41 @@ class _PurchaseRequestDetailPageState
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.prDetailTitle)),
-      body: FutureBuilder<PurchaseRequest?>(
-        future: _future,
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snap.hasError) {
-            return _CenteredMessage(
-                text: l10n.prDetailError(snap.error.toString()));
-          }
-          final pr = snap.data;
-          if (pr == null) {
-            return _CenteredMessage(
-                text: l10n.prDetailNotFound(widget.prId));
-          }
-          return _DetailBody(pr: pr);
-        },
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: l10n.prDetailTitle,
+        centerTitle: true,
+      ),
+      body: DynamicStatusBar(
+        child: FutureBuilder<PurchaseRequest?>(
+          future: _future,
+          builder: (context, snap) {
+            if (snap.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snap.hasError) {
+              return _CenteredMessage(text: l10n.prDetailError(snap.error.toString()), icon: Icons.error_outline_rounded);
+            }
+            final pr = snap.data;
+            if (pr == null) {
+              return _CenteredMessage(text: l10n.prDetailNotFound(widget.prId), icon: Icons.search_off_rounded);
+            }
+            return _DetailBody(pr: pr);
+          },
+        ),
       ),
       bottomNavigationBar: FutureBuilder<PurchaseRequest?>(
         future: _future,
         builder: (context, snap) {
           final pr = snap.data;
           if (pr == null) return const SizedBox.shrink();
-          return SafeArea(child: _ActionBar(pr: pr,
+          return _ActionBar(
+            pr: pr,
             onApprove: () => _onApprove(pr),
             onReject: () => _onReject(pr),
             onSubmit: () => _onSubmit(pr),
             onConvert: () => _onConvert(pr),
-          ));
+          );
         },
       ),
     );
@@ -254,54 +255,72 @@ class _ActionBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
+
+    Widget? action;
     if (pr.status == PurchaseRequestStatus.draft) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-        child: FilledButton.icon(
-          onPressed: onSubmit,
-          icon: const Icon(Icons.send_outlined),
-          label: Text(l10n.prSubmitAction),
+      action = FilledButton.icon(
+        onPressed: onSubmit,
+        icon: const Icon(Icons.send_rounded),
+        label: Text(l10n.prSubmitAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+        style: FilledButton.styleFrom(
+          minimumSize: const Size.fromHeight(56),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
         ),
       );
-    }
-    if (pr.status == PurchaseRequestStatus.submitted) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-        child: Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: onReject,
-                icon: const Icon(Icons.close),
-                label: Text(l10n.prRejectAction),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: theme.colorScheme.error,
-                ),
+    } else if (pr.status == PurchaseRequestStatus.submitted) {
+      action = Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: onReject,
+              icon: const Icon(Icons.close_rounded),
+              label: Text(l10n.prRejectAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800)),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(56),
+                foregroundColor: theme.colorScheme.error,
+                side: BorderSide(color: theme.colorScheme.error),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: FilledButton.icon(
-                onPressed: onApprove,
-                icon: const Icon(Icons.check),
-                label: Text(l10n.prApproveAction),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: FilledButton.icon(
+              onPressed: onApprove,
+              icon: const Icon(Icons.check_rounded),
+              label: Text(l10n.prApproveAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800)),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(56),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
               ),
             ),
-          ],
+          ),
+        ],
+      );
+    } else if (pr.status == PurchaseRequestStatus.approved) {
+      action = FilledButton.icon(
+        onPressed: onConvert,
+        icon: const Icon(Icons.shopping_bag_rounded),
+        label: Text(l10n.prConvertAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+        style: FilledButton.styleFrom(
+          minimumSize: const Size.fromHeight(56),
+          backgroundColor: theme.colorScheme.tertiary,
+          foregroundColor: theme.colorScheme.onTertiary,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
         ),
       );
     }
-    if (pr.status == PurchaseRequestStatus.approved) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-        child: FilledButton.icon(
-          onPressed: onConvert,
-          icon: const Icon(Icons.shopping_bag_outlined),
-          label: Text(l10n.prConvertAction),
-        ),
-      );
-    }
-    return const SizedBox.shrink();
+
+    if (action == null) return const SizedBox.shrink();
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).padding.bottom + 16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3))),
+      ),
+      child: action,
+    ).animate().slideY(begin: 1, end: 0, curve: Curves.easeOutCubic);
   }
 }
 
@@ -336,49 +355,42 @@ class _ConvertDialogState extends State<_ConvertDialog> {
 
   void _confirm() {
     if (_vendor == null) {
-      setState(() => _vendorError =
-          AppLocalizations.of(context).prConvertVendorRequired);
+      setState(() => _vendorError = AppLocalizations.of(context).prConvertVendorRequired);
       return;
     }
-    Navigator.of(context).pop(
-      _ConvertChoice(vendor: _vendor!, expectedAt: _expectedAt),
-    );
+    Navigator.of(context).pop(_ConvertChoice(vendor: _vendor!, expectedAt: _expectedAt));
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final dateFmt = DateFormat('yyyy-MM-dd');
+    final theme = Theme.of(context);
+    final dateFmt = DateFormat('MMM dd, yyyy');
     return AlertDialog(
-      title: Text(l10n.prConvertDialogTitle),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.lg)),
+      title: Text(l10n.prConvertDialogTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           DropdownButtonFormField<Vendor>(
-            initialValue: _vendor,
             decoration: InputDecoration(
               labelText: l10n.prConvertVendorLabel,
-              border: const OutlineInputBorder(),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
               errorText: _vendorError,
             ),
-            items: [
-              for (final v in widget.vendors)
-                DropdownMenuItem(value: v, child: Text(v.name)),
-            ],
-            onChanged: (v) => setState(() {
-              _vendor = v;
-              _vendorError = null;
-            }),
+            items: [for (final v in widget.vendors) DropdownMenuItem(value: v, child: Text(v.name))],
+            onChanged: (v) => setState(() { _vendor = v; _vendorError = null; }),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 20),
           InkWell(
             onTap: _pickDate,
+            borderRadius: BorderRadius.circular(AppRadii.md),
             child: InputDecorator(
               decoration: InputDecoration(
                 labelText: l10n.prConvertExpectedLabel,
-                border: const OutlineInputBorder(),
-                suffixIcon: const Icon(Icons.calendar_today_outlined),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
+                suffixIcon: const Icon(Icons.calendar_today_rounded, size: 18),
               ),
               child: Text(dateFmt.format(_expectedAt)),
             ),
@@ -386,14 +398,8 @@ class _ConvertDialogState extends State<_ConvertDialog> {
         ],
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(l10n.prConvertCancel),
-        ),
-        FilledButton(
-          onPressed: _confirm,
-          child: Text(l10n.prConvertConfirm),
-        ),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l10n.prConvertCancel.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold))),
+        FilledButton(onPressed: _confirm, style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md))), child: Text(l10n.prConvertConfirm.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold))),
       ],
     );
   }
@@ -402,130 +408,174 @@ class _ConvertDialogState extends State<_ConvertDialog> {
 class _DetailBody extends StatelessWidget {
   const _DetailBody({required this.pr});
   final PurchaseRequest pr;
-  static final _date = DateFormat('yyyy-MM-dd HH:mm');
+  static final _date = DateFormat('MMM dd, yyyy · HH:mm');
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + kToolbarHeight + 16,
+        left: 16,
+        right: 16,
+        bottom: 120,
+      ),
       children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(pr.number,
-                          style: theme.textTheme.titleLarge),
-                    ),
-                    PurchaseRequestStatusBadge(status: pr.status),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 16,
-                  runSpacing: 4,
-                  children: [
-                    _MetaChip(
-                        label: l10n.prDetailRequesterLabel,
-                        value: pr.requesterName),
-                    _MetaChip(
-                        label: l10n.prDetailCostCenterLabel,
-                        value: pr.costCenter),
-                    _MetaChip(
-                        label: l10n.prDetailApproverLabel,
-                        value: pr.approverName),
-                    _MetaChip(
-                      label: l10n.prDetailCreatedLabel,
-                      value: _date.format(pr.createdAt.toLocal()),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
           ),
-        ),
-        if (pr.justification != null) ...[
-          const SizedBox(height: 12),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(l10n.prDetailJustificationHeading,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      )),
-                  const SizedBox(height: 6),
-                  Text(pr.justification!),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          pr.number,
+                          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900, letterSpacing: -0.5, fontFeatures: const [FontFeature.tabularFigures()]),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _date.format(pr.createdAt.toLocal()),
+                          style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                  PurchaseRequestStatusBadge(status: pr.status),
                 ],
               ),
-            ),
-          ),
-        ],
-        const SizedBox(height: 12),
-        Card(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Text(l10n.prDetailLinesHeading,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    )),
+              const SizedBox(height: 24),
+              const Divider(height: 1),
+              const SizedBox(height: 24),
+              Wrap(
+                spacing: 32,
+                runSpacing: 20,
+                children: [
+                  _MetaItem(label: l10n.prDetailRequesterLabel, value: pr.requesterName, icon: Icons.person_rounded),
+                  _MetaItem(label: l10n.prDetailCostCenterLabel, value: pr.costCenter, icon: Icons.account_balance_rounded),
+                  _MetaItem(label: l10n.prDetailApproverLabel, value: pr.approverName, icon: Icons.how_to_reg_rounded),
+                ],
               ),
+            ],
+          ),
+        ).animate().fadeIn().slideY(begin: 0.05, end: 0),
+        
+        if (pr.justification != null) ...[
+          const SizedBox(height: 16),
+          _SectionCard(
+            title: l10n.prDetailJustificationHeading.toUpperCase(),
+            icon: Icons.subject_rounded,
+            child: Text(
+              pr.justification!,
+              style: theme.textTheme.bodyMedium?.copyWith(height: 1.5, color: theme.colorScheme.onSurface),
+            ),
+          ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.05, end: 0),
+        ],
+        
+        const SizedBox(height: 16),
+        _SectionCard(
+          title: l10n.prDetailLinesHeading.toUpperCase(),
+          icon: Icons.list_alt_rounded,
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: [
               for (final line in pr.lineItems) _LineRow(line: line),
-              const Divider(height: 0),
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer.withValues(alpha: 0.1),
+                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(AppRadii.lg)),
+                ),
                 child: Row(
                   children: [
-                    Text(l10n.prDetailTotalLabel,
-                        style: theme.textTheme.titleSmall),
+                    Text(l10n.prDetailTotalLabel.toUpperCase(), style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900, color: theme.colorScheme.primary)),
                     const Spacer(),
                     Text(
                       pr.totalAmount,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
+                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900, color: theme.colorScheme.primary, fontFeatures: const [FontFeature.tabularFigures()]),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-        ),
+        ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.05, end: 0),
       ],
     );
   }
 }
 
-class _MetaChip extends StatelessWidget {
-  const _MetaChip({required this.label, required this.value});
+class _MetaItem extends StatelessWidget {
+  const _MetaItem({required this.label, required this.value, required this.icon});
   final String label;
   final String value;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            )),
-        Text(value, style: theme.textTheme.bodyMedium),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: theme.colorScheme.primary),
+            const SizedBox(width: 6),
+            Text(label.toUpperCase(), style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(value, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
       ],
+    );
+  }
+}
+
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({required this.title, required this.icon, required this.child, this.padding = const EdgeInsets.all(20)});
+  final String title;
+  final IconData icon;
+  final Widget child;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            child: Row(
+              children: [
+                Icon(icon, size: 18, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(title, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w900, letterSpacing: 1)),
+              ],
+            ),
+          ),
+          Padding(padding: padding, child: child),
+        ],
+      ),
     );
   }
 }
@@ -537,21 +587,35 @@ class _LineRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return ListTile(
-      dense: true,
-      title: Text(line.description),
-      subtitle: line.sku == null ? null : Text(line.sku!),
-      trailing: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisSize: MainAxisSize.min,
+    return Container(
+      decoration: BoxDecoration(border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3)))),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('${line.quantity} × ${line.unitPrice}',
-              style: theme.textTheme.labelSmall),
-          Text(
-            line.lineTotal,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontFeatures: const [FontFeature.tabularFigures()],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(line.description, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
+                if (line.sku != null) ...[
+                  const SizedBox(height: 4),
+                  Text('SKU: ${line.sku}', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline)),
+                ],
+              ],
             ),
+          ),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text('${line.quantity} × ${line.unitPrice}', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline)),
+              const SizedBox(height: 4),
+              Text(
+                line.lineTotal,
+                style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w900, color: theme.colorScheme.onSurface, fontFeatures: const [FontFeature.tabularFigures()]),
+              ),
+            ],
           ),
         ],
       ),
@@ -560,15 +624,26 @@ class _LineRow extends StatelessWidget {
 }
 
 class _CenteredMessage extends StatelessWidget {
-  const _CenteredMessage({required this.text});
+  const _CenteredMessage({required this.text, this.icon});
   final String text;
+  final IconData? icon;
   @override
-  Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(text, textAlign: TextAlign.center),
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon ?? Icons.shopping_cart_rounded, size: 64, color: theme.colorScheme.outline.withValues(alpha: 0.5)),
+            const SizedBox(height: 24),
+            Text(text, textAlign: TextAlign.center, style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          ],
         ),
-      );
+      ),
+    );
+  }
 }
 
 class _RejectReasonDialog extends StatefulWidget {
@@ -591,7 +666,8 @@ class _RejectReasonDialogState extends State<_RejectReasonDialog> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return AlertDialog(
-      title: Text(l10n.prRejectDialogTitle),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.lg)),
+      title: Text(l10n.prRejectDialogTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
       content: Form(
         key: _formKey,
         child: TextFormField(
@@ -601,27 +677,20 @@ class _RejectReasonDialogState extends State<_RejectReasonDialog> {
           decoration: InputDecoration(
             labelText: l10n.prRejectReasonLabel,
             hintText: l10n.prRejectReasonHint,
-            border: const OutlineInputBorder(),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
           ),
-          validator: (v) => (v == null || v.trim().isEmpty)
-              ? l10n.prRejectReasonRequired
-              : null,
+          validator: (v) => (v == null || v.trim().isEmpty) ? l10n.prRejectReasonRequired : null,
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(l10n.prRejectCancel),
-        ),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l10n.prRejectCancel.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold))),
         FilledButton(
-          style: FilledButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
+          style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md))),
           onPressed: () {
             if (!(_formKey.currentState?.validate() ?? false)) return;
             Navigator.of(context).pop(_controller.text.trim());
           },
-          child: Text(l10n.prRejectConfirm),
+          child: Text(l10n.prRejectConfirm.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold)),
         ),
       ],
     );

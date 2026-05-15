@@ -1,26 +1,27 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/route_paths.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/goods_receipt.dart';
 import '../../domain/entities/purchase_order.dart';
 import '../../domain/repositories/purchase_orders_repository.dart';
 import 'po_list_page.dart' show PurchaseOrderStatusBadge;
 
-/// PO detail (Slice 4.2.1) — header + line table with ordered/received
-/// columns + receipt history. The "Record receipt" action wires Slice
-/// 4.2.3 once the form page exists.
 class PurchaseOrderDetailPage extends StatefulWidget {
   const PurchaseOrderDetailPage({super.key, required this.poId});
 
   final String poId;
 
   @override
-  State<PurchaseOrderDetailPage> createState() =>
-      _PurchaseOrderDetailPageState();
+  State<PurchaseOrderDetailPage> createState() => _PurchaseOrderDetailPageState();
 }
 
 class _PurchaseOrderDetailPageState extends State<PurchaseOrderDetailPage> {
@@ -47,19 +48,25 @@ class _PurchaseOrderDetailPageState extends State<PurchaseOrderDetailPage> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.poDetailTitle)),
-      body: FutureBuilder<_DetailBundle>(
-        future: _future,
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final bundle = snap.data;
-          if (bundle == null || bundle.po == null) {
-            return Center(child: Text(l10n.poDetailNotFound(widget.poId)));
-          }
-          return _Body(bundle: bundle);
-        },
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: l10n.poDetailTitle,
+        centerTitle: true,
+      ),
+      body: DynamicStatusBar(
+        child: FutureBuilder<_DetailBundle>(
+          future: _future,
+          builder: (context, snap) {
+            if (snap.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final bundle = snap.data;
+            if (bundle == null || bundle.po == null) {
+              return _CenteredMessage(text: l10n.poDetailNotFound(widget.poId), icon: Icons.search_off_rounded);
+            }
+            return _Body(bundle: bundle);
+          },
+        ),
       ),
       bottomNavigationBar: FutureBuilder<_DetailBundle>(
         future: _future,
@@ -71,27 +78,45 @@ class _PurchaseOrderDetailPageState extends State<PurchaseOrderDetailPage> {
               po.status == PurchaseOrderStatus.closed) {
             return const SizedBox.shrink();
           }
-          return SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-              child: FilledButton.icon(
-                onPressed: () async {
-                  await context.pushNamed(
-                    RoutePaths.goodsReceiptNewName,
-                    pathParameters: {
-                      RoutePaths.goodsReceiptPoIdParam: po.id,
-                    },
-                  );
-                  if (mounted) _reload();
-                },
-                icon: const Icon(Icons.local_shipping_outlined),
-                label: Text(l10n.poDetailRecordReceiptAction),
-              ),
-            ),
+          return _ActionBar(
+            onRecord: () async {
+              await context.pushNamed(
+                RoutePaths.goodsReceiptNewName,
+                pathParameters: {RoutePaths.goodsReceiptPoIdParam: po.id},
+              );
+              if (mounted) _reload();
+            },
           );
         },
       ),
     );
+  }
+}
+
+class _ActionBar extends StatelessWidget {
+  const _ActionBar({required this.onRecord});
+  final VoidCallback onRecord;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    return Container(
+      padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).padding.bottom + 16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3))),
+      ),
+      child: FilledButton.icon(
+        onPressed: onRecord,
+        icon: const Icon(Icons.local_shipping_rounded),
+        label: Text(l10n.poDetailRecordReceiptAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+        style: FilledButton.styleFrom(
+          minimumSize: const Size.fromHeight(56),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
+        ),
+      ),
+    ).animate().slideY(begin: 1, end: 0, curve: Curves.easeOutCubic);
   }
 }
 
@@ -104,8 +129,8 @@ class _DetailBundle {
 class _Body extends StatelessWidget {
   const _Body({required this.bundle});
   final _DetailBundle bundle;
-  static final _date = DateFormat('yyyy-MM-dd');
-  static final _dt = DateFormat('yyyy-MM-dd HH:mm');
+  static final _date = DateFormat('MMM dd, yyyy');
+  static final _dt = DateFormat('MMM dd, yyyy · HH:mm');
 
   @override
   Widget build(BuildContext context) {
@@ -113,144 +138,174 @@ class _Body extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final po = bundle.po!;
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + kToolbarHeight + 16,
+        left: 16,
+        right: 16,
+        bottom: 120,
+      ),
       children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(po.number,
-                          style: theme.textTheme.titleLarge),
-                    ),
-                    PurchaseOrderStatusBadge(status: po.status),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(po.vendorName, style: theme.textTheme.bodyMedium),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 16,
-                  runSpacing: 4,
-                  children: [
-                    _MetaChip(
-                      label: l10n.poDetailCreatedLabel,
-                      value: _date.format(po.createdAt.toLocal()),
-                    ),
-                    _MetaChip(
-                      label: l10n.poDetailExpectedLabel,
-                      value: _date.format(po.expectedAt.toLocal()),
-                    ),
-                    if (po.sourcePurchaseRequestId != null)
-                      _MetaChip(
-                        label: l10n.poDetailSourcePrLabel,
-                        value: po.sourcePurchaseRequestId!,
-                      ),
-                  ],
-                ),
-              ],
-            ),
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
           ),
-        ),
-        const SizedBox(height: 12),
-        Card(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Text(l10n.poDetailLinesHeading,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    )),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          po.number,
+                          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900, letterSpacing: -0.5, fontFeatures: const [FontFeature.tabularFigures()]),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          po.vendorName,
+                          style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                  PurchaseOrderStatusBadge(status: po.status),
+                ],
               ),
+              const SizedBox(height: 24),
+              const Divider(height: 1),
+              const SizedBox(height: 24),
+              Wrap(
+                spacing: 32,
+                runSpacing: 20,
+                children: [
+                  _MetaItem(label: l10n.poDetailCreatedLabel, value: _date.format(po.createdAt), icon: Icons.calendar_today_rounded),
+                  _MetaItem(label: l10n.poDetailExpectedLabel, value: _date.format(po.expectedAt), icon: Icons.event_rounded),
+                  if (po.sourcePurchaseRequestId != null)
+                    _MetaItem(label: l10n.poDetailSourcePrLabel, value: po.sourcePurchaseRequestId!, icon: Icons.shopping_cart_rounded),
+                ],
+              ),
+            ],
+          ),
+        ).animate().fadeIn().slideY(begin: 0.05, end: 0),
+        
+        const SizedBox(height: 16),
+        _SectionCard(
+          title: l10n.poDetailLinesHeading.toUpperCase(),
+          icon: Icons.list_alt_rounded,
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: [
               for (final line in po.lineItems) _LineRow(line: line),
-              const Divider(height: 0),
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer.withValues(alpha: 0.1),
+                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(AppRadii.lg)),
+                ),
                 child: Row(
                   children: [
-                    Text(l10n.poDetailTotalLabel,
-                        style: theme.textTheme.titleSmall),
+                    Text(l10n.poDetailTotalLabel.toUpperCase(), style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900, color: theme.colorScheme.primary)),
                     const Spacer(),
                     Text(
                       po.totalAmount,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
+                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900, color: theme.colorScheme.primary, fontFeatures: const [FontFeature.tabularFigures()]),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 12),
-        Card(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Text(l10n.poDetailReceiptsHeading,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    )),
-              ),
-              if (bundle.receipts.isEmpty)
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Text(l10n.poDetailReceiptsEmpty,
-                      style: theme.textTheme.bodySmall),
+        ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.05, end: 0),
+        
+        const SizedBox(height: 16),
+        _SectionCard(
+          title: l10n.poDetailReceiptsHeading.toUpperCase(),
+          icon: Icons.history_rounded,
+          padding: EdgeInsets.zero,
+          child: bundle.receipts.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Text(l10n.poDetailReceiptsEmpty, style: theme.textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic)),
                 )
-              else
-                for (final r in bundle.receipts)
-                  ListTile(
-                    leading: const Icon(Icons.local_shipping_outlined),
-                    title: Text(_dt.format(r.receivedAt.toLocal())),
-                    subtitle: Text(
-                      r.note == null
-                          ? r.receivedBy
-                          : '${r.receivedBy} · ${r.note}',
-                      style: theme.textTheme.labelSmall,
-                    ),
-                    trailing: Text(
-                      l10n.poDetailReceiptItemsBadge(r.lines.length),
-                      style: theme.textTheme.labelSmall,
-                    ),
-                  ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        ),
+              : Column(
+                  children: [
+                    for (final r in bundle.receipts)
+                      _ReceiptRow(receipt: r),
+                  ],
+                ),
+        ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.05, end: 0),
       ],
     );
   }
 }
 
-class _MetaChip extends StatelessWidget {
-  const _MetaChip({required this.label, required this.value});
+class _MetaItem extends StatelessWidget {
+  const _MetaItem({required this.label, required this.value, required this.icon});
   final String label;
   final String value;
+  final IconData icon;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            )),
-        Text(value, style: theme.textTheme.bodyMedium),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: theme.colorScheme.primary),
+            const SizedBox(width: 6),
+            Text(label.toUpperCase(), style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(value, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
       ],
+    );
+  }
+}
+
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({required this.title, required this.icon, required this.child, this.padding = const EdgeInsets.all(20)});
+  final String title;
+  final IconData icon;
+  final Widget child;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            child: Row(
+              children: [
+                Icon(icon, size: 18, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(title, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w900, letterSpacing: 1)),
+              ],
+            ),
+          ),
+          Padding(padding: padding, child: child),
+        ],
+      ),
     );
   }
 }
@@ -258,54 +313,139 @@ class _MetaChip extends StatelessWidget {
 class _LineRow extends StatelessWidget {
   const _LineRow({required this.line});
   final PurchaseOrderLine line;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final outstanding = line.outstandingQuantity;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    return Container(
+      decoration: BoxDecoration(border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3)))),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Text(line.description,
-                    style: theme.textTheme.bodyMedium),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(line.description, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
+                    if (line.sku != null) ...[
+                      const SizedBox(height: 4),
+                      Text('SKU: ${line.sku}', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline)),
+                    ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 16),
               Text(
                 line.lineTotal,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
+                style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w900, fontFeatures: const [FontFeature.tabularFigures()]),
               ),
             ],
           ),
-          if (line.sku != null)
-            Text(line.sku!, style: theme.textTheme.labelSmall),
-          const SizedBox(height: 4),
-          Wrap(
-            spacing: 12,
+          const SizedBox(height: 12),
+          Row(
             children: [
-              Text(
-                l10n.poLineOrderedLabel(line.orderedQuantity.toString()),
-                style: theme.textTheme.labelSmall,
-              ),
-              Text(
-                l10n.poLineReceivedLabel(line.receivedQuantity.toString()),
-                style: theme.textTheme.labelSmall,
-              ),
-              if (outstanding > 0)
-                Text(
-                  l10n.poLineOutstandingLabel(outstanding.toString()),
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.error,
-                  ),
-                ),
+              _QuantityPill(label: l10n.poLineOrderedLabel(''), value: line.orderedQuantity.toString(), color: theme.colorScheme.primary),
+              const SizedBox(width: 8),
+              _QuantityPill(label: l10n.poLineReceivedLabel(''), value: line.receivedQuantity.toString(), color: theme.colorScheme.tertiary),
+              if (outstanding > 0) ...[
+                const SizedBox(width: 8),
+                _QuantityPill(label: l10n.poLineOutstandingLabel(''), value: outstanding.toString(), color: theme.colorScheme.error),
+              ],
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _QuantityPill extends StatelessWidget {
+  const _QuantityPill({required this.label, required this.value, required this.color});
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label.toUpperCase(), style: theme.textTheme.labelSmall?.copyWith(color: color, fontSize: 8, fontWeight: FontWeight.w900)),
+          const SizedBox(width: 4),
+          Text(value, style: theme.textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReceiptRow extends StatelessWidget {
+  const _ReceiptRow({required this.receipt});
+  final GoodsReceipt receipt;
+  static final _dt = DateFormat('MMM dd, yyyy · HH:mm');
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    return Container(
+      decoration: BoxDecoration(border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3)))),
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(color: theme.colorScheme.tertiaryContainer.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(10)),
+          child: Icon(Icons.local_shipping_rounded, color: theme.colorScheme.tertiary, size: 20),
+        ),
+        title: Text(_dt.format(receipt.receivedAt), style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
+        subtitle: Text(
+          receipt.note == null ? receipt.receivedBy : '${receipt.receivedBy} · ${receipt.note}',
+          style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline),
+        ),
+        trailing: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(6)),
+          child: Text(
+            l10n.poDetailReceiptItemsBadge(receipt.lines.length),
+            style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CenteredMessage extends StatelessWidget {
+  const _CenteredMessage({required this.text, this.icon});
+  final String text;
+  final IconData? icon;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon ?? Icons.inventory_2_rounded, size: 64, color: theme.colorScheme.outline.withValues(alpha: 0.5)),
+            const SizedBox(height: 24),
+            Text(text, textAlign: TextAlign.center, style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          ],
+        ),
       ),
     );
   }

@@ -1,13 +1,17 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/route_paths.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/vendor.dart';
 import '../../domain/repositories/vendors_repository.dart';
 
-/// Vendor list (Slice 4.3.1).
 class VendorListPage extends StatelessWidget {
   const VendorListPage({super.key});
 
@@ -15,63 +19,114 @@ class VendorListPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final repo = getIt<VendorsRepository>();
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.vendorListTitle),
-        actions: [
-          IconButton(
-            tooltip: l10n.vendorListNewTooltip,
-            icon: const Icon(Icons.add),
-            onPressed: () => context.goNamed(RoutePaths.vendorNewName),
-          ),
-        ],
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: l10n.vendorListTitle,
+        centerTitle: true,
       ),
-      body: FutureBuilder<List<Vendor>>(
-        future: repo.getAll(),
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final vendors = snap.data ?? const <Vendor>[];
-          if (vendors.isEmpty) {
-            return Center(child: Text(l10n.vendorListEmpty));
-          }
-          return ListView.separated(
-            itemCount: vendors.length,
-            separatorBuilder: (_, __) => const Divider(height: 0),
-            itemBuilder: (_, i) => _Tile(vendor: vendors[i]),
-          );
-        },
+      body: DynamicStatusBar(
+        child: FutureBuilder<List<Vendor>>(
+          future: repo.getAll(),
+          builder: (context, snap) {
+            if (snap.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final vendors = snap.data ?? const <Vendor>[];
+            if (vendors.isEmpty) {
+              return _CenteredMessage(text: l10n.vendorListEmpty, icon: Icons.storefront_rounded);
+            }
+            return ListView.builder(
+              padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top + kToolbarHeight + 16,
+                left: 16,
+                right: 16,
+                bottom: 100,
+              ),
+              itemCount: vendors.length,
+              itemBuilder: (_, i) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _VendorCard(vendor: vendors[i])
+                    .animate()
+                    .fadeIn(delay: (i * 30).ms)
+                    .slideY(begin: 0.05, end: 0),
+              ),
+            );
+          },
+        ),
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.goNamed(RoutePaths.vendorNewName),
+        icon: const Icon(Icons.add_business_rounded),
+        label: Text(l10n.vendorListNewTooltip),
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.lg)),
+      ).animate().scale(delay: 400.ms, curve: Curves.easeOutBack),
     );
   }
 }
 
-class _Tile extends StatelessWidget {
-  const _Tile({required this.vendor});
+class _VendorCard extends StatelessWidget {
+  const _VendorCard({required this.vendor});
   final Vendor vendor;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor:
-            vendorStatusColor(theme, vendor.status).withValues(alpha: 0.15),
-        foregroundColor: vendorStatusColor(theme, vendor.status),
-        child: const Icon(Icons.storefront_outlined),
+    final statusColor = vendorStatusColor(theme, vendor.status);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
       ),
-      title: Text(vendor.name, style: theme.textTheme.titleSmall),
-      subtitle: Text(
-        '${vendor.taxId} · ${vendor.email}',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: theme.textTheme.labelSmall,
-      ),
-      trailing: VendorStatusBadge(status: vendor.status),
-      onTap: () => context.goNamed(
-        RoutePaths.vendorDetailName,
-        pathParameters: {RoutePaths.vendorDetailIdParam: vendor.id},
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.goNamed(
+          RoutePaths.vendorDetailName,
+          pathParameters: {RoutePaths.vendorDetailIdParam: vendor.id},
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.storefront_rounded, color: statusColor, size: 28),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      vendor.name,
+                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${vendor.taxId} · ${vendor.email}',
+                      style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              VendorStatusBadge(status: vendor.status),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -87,14 +142,42 @@ class VendorStatusBadge extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final color = vendorStatusColor(theme, status);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(4),
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Text(
-        vendorStatusLabel(l10n, status),
-        style: theme.textTheme.labelSmall?.copyWith(color: color),
+        vendorStatusLabel(l10n, status).toUpperCase(),
+        style: theme.textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w900, fontSize: 9, letterSpacing: 0.5),
+      ),
+    );
+  }
+}
+
+class _CenteredMessage extends StatelessWidget {
+  const _CenteredMessage({required this.text, this.icon});
+  final String text;
+  final IconData? icon;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3), shape: BoxShape.circle),
+              child: Icon(icon ?? Icons.storefront_rounded, size: 64, color: theme.colorScheme.outline.withValues(alpha: 0.5)),
+            ),
+            const SizedBox(height: 24),
+            Text(text, textAlign: TextAlign.center, style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500)),
+          ],
+        ),
       ),
     );
   }
