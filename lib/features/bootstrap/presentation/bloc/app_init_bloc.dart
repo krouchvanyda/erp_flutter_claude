@@ -17,7 +17,7 @@ import 'app_init_state.dart';
 class AppInitBloc extends Bloc<AppInitEvent, AppInitState> {
   AppInitBloc({
     required AppInitProbe probe,
-    Duration minSplashDuration = const Duration(milliseconds: 800),
+    Duration minSplashDuration = const Duration(milliseconds: 1000),
   })  : _probe = probe,
         _minSplash = minSplashDuration,
         super(const AppInitLoading()) {

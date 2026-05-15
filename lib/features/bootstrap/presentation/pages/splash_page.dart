@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
@@ -49,55 +50,75 @@ class _SplashView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      // Full-bleed gradient — no AppBar / system overlays interfering.
-      body: BlocListener<AppInitBloc, AppInitState>(
-        listener: _onStateChanged,
-        child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                AppColors.splashGradientTop,
-                AppColors.splashGradientBottom,
-              ],
+    // True edge-to-edge:
+    //   - `AnnotatedRegion` makes the status bar + nav bar transparent
+    //     with light icons (gradient is dark, so icons must be light).
+    //   - `SafeArea` is *only* applied around the foreground content
+    //     (logo, indicator, version) so they don't slide under the
+    //     notch / camera cutout / gesture nav, while the gradient
+    //     itself extends from the very top of the status bar to the
+    //     very bottom of the system nav bar.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,   // Android
+        statusBarBrightness: Brightness.dark,        // iOS
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        // No AppBar; body fills the whole window.
+        body: BlocListener<AppInitBloc, AppInitState>(
+          listener: _onStateChanged,
+          child: Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  AppColors.splashGradientTop,
+                  AppColors.splashGradientBottom,
+                ],
+              ),
             ),
-          ),
-          child: SafeArea(
-            child: Column(
-              children: [
-                // Top spacer — gives the logo enough room to land in
-                // the optical centre (slightly above geometric centre).
-                const Spacer(flex: 5),
-                const AnimatedLogo(),
-                const SizedBox(height: 32),
-                const SplashLoadingIndicator(),
-                const Spacer(flex: 6),
-                BlocBuilder<AppInitBloc, AppInitState>(
-                  builder: (context, state) {
-                    if (state is AppInitFailure) {
-                      return Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: TextButton(
-                          onPressed: () => context
-                              .read<AppInitBloc>()
-                              .add(const AppStarted()),
-                          style: TextButton.styleFrom(
-                            foregroundColor: AppColors.splashForeground,
+            child: SafeArea(
+              minimum: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                children: [
+                  // Top spacer — gives the logo enough room to land in
+                  // the optical centre (slightly above geometric centre).
+                  const Spacer(flex: 5),
+                  const AnimatedLogo(),
+                  const SizedBox(height: 32),
+                  const SplashLoadingIndicator(),
+                  const Spacer(flex: 6),
+                  BlocBuilder<AppInitBloc, AppInitState>(
+                    builder: (context, state) {
+                      if (state is AppInitFailure) {
+                        return Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: TextButton(
+                            onPressed: () => context
+                                .read<AppInitBloc>()
+                                .add(const AppStarted()),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.splashForeground,
+                            ),
+                            child: const Text('Retry'),
                           ),
-                          child: const Text('Retry'),
-                        ),
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  },
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 24),
-                  child: AppVersionText(),
-                ),
-              ],
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 24),
+                    child: AppVersionText(),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
