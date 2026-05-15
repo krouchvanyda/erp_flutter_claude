@@ -1,27 +1,19 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/validators/validators.dart';
 
-/// Create / edit invoice form (Slice 3.2.3).
-///
-/// **No bloc** — `Form` + per-field controllers is enough for a
-/// straightforward submit-once form. The pure validation rules live
-/// in [`Validators`] so the field logic is unit-tested separately.
-///
-/// **No persistence yet** — the submit handler currently pops with a
-/// SnackBar success. Wire to `InvoicesRepository.upsert` when the
-/// repository grows write methods (out of scope here; would also need
-/// the drift cache from 3.1.3 extended to invoices).
 class InvoiceFormPage extends StatefulWidget {
   const InvoiceFormPage({super.key, this.invoiceId});
 
-  /// `null` → "create new"; non-null → "edit existing" (the loader
-  /// would prefill the form). Edit mode is wired but not preloaded
-  /// in this slice.
   final String? invoiceId;
 
   @override
@@ -68,6 +60,16 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
       initialDate: initial,
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
     if (picked == null) return;
     setState(() {
@@ -93,11 +95,12 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
     final formOk = _formKey.currentState?.validate() ?? false;
     if (!formOk || dateErr != null) return;
 
-    // Persistence wiring deferred (see class doc); confirm the form
-    // round-tripped via SnackBar so the UX path is end-to-end demoable.
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(l10n.invoiceFormSavedSnack)));
+      ..showSnackBar(SnackBar(
+        content: Text(l10n.invoiceFormSavedSnack),
+        behavior: SnackBarBehavior.floating,
+      ));
     if (context.canPop()) context.pop();
   }
 
@@ -105,144 +108,174 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final dateFmt = DateFormat('yyyy-MM-dd');
+    final dateFmt = DateFormat('MMM dd, yyyy');
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_isEdit
-            ? l10n.invoiceFormEditTitle
-            : l10n.invoiceFormCreateTitle),
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: _isEdit ? l10n.invoiceFormEditTitle : l10n.invoiceFormCreateTitle,
+        centerTitle: true,
         actions: [
-          IconButton(
-            tooltip: l10n.invoiceFormSaveTooltip,
-            icon: const Icon(Icons.save_outlined),
+          TextButton(
             onPressed: _submit,
+            child: Text(
+              l10n.invoiceFormSaveTooltip.toUpperCase(),
+              style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.w800),
+            ),
           ),
         ],
       ),
-      body: Form(
-        key: _formKey,
-        autovalidateMode: AutovalidateMode.onUserInteraction,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            TextFormField(
-              controller: _customer,
-              decoration: InputDecoration(
-                labelText: l10n.invoiceFormCustomerLabel,
-                border: const OutlineInputBorder(),
-              ),
-              validator: (v) =>
-                  _resolveError(l10n, Validators.required(v))
-                      .ifEmptyToNull(),
+      body: DynamicStatusBar(
+        child: Form(
+          key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          child: ListView(
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).padding.top + kToolbarHeight + 16,
+              left: 16,
+              right: 16,
+              bottom: 100,
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _DateField(
-                    label: l10n.invoiceFormIssuedLabel,
-                    value: _issued,
-                    formatter: dateFmt,
-                    onTap: () => _pickDate(context, true),
+            children: [
+              _Section(
+                title: 'GENERAL INFORMATION',
+                children: [
+                  TextFormField(
+                    controller: _customer,
+                    decoration: _inputDecoration(l10n.invoiceFormCustomerLabel, Icons.person_outline_rounded),
+                    validator: (v) => _resolveError(l10n, Validators.required(v)).ifEmptyToNull(),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _DateField(
-                    label: l10n.invoiceFormDueLabel,
-                    value: _due,
-                    formatter: dateFmt,
-                    onTap: () => _pickDate(context, false),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _DateField(
+                          label: l10n.invoiceFormIssuedLabel,
+                          value: _issued,
+                          formatter: dateFmt,
+                          onTap: () => _pickDate(context, true),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _DateField(
+                          label: l10n.invoiceFormDueLabel,
+                          value: _due,
+                          formatter: dateFmt,
+                          onTap: () => _pickDate(context, false),
+                        ),
+                      ),
+                    ],
                   ),
+                  if (_dateRangeError != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      _resolveError(l10n, _dateRangeError),
+                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ],
+              ).animate().fadeIn().slideY(begin: 0.1, end: 0),
+              const SizedBox(height: 24),
+              _Section(
+                title: 'LINE ITEM',
+                children: [
+                  TextFormField(
+                    controller: _description,
+                    decoration: _inputDecoration(l10n.invoiceFormLineDescriptionLabel, Icons.description_outlined),
+                    validator: (v) => _resolveError(l10n, Validators.required(v)).ifEmptyToNull(),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _quantity,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+                          decoration: _inputDecoration(l10n.invoiceFormLineQuantityLabel, Icons.format_list_numbered_rounded),
+                          validator: (v) => _resolveError(l10n, Validators.positiveNumber(v)).ifEmptyToNull(),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _unitPrice,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+                          decoration: _inputDecoration(l10n.invoiceFormLineUnitPriceLabel, Icons.payments_outlined),
+                          validator: (v) => _resolveError(l10n, Validators.positiveNumber(v)).ifEmptyToNull(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1, end: 0),
+              const SizedBox(height: 40),
+              SizedBox(
+                height: 56,
+                child: FilledButton.icon(
+                  onPressed: _submit,
+                  icon: const Icon(Icons.check_rounded),
+                  label: Text(l10n.invoiceFormSaveAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+                  style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md))),
                 ),
-              ],
-            ),
-            if (_dateRangeError != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                _resolveError(l10n, _dateRangeError),
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.error),
-              ),
+              ).animate().fadeIn(delay: 200.ms).scale(curve: Curves.easeOutBack),
             ],
-            const SizedBox(height: 24),
-            Text(l10n.invoiceFormLineHeading,
-                style: theme.textTheme.titleSmall),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _description,
-              decoration: InputDecoration(
-                labelText: l10n.invoiceFormLineDescriptionLabel,
-                border: const OutlineInputBorder(),
-              ),
-              validator: (v) =>
-                  _resolveError(l10n, Validators.required(v))
-                      .ifEmptyToNull(),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _quantity,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                          RegExp(r'[0-9.]')),
-                    ],
-                    decoration: InputDecoration(
-                      labelText: l10n.invoiceFormLineQuantityLabel,
-                      border: const OutlineInputBorder(),
-                    ),
-                    validator: (v) => _resolveError(
-                            l10n, Validators.positiveNumber(v))
-                        .ifEmptyToNull(),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextFormField(
-                    controller: _unitPrice,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                          RegExp(r'[0-9.]')),
-                    ],
-                    decoration: InputDecoration(
-                      labelText: l10n.invoiceFormLineUnitPriceLabel,
-                      border: const OutlineInputBorder(),
-                    ),
-                    validator: (v) => _resolveError(
-                            l10n, Validators.positiveNumber(v))
-                        .ifEmptyToNull(),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: _submit,
-              icon: const Icon(Icons.check),
-              label: Text(l10n.invoiceFormSaveAction),
-            ),
-          ],
+          ),
         ),
       ),
+    );
+  }
+
+  InputDecoration _inputDecoration(String label, IconData icon) {
+    final theme = Theme.of(context);
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, size: 20),
+      filled: true,
+      fillColor: theme.colorScheme.surface,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.outlineVariant)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5))),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.primary, width: 2)),
+    );
+  }
+}
+
+class _Section extends StatelessWidget {
+  const _Section({required this.title, required this.children});
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 12),
+          child: Text(
+            title,
+            style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3)),
+          ),
+          child: Column(children: children),
+        ),
+      ],
     );
   }
 }
 
 class _DateField extends StatelessWidget {
-  const _DateField({
-    required this.label,
-    required this.value,
-    required this.formatter,
-    required this.onTap,
-  });
-
+  const _DateField({required this.label, required this.value, required this.formatter, required this.onTap});
   final String label;
   final DateTime? value;
   final DateFormat formatter;
@@ -250,25 +283,24 @@ class _DateField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadii.md),
       child: InputDecorator(
         decoration: InputDecoration(
           labelText: label,
-          border: const OutlineInputBorder(),
-          suffixIcon: const Icon(Icons.calendar_today_outlined),
+          filled: true,
+          fillColor: theme.colorScheme.surface,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.outlineVariant)),
+          suffixIcon: const Icon(Icons.calendar_today_rounded, size: 18),
         ),
-        child: Text(
-          value == null ? '' : formatter.format(value!.toLocal()),
-        ),
+        child: Text(value == null ? '' : formatter.format(value!.toLocal()), style: theme.textTheme.bodyLarge),
       ),
     );
   }
 }
 
 extension on String {
-  /// Form fields treat empty error strings as "valid" — but our
-  /// `_resolveError` returns `''` for the no-error path. Convert to
-  /// `null` so `validator:` semantics line up.
   String? ifEmptyToNull() => isEmpty ? null : this;
 }

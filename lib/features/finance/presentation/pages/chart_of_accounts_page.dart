@@ -1,9 +1,14 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/route_paths.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/account_tree_node.dart';
 import '../account_type_visual.dart';
@@ -11,16 +16,6 @@ import '../bloc/account_tree_bloc.dart';
 import '../bloc/account_tree_event.dart';
 import '../bloc/account_tree_state.dart';
 
-/// Chart of Accounts (Slice 3.1.1) — recursive tree view.
-///
-/// **Bloc lifecycle**: created per-mount via the DI factory and
-/// immediately fed `Started`. Closing the page closes the bloc which
-/// cancels the watch — same pattern as the notification inbox.
-///
-/// **Render strategy**: each level is laid out via `ListView` instead
-/// of nested `ExpansionTile`s so the scroll position survives expand /
-/// collapse. The bloc owns expansion state; the widget walks the tree
-/// flatly into a list of visible rows.
 class ChartOfAccountsPage extends StatelessWidget {
   const ChartOfAccountsPage({super.key});
 
@@ -41,8 +36,9 @@ class _ChartView extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.chartOfAccountsTitle),
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: l10n.chartOfAccountsTitle,
         actions: [
           BlocBuilder<AccountTreeBloc, AccountTreeState>(
             buildWhen: (a, b) =>
@@ -54,14 +50,14 @@ class _ChartView extends StatelessWidget {
                 children: [
                   IconButton(
                     tooltip: l10n.chartOfAccountsExpandAll,
-                    icon: const Icon(Icons.unfold_more),
+                    icon: const Icon(Icons.unfold_more_rounded),
                     onPressed: () => context
                         .read<AccountTreeBloc>()
                         .add(const AccountTreeEvent.expandedAll()),
                   ),
                   IconButton(
                     tooltip: l10n.chartOfAccountsCollapseAll,
-                    icon: const Icon(Icons.unfold_less),
+                    icon: const Icon(Icons.unfold_less_rounded),
                     onPressed: () => context
                         .read<AccountTreeBloc>()
                         .add(const AccountTreeEvent.collapsedAll()),
@@ -72,17 +68,19 @@ class _ChartView extends StatelessWidget {
           ),
         ],
       ),
-      body: BlocBuilder<AccountTreeBloc, AccountTreeState>(
-        builder: (context, state) => switch (state) {
-          AccountTreeInitial() ||
-          AccountTreeLoading() =>
-            const Center(child: CircularProgressIndicator()),
-          AccountTreeFailure(:final message) =>
-            _CenteredMessage(text: l10n.chartOfAccountsError(message)),
-          AccountTreeLoaded(:final roots, :final expandedIds) => roots.isEmpty
-              ? _CenteredMessage(text: l10n.chartOfAccountsEmpty)
-              : _AccountTreeList(roots: roots, expandedIds: expandedIds),
-        },
+      body: DynamicStatusBar(
+        child: BlocBuilder<AccountTreeBloc, AccountTreeState>(
+          builder: (context, state) => switch (state) {
+            AccountTreeInitial() ||
+            AccountTreeLoading() =>
+              const Center(child: CircularProgressIndicator()),
+            AccountTreeFailure(:final message) =>
+              _CenteredMessage(text: l10n.chartOfAccountsError(message)),
+            AccountTreeLoaded(:final roots, :final expandedIds) => roots.isEmpty
+                ? _CenteredMessage(text: l10n.chartOfAccountsEmpty)
+                : _AccountTreeList(roots: roots, expandedIds: expandedIds),
+          },
+        ),
       ),
     );
   }
@@ -106,12 +104,20 @@ class _AccountTreeList extends StatelessWidget {
 
     walk(roots);
 
-    return ListView.separated(
+    return ListView.builder(
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + kToolbarHeight + 16,
+        bottom: 100,
+        left: 16,
+        right: 16,
+      ),
       itemCount: visible.length,
-      separatorBuilder: (_, __) => const Divider(height: 0),
-      itemBuilder: (_, i) => _AccountRow(
-        node: visible[i],
-        expanded: expandedIds.contains(visible[i].account.id),
+      itemBuilder: (_, i) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: _AccountRow(
+          node: visible[i],
+          expanded: expandedIds.contains(visible[i].account.id),
+        ).animate().fadeIn(delay: (i * 20).ms).slideX(begin: 0.05, end: 0),
       ),
     );
   }
@@ -128,58 +134,97 @@ class _AccountRow extends StatelessWidget {
     final theme = Theme.of(context);
     final account = node.account;
     final bloc = context.read<AccountTreeBloc>();
-    return ListTile(
-      // 16dp base + 24dp per depth level. Keeps the relationship visible
-      // without burning the right side at deep nesting.
-      contentPadding:
-          EdgeInsetsDirectional.only(start: 16 + (24.0 * node.depth), end: 16),
-      leading: Icon(
-        accountTypeIcon(account.type),
-        color: theme.colorScheme.primary,
-      ),
-      title: Row(
-        children: [
-          Text(
-            account.code,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              account.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+    
+    final isLeaf = node.isLeaf;
+    
+    return Container(
+      margin: EdgeInsetsDirectional.only(start: 20.0 * node.depth),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      subtitle: account.formattedBalance == null
-          ? null
-          : Text(
-              account.formattedBalance!,
+      clipBehavior: Clip.antiAlias,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            accountTypeIcon(account.type),
+            color: theme.colorScheme.primary,
+            size: 20,
+          ),
+        ),
+        title: Row(
+          children: [
+            Text(
+              account.code,
               style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.bold,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
-      trailing: node.isLeaf
-          ? null
-          : Icon(
-              expanded ? Icons.expand_less : Icons.expand_more,
-              color: theme.colorScheme.onSurfaceVariant,
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                account.name,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-      // Slice 3.1.2 — leaf tap drills into the account detail page;
-      // non-leaf tap toggles expansion (the original 3.1.1 behaviour).
-      onTap: node.isLeaf
-          ? () => context.goNamed(
-                RoutePaths.accountDetailName,
-                pathParameters: {
-                  RoutePaths.accountDetailIdParam: account.id,
-                },
-              )
-          : () => bloc.add(AccountTreeEvent.nodeToggled(account.id)),
+          ],
+        ),
+        subtitle: account.formattedBalance == null
+            ? null
+            : Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  account.formattedBalance!,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+        trailing: isLeaf
+            ? Icon(Icons.chevron_right_rounded, color: theme.colorScheme.outline)
+            : AnimatedRotation(
+                turns: expanded ? 0.25 : 0,
+                duration: const Duration(milliseconds: 200),
+                child: Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 14,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+        onTap: isLeaf
+            ? () => context.goNamed(
+                  RoutePaths.accountDetailName,
+                  pathParameters: {
+                    RoutePaths.accountDetailIdParam: account.id,
+                  },
+                )
+            : () => bloc.add(AccountTreeEvent.nodeToggled(account.id)),
+      ),
     );
   }
 }
@@ -193,14 +238,31 @@ class _CenteredMessage extends StatelessWidget {
     final theme = Theme.of(context);
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(40),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.account_balance_outlined,
-                size: 64, color: theme.colorScheme.outline),
-            const SizedBox(height: 12),
-            Text(text, textAlign: TextAlign.center),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.account_balance_outlined,
+                size: 64, 
+                color: theme.colorScheme.outline.withValues(alpha: 0.5),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              text, 
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ],
         ),
       ),

@@ -1,15 +1,17 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/trial_balance_row.dart';
 import '../../domain/repositories/trial_balance_repository.dart';
 import '../../domain/usecases/paginate.dart';
 import '../trial_balance_csv_share.dart';
 
-/// Trial balance report (Slice 3.3.2) — paginated table with column
-/// totals at the foot. The "Export CSV" AppBar action is wired by
-/// Slice 3.3.3.
 class TrialBalancePage extends StatefulWidget {
   const TrialBalancePage({super.key});
 
@@ -31,9 +33,13 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.trialBalanceTitle),
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: l10n.trialBalanceTitle,
+        centerTitle: true,
         actions: [
           FutureBuilder<List<TrialBalanceRow>>(
             future: _future,
@@ -41,92 +47,107 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
               final rows = snap.data ?? const <TrialBalanceRow>[];
               return IconButton(
                 tooltip: l10n.trialBalanceExportCsvTooltip,
-                icon: const Icon(Icons.file_download_outlined),
-                onPressed: rows.isEmpty
-                    ? null
-                    : () => exportTrialBalanceCsv(context, rows),
+                icon: const Icon(Icons.file_download_rounded),
+                onPressed: rows.isEmpty ? null : () => exportTrialBalanceCsv(context, rows),
               );
             },
           ),
         ],
       ),
-      body: FutureBuilder<List<TrialBalanceRow>>(
-        future: _future,
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final rows = snap.data ?? const <TrialBalanceRow>[];
-          if (rows.isEmpty) {
-            return Center(child: Text(l10n.trialBalanceEmpty));
-          }
-          final pageRows = paginate(
-            rows,
-            pageIndex: _pageIndex,
-            pageSize: _pageSize,
-          );
-          final totalPages = pageCount(
-            totalItems: rows.length,
-            pageSize: _pageSize,
-          );
-          return Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
+      body: DynamicStatusBar(
+        child: FutureBuilder<List<TrialBalanceRow>>(
+          future: _future,
+          builder: (context, snap) {
+            if (snap.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final rows = snap.data ?? const <TrialBalanceRow>[];
+            if (rows.isEmpty) {
+              return _CenteredMessage(
+                text: l10n.trialBalanceEmpty,
+                icon: Icons.table_chart_outlined,
+              );
+            }
+            final pageRows = paginate(
+              rows,
+              pageIndex: _pageIndex,
+              pageSize: _pageSize,
+            );
+            final totalPages = pageCount(
+              totalItems: rows.length,
+              pageSize: _pageSize,
+            );
+
+            return Column(
+              children: [
+                Expanded(
                   child: SingleChildScrollView(
-                    child: DataTable(
-                      columns: [
-                        DataColumn(label: Text(l10n.trialBalanceColumnCode)),
-                        DataColumn(label: Text(l10n.trialBalanceColumnName)),
-                        DataColumn(
-                          label: Text(l10n.trialBalanceColumnDebit),
-                          numeric: true,
-                        ),
-                        DataColumn(
-                          label: Text(l10n.trialBalanceColumnCredit),
-                          numeric: true,
-                        ),
-                      ],
-                      rows: [
-                        for (final r in pageRows)
-                          DataRow(cells: [
-                            DataCell(Text(r.accountCode)),
-                            DataCell(Text(r.accountName)),
-                            DataCell(Text(r.debit)),
-                            DataCell(Text(r.credit)),
-                          ]),
-                      ],
+                    padding: EdgeInsets.only(
+                      top: MediaQuery.of(context).padding.top + kToolbarHeight + 16,
+                      left: 16,
+                      right: 16,
                     ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(AppRadii.lg),
+                        border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4)),
+                        ],
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: DataTable(
+                          headingRowColor: WidgetStateProperty.all(theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3)),
+                          headingTextStyle: theme.textTheme.labelMedium?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1,
+                          ),
+                          dataTextStyle: theme.textTheme.bodyMedium?.copyWith(
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                          horizontalMargin: 20,
+                          columnSpacing: 24,
+                          columns: [
+                            DataColumn(label: Text(l10n.trialBalanceColumnCode.toUpperCase())),
+                            DataColumn(label: Text(l10n.trialBalanceColumnName.toUpperCase())),
+                            DataColumn(label: Text(l10n.trialBalanceColumnDebit.toUpperCase()), numeric: true),
+                            DataColumn(label: Text(l10n.trialBalanceColumnCredit.toUpperCase()), numeric: true),
+                          ],
+                          rows: [
+                            for (final r in pageRows)
+                              DataRow(cells: [
+                                DataCell(Text(r.accountCode, style: const TextStyle(fontWeight: FontWeight.bold))),
+                                DataCell(Text(r.accountName)),
+                                DataCell(Text(r.debit, style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.w600))),
+                                DataCell(Text(r.credit, style: TextStyle(color: theme.colorScheme.tertiary, fontWeight: FontWeight.w600))),
+                              ]),
+                          ],
+                        ),
+                      ),
+                    ).animate().fadeIn().slideY(begin: 0.05, end: 0),
                   ),
                 ),
-              ),
-              _Pager(
-                pageIndex: _pageIndex,
-                totalPages: totalPages,
-                onPrev: _pageIndex == 0
-                    ? null
-                    : () => setState(() => _pageIndex--),
-                onNext: _pageIndex >= totalPages - 1
-                    ? null
-                    : () => setState(() => _pageIndex++),
-              ),
-            ],
-          );
-        },
+                _Pager(
+                  pageIndex: _pageIndex,
+                  totalPages: totalPages,
+                  onPrev: _pageIndex == 0 ? null : () => setState(() => _pageIndex--),
+                  onNext: _pageIndex >= totalPages - 1 ? null : () => setState(() => _pageIndex++),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
 }
 
 class _Pager extends StatelessWidget {
-  const _Pager({
-    required this.pageIndex,
-    required this.totalPages,
-    required this.onPrev,
-    required this.onNext,
-  });
-
+  const _Pager({required this.pageIndex, required this.totalPages, required this.onPrev, required this.onNext});
   final int pageIndex;
   final int totalPages;
   final VoidCallback? onPrev;
@@ -135,21 +156,78 @@ class _Pager extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3))),
+      ),
+      padding: EdgeInsets.fromLTRB(24, 12, 24, 100),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(l10n.trialBalancePageOf(pageIndex + 1, totalPages)),
-          IconButton(
-            onPressed: onPrev,
-            icon: const Icon(Icons.chevron_left),
+          Text(
+            l10n.trialBalancePageOf(pageIndex + 1, totalPages).toUpperCase(),
+            style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.bold),
           ),
-          IconButton(
-            onPressed: onNext,
-            icon: const Icon(Icons.chevron_right),
+          Row(
+            children: [
+              IconButton.filledTonal(
+                onPressed: onPrev,
+                icon: const Icon(Icons.chevron_left_rounded),
+                style: IconButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md))),
+              ),
+              const SizedBox(width: 12),
+              IconButton.filledTonal(
+                onPressed: onNext,
+                icon: const Icon(Icons.chevron_right_rounded),
+                style: IconButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md))),
+              ),
+            ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CenteredMessage extends StatelessWidget {
+  const _CenteredMessage({required this.text, this.icon});
+  final String text;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon ?? Icons.table_chart_rounded,
+                size: 64, 
+                color: theme.colorScheme.outline.withValues(alpha: 0.5),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              text, 
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

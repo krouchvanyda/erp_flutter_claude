@@ -1,8 +1,13 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/account.dart';
 import '../../domain/entities/transaction.dart';
@@ -11,12 +16,6 @@ import '../bloc/account_detail_bloc.dart';
 import '../bloc/account_detail_event.dart';
 import '../bloc/account_detail_state.dart';
 
-/// Account detail + ledger transactions (Slice 3.1.2).
-///
-/// **Bloc lifecycle**: created per-mount via the DI factory and seeded
-/// with the route's `:id` path param. Navigating to a different account
-/// re-uses the bloc and fires a fresh `Started` (the bloc swaps watch
-/// subscriptions internally).
 class AccountDetailPage extends StatelessWidget {
   const AccountDetailPage({super.key, required this.accountId});
 
@@ -41,35 +40,28 @@ class _DetailView extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(
-        title: BlocBuilder<AccountDetailBloc, AccountDetailState>(
-          buildWhen: (a, b) =>
-              (a is AccountDetailLoaded ? a.account.id : null) !=
-              (b is AccountDetailLoaded ? b.account.id : null),
-          builder: (context, state) => Text(
-            state is AccountDetailLoaded
-                ? '${state.account.code}  ${state.account.name}'
-                : l10n.accountDetailTitle,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: l10n.accountDetailTitle,
+        centerTitle: true,
       ),
-      body: BlocBuilder<AccountDetailBloc, AccountDetailState>(
-        builder: (context, state) => switch (state) {
-          AccountDetailInitial() ||
-          AccountDetailLoading() =>
-            const Center(child: CircularProgressIndicator()),
-          AccountDetailFailure(:final message) =>
-            _CenteredMessage(text: l10n.accountDetailError(message)),
-          AccountDetailNotFound(:final accountId) =>
-            _CenteredMessage(
-              icon: Icons.search_off,
-              text: l10n.accountDetailNotFound(accountId),
-            ),
-          AccountDetailLoaded(:final account, :final transactions) =>
-            _LoadedBody(account: account, transactions: transactions),
-        },
+      body: DynamicStatusBar(
+        child: BlocBuilder<AccountDetailBloc, AccountDetailState>(
+          builder: (context, state) => switch (state) {
+            AccountDetailInitial() ||
+            AccountDetailLoading() =>
+              const Center(child: CircularProgressIndicator()),
+            AccountDetailFailure(:final message) =>
+              _CenteredMessage(text: l10n.accountDetailError(message)),
+            AccountDetailNotFound(:final accountId) =>
+              _CenteredMessage(
+                icon: Icons.search_off_rounded,
+                text: l10n.accountDetailNotFound(accountId),
+              ),
+            AccountDetailLoaded(:final account, :final transactions) =>
+              _LoadedBody(account: account, transactions: transactions),
+          },
+        ),
       ),
     );
   }
@@ -85,7 +77,30 @@ class _LoadedBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return CustomScrollView(
       slivers: [
-        SliverToBoxAdapter(child: _AccountHeader(account: account)),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).padding.top + kToolbarHeight + 16,
+              left: 16,
+              right: 16,
+              bottom: 24,
+            ),
+            child: _AccountHeaderCard(account: account),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+            child: Text(
+              'TRANSACTIONS',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.5,
+              ),
+            ),
+          ),
+        ),
         if (transactions.isEmpty)
           SliverFillRemaining(
             hasScrollBody: false,
@@ -94,19 +109,28 @@ class _LoadedBody extends StatelessWidget {
             ),
           )
         else
-          SliverList.separated(
-            itemCount: transactions.length,
-            separatorBuilder: (_, __) => const Divider(height: 0),
-            itemBuilder: (_, i) =>
-                _TransactionRow(transaction: transactions[i]),
+          SliverPadding(
+            padding: const EdgeInsets.only(bottom: 100),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, i) => Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: _TransactionTile(transaction: transactions[i])
+                      .animate()
+                      .fadeIn(delay: (i * 20).ms)
+                      .slideX(begin: 0.05, end: 0),
+                ),
+                childCount: transactions.length,
+              ),
+            ),
           ),
       ],
     );
   }
 }
 
-class _AccountHeader extends StatelessWidget {
-  const _AccountHeader({required this.account});
+class _AccountHeaderCard extends StatelessWidget {
+  const _AccountHeaderCard({required this.account});
 
   final Account account;
 
@@ -114,83 +138,105 @@ class _AccountHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.colorScheme.primary,
+            theme.colorScheme.primary.withValues(alpha: 0.8),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.primary.withValues(alpha: 0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              CircleAvatar(
-                radius: 28,
-                backgroundColor: theme.colorScheme.primaryContainer,
-                foregroundColor: theme.colorScheme.onPrimaryContainer,
-                child: Icon(accountTypeIcon(account.type), size: 28),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      account.code,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      account.name,
-                      style: theme.textTheme.titleMedium,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 4,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Chip(
-                          visualDensity: VisualDensity.compact,
-                          label: Text(
-                            accountTypeLabel(l10n, account.type),
-                            style: theme.textTheme.labelSmall,
-                          ),
-                        ),
-                        if (account.formattedBalance != null)
-                          Text(
-                            account.formattedBalance!,
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              color: theme.colorScheme.primary,
-                              fontFeatures: const [
-                                FontFeature.tabularFigures()
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
                 ),
+                child: Text(
+                  account.code,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ),
+              Icon(accountTypeIcon(account.type), color: Colors.white.withValues(alpha: 0.7), size: 24),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Text(
+            account.name,
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            accountTypeLabel(l10n, account.type).toUpperCase(),
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: Colors.white.withValues(alpha: 0.7),
+              letterSpacing: 2,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'CURRENT BALANCE',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    account.formattedBalance ?? '—',
+                    style: theme.textTheme.displaySmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }
 }
 
-class _TransactionRow extends StatelessWidget {
-  const _TransactionRow({required this.transaction});
+class _TransactionTile extends StatelessWidget {
+  const _TransactionTile({required this.transaction});
 
   final LedgerTransaction transaction;
-
-  // Date formatter — short ISO-ish for unambiguous display across
-  // locales without depending on the device's date format choice.
-  static final _date = DateFormat('yyyy-MM-dd');
+  static final _dateFormatter = DateFormat('MMM dd, yyyy');
 
   @override
   Widget build(BuildContext context) {
@@ -198,70 +244,77 @@ class _TransactionRow extends StatelessWidget {
     final t = transaction;
     final isDebit = t.debit != null;
     final amountText = t.debit ?? t.credit ?? '—';
-    final amountColor = isDebit
-        ? theme.colorScheme.primary
-        : theme.colorScheme.tertiary;
-    return ListTile(
-      contentPadding:
-          const EdgeInsetsDirectional.symmetric(horizontal: 16, vertical: 4),
-      title: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+          width: 1,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isDebit
+                    ? theme.colorScheme.primary.withValues(alpha: 0.1)
+                    : theme.colorScheme.tertiary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isDebit ? Icons.south_west_rounded : Icons.north_east_rounded,
+                size: 20,
+                color: isDebit ? theme.colorScheme.primary : theme.colorScheme.tertiary,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    t.description,
+                    style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${_dateFormatter.format(t.postedAt)} ${t.reference != null ? "· ${t.reference}" : ""}',
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  t.description,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  amountText,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: isDebit ? theme.colorScheme.primary : theme.colorScheme.tertiary,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    Text(
-                      _date.format(t.postedAt.toLocal()),
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    if (t.reference != null) ...[
-                      const SizedBox(width: 8),
-                      Text(
-                        '· ${t.reference!}',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ],
+                Text(
+                  t.runningBalance,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.outline,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                amountText,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: amountColor,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                t.runningBalance,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -278,17 +331,31 @@ class _CenteredMessage extends StatelessWidget {
     final theme = Theme.of(context);
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(40),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon ?? Icons.receipt_long_outlined,
-              size: 64,
-              color: theme.colorScheme.outline,
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon ?? Icons.receipt_long_outlined,
+                size: 64, 
+                color: theme.colorScheme.outline.withValues(alpha: 0.5),
+              ),
             ),
-            const SizedBox(height: 12),
-            Text(text, textAlign: TextAlign.center),
+            const SizedBox(height: 24),
+            Text(
+              text, 
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ],
         ),
       ),
