@@ -153,7 +153,7 @@ class _SuggestionsBody extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     return Padding(
       padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + kToolbarHeight + 80,
+        top: context.dynamicAppBarPadding,
       ),
       child: switch (state) {
         GlobalSearchIdle() => _Centered(

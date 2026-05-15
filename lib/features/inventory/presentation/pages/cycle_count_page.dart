@@ -1,18 +1,20 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/error/failure.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/cycle_count.dart';
 import '../../domain/entities/inventory_item.dart';
 import '../../domain/repositories/items_repository.dart';
 import '../../domain/usecases/apply_cycle_count.dart';
 
-/// Cycle count page (Slice 5.2.4) — picks a warehouse, lists every
-/// item in that warehouse, and lets the counter punch in the counted
-/// quantity for each. On submit, runs [`ApplyCycleCountUseCase`].
 class CycleCountPage extends StatefulWidget {
   const CycleCountPage({super.key});
 
@@ -52,8 +54,7 @@ class _CycleCountPageState extends State<CycleCountPage> {
     final messenger = ScaffoldMessenger.of(context);
     final lines = <CycleCountLine>[];
     for (final item in items) {
-      if (_warehouseFilter != null &&
-          item.warehouseCode != _warehouseFilter) {
+      if (_warehouseFilter != null && item.warehouseCode != _warehouseFilter) {
         continue;
       }
       final raw = _ctrlFor(item).text.trim();
@@ -68,7 +69,7 @@ class _CycleCountPageState extends State<CycleCountPage> {
     if (lines.isEmpty) {
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(l10n.inventoryCycleEmpty)));
+        ..showSnackBar(SnackBar(content: Text(l10n.inventoryCycleEmpty), behavior: SnackBarBehavior.floating));
       return;
     }
 
@@ -87,25 +88,19 @@ class _CycleCountPageState extends State<CycleCountPage> {
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(
-          content: Text(l10n.inventoryCycleSuccess(
-            out.adjustmentsPosted.length,
-            out.totalVariance.toString(),
-          )),
+          content: Text(l10n.inventoryCycleSuccess(out.adjustmentsPosted.length, out.totalVariance.toString())),
+          behavior: SnackBarBehavior.floating,
         ));
       if (context.canPop()) context.pop();
     } on Failure catch (f) {
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(
-          content: Text(l10n.inventoryMovementFailed(f.toString())),
-        ));
+        ..showSnackBar(SnackBar(content: Text(l10n.inventoryMovementFailed(f.toString())), behavior: SnackBarBehavior.floating));
       if (mounted) setState(() => _submitting = false);
     } catch (e) {
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(
-          content: Text(l10n.inventoryMovementFailed(e.toString())),
-        ));
+        ..showSnackBar(SnackBar(content: Text(l10n.inventoryMovementFailed(e.toString())), behavior: SnackBarBehavior.floating));
       if (mounted) setState(() => _submitting = false);
     }
   }
@@ -113,59 +108,81 @@ class _CycleCountPageState extends State<CycleCountPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.inventoryCycleCountTitle)),
-      body: FutureBuilder<List<InventoryItem>>(
-        future: _itemsFuture,
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final items = snap.data ?? const <InventoryItem>[];
-          if (items.isEmpty) {
-            return Center(child: Text(l10n.inventoryCycleNoItems));
-          }
-          final warehouses = items.map((i) => i.warehouseCode).toSet().toList()
-            ..sort();
-          final filtered = _warehouseFilter == null
-              ? items
-              : items
-                  .where((i) => i.warehouseCode == _warehouseFilter)
-                  .toList();
-          return Column(
-            children: [
-              _WarehouseChips(
-                warehouses: warehouses,
-                selected: _warehouseFilter,
-                onChanged: (wh) => setState(() => _warehouseFilter = wh),
-              ),
-              Expanded(
-                child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: filtered.length,
-                  separatorBuilder: (_, __) => const Divider(height: 0),
-                  itemBuilder: (_, i) => _CycleLine(
-                    item: filtered[i],
-                    controller: _ctrlFor(filtered[i]),
-                  ),
-                ),
-              ),
-              SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed:
-                          _submitting ? null : () => _submit(items),
-                      icon: const Icon(Icons.fact_check_outlined),
-                      label: Text(l10n.inventoryCycleSubmitAction),
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: l10n.inventoryCycleCountTitle,
+        centerTitle: true,
+      ),
+      body: DynamicStatusBar(
+        child: FutureBuilder<List<InventoryItem>>(
+          future: _itemsFuture,
+          builder: (context, snap) {
+            if (snap.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final items = snap.data ?? const <InventoryItem>[];
+            if (items.isEmpty) {
+              return _CenteredMessage(text: l10n.inventoryCycleNoItems, icon: Icons.fact_check_rounded);
+            }
+            final warehouses = items.map((i) => i.warehouseCode).toSet().toList()..sort();
+            final filtered = _warehouseFilter == null ? items : items.where((i) => i.warehouseCode == _warehouseFilter).toList();
+
+            return Column(
+              children: [
+                SizedBox(height: context.dynamicAppBarPadding),
+                _WarehouseChips(
+                  warehouses: warehouses,
+                  selected: _warehouseFilter,
+                  onChanged: (wh) => setState(() => _warehouseFilter = wh),
+                ).animate().fadeIn(delay: 50.ms),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 120), // Extra padding for bottom button
+                    itemCount: filtered.length,
+                    itemBuilder: (_, i) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _CycleLine(
+                        item: filtered[i],
+                        controller: _ctrlFor(filtered[i]),
+                      )
+                          .animate()
+                          .fadeIn(delay: (100 + i * 30).ms)
+                          .slideY(begin: 0.05, end: 0),
                     ),
                   ),
                 ),
+              ],
+            );
+          },
+        ),
+      ),
+      bottomNavigationBar: FutureBuilder<List<InventoryItem>>(
+        future: _itemsFuture,
+        builder: (context, snap) {
+          if (snap.connectionState != ConnectionState.done || (snap.data?.isEmpty ?? true)) {
+            return const SizedBox.shrink();
+          }
+          final items = snap.data!;
+          return Container(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + 16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -4))],
+            ),
+            child: SizedBox(
+              height: 56,
+              child: FilledButton.icon(
+                onPressed: _submitting ? null : () => _submit(items),
+                icon: _submitting ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.fact_check_rounded),
+                label: Text(l10n.inventoryCycleSubmitAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+                style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md))),
               ),
-            ],
-          );
+            ),
+          ).animate().slideY(begin: 1, end: 0, curve: Curves.easeOutBack, duration: 400.ms);
         },
       ),
     );
@@ -186,26 +203,45 @@ class _WarehouseChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            FilterChip(
-              label: Text(l10n.inventoryCycleAllWarehouses),
-              selected: selected == null,
-              onSelected: (_) => onChanged(null),
-            ),
-            const SizedBox(width: 8),
-            for (final wh in warehouses) ...[
-              FilterChip(
-                label: Text(wh),
-                selected: selected == wh,
-                onSelected: (_) => onChanged(wh),
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: FilterChip(
+                label: Text(l10n.inventoryCycleAllWarehouses),
+                selected: selected == null,
+                onSelected: (_) => onChanged(null),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.pill)),
+                selectedColor: theme.colorScheme.primary.withValues(alpha: 0.2),
+                checkmarkColor: theme.colorScheme.primary,
+                labelStyle: TextStyle(
+                  color: selected == null ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                  fontWeight: selected == null ? FontWeight.bold : FontWeight.normal,
+                ),
               ),
-              const SizedBox(width: 8),
-            ],
+            ),
+            for (final wh in warehouses)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: FilterChip(
+                  label: Text(wh),
+                  selected: selected == wh,
+                  onSelected: (_) => onChanged(wh),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.pill)),
+                  selectedColor: theme.colorScheme.primary.withValues(alpha: 0.2),
+                  checkmarkColor: theme.colorScheme.primary,
+                  labelStyle: TextStyle(
+                    color: selected == wh ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                    fontWeight: selected == wh ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -222,8 +258,18 @@ class _CycleLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+    
+    // Determine variance dynamically based on input if possible, but since we're stateless here without a listener,
+    // we'll highlight the expected quantity to draw attention.
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -231,40 +277,87 @@ class _CycleLine extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item.sku, style: theme.textTheme.titleSmall),
                 Text(
-                  '${item.warehouseCode}/${item.locationCode}',
-                  style: theme.textTheme.labelSmall,
+                  item.name,
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
+                const SizedBox(height: 4),
                 Text(
-                  l10n.inventoryCycleExpectedLabel(
-                    item.onHandQty.toString(),
+                  'SKU: ${item.sku} · LOC: ${item.locationCode}',
+                  style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.bold, fontFeatures: const [FontFeature.tabularFigures()]),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(AppRadii.pill),
                   ),
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                  child: Text(
+                    l10n.inventoryCycleExpectedLabel(item.onHandQty.toString()).toUpperCase(),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 9,
+                      letterSpacing: 0.5,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 16),
           SizedBox(
             width: 100,
-            child: TextField(
+            child: TextFormField(
               controller: controller,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-              ],
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900, fontFeatures: const [FontFeature.tabularFigures()]),
               decoration: InputDecoration(
-                labelText: l10n.inventoryCycleCountedLabel,
-                border: const OutlineInputBorder(),
-                isDense: true,
+                labelText: l10n.inventoryCycleCountedLabel.toUpperCase(),
+                labelStyle: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.5, color: theme.colorScheme.primary),
+                floatingLabelAlignment: FloatingLabelAlignment.center,
+                filled: true,
+                fillColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.1),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.outlineVariant)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5))),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.primary, width: 2)),
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CenteredMessage extends StatelessWidget {
+  const _CenteredMessage({required this.text, this.icon});
+  final String text;
+  final IconData? icon;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3), shape: BoxShape.circle),
+              child: Icon(icon ?? Icons.fact_check_rounded, size: 64, color: theme.colorScheme.outline.withValues(alpha: 0.5)),
+            ),
+            const SizedBox(height: 24),
+            Text(text, textAlign: TextAlign.center, style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500)),
+          ],
+        ),
       ),
     );
   }

@@ -69,3 +69,11 @@ class DynamicAppBar extends StatelessWidget implements PreferredSizeWidget {
     kToolbarHeight + (bottom?.preferredSize.height ?? 0.0),
   );
 }
+
+/// Provides easy access to layout calculations required when extending body 
+/// behind the [DynamicAppBar].
+extension DynamicAppBarContext on BuildContext {
+  /// The standard top padding for scrollable lists that start behind the
+  /// [DynamicAppBar]. Accounts for the system status bar and a standard visual offset.
+  double get dynamicAppBarPadding => MediaQuery.paddingOf(this).top + 15;
+}

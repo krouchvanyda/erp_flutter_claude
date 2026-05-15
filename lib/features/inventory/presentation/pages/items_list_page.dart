@@ -1,17 +1,20 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/route_paths.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/inventory_item.dart';
 import '../bloc/items_list_bloc.dart';
 import '../bloc/items_list_event.dart';
 import '../bloc/items_list_state.dart';
 
-/// Inventory item catalog (Slice 5.1.1) — search + warehouse chips +
-/// "low stock only" filter + sort + scrollable list.
 class ItemsListPage extends StatelessWidget {
   const ItemsListPage({super.key});
 
@@ -30,27 +33,51 @@ class _ListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.inventoryItemsTitle),
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: l10n.inventoryItemsTitle,
+        centerTitle: true,
         actions: [
           IconButton(
             tooltip: l10n.inventoryScanTooltip,
-            icon: const Icon(Icons.qr_code_scanner_outlined),
+            icon: const Icon(Icons.qr_code_scanner_rounded),
             onPressed: () => context.goNamed(RoutePaths.inventoryScannerName),
           ),
           IconButton(
             tooltip: l10n.inventoryLowStockAlertsTooltip,
-            icon: const Icon(Icons.warning_amber_outlined),
-            onPressed: () =>
-                context.goNamed(RoutePaths.inventoryLowStockName),
+            icon: const Icon(Icons.warning_amber_rounded),
+            onPressed: () => context.goNamed(RoutePaths.inventoryLowStockName),
           ),
+          _SortAction(),
         ],
       ),
-      body: const Column(
-        children: [
-          _Toolbar(),
-          Expanded(child: _Body()),
+      body: DynamicStatusBar(
+        child: Column(
+          children: [
+            const _Toolbar(),
+            const Expanded(child: _Body()),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SortAction extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return BlocBuilder<ItemsListBloc, ItemsListState>(
+      buildWhen: (a, b) => a.sort != b.sort,
+      builder: (context, state) => PopupMenuButton<InventoryItemSort>(
+        tooltip: l10n.inventoryItemsSortTooltip,
+        icon: const Icon(Icons.sort_rounded),
+        initialValue: state.sort,
+        onSelected: (s) => context.read<ItemsListBloc>().add(ItemsListSortChanged(s)),
+        itemBuilder: (_) => [
+          for (final s in InventoryItemSort.values) PopupMenuItem(value: s, child: Text(_sortLabel(l10n, s))),
         ],
       ),
     );
@@ -64,84 +91,81 @@ class _Toolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final bloc = context.read<ItemsListBloc>();
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: EdgeInsets.only(
+        top: context.dynamicAppBarPadding,
+        left: 16,
+        right: 16,
+        bottom: 12,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextField(
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.search),
-              hintText: l10n.inventoryItemsSearchHint,
-              border: const OutlineInputBorder(),
-              isDense: true,
-            ),
-            onChanged: (q) => bloc.add(ItemsListSearchChanged(q)),
-          ),
-          const SizedBox(height: 8),
-          BlocBuilder<ItemsListBloc, ItemsListState>(
-            buildWhen: (a, b) =>
-                a.warehouseFilter != b.warehouseFilter ||
-                a.onlyLowStock != b.onlyLowStock ||
-                a.sort != b.sort ||
-                a.availableWarehouses.length != b.availableWarehouses.length,
-            builder: (context, state) => Row(
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        FilterChip(
-                          avatar:
-                              const Icon(Icons.warning_amber_outlined, size: 18),
-                          label: Text(l10n.inventoryLowStockChip),
-                          selected: state.onlyLowStock,
-                          onSelected: (v) =>
-                              bloc.add(ItemsListLowStockToggled(v)),
-                        ),
-                        const SizedBox(width: 8),
-                        for (final wh in state.availableWarehouses) ...[
-                          FilterChip(
-                            label: Text(wh),
-                            selected: state.warehouseFilter.contains(wh),
-                            onSelected: (_) =>
-                                bloc.add(ItemsListWarehouseToggled(wh)),
-                          ),
-                          const SizedBox(width: 8),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _SortMenu(current: state.sort),
+          Container(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
               ],
             ),
-          ),
+            child: TextField(
+              decoration: InputDecoration(
+                prefixIcon: Icon(Icons.search_rounded, color: theme.colorScheme.primary),
+                hintText: l10n.inventoryItemsSearchHint,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 15),
+              ),
+              onChanged: (q) => bloc.add(ItemsListSearchChanged(q)),
+            ),
+          ).animate().fadeIn().slideY(begin: -0.2, end: 0),
+          const SizedBox(height: 16),
+          BlocBuilder<ItemsListBloc, ItemsListState>(
+            buildWhen: (a, b) => a.warehouseFilter != b.warehouseFilter || a.onlyLowStock != b.onlyLowStock || a.availableWarehouses.length != b.availableWarehouses.length,
+            builder: (context, state) => SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: FilterChip(
+                      avatar: Icon(Icons.warning_amber_rounded, size: 18, color: state.onlyLowStock ? theme.colorScheme.error : null),
+                      label: Text(l10n.inventoryLowStockChip),
+                      selected: state.onlyLowStock,
+                      onSelected: (v) => bloc.add(ItemsListLowStockToggled(v)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.pill)),
+                      selectedColor: theme.colorScheme.error.withValues(alpha: 0.2),
+                      checkmarkColor: theme.colorScheme.error,
+                      labelStyle: TextStyle(
+                        color: state.onlyLowStock ? theme.colorScheme.error : theme.colorScheme.onSurfaceVariant,
+                        fontWeight: state.onlyLowStock ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  ),
+                  for (final wh in state.availableWarehouses)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        label: Text(wh),
+                        selected: state.warehouseFilter.contains(wh),
+                        onSelected: (_) => bloc.add(ItemsListWarehouseToggled(wh)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.pill)),
+                        selectedColor: theme.colorScheme.primary.withValues(alpha: 0.2),
+                        checkmarkColor: theme.colorScheme.primary,
+                        labelStyle: TextStyle(
+                          color: state.warehouseFilter.contains(wh) ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                          fontWeight: state.warehouseFilter.contains(wh) ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ).animate().fadeIn(delay: 100.ms),
         ],
       ),
-    );
-  }
-}
-
-class _SortMenu extends StatelessWidget {
-  const _SortMenu({required this.current});
-  final InventoryItemSort current;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return PopupMenuButton<InventoryItemSort>(
-      tooltip: l10n.inventoryItemsSortTooltip,
-      icon: const Icon(Icons.sort),
-      initialValue: current,
-      onSelected: (s) =>
-          context.read<ItemsListBloc>().add(ItemsListSortChanged(s)),
-      itemBuilder: (_) => [
-        for (final s in InventoryItemSort.values)
-          PopupMenuItem(value: s, child: Text(_sortLabel(l10n, s))),
-      ],
     );
   }
 }
@@ -158,25 +182,29 @@ class _Body extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
         if (state.errorMessage != null && state.source.isEmpty) {
-          return _CenteredMessage(
-            text: l10n.inventoryItemsError(state.errorMessage!),
-          );
+          return _CenteredMessage(text: l10n.inventoryItemsError(state.errorMessage!), icon: Icons.error_outline_rounded);
         }
         if (state.visible.isEmpty) {
-          return _CenteredMessage(text: l10n.inventoryItemsEmpty);
+          return _CenteredMessage(text: l10n.inventoryItemsEmpty, icon: Icons.inventory_2_rounded);
         }
-        return ListView.separated(
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
           itemCount: state.visible.length,
-          separatorBuilder: (_, __) => const Divider(height: 0),
-          itemBuilder: (_, i) => _ItemTile(item: state.visible[i]),
+          itemBuilder: (_, i) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _ItemCard(item: state.visible[i])
+                .animate()
+                .fadeIn(delay: (i * 30).ms)
+                .slideY(begin: 0.05, end: 0),
+          ),
         );
       },
     );
   }
 }
 
-class _ItemTile extends StatelessWidget {
-  const _ItemTile({required this.item});
+class _ItemCard extends StatelessWidget {
+  const _ItemCard({required this.item});
   final InventoryItem item;
 
   @override
@@ -184,83 +212,113 @@ class _ItemTile extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final lowStock = item.isLowStock;
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor:
-            inventoryStatusColor(theme, item).withValues(alpha: 0.15),
-        foregroundColor: inventoryStatusColor(theme, item),
-        child: const Icon(Icons.inventory_2_outlined, size: 22),
+    final statusColor = inventoryStatusColor(theme, item);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(color: lowStock ? theme.colorScheme.error.withValues(alpha: 0.5) : theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+        boxShadow: lowStock ? [BoxShadow(color: theme.colorScheme.error.withValues(alpha: 0.1), blurRadius: 10)] : null,
       ),
-      title: Row(
-        children: [
-          Text(
-            item.sku,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              item.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.goNamed(
+          RoutePaths.inventoryItemDetailName,
+          pathParameters: {RoutePaths.inventoryItemDetailIdParam: item.id},
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(lowStock ? Icons.warning_rounded : Icons.inventory_2_rounded, color: statusColor, size: 28),
               ),
-            ),
-          ),
-        ],
-      ),
-      subtitle: Text(
-        '${item.warehouseCode} · ${item.locationCode}',
-        style: theme.textTheme.labelSmall,
-      ),
-      trailing: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            l10n.inventoryItemsOnHand(item.onHandQty.toString()),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: lowStock ? theme.colorScheme.error : null,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-          if (lowStock)
-            Text(
-              l10n.inventoryReorderBadge(item.reorderPoint.toString()),
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.error,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.name,
+                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'SKU: ${item.sku}',
+                      style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.bold, fontFeatures: const [FontFeature.tabularFigures()]),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'WH: ${item.warehouseCode} · LOC: ${item.locationCode}',
+                      style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
               ),
-            ),
-        ],
-      ),
-      onTap: () => context.goNamed(
-        RoutePaths.inventoryItemDetailName,
-        pathParameters: {RoutePaths.inventoryItemDetailIdParam: item.id},
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: (lowStock ? theme.colorScheme.error : theme.colorScheme.primary).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(AppRadii.pill),
+                    ),
+                    child: Text(
+                      l10n.inventoryItemsOnHand(item.onHandQty.toString()),
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: lowStock ? theme.colorScheme.error : theme.colorScheme.primary,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ),
+                  if (lowStock) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      l10n.inventoryReorderBadge(item.reorderPoint.toString()).toUpperCase(),
+                      style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.error, fontWeight: FontWeight.w900, fontSize: 9),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
 
 class _CenteredMessage extends StatelessWidget {
-  const _CenteredMessage({required this.text});
+  const _CenteredMessage({required this.text, this.icon});
   final String text;
+  final IconData? icon;
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(40),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.inventory_2_outlined,
-                size: 64, color: theme.colorScheme.outline),
-            const SizedBox(height: 12),
-            Text(text, textAlign: TextAlign.center),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3), shape: BoxShape.circle),
+              child: Icon(icon ?? Icons.inventory_2_rounded, size: 64, color: theme.colorScheme.outline.withValues(alpha: 0.5)),
+            ),
+            const SizedBox(height: 24),
+            Text(text, textAlign: TextAlign.center, style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500)),
           ],
         ),
       ),
@@ -276,7 +334,7 @@ Color inventoryStatusColor(ThemeData theme, InventoryItem item) {
     return theme.colorScheme.error;
   }
   if (item.isLowStock) return theme.colorScheme.error;
-  return theme.colorScheme.tertiary;
+  return theme.colorScheme.primary;
 }
 
 String _sortLabel(AppLocalizations l10n, InventoryItemSort s) {

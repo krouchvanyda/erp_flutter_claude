@@ -1,9 +1,14 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/error/failure.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/validators/validators.dart';
 import '../../domain/entities/inventory_item.dart';
@@ -11,13 +16,6 @@ import '../../domain/entities/stock_movement.dart';
 import '../../domain/repositories/items_repository.dart';
 import '../../domain/usecases/record_stock_movement.dart';
 
-/// Generic stock-movement form (Slice 5.2.2). Same widget handles
-/// goods-receipt and goods-issue — the [type] argument decides label
-/// copy + button colour + the use-case branch.
-///
-/// **No bloc** — single submit, no streaming state. A `FutureBuilder`
-/// loads the item header so the form can render its current on-hand
-/// alongside the quantity input.
 class StockMovementFormPage extends StatefulWidget {
   const StockMovementFormPage({
     super.key,
@@ -79,23 +77,17 @@ class _StockMovementFormPageState extends State<StockMovementFormPage> {
         itemId: item.id,
         type: widget.type,
         quantity: num.parse(_qtyCtrl.text.trim()),
-        reference: _refCtrl.text.trim().isEmpty
-            ? null
-            : _refCtrl.text.trim(),
+        reference: _refCtrl.text.trim().isEmpty ? null : _refCtrl.text.trim(),
         note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
       );
       if (!mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(
-          content: Text(_successCopy(l10n, widget.type)),
-        ));
+        ..showSnackBar(SnackBar(content: Text(_successCopy(l10n, widget.type)), behavior: SnackBarBehavior.floating));
       if (context.canPop()) context.pop();
     } on ValidationFailure catch (f) {
       final errs = f.fieldErrors['quantity'] ?? const [];
-      final msg = errs.contains('exceeds_on_hand')
-          ? l10n.inventoryQtyExceedsOnHand
-          : l10n.validatorMustBePositive;
+      final msg = errs.contains('exceeds_on_hand') ? l10n.inventoryQtyExceedsOnHand : l10n.validatorMustBePositive;
       setState(() {
         _submitting = false;
         _qtyError = msg;
@@ -103,18 +95,12 @@ class _StockMovementFormPageState extends State<StockMovementFormPage> {
     } on Failure catch (f) {
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(
-          content: Text(l10n.inventoryMovementFailed(
-            f.toString(),
-          )),
-        ));
+        ..showSnackBar(SnackBar(content: Text(l10n.inventoryMovementFailed(f.toString())), behavior: SnackBarBehavior.floating));
       if (mounted) setState(() => _submitting = false);
     } catch (e) {
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(
-          content: Text(l10n.inventoryMovementFailed(e.toString())),
-        ));
+        ..showSnackBar(SnackBar(content: Text(l10n.inventoryMovementFailed(e.toString())), behavior: SnackBarBehavior.floating));
       if (mounted) setState(() => _submitting = false);
     }
   }
@@ -137,34 +123,40 @@ class _StockMovementFormPageState extends State<StockMovementFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: Text(_titleCopy(l10n))),
-      body: FutureBuilder<InventoryItem?>(
-        future: _itemFuture,
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final item = snap.data;
-          if (item == null) {
-            return Center(
-              child: Text(l10n.inventoryItemNotFound(widget.itemId)),
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: _titleCopy(l10n),
+        centerTitle: true,
+      ),
+      body: DynamicStatusBar(
+        child: FutureBuilder<InventoryItem?>(
+          future: _itemFuture,
+          builder: (context, snap) {
+            if (snap.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final item = snap.data;
+            if (item == null) {
+              return _CenteredMessage(text: l10n.inventoryItemNotFound(widget.itemId), icon: Icons.search_off_rounded);
+            }
+            return _Body(
+              item: item,
+              type: widget.type,
+              formKey: _formKey,
+              qtyCtrl: _qtyCtrl,
+              refCtrl: _refCtrl,
+              noteCtrl: _noteCtrl,
+              qtyError: _qtyError,
+              submitting: _submitting,
+              resolveValidator: (c) => _resolveValidator(l10n, c),
+              onSubmit: () => _submit(item),
             );
-          }
-          return _Body(
-            item: item,
-            type: widget.type,
-            formKey: _formKey,
-            qtyCtrl: _qtyCtrl,
-            refCtrl: _refCtrl,
-            noteCtrl: _noteCtrl,
-            qtyError: _qtyError,
-            submitting: _submitting,
-            resolveValidator: (c) => _resolveValidator(l10n, c),
-            onSubmit: () => _submit(item),
-          );
-        },
+          },
+        ),
       ),
     );
   }
@@ -199,86 +191,199 @@ class _Body extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+    final isReceipt = type == StockMovementType.receipt;
+    final primaryColor = isReceipt ? theme.colorScheme.primary : theme.colorScheme.error;
+    final primaryIcon = isReceipt ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded;
+
     return Form(
       key: formKey,
       autovalidateMode: AutovalidateMode.onUserInteraction,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.only(
+          top: context.dynamicAppBarPadding,
+          left: 16,
+          right: 16,
+          bottom: 100,
+        ),
         children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(item.sku, style: theme.textTheme.titleMedium),
-                  Text(item.name, style: theme.textTheme.bodyMedium),
-                  const SizedBox(height: 8),
-                  Text(
-                    l10n.inventoryFormCurrentOnHand(item.onHandQty.toString()),
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(AppRadii.lg),
+              border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(12)),
+                      child: Icon(Icons.inventory_2_rounded, color: theme.colorScheme.primary, size: 24),
                     ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(item.name, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 2),
+                          Text('SKU: ${item.sku}', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.bold, fontFeatures: const [FontFeature.tabularFigures()])),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(AppRadii.md)),
+                  child: Row(
+                    children: [
+                      Icon(Icons.stacked_bar_chart_rounded, size: 20, color: theme.colorScheme.onSurfaceVariant),
+                      const SizedBox(width: 12),
+                      Text('CURRENT STOCK', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                      const Spacer(),
+                      Text(
+                        item.onHandQty.toString(),
+                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900, fontFeatures: const [FontFeature.tabularFigures()]),
+                      ),
+                    ],
                   ),
-                ],
+                ),
+              ],
+            ),
+          ).animate().fadeIn().slideY(begin: 0.05, end: 0),
+          
+          const SizedBox(height: 24),
+          _Section(
+            title: 'MOVEMENT DETAILS',
+            children: [
+              TextFormField(
+                controller: qtyCtrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+                decoration: _inputDecoration(context, l10n.inventoryFormQuantityLabel, Icons.numbers_rounded, errorText: qtyError),
+                validator: (v) {
+                  final code = Validators.positiveNumber(v);
+                  if (code == null) return null;
+                  final msg = resolveValidator(code);
+                  return msg.isEmpty ? null : msg;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: refCtrl,
+                decoration: _inputDecoration(
+                  context,
+                  l10n.inventoryFormReferenceLabel,
+                  Icons.receipt_long_rounded,
+                ).copyWith(
+                  hintText: isReceipt ? l10n.inventoryFormReferenceReceiptHint : l10n.inventoryFormReferenceIssueHint,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: noteCtrl,
+                maxLines: 2,
+                decoration: _inputDecoration(context, l10n.inventoryFormNoteLabel, Icons.notes_rounded),
+              ),
+            ],
+          ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.05, end: 0),
+          
+          const SizedBox(height: 32),
+          SizedBox(
+            height: 56,
+            child: FilledButton.icon(
+              onPressed: submitting ? null : onSubmit,
+              icon: submitting ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Icon(primaryIcon),
+              label: Text((isReceipt ? l10n.inventoryReceiptAction : l10n.inventoryIssueAction).toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+              style: FilledButton.styleFrom(
+                backgroundColor: primaryColor,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: qtyCtrl,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-            ],
-            decoration: InputDecoration(
-              labelText: l10n.inventoryFormQuantityLabel,
-              border: const OutlineInputBorder(),
-              errorText: qtyError,
-            ),
-            validator: (v) {
-              final code = Validators.positiveNumber(v);
-              if (code == null) return null;
-              final msg = resolveValidator(code);
-              return msg.isEmpty ? null : msg;
-            },
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: refCtrl,
-            decoration: InputDecoration(
-              labelText: l10n.inventoryFormReferenceLabel,
-              hintText: type == StockMovementType.receipt
-                  ? l10n.inventoryFormReferenceReceiptHint
-                  : l10n.inventoryFormReferenceIssueHint,
-              border: const OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: noteCtrl,
-            maxLines: 2,
-            decoration: InputDecoration(
-              labelText: l10n.inventoryFormNoteLabel,
-              border: const OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 20),
-          FilledButton.icon(
-            onPressed: submitting ? null : onSubmit,
-            icon: Icon(type == StockMovementType.receipt
-                ? Icons.inbox_outlined
-                : Icons.outbox_outlined),
-            label: Text(type == StockMovementType.receipt
-                ? l10n.inventoryReceiptAction
-                : l10n.inventoryIssueAction),
-            style: type == StockMovementType.receipt
-                ? FilledButton.styleFrom(
-                    backgroundColor: theme.colorScheme.tertiary,
-                  )
-                : null,
-          ),
+          ).animate().fadeIn(delay: 200.ms).scale(curve: Curves.easeOutBack),
         ],
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration(BuildContext context, String label, IconData icon, {String? errorText}) {
+    final theme = Theme.of(context);
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, size: 20),
+      filled: true,
+      fillColor: theme.colorScheme.surface,
+      errorText: errorText,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.outlineVariant)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5))),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.primary, width: 2)),
+      errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.error, width: 1)),
+      focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.error, width: 2)),
+    );
+  }
+}
+
+class _Section extends StatelessWidget {
+  const _Section({required this.title, required this.children});
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 12),
+          child: Text(
+            title,
+            style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3)),
+          ),
+          child: Column(children: children),
+        ),
+      ],
+    );
+  }
+}
+
+class _CenteredMessage extends StatelessWidget {
+  const _CenteredMessage({required this.text, this.icon});
+  final String text;
+  final IconData? icon;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3), shape: BoxShape.circle),
+              child: Icon(icon ?? Icons.inventory_2_rounded, size: 64, color: theme.colorScheme.outline.withValues(alpha: 0.5)),
+            ),
+            const SizedBox(height: 24),
+            Text(text, textAlign: TextAlign.center, style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500)),
+          ],
+        ),
       ),
     );
   }

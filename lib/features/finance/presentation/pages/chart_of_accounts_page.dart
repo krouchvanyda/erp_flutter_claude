@@ -106,7 +106,7 @@ class _AccountTreeList extends StatelessWidget {
 
     return ListView.builder(
       padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + kToolbarHeight + 16,
+        top: context.dynamicAppBarPadding,
         bottom: 100,
         left: 16,
         right: 16,

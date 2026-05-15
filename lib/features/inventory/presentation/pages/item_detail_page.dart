@@ -1,9 +1,14 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/route_paths.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/inventory_item.dart';
 import '../../domain/entities/stock_movement.dart';
@@ -11,10 +16,6 @@ import '../../domain/repositories/items_repository.dart';
 import '../../domain/repositories/stock_movements_repository.dart';
 import 'items_list_page.dart' show inventoryStatusColor;
 
-/// Item detail (Slice 5.1.2) — header card with stock numbers + a
-/// chronologically-descending list of movements. The "Issue" /
-/// "Receive" / "Transfer" actions on the bottom bar drop into Slice
-/// 5.2.x flows.
 class ItemDetailPage extends StatefulWidget {
   const ItemDetailPage({super.key, required this.itemId});
 
@@ -39,7 +40,7 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
 
   Future<_Bundle> _load() async {
     final item = await _itemsRepo.findById(widget.itemId);
-    if (item == null) return _Bundle(item: null, movements: const []);
+    if (item == null) return const _Bundle(item: null, movements: []);
     final movements = await _movementsRepo.forItem(widget.itemId);
     return _Bundle(item: item, movements: movements);
   }
@@ -49,84 +50,100 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.inventoryItemDetailTitle)),
-      body: FutureBuilder<_Bundle>(
-        future: _future,
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final bundle = snap.data;
-          if (bundle == null || bundle.item == null) {
-            return Center(
-              child: Text(l10n.inventoryItemNotFound(widget.itemId)),
-            );
-          }
-          return _Body(bundle: bundle);
-        },
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: l10n.inventoryItemDetailTitle,
+        centerTitle: true,
+      ),
+      body: DynamicStatusBar(
+        child: FutureBuilder<_Bundle>(
+          future: _future,
+          builder: (context, snap) {
+            if (snap.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final bundle = snap.data;
+            if (bundle == null || bundle.item == null) {
+              return _CenteredMessage(text: l10n.inventoryItemNotFound(widget.itemId), icon: Icons.search_off_rounded);
+            }
+            return _Body(bundle: bundle);
+          },
+        ),
       ),
       bottomNavigationBar: FutureBuilder<_Bundle>(
         future: _future,
         builder: (context, snap) {
           final item = snap.data?.item;
           if (item == null) return const SizedBox.shrink();
-          return SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        await context.pushNamed(
-                          RoutePaths.inventoryGoodsIssueName,
-                          pathParameters: {
-                            RoutePaths.inventoryItemDetailIdParam: item.id,
-                          },
-                        );
-                        if (mounted) _reload();
-                      },
-                      icon: const Icon(Icons.outbox_outlined),
-                      label: Text(l10n.inventoryIssueAction),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        await context.pushNamed(
-                          RoutePaths.inventoryGoodsReceiptName,
-                          pathParameters: {
-                            RoutePaths.inventoryItemDetailIdParam: item.id,
-                          },
-                        );
-                        if (mounted) _reload();
-                      },
-                      icon: const Icon(Icons.inbox_outlined),
-                      label: Text(l10n.inventoryReceiptAction),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: () async {
-                        await context.pushNamed(
-                          RoutePaths.inventoryTransferName,
-                          pathParameters: {
-                            RoutePaths.inventoryItemDetailIdParam: item.id,
-                          },
-                        );
-                        if (mounted) _reload();
-                      },
-                      icon: const Icon(Icons.swap_horiz_outlined),
-                      label: Text(l10n.inventoryTransferAction),
-                    ),
-                  ),
-                ],
-              ),
+          return Container(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + 16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -4))],
             ),
-          );
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      await context.pushNamed(
+                        RoutePaths.inventoryGoodsIssueName,
+                        pathParameters: {RoutePaths.inventoryItemDetailIdParam: item.id},
+                      );
+                      if (mounted) _reload();
+                    },
+                    icon: const Icon(Icons.outbox_rounded, size: 18),
+                    label: Text(l10n.inventoryIssueAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11)),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      side: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.5)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      await context.pushNamed(
+                        RoutePaths.inventoryGoodsReceiptName,
+                        pathParameters: {RoutePaths.inventoryItemDetailIdParam: item.id},
+                      );
+                      if (mounted) _reload();
+                    },
+                    icon: const Icon(Icons.inbox_rounded, size: 18),
+                    label: Text(l10n.inventoryReceiptAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11)),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      side: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.5)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () async {
+                      await context.pushNamed(
+                        RoutePaths.inventoryTransferName,
+                        pathParameters: {RoutePaths.inventoryItemDetailIdParam: item.id},
+                      );
+                      if (mounted) _reload();
+                    },
+                    icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+                    label: Text(l10n.inventoryTransferAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11)),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ).animate().slideY(begin: 1, end: 0, curve: Curves.easeOutBack, duration: 400.ms);
         },
       ),
     );
@@ -142,132 +159,192 @@ class _Bundle {
 class _Body extends StatelessWidget {
   const _Body({required this.bundle});
   final _Bundle bundle;
-  static final _stamp = DateFormat('yyyy-MM-dd HH:mm');
+  static final _stamp = DateFormat('MMM dd, yyyy • HH:mm');
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final item = bundle.item!;
+    final statusColor = inventoryStatusColor(theme, item);
+
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.only(
+        top: context.dynamicAppBarPadding,
+        left: 16,
+        right: 16,
+        bottom: 120, // Space for bottom action bar
+      ),
       children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(item.sku,
-                          style: theme.textTheme.titleLarge),
-                    ),
-                    _StockBadge(item: item),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(item.name, style: theme.textTheme.bodyMedium),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 16,
-                  runSpacing: 4,
-                  children: [
-                    _MetaChip(
-                        label: l10n.inventoryDetailWarehouseLabel,
-                        value: item.warehouseCode),
-                    _MetaChip(
-                        label: l10n.inventoryDetailLocationLabel,
-                        value: item.locationCode),
-                    _MetaChip(
-                        label: l10n.inventoryDetailReorderLabel,
-                        value: item.reorderPoint.toString()),
-                    _MetaChip(
-                        label: l10n.inventoryDetailUnitCostLabel,
-                        value: item.unitCost),
-                    if (item.barcode != null)
-                      _MetaChip(
-                          label: l10n.inventoryDetailBarcodeLabel,
-                          value: item.barcode!),
-                  ],
-                ),
-              ],
-            ),
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
           ),
-        ),
-        const SizedBox(height: 12),
-        Card(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Text(l10n.inventoryDetailMovementsHeading,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    )),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(16)),
+                    child: Icon(item.isLowStock ? Icons.warning_rounded : Icons.inventory_2_rounded, color: statusColor, size: 36),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.name,
+                          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900, letterSpacing: -0.5),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'SKU: ${item.sku}',
+                          style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.bold, fontFeatures: const [FontFeature.tabularFigures()]),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              if (bundle.movements.isEmpty)
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Text(l10n.inventoryDetailMovementsEmpty,
-                      style: theme.textTheme.bodySmall),
-                )
-              else
-                for (final m in bundle.movements)
-                  _MovementRow(movement: m, stampFmt: _stamp),
-              const SizedBox(height: 8),
+              const SizedBox(height: 24),
+              const Divider(height: 1),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('CURRENT STOCK', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                        const SizedBox(height: 4),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Text(
+                              item.onHandQty.toString(),
+                              style: theme.textTheme.displaySmall?.copyWith(color: statusColor, fontWeight: FontWeight.w900, fontFeatures: const [FontFeature.tabularFigures()]),
+                            ),
+                            const SizedBox(width: 4),
+                            Text('units', style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (item.isLowStock)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(color: theme.colorScheme.error.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(AppRadii.pill)),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.warning_amber_rounded, size: 16, color: theme.colorScheme.error),
+                          const SizedBox(width: 4),
+                          Text(
+                            l10n.inventoryReorderBadge(item.reorderPoint.toString()).toUpperCase(),
+                            style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.error, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Wrap(
+                spacing: 24,
+                runSpacing: 16,
+                children: [
+                  _MetaItem(label: l10n.inventoryDetailWarehouseLabel, value: item.warehouseCode, icon: Icons.warehouse_rounded),
+                  _MetaItem(label: l10n.inventoryDetailLocationLabel, value: item.locationCode, icon: Icons.location_on_rounded),
+                  _MetaItem(label: l10n.inventoryDetailUnitCostLabel, value: item.unitCost, icon: Icons.payments_rounded),
+                  if (item.barcode != null) _MetaItem(label: l10n.inventoryDetailBarcodeLabel, value: item.barcode!, icon: Icons.qr_code_2_rounded),
+                ],
+              ),
             ],
           ),
+        ).animate().fadeIn().slideY(begin: 0.05, end: 0),
+        
+        const SizedBox(height: 24),
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 12),
+          child: Text(
+            l10n.inventoryDetailMovementsHeading.toUpperCase(),
+            style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+          ),
         ),
+        if (bundle.movements.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(AppRadii.lg),
+              border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+            ),
+            child: Column(
+              children: [
+                Icon(Icons.history_rounded, size: 48, color: theme.colorScheme.outline.withValues(alpha: 0.5)),
+                const SizedBox(height: 16),
+                Text(l10n.inventoryDetailMovementsEmpty, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              ],
+            ),
+          ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.05, end: 0)
+        else
+          Container(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(AppRadii.lg),
+              border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: EdgeInsets.zero,
+              itemCount: bundle.movements.length,
+              separatorBuilder: (_, __) => Divider(height: 1, color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3)),
+              itemBuilder: (_, i) => _MovementRow(movement: bundle.movements[i], stampFmt: _stamp)
+                  .animate()
+                  .fadeIn(delay: (100 + i * 30).ms)
+                  .slideX(begin: 0.05, end: 0),
+            ),
+          ),
       ],
     );
   }
 }
 
-class _StockBadge extends StatelessWidget {
-  const _StockBadge({required this.item});
-  final InventoryItem item;
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    final color = inventoryStatusColor(theme, item);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        l10n.inventoryItemsOnHand(item.onHandQty.toString()),
-        style: theme.textTheme.labelLarge?.copyWith(
-          color: color,
-          fontFeatures: const [FontFeature.tabularFigures()],
-        ),
-      ),
-    );
-  }
-}
-
-class _MetaChip extends StatelessWidget {
-  const _MetaChip({required this.label, required this.value});
+class _MetaItem extends StatelessWidget {
+  const _MetaItem({required this.label, required this.value, required this.icon});
   final String label;
   final String value;
+  final IconData icon;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            )),
-        Text(value, style: theme.textTheme.bodyMedium),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: theme.colorScheme.primary),
+            const SizedBox(width: 6),
+            Text(label.toUpperCase(), style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.w900, letterSpacing: 0.5, fontSize: 9)),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(value, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
       ],
     );
   }
@@ -284,33 +361,52 @@ class _MovementRow extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final color = _typeColor(theme, movement.type);
     final signed = _signedLabel(movement);
-    return ListTile(
-      leading: Icon(_typeIcon(movement.type), color: color),
-      title: Text(_typeLabel(l10n, movement.type)),
-      subtitle: Text(
-        movement.reference == null
-            ? stampFmt.format(movement.postedAt.toLocal())
-            : '${stampFmt.format(movement.postedAt.toLocal())} · ${movement.reference}',
-        style: theme.textTheme.labelSmall,
-      ),
-      trailing: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
+    final isPositive = movement.quantity > 0 || movement.type == StockMovementType.receipt;
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
         children: [
-          Text(
-            signed,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w600,
-              fontFeatures: const [FontFeature.tabularFigures()],
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
+            child: Icon(_typeIcon(movement.type), color: color, size: 20),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _typeLabel(l10n, movement.type).toUpperCase(),
+                  style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w900, letterSpacing: 0.5, color: theme.colorScheme.onSurface),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  movement.reference == null ? stampFmt.format(movement.postedAt.toLocal()) : '${stampFmt.format(movement.postedAt.toLocal())} • REF: ${movement.reference}',
+                  style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.w500),
+                ),
+              ],
             ),
           ),
-          Text(
-            l10n.inventoryMovementRunningLabel(
-              movement.runningQty.toString(),
-            ),
-            style: theme.textTheme.labelSmall,
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                signed,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: isPositive ? theme.colorScheme.primary : theme.colorScheme.error,
+                  fontWeight: FontWeight.w900,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                l10n.inventoryMovementRunningLabel(movement.runningQty.toString()).toUpperCase(),
+                style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.w700, fontSize: 9),
+              ),
+            ],
           ),
         ],
       ),
@@ -319,19 +415,19 @@ class _MovementRow extends StatelessWidget {
 
   static Color _typeColor(ThemeData theme, StockMovementType t) {
     return switch (t) {
-      StockMovementType.receipt => theme.colorScheme.tertiary,
-      StockMovementType.issue => theme.colorScheme.primary,
+      StockMovementType.receipt => theme.colorScheme.primary, // Changed from tertiary to primary for better consistency
+      StockMovementType.issue => theme.colorScheme.error, // Issues decrease stock, error color makes sense
       StockMovementType.transfer => theme.colorScheme.secondary,
-      StockMovementType.adjustment => theme.colorScheme.error,
+      StockMovementType.adjustment => theme.colorScheme.tertiary,
     };
   }
 
   static IconData _typeIcon(StockMovementType t) {
     return switch (t) {
-      StockMovementType.receipt => Icons.inbox_outlined,
-      StockMovementType.issue => Icons.outbox_outlined,
-      StockMovementType.transfer => Icons.swap_horiz_outlined,
-      StockMovementType.adjustment => Icons.tune,
+      StockMovementType.receipt => Icons.arrow_downward_rounded,
+      StockMovementType.issue => Icons.arrow_upward_rounded,
+      StockMovementType.transfer => Icons.sync_alt_rounded,
+      StockMovementType.adjustment => Icons.tune_rounded,
     };
   }
 
@@ -344,9 +440,6 @@ class _MovementRow extends StatelessWidget {
     };
   }
 
-  /// Receipts read as `+N`, issues as `−N`, transfers carry their own
-  /// sign (the leg of the transfer that posted decides), and adjustments
-  /// surface whatever signed value was recorded.
   static String _signedLabel(StockMovement m) {
     final n = m.quantity;
     switch (m.type) {
@@ -359,5 +452,32 @@ class _MovementRow extends StatelessWidget {
         if (n >= 0) return '+$n';
         return '−${n.abs()}';
     }
+  }
+}
+
+class _CenteredMessage extends StatelessWidget {
+  const _CenteredMessage({required this.text, this.icon});
+  final String text;
+  final IconData? icon;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3), shape: BoxShape.circle),
+              child: Icon(icon ?? Icons.inventory_2_rounded, size: 64, color: theme.colorScheme.outline.withValues(alpha: 0.5)),
+            ),
+            const SizedBox(height: 24),
+            Text(text, textAlign: TextAlign.center, style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500)),
+          ],
+        ),
+      ),
+    );
   }
 }

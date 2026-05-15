@@ -97,7 +97,7 @@ class _Toolbar extends StatelessWidget {
     
     return Container(
       padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + kToolbarHeight + 16,
+        top: context.dynamicAppBarPadding,
         left: 16,
         right: 16,
         bottom: 12,

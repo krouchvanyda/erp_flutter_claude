@@ -59,7 +59,7 @@ class _Body extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     return ListView(
       padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + kToolbarHeight + 16,
+        top: context.dynamicAppBarPadding,
         left: 16,
         right: 16,
         bottom: 100,

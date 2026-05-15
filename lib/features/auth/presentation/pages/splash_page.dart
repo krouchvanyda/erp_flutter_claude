@@ -17,7 +17,7 @@ class SplashPage extends StatefulWidget {
 
 class _SplashPageState extends State<SplashPage> {
   // Increased delay for better viewing of animations
-  static const _probeDelay = Duration(milliseconds: 4500);
+  static const _probeDelay = Duration(milliseconds: 2000);
   Timer? _timer;
 
   @override
