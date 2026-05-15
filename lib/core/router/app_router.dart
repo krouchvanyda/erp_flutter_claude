@@ -4,7 +4,7 @@ import 'package:injectable/injectable.dart';
 
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/otp_entry_page.dart';
-import '../../features/auth/presentation/pages/splash_page.dart';
+import '../../features/bootstrap/presentation/pages/splash_page.dart';
 import '../../features/dashboard/presentation/pages/admin_demo_page.dart';
 import '../../features/dashboard/presentation/pages/coming_soon_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
