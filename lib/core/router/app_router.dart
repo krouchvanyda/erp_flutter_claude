@@ -76,6 +76,7 @@ import '../../features/settings/presentation/pages/notification_preferences_page
 import '../../features/settings/presentation/pages/role_editor_page.dart';
 import '../../features/settings/presentation/pages/sessions_page.dart';
 import '../../features/settings/presentation/pages/settings_home_page.dart';
+import '../../features/search/presentation/pages/global_search_page.dart';
 import '../../features/settings/presentation/pages/user_management_page.dart';
 import 'app_shell.dart';
 import 'auth_redirect_policy.dart';
@@ -214,6 +215,11 @@ class AppRouter {
                     path: RoutePaths.notificationInbox,
                     name: RoutePaths.notificationInboxName,
                     builder: (_, __) => const NotificationInboxPage(),
+                  ),
+                  GoRoute(
+                    path: RoutePaths.search,
+                    name: RoutePaths.searchName,
+                    builder: (_, __) => const GlobalSearchPage(),
                   ),
                   GoRoute(
                     path: RoutePaths.chartOfAccounts,

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/notification.dart';
 import '../bloc/notification_inbox_bloc.dart';
@@ -10,17 +13,6 @@ import '../bloc/notification_inbox_event.dart';
 import '../bloc/notification_inbox_state.dart';
 import '../notification_category_icon.dart';
 
-/// Full-screen inbox view (Slice 2.3.3).
-///
-/// **Bloc lifecycle**: created per-mount via `getIt<NotificationInboxBloc>()`
-/// (factory-registered in DI) so the watch subscription's lifetime is
-/// tied to this page. Closing the page closes the bloc, which cancels
-/// the drift watch — the AppBar badge keeps its own subscription so
-/// the unread count stays live everywhere.
-///
-/// **Pull-down refresh** isn't wired — the inbox is already reactive
-/// (drift watch + push routing) so there's nothing to "refresh". Add
-/// it back when a manual server-pull use case lands.
 class NotificationInboxPage extends StatelessWidget {
   const NotificationInboxPage({super.key});
 
@@ -40,12 +32,15 @@ class _InboxView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.notificationInboxTitle),
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: l10n.notificationInboxTitle,
+        backgroundColor: Colors.transparent,
         actions: [
           BlocBuilder<NotificationInboxBloc, NotificationInboxState>(
-            // Only show "Mark all read" when there's anything to mark.
             buildWhen: (a, b) =>
                 a is! NotificationInboxLoaded ||
                 b is! NotificationInboxLoaded ||
@@ -59,24 +54,26 @@ class _InboxView extends StatelessWidget {
                 onPressed: () => context.read<NotificationInboxBloc>().add(
                       const NotificationInboxEvent.markedAllRead(),
                     ),
-                icon: const Icon(Icons.done_all),
+                icon: const Icon(Icons.done_all_rounded),
               );
             },
           ),
         ],
       ),
-      body: BlocBuilder<NotificationInboxBloc, NotificationInboxState>(
-        builder: (context, state) => switch (state) {
-          NotificationInboxInitial() ||
-          NotificationInboxLoading() =>
-            const Center(child: CircularProgressIndicator()),
-          NotificationInboxFailure(:final message) =>
-            _CenteredMessage(text: l10n.notificationInboxError(message)),
-          NotificationInboxLoaded(:final notifications) =>
-            notifications.isEmpty
-                ? _CenteredMessage(text: l10n.notificationInboxEmpty)
-                : _InboxList(notifications: notifications),
-        },
+      body: DynamicStatusBar(
+        child: BlocBuilder<NotificationInboxBloc, NotificationInboxState>(
+          builder: (context, state) => switch (state) {
+            NotificationInboxInitial() ||
+            NotificationInboxLoading() =>
+              const Center(child: CircularProgressIndicator()),
+            NotificationInboxFailure(:final message) =>
+              _CenteredMessage(text: l10n.notificationInboxError(message)),
+            NotificationInboxLoaded(:final notifications) =>
+              notifications.isEmpty
+                  ? _CenteredMessage(text: l10n.notificationInboxEmpty)
+                  : _InboxList(notifications: notifications),
+          },
+        ),
       ),
     );
   }
@@ -89,10 +86,21 @@ class _InboxList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
+    return ListView.builder(
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + kToolbarHeight + 16,
+        bottom: 100,
+        left: 16,
+        right: 16,
+      ),
       itemCount: notifications.length,
-      separatorBuilder: (_, __) => const Divider(height: 0),
-      itemBuilder: (_, i) => _NotificationTile(notification: notifications[i]),
+      itemBuilder: (_, i) => Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: _NotificationTile(notification: notifications[i])
+            .animate()
+            .fadeIn(delay: (i * 40).ms)
+            .slideY(begin: 0.1, end: 0),
+      ),
     );
   }
 }
@@ -107,14 +115,20 @@ class _NotificationTile extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final bloc = context.read<NotificationInboxBloc>();
+    
+    final isUnread = notification.isUnread;
+    
     return Dismissible(
       key: ValueKey(notification.id),
       direction: DismissDirection.endToStart,
       background: Container(
-        color: theme.colorScheme.errorContainer,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.errorContainer,
+          borderRadius: BorderRadius.circular(20),
+        ),
         alignment: AlignmentDirectional.centerEnd,
-        padding: const EdgeInsetsDirectional.only(end: 16),
-        child: Icon(Icons.delete_outline,
+        padding: const EdgeInsetsDirectional.only(end: 24),
+        child: Icon(Icons.delete_sweep_rounded,
             color: theme.colorScheme.onErrorContainer),
       ),
       onDismissed: (_) {
@@ -123,53 +137,108 @@ class _NotificationTile extends StatelessWidget {
           ..hideCurrentSnackBar()
           ..showSnackBar(SnackBar(
             content: Text(l10n.notificationInboxDismissedSnack),
+            behavior: SnackBarBehavior.floating,
           ));
       },
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: notification.isUnread
-              ? theme.colorScheme.primaryContainer
-              : theme.colorScheme.surfaceContainerHighest,
-          foregroundColor: notification.isUnread
-              ? theme.colorScheme.onPrimaryContainer
-              : theme.colorScheme.onSurfaceVariant,
-          child: Icon(notificationCategoryIcon(notification.category)),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isUnread 
+              ? theme.colorScheme.primaryContainer.withOpacity(0.05) 
+              : theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isUnread 
+                ? theme.colorScheme.primary.withOpacity(0.2) 
+                : theme.colorScheme.outlineVariant.withOpacity(0.4),
+            width: 1,
+          ),
+          boxShadow: [
+            if (isUnread)
+              BoxShadow(
+                color: theme.colorScheme.primary.withOpacity(0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+          ],
         ),
-        title: Text(
-          notification.title,
-          style: notification.isUnread
-              ? theme.textTheme.bodyLarge
-                  ?.copyWith(fontWeight: FontWeight.w600)
-              : theme.textTheme.bodyLarge,
-        ),
-        subtitle: Text(
-          notification.body,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        trailing: notification.isUnread
-            ? Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary,
-                  shape: BoxShape.circle,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => _handleTap(context),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: isUnread
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.surfaceContainerHighest,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    notificationCategoryIcon(notification.category),
+                    size: 20,
+                    color: isUnread
+                        ? theme.colorScheme.onPrimary
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
-              )
-            : null,
-        onTap: () => _handleTap(context),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              notification.title,
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                fontWeight: isUnread ? FontWeight.bold : FontWeight.w600,
+                                color: isUnread ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+                              ),
+                            ),
+                          ),
+                          if (isUnread)
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        notification.body,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Recently', // TODO: Use real timestamp formatter
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.outline,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
 
-  /// Tap handler — Slice 2.3.4. Marks the row read, then attempts the
-  /// deep-link bounce. Defense in depth: if the target route is
-  /// permission-gated and the user lacks access, the route guard
-  /// (Slice 1.3.2) bounces to `/forbidden` — we don't pre-check here.
-  ///
-  /// `context.goNamed` throws on an unregistered route name (e.g. a
-  /// stale push payload pointing at a route that's been renamed since).
-  /// We surface that as a Snackbar rather than crash the inbox.
   void _handleTap(BuildContext context) {
     final bloc = context.read<NotificationInboxBloc>();
     final l10n = AppLocalizations.of(context);
@@ -187,6 +256,7 @@ class _NotificationTile extends StatelessWidget {
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(
           content: Text(l10n.notificationDeepLinkError(e.toString())),
+          behavior: SnackBarBehavior.floating,
         ));
     }
   }
@@ -201,14 +271,31 @@ class _CenteredMessage extends StatelessWidget {
     final theme = Theme.of(context);
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.notifications_off_outlined,
-                size: 64, color: theme.colorScheme.outline),
-            const SizedBox(height: 12),
-            Text(text, textAlign: TextAlign.center),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.notifications_none_rounded,
+                size: 64, 
+                color: theme.colorScheme.outline,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              text, 
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ],
         ),
       ),

@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
 /// A premium, dynamic AppBar that supports transitions and modern ERP aesthetics.
@@ -32,28 +33,27 @@ class DynamicAppBar extends StatelessWidget implements PreferredSizeWidget {
       title: Text(
         title,
         style: theme.textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.bold,
-          letterSpacing: 0.5,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.5,
+          color: theme.colorScheme.onSurface,
         ),
       ),
       actions: actions,
       leading: leading,
       centerTitle: centerTitle,
       elevation: elevation,
-      backgroundColor: backgroundColor ?? theme.colorScheme.surface.withOpacity(0.8),
+      // Use a glassmorphic background by default
+      backgroundColor: backgroundColor ?? theme.colorScheme.surface.withValues(alpha: 0.8),
       surfaceTintColor: Colors.transparent,
       bottom: bottom,
       flexibleSpace: ClipRRect(
         child: BackdropFilter(
-          filter: ColorFilter.mode(
-            theme.colorScheme.surface.withOpacity(0.0), 
-            BlendMode.srcOver,
-          ),
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Container(
             decoration: BoxDecoration(
               border: Border(
                 bottom: BorderSide(
-                  color: theme.colorScheme.outlineVariant.withOpacity(0.3),
+                  color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
                   width: 1,
                 ),
               ),

@@ -9,13 +9,13 @@ abstract final class AppColors {
   // Brand ────────────────────────────────────────────────────────
   /// Seed for `ColorScheme.fromSeed`. Picked to give an enterprise
   /// trust-blue on Material 3 with sufficient contrast for finance UIs.
-  static const Color brandSeed = Color(0xFF1F4E79);
+  static const Color brandSeed = Color(0xFF6366F1);
 
   // Semantic ─────────────────────────────────────────────────────
-  static const Color success = Color(0xFF1B873F);
-  static const Color warning = Color(0xFFB75D00);
-  static const Color danger  = Color(0xFFC62828);
-  static const Color info    = Color(0xFF0277BD);
+  static const Color success = Color(0xFF10B981);
+  static const Color warning = Color(0xFFF59E0B);
+  static const Color danger  = Color(0xFFEF4444);
+  static const Color info    = Color(0xFF3B82F6);
 
   // Neutrals ─────────────────────────────────────────────────────
   // Used for surfaces / dividers when the M3 scheme doesn't fit

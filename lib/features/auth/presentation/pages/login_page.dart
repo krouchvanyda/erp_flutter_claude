@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/route_paths.dart';
+import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 
@@ -112,16 +113,16 @@ class _LoginPageState extends State<LoginPage> {
                         
                         // Glassmorphic Login Card
                         ClipRRect(
-                          borderRadius: BorderRadius.circular(24),
+                          borderRadius: BorderRadius.circular(AppRadii.lg),
                           child: BackdropFilter(
                             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                             child: Container(
                               padding: const EdgeInsets.all(32),
                               decoration: BoxDecoration(
-                                color: theme.colorScheme.surface.withOpacity(0.7),
-                                borderRadius: BorderRadius.circular(24),
+                                color: theme.colorScheme.surface.withValues(alpha: 0.7),
+                                borderRadius: BorderRadius.circular(AppRadii.lg),
                                 border: Border.all(
-                                  color: theme.colorScheme.onSurface.withOpacity(0.1),
+                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
                                 ),
                                 boxShadow: [
                                   BoxShadow(

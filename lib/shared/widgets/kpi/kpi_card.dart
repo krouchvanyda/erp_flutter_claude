@@ -25,48 +25,70 @@ class KpiCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withOpacity(0.4),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      data.label.toUpperCase(),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  _TrendChip(trend: data.trend, delta: data.trendDelta),
+                ],
+              ),
+              const Spacer(),
               Text(
-                data.label,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+                data.value,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: theme.colorScheme.onSurface,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 6),
-              Text(
-                data.value,
-                style: theme.textTheme.headlineSmall,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  _TrendChip(trend: data.trend, delta: data.trendDelta),
-                  const Spacer(),
-                  if (data.sparkline.isNotEmpty)
-                    SizedBox(
-                      width: 64,
-                      height: 24,
-                      child: CustomPaint(
-                        painter: _SparklinePainter(
-                          points: data.sparkline,
-                          color: _trendColor(theme, data.trend),
-                        ),
-                      ),
+              const SizedBox(height: 12),
+              if (data.sparkline.isNotEmpty)
+                SizedBox(
+                  width: double.infinity,
+                  height: 32,
+                  child: CustomPaint(
+                    painter: _SparklinePainter(
+                      points: data.sparkline,
+                      color: _trendColor(theme, data.trend),
                     ),
-                ],
-              ),
+                  ),
+                ),
             ],
           ),
         ),

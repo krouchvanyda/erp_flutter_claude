@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/permissions_snapshot.dart';
+import '../../../../core/router/route_paths.dart';
 import '../../../../core/shortcuts/module_shortcut_catalog.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../data/providers/module_shortcut_search_provider.dart';
@@ -13,19 +15,6 @@ import '../bloc/global_search_bloc.dart';
 import '../bloc/global_search_event.dart';
 import '../bloc/global_search_state.dart';
 
-/// AppBar-mounted entry point for the global search bar (Slice 2.1.3).
-///
-/// Renders a Material 3 [SearchAnchor]: a single icon button that opens
-/// a full-screen search view overlay. The bloc + use case + provider
-/// list are created per-mount in [BlocProvider.create] so each AppBar
-/// gets its own scoped instance — no cross-contamination if the user
-/// switches branches mid-search.
-///
-/// **Why per-mount and not @lazySingleton**: the seed
-/// [ModuleShortcutSearchProvider] needs current [AppLocalizations] for
-/// label matching, which is widget-scoped. Future feature providers
-/// will be DI-singletons; the use case will accept them via the
-/// registry pattern when more than one provider exists.
 class GlobalSearchAnchor extends StatelessWidget {
   const GlobalSearchAnchor({super.key});
 
@@ -58,24 +47,23 @@ class _GlobalSearchAnchorView extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final bloc = context.read<GlobalSearchBloc>();
+    final theme = Theme.of(context);
 
     return SearchAnchor(
-      isFullScreen: false,
+      isFullScreen: true,
       builder: (context, controller) => IconButton(
         tooltip: l10n.globalSearchTooltip,
-        icon: const Icon(Icons.search),
+        icon: const Icon(Icons.search_rounded),
         onPressed: controller.openView,
       ),
       viewHintText: l10n.globalSearchHint,
-      viewOnChanged: (q) =>
-          bloc.add(GlobalSearchEvent.queryChanged(q)),
-      viewOnSubmitted: (q) =>
-          bloc.add(GlobalSearchEvent.queryChanged(q)),
+      viewLeading: IconButton(
+        icon: const Icon(Icons.arrow_back_ios_new_rounded),
+        onPressed: () => Navigator.of(context).pop(),
+      ),
+      viewOnChanged: (q) => bloc.add(GlobalSearchEvent.queryChanged(q)),
+      viewOnSubmitted: (q) => bloc.add(GlobalSearchEvent.queryChanged(q)),
       suggestionsBuilder: (context, controller) {
-        // `SearchAnchor` opens its view in a separate Navigator overlay,
-        // so the `BlocProvider` above this widget isn't an ancestor of
-        // the suggestions subtree. Re-expose the existing bloc via
-        // `BlocProvider.value` so the BlocBuilder below resolves it.
         return [
           BlocProvider<GlobalSearchBloc>.value(
             value: bloc,
@@ -109,13 +97,22 @@ class _SuggestionsBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return switch (state) {
-      GlobalSearchIdle() => _Centered(child: Text(l10n.globalSearchPrompt)),
-      GlobalSearchLoading() =>
-        const _Centered(child: CircularProgressIndicator()),
-      GlobalSearchFailure(:final message) =>
-        _Centered(child: Text(l10n.globalSearchError(message))),
+      GlobalSearchIdle() => _Centered(
+          icon: Icons.manage_search_rounded,
+          child: Text(l10n.globalSearchPrompt),
+        ),
+      GlobalSearchLoading() => const _Centered(
+          child: CircularProgressIndicator(),
+        ),
+      GlobalSearchFailure(:final message) => _Centered(
+          icon: Icons.error_outline_rounded,
+          child: Text(l10n.globalSearchError(message)),
+        ),
       GlobalSearchSuccess(:final query, :final groups) => groups.isEmpty
-          ? _Centered(child: Text(l10n.globalSearchNoResults(query)))
+          ? _Centered(
+              icon: Icons.search_off_rounded,
+              child: Text(l10n.globalSearchNoResults(query)),
+            )
           : _GroupedResultsList(groups: groups, onTap: onTapResult),
     };
   }
@@ -132,22 +129,33 @@ class _GroupedResultsList extends StatelessWidget {
     final theme = Theme.of(context);
     return ListView(
       shrinkWrap: true,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       children: [
-        for (final g in groups) ...[
+        for (var gIdx = 0; gIdx < groups.length; gIdx++) ...[
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Text(
-              _providerHeader(context, g.providerId),
-              style: theme.textTheme.labelMedium
-                  ?.copyWith(color: theme.colorScheme.primary),
+            padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
+            child: Row(
+              children: [
+                Text(
+                  _providerHeader(context, groups[gIdx].providerId).toUpperCase(),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(child: Divider(color: theme.colorScheme.outlineVariant)),
+              ],
             ),
           ),
-          for (final r in g.results)
-            ListTile(
-              leading: Icon(_iconFor(r)),
-              title: Text(r.title),
-              subtitle: r.subtitle == null ? null : Text(r.subtitle!),
-              onTap: () => onTap(r),
+          for (var rIdx = 0; rIdx < groups[gIdx].results.length; rIdx++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _ResultTile(
+                result: groups[gIdx].results[rIdx],
+                onTap: () => onTap(groups[gIdx].results[rIdx]),
+              ),
             ),
         ],
       ],
@@ -161,28 +169,104 @@ class _GroupedResultsList extends StatelessWidget {
       _ => providerId,
     };
   }
+}
 
-  /// Maps a result back to the catalog's icon (cheap O(n) lookup over
-  /// the small static catalog). Real feature providers will pass an
-  /// icon hint on the result itself.
+class _ResultTile extends StatelessWidget {
+  const _ResultTile({required this.result, required this.onTap});
+
+  final SearchResult result;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.colorScheme.outlineVariant.withOpacity(0.5)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(_iconFor(result), color: theme.colorScheme.primary, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      result.title,
+                      style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    if (result.subtitle != null)
+                      Text(
+                        result.subtitle!,
+                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                      ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: theme.colorScheme.outline, size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   IconData _iconFor(SearchResult r) {
     if (r.providerId != 'modules') return Icons.description_outlined;
     for (final s in ModuleShortcutCatalog.all) {
       if (s.id == r.id) return s.icon;
     }
-    return Icons.search;
+    return Icons.search_rounded;
   }
 }
 
 class _Centered extends StatelessWidget {
-  const _Centered({required this.child});
+  const _Centered({this.icon, required this.child});
+  final IconData? icon;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(32),
-      child: Center(child: child),
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 64, color: theme.colorScheme.outline.withOpacity(0.4)),
+              ),
+              const SizedBox(height: 16),
+            ],
+            DefaultTextStyle(
+              style: theme.textTheme.bodyLarge!.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              child: child,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

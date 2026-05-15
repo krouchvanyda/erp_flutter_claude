@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/dashboard/dashboard_grid.dart';
@@ -15,6 +17,8 @@ import '../../../../core/push/push_notification_service.dart';
 import '../../../../core/realtime/realtime_service.dart';
 import '../../../../core/realtime/realtime_status_indicator.dart';
 import '../../../../core/router/route_paths.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../features/auth/domain/entities/permission.dart';
 import '../../../../features/notifications/presentation/widgets/notifications_badge.dart';
 import '../../../../features/search/presentation/widgets/global_search_anchor.dart';
@@ -23,20 +27,6 @@ import '../../../../shared/widgets/charts/chart_data.dart';
 import '../../../../shared/widgets/kpi/kpi_data.dart';
 import '../../../../shared/widgets/permission_guard.dart';
 
-/// Dashboard placeholder, fleshed out incrementally:
-///
-/// - Slice 1.3.2 — `[demo] Open admin-only page` (route guard).
-/// - Slice 1.3.3 — live `PermissionGuard` verdict chip.
-/// - Slice 2.1.3 — `GlobalSearchAnchor` in the AppBar.
-/// - Slice 2.2.1 — KPI cards rendered via [KpiCard].
-/// - Slice 2.2.2 — KPI + chart slots composed into a [DashboardLayout]
-///   and rendered through [DashboardGrid].
-/// - Slice 2.2.3 — `LineChartCard` + `BarChartCard` (fl_chart) added
-///   to the default layout.
-/// - Slice 2.2.4 — kicks off the [RealtimeService] connection on
-///   mount (this slice). The status pill in the AppBar reflects the
-///   live connection state. Stateful so we can hook `initState` /
-///   `dispose` without leaking the lifecycle into the parent.
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key, this.onSignOut});
 
@@ -60,34 +50,14 @@ class _DashboardPageState extends State<DashboardPage> {
     _realtime = getIt<RealtimeService>();
     _pushRouter = getIt<PushMessageRouter>();
     _pushService = getIt<PushNotificationService>();
-    // Realtime is opt-in via AppEnv.realtimeEnabled — kept off by
-    // default until a real WebSocket backend is wired so the placeholder
-    // URL doesn't burn DNS lookups + battery on every reconnect tick.
-    // The status pill stays at "Offline" while disabled.
+    
     if (getIt<AppEnv>().realtimeEnabled) {
-      // Fire-and-forget — `connect()` returns once the first attempt
-      // is initiated; the service handles failure / reconnect internally
-      // and surfaces state via the indicator's StreamBuilder.
       unawaited(_realtime.connect());
-      // Subscribe to the demo dashboard topic so a future server build
-      // knows to push KPI / chart updates for these slot ids. Replayed
-      // automatically on every reconnect by the service.
       _realtime.subscribe('dashboard.default');
     }
-    // Boot the push pipeline — initialises the (simulator) provider,
-    // claims the device token, and starts the message → inbox routing.
     unawaited(_pushRouter.start());
   }
 
-  /// Demo-only — lets the user fire a fake push payload through the
-  /// router so the inbox bloc / dao machinery can be exercised end-to-end
-  /// before a real FCM backend exists. Disappears when
-  /// `LocalPushSimulator` is replaced by the real binding.
-  ///
-  /// When [routeName] is supplied, the resulting Snackbar carries a
-  /// "View" action that drops straight onto the deep-link target —
-  /// modelling the "user receives a push while the app is open"
-  /// foreground UX without needing to open the inbox to act on it.
   void _simulatePush({String? routeName, Map<String, String> routeParams = const {}}) {
     final svc = _pushService;
     if (svc is! LocalPushSimulator) return;
@@ -118,8 +88,6 @@ class _DashboardPageState extends State<DashboardPage> {
       ));
   }
 
-  /// Builds the default layout. Not `const` because the chart widgets
-  /// pull localised titles from [AppLocalizations] which is per-context.
   static DashboardLayout _buildDefaultLayout(AppLocalizations l10n) => [
         const KpiDashboardWidget(
           id: 'revenue-mtd',
@@ -127,7 +95,7 @@ class _DashboardPageState extends State<DashboardPage> {
             label: 'Revenue (MTD)',
             value: r'$84,210',
             trend: KpiTrend.up,
-            trendDelta: '+12.4 %',
+            trendDelta: '+12.4%',
             sparkline: [62, 58, 65, 71, 70, 78, 84],
           ),
         ),
@@ -150,8 +118,6 @@ class _DashboardPageState extends State<DashboardPage> {
             trendDelta: '~0',
             sparkline: [3.1, 3.3, 3.2, 3.2, 3.1, 3.2, 3.2],
           ),
-          // Spans 2 cells — exercises the variable-span path on medium /
-          // expanded layouts (becomes full-width on compact via clamp).
           colSpan: 2,
         ),
         LineChartDashboardWidget(
@@ -187,108 +153,235 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
           ],
         ),
-        BarChartDashboardWidget(
-          id: 'sales-by-region',
-          title: l10n.chartSalesByRegionTitle,
-          colSpan: 2,
-          series: ChartSeries(
-            id: 'sales-region',
-            label: l10n.chartSeriesSales,
-            points: const [
-              ChartPoint(x: 0, y: 24, label: 'NA'),
-              ChartPoint(x: 1, y: 18, label: 'EU'),
-              ChartPoint(x: 2, y: 31, label: 'APAC'),
-              ChartPoint(x: 3, y: 11, label: 'LATAM'),
-            ],
-          ),
-        ),
       ];
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
+    
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.dashboardTitle),
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: l10n.dashboardTitle,
         actions: [
           const RealtimeStatusIndicator(),
           const NotificationsBadge(),
           const GlobalSearchAnchor(),
           if (widget.onSignOut != null)
             IconButton(
-              icon: const Icon(Icons.logout),
+              icon: const Icon(Icons.logout_rounded),
               onPressed: widget.onSignOut,
               tooltip: l10n.signOutTooltip,
             ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      body: DynamicStatusBar(
+        child: Stack(
           children: [
-            DashboardGrid(layout: _buildDefaultLayout(l10n)),
-            const SizedBox(height: 24),
-            Text(l10n.dashboardPlaceholder),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: () => context.goNamed(RoutePaths.adminDemoName),
-              child: Text(l10n.dashboardAdminDemoLink),
-            ),
-            // Slice 3.1.1 — bypass link to the chart of accounts. The
-            // Modules grid's Finance tile is gated by `finance.*`, so
-            // without RBAC seeded the user can't reach it that way.
-            // This dev shortcut sidesteps the gate so the feature is
-            // visible end-to-end on first run.
-            TextButton(
-              onPressed: () =>
-                  context.goNamed(RoutePaths.chartOfAccountsName),
-              child: Text(l10n.dashboardChartOfAccountsLink),
-            ),
-            const SizedBox(height: 8),
-            // Slice 2.3.2 — manual push trigger so the inbox routing
-            // pipeline can be exercised end-to-end before a real FCM
-            // backend exists. Disappears with the simulator binding.
-            if (_pushService is LocalPushSimulator) ...[
-              TextButton.icon(
-                onPressed: () => _simulatePush(),
-                icon: const Icon(Icons.notifications_active_outlined),
-                label: Text(l10n.pushDemoButton),
-              ),
-              // Slice 2.3.4 — second button fires a payload carrying a
-              // `route` data field so tapping the resulting notification
-              // (or the Snackbar's "View") deep-links to /admin-demo.
-              // With no permissions cached the route guard from 1.3.2
-              // bounces to /forbidden — both deep-link AND RBAC defense
-              // demoed in one tap.
-              TextButton.icon(
-                onPressed: () =>
-                    _simulatePush(routeName: RoutePaths.adminDemoName),
-                icon: const Icon(Icons.open_in_new),
-                label: Text(l10n.pushDemoRoutedButton),
-              ),
-            ],
-            const SizedBox(height: 8),
-            PermissionGuard.builder(
-              required: _adminPermission,
-              builder: (context, allowed) {
-                final color = allowed
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.error;
-                return Chip(
-                  avatar: Icon(
-                    allowed ? Icons.check_circle : Icons.lock_outline,
-                    color: color,
-                    size: 18,
+            // Background Elements
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 300,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      theme.colorScheme.primary.withOpacity(0.15),
+                      theme.colorScheme.surface.withOpacity(0),
+                    ],
                   ),
-                  label: Text(
-                    allowed
-                        ? l10n.permissionGuardDemoGranted
-                        : l10n.permissionGuardDemoDenied,
+                ),
+              ),
+            ),
+            
+            SingleChildScrollView(
+              padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top + kToolbarHeight + 20,
+                left: 16,
+                right: 16,
+                bottom: 100,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Greeting Section
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Good Morning,',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ).animate().fadeIn(duration: 600.ms).slideX(begin: -0.2, end: 0),
+                      Text(
+                        'Demo Approver',
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: theme.colorScheme.onSurface,
+                          letterSpacing: -0.5,
+                        ),
+                      ).animate().fadeIn(delay: 200.ms, duration: 600.ms).slideX(begin: -0.1, end: 0),
+                    ],
                   ),
-                );
-              },
+                  
+                  const SizedBox(height: 32),
+                  
+                  // Main Content
+                  DashboardGrid(layout: _buildDefaultLayout(l10n)).animate().fadeIn(delay: 400.ms).scale(begin: const Offset(0.95, 0.95)),
+                  
+                  const SizedBox(height: 40),
+                  
+                  // Quick Actions & Demo section
+                  _SectionHeader(title: 'Quick Access', icon: Icons.bolt_rounded),
+                  const SizedBox(height: 16),
+                  
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      _QuickActionChip(
+                        label: 'Admin Demo',
+                        icon: Icons.admin_panel_settings_outlined,
+                        onTap: () => context.goNamed(RoutePaths.adminDemoName),
+                      ),
+                      _QuickActionChip(
+                        label: 'Chart of Accounts',
+                        icon: Icons.account_balance_outlined,
+                        onTap: () => context.goNamed(RoutePaths.chartOfAccountsName),
+                      ),
+                      if (_pushService is LocalPushSimulator) ...[
+                        _QuickActionChip(
+                          label: 'Simulate Push',
+                          icon: Icons.notifications_active_outlined,
+                          onTap: () => _simulatePush(),
+                        ),
+                        _QuickActionChip(
+                          label: 'Routed Push',
+                          icon: Icons.open_in_new_rounded,
+                          onTap: () => _simulatePush(routeName: RoutePaths.adminDemoName),
+                        ),
+                      ],
+                    ],
+                  ).animate().fadeIn(delay: 600.ms),
+                  
+                  const SizedBox(height: 32),
+                  
+                  // Permission Status
+                  _SectionHeader(title: 'Security Context', icon: Icons.security_rounded),
+                  const SizedBox(height: 16),
+                  PermissionGuard.builder(
+                    required: _adminPermission,
+                    builder: (context, allowed) {
+                      final color = allowed
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.error;
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: color.withOpacity(0.2)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              allowed ? Icons.verified_user_rounded : Icons.lock_person_rounded,
+                              color: color,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              allowed
+                                  ? l10n.permissionGuardDemoGranted
+                                  : l10n.permissionGuardDemoDenied,
+                              style: theme.textTheme.labelLarge?.copyWith(
+                                color: color,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ).animate().fadeIn(delay: 800.ms),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.title, required this.icon});
+
+  final String title;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: theme.colorScheme.primary),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.primary,
+            letterSpacing: 0.5,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _QuickActionChip extends StatelessWidget {
+  const _QuickActionChip({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: theme.colorScheme.outlineVariant),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: theme.colorScheme.onSurfaceVariant),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: theme.colorScheme.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),

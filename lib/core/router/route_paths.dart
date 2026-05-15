@@ -30,6 +30,9 @@ abstract final class RoutePaths {
   static const dashboard = '/dashboard';
   static const dashboardName = 'dashboard';
 
+  static const search = '/search';
+  static const searchName = 'search';
+
   // Shell siblings of the dashboard (Slice 2.1.1). Each is the root of
   // a `StatefulShellRoute` branch — the bottom nav / rail / drawer
   // switches between them while preserving each branch's own

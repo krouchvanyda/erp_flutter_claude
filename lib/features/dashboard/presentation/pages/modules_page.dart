@@ -1,68 +1,88 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/layout/responsive_breakpoint.dart';
 import '../../../../core/router/permissions_snapshot.dart';
+import '../../../../core/theme/app_radii.dart';
 import '../../../../core/shortcuts/module_shortcut.dart';
 import '../../../../core/shortcuts/module_shortcut_catalog.dart';
 import '../../../../core/shortcuts/permission_filter.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../features/search/presentation/widgets/global_search_anchor.dart';
 import '../../../../l10n/app_localizations.dart';
 
-/// Modules grid (Slice 2.1.2): permission-filtered shortcut tiles to
-/// every feature module the signed-in user can reach.
-///
-/// Reads [PermissionsSnapshot] reactively (same source as the route
-/// guard from 1.3.2 and `PermissionGuard` from 1.3.3) so granting or
-/// revoking a role flips tiles in / out without a manual refresh.
-///
-/// Column count tracks `WindowSizeClass` via `gridColumnsFor` — 2 / 3 / 4
-/// for compact / medium / expanded — matching the rest of the responsive
-/// shell.
 class ModulesPage extends StatelessWidget {
   const ModulesPage({super.key, PermissionsSnapshot? snapshot})
       : _snapshotOverride = snapshot;
 
-  /// Test seam — production code lets the page resolve via `getIt`.
   final PermissionsSnapshot? _snapshotOverride;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
     final permissions = _snapshotOverride ?? getIt<PermissionsSnapshot>();
+    
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.modulesTitle),
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: l10n.modulesTitle,
+        backgroundColor: Colors.transparent,
         actions: const [GlobalSearchAnchor()],
       ),
-      body: ListenableBuilder(
-        listenable: permissions,
-        builder: (context, _) {
-          final visible = filterByPermission<ModuleShortcut>(
-            ModuleShortcutCatalog.all,
-            (s) => s.requiredPermission,
-            permissions.permissions,
-          ).toList(growable: false);
-
-          if (visible.isEmpty) return _EmptyState(label: l10n.modulesEmpty);
-
-          final size =
-              resolveWindowSizeClass(MediaQuery.sizeOf(context).width);
-          final columns = gridColumnsFor(size);
-          return GridView.builder(
-            padding: const EdgeInsets.all(16),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: columns,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 1.1,
+      body: DynamicStatusBar(
+        child: Stack(
+          children: [
+            // Background decoration
+            Positioned(
+              top: -100,
+              right: -100,
+              child: CircleAvatar(
+                radius: 200,
+                backgroundColor: theme.colorScheme.secondaryContainer.withOpacity(0.05),
+              ),
             ),
-            itemCount: visible.length,
-            itemBuilder: (context, i) =>
-                _ShortcutTile(shortcut: visible[i], l10n: l10n),
-          );
-        },
+            
+            ListenableBuilder(
+              listenable: permissions,
+              builder: (context, _) {
+                final visible = filterByPermission<ModuleShortcut>(
+                  ModuleShortcutCatalog.all,
+                  (s) => s.requiredPermission,
+                  permissions.permissions,
+                ).toList(growable: false);
+
+                if (visible.isEmpty) return _EmptyState(label: l10n.modulesEmpty);
+
+                final size = resolveWindowSizeClass(MediaQuery.sizeOf(context).width);
+                final columns = gridColumnsFor(size);
+                
+                return GridView.builder(
+                  padding: EdgeInsets.only(
+                    top: MediaQuery.of(context).padding.top + kToolbarHeight + 16,
+                    left: 16,
+                    right: 16,
+                    bottom: 100,
+                  ),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: columns,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: 1.05,
+                  ),
+                  itemCount: visible.length,
+                  itemBuilder: (context, i) => _ShortcutTile(shortcut: visible[i], l10n: l10n)
+                      .animate()
+                      .fadeIn(delay: (i * 50).ms)
+                      .scale(begin: const Offset(0.9, 0.9)),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -77,27 +97,54 @@ class _ShortcutTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withOpacity(0.4),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => context.goNamed(
           shortcut.routeName,
           pathParameters: shortcut.pathParameters,
         ),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(16),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                shortcut.icon,
-                size: 36,
-                color: theme.colorScheme.primary,
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withOpacity(0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  shortcut.icon,
+                  size: 32,
+                  color: theme.colorScheme.primary,
+                ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               Text(
                 shortcut.labelOf(l10n),
                 textAlign: TextAlign.center,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -129,7 +176,13 @@ class _EmptyState extends StatelessWidget {
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Text(label, textAlign: TextAlign.center),
+            child: Text(
+              label, 
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
           ),
         ],
       ),
