@@ -29,6 +29,10 @@ class DemoSignInService {
     'inventory.*',
     // Module 6 — same for the sales tile.
     'sales.*',
+    // Module 7 — same for the HR tile.
+    'hr.*',
+    // Module 8 — same for the Projects tile.
+    'projects.*',
   };
 
   static const String demoUserId = 'user-demo';

@@ -203,6 +203,105 @@ abstract final class RoutePaths {
   static const vendorScorecardName = 'vendorScorecard';
   static const vendorScorecardIdParam = 'id';
 
+  // Human Resources (Module 7) ─────────────────────────────────
+  // Phase 7.1 — Employee directory + org chart.
+  static const hrEmployees = '/hr/employees';
+  static const hrEmployeesName = 'hrEmployees';
+
+  static const hrEmployeeDetail = '/hr/employees/:id';
+  static const hrEmployeeDetailName = 'hrEmployeeDetail';
+  static const hrEmployeeDetailIdParam = 'id';
+
+  static const hrOrgChart = '/hr/org-chart';
+  static const hrOrgChartName = 'hrOrgChart';
+
+  // Phase 7.2 — Leave management.
+  static const hrLeaveRequests = '/hr/leave-requests';
+  static const hrLeaveRequestsName = 'hrLeaveRequests';
+
+  /// Register the literal `/new` BEFORE the `:id` route so go_router
+  /// matches "new" as the literal first.
+  static const hrLeaveRequestNew = '/hr/leave-requests/new';
+  static const hrLeaveRequestNewName = 'hrLeaveRequestNew';
+
+  static const hrLeaveBalance = '/hr/leave-balance';
+  static const hrLeaveBalanceName = 'hrLeaveBalance';
+
+  // Phase 7.3 — Attendance + payslips.
+  static const hrAttendance = '/hr/attendance';
+  static const hrAttendanceName = 'hrAttendance';
+
+  static const hrPayslips = '/hr/payslips';
+  static const hrPayslipsName = 'hrPayslips';
+
+  static const hrPayslipDetail = '/hr/payslips/:id';
+  static const hrPayslipDetailName = 'hrPayslipDetail';
+  static const hrPayslipDetailIdParam = 'id';
+
+  // Project Management (Module 8) ─────────────────────────────
+  // Phase 8.1 — Projects + tasks.
+  static const projectList = '/projects';
+  static const projectListName = 'projectList';
+
+  static const projectDetail = '/projects/:id';
+  static const projectDetailName = 'projectDetail';
+  static const projectDetailIdParam = 'id';
+
+  /// Slice 8.1.2 — Kanban board scoped to a project.
+  static const projectBoard = '/projects/:id/board';
+  static const projectBoardName = 'projectBoard';
+
+  /// Slice 8.1.3 — task detail + comments.
+  static const taskDetail = '/projects/:id/tasks/:taskId';
+  static const taskDetailName = 'taskDetail';
+  static const taskDetailTaskIdParam = 'taskId';
+
+  // Phase 8.2 — Timesheets.
+  static const timesheets = '/timesheets';
+  static const timesheetsName = 'timesheets';
+
+  /// Register the literal `/new` BEFORE the `:id` route so go_router
+  /// matches "new" as the literal first.
+  static const timesheetNew = '/timesheets/new';
+  static const timesheetNewName = 'timesheetNew';
+
+  static const timesheetApprovals = '/timesheets/approvals';
+  static const timesheetApprovalsName = 'timesheetApprovals';
+
+  static const timesheetUtilization = '/timesheets/utilization';
+  static const timesheetUtilizationName = 'timesheetUtilization';
+
+  // Settings & Administration (Module 9) ──────────────────────
+  // Phase 9.1 — User preferences.
+  static const settingsAppearance = '/settings/appearance';
+  static const settingsAppearanceName = 'settingsAppearance';
+
+  static const settingsLanguage = '/settings/language';
+  static const settingsLanguageName = 'settingsLanguage';
+
+  static const settingsNotifications = '/settings/notifications';
+  static const settingsNotificationsName = 'settingsNotifications';
+
+  // Phase 9.2 — Admin (RBAC-gated).
+  static const settingsUsers = '/settings/users';
+  static const settingsUsersName = 'settingsUsers';
+
+  static const settingsRoles = '/settings/roles';
+  static const settingsRolesName = 'settingsRoles';
+
+  static const settingsApiConfig = '/settings/api-config';
+  static const settingsApiConfigName = 'settingsApiConfig';
+
+  // Phase 9.3 — Security.
+  static const settingsSessions = '/settings/sessions';
+  static const settingsSessionsName = 'settingsSessions';
+
+  static const settingsAuditLog = '/settings/audit-log';
+  static const settingsAuditLogName = 'settingsAuditLog';
+
+  static const settingsAppLock = '/settings/app-lock';
+  static const settingsAppLockName = 'settingsAppLock';
+
   // Permission-gated demo route (Slice 1.3.2 — exists so the route
   // guard's "no access → /forbidden" branch is end-to-end demoable
   // before feature modules add their own gated routes).

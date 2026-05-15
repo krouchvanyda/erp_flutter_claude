@@ -63,16 +63,18 @@ abstract final class ModuleShortcutCatalog {
       id: 'hr',
       icon: Icons.groups_outlined,
       labelOf: _hrLabel,
-      routeName: RoutePaths.comingSoonName,
-      pathParameters: {RoutePaths.comingSoonLabelParam: 'hr'},
+      // Module 7 — flipped from `coming-soon` to the real list page
+      // once Slice 7.1.1 (employee directory) shipped.
+      routeName: RoutePaths.hrEmployeesName,
       requiredPermission: Permission(token: 'hr.*'),
     ),
     ModuleShortcut(
       id: 'projects',
       icon: Icons.task_alt_outlined,
       labelOf: _projectsLabel,
-      routeName: RoutePaths.comingSoonName,
-      pathParameters: {RoutePaths.comingSoonLabelParam: 'projects'},
+      // Module 8 — flipped from `coming-soon` to the real list page
+      // once Slice 8.1.1 (project list + Gantt) shipped.
+      routeName: RoutePaths.projectListName,
       requiredPermission: Permission(token: 'projects.*'),
     ),
   ];

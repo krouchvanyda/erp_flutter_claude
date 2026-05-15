@@ -49,7 +49,32 @@ import '../../features/procurement/presentation/pages/vendor_detail_page.dart';
 import '../../features/procurement/presentation/pages/vendor_form_page.dart';
 import '../../features/procurement/presentation/pages/vendor_list_page.dart';
 import '../../features/procurement/presentation/pages/vendor_scorecard_page.dart';
-import '../../features/settings/presentation/pages/settings_placeholder_page.dart';
+import '../../features/projects/presentation/pages/project_board_page.dart';
+import '../../features/projects/presentation/pages/project_detail_page.dart';
+import '../../features/projects/presentation/pages/project_list_page.dart';
+import '../../features/projects/presentation/pages/task_detail_page.dart';
+import '../../features/projects/presentation/pages/timesheet_form_page.dart';
+import '../../features/projects/presentation/pages/timesheets_list_page.dart';
+import '../../features/projects/presentation/pages/utilization_page.dart';
+import '../../features/hr/presentation/pages/attendance_page.dart';
+import '../../features/hr/presentation/pages/employee_detail_page.dart';
+import '../../features/hr/presentation/pages/employee_list_page.dart';
+import '../../features/hr/presentation/pages/leave_balance_page.dart';
+import '../../features/hr/presentation/pages/leave_request_form_page.dart';
+import '../../features/hr/presentation/pages/leave_requests_list_page.dart';
+import '../../features/hr/presentation/pages/org_chart_page.dart';
+import '../../features/hr/presentation/pages/payslip_detail_page.dart';
+import '../../features/hr/presentation/pages/payslips_list_page.dart';
+import '../../features/settings/presentation/pages/api_config_page.dart';
+import '../../features/settings/presentation/pages/app_lock_page.dart';
+import '../../features/settings/presentation/pages/appearance_page.dart';
+import '../../features/settings/presentation/pages/audit_log_page.dart';
+import '../../features/settings/presentation/pages/language_page.dart';
+import '../../features/settings/presentation/pages/notification_preferences_page.dart';
+import '../../features/settings/presentation/pages/role_editor_page.dart';
+import '../../features/settings/presentation/pages/sessions_page.dart';
+import '../../features/settings/presentation/pages/settings_home_page.dart';
+import '../../features/settings/presentation/pages/user_management_page.dart';
 import 'app_shell.dart';
 import 'auth_redirect_policy.dart';
 import 'auth_session.dart';
@@ -459,6 +484,114 @@ class AppRouter {
                           '',
                     ),
                   ),
+                  // Human Resources (Module 7) — Phase 7.1 employees.
+                  GoRoute(
+                    path: RoutePaths.hrEmployees,
+                    name: RoutePaths.hrEmployeesName,
+                    builder: (_, __) => const EmployeeListPage(),
+                  ),
+                  GoRoute(
+                    path: RoutePaths.hrOrgChart,
+                    name: RoutePaths.hrOrgChartName,
+                    builder: (_, __) => const OrgChartPage(),
+                  ),
+                  GoRoute(
+                    path: RoutePaths.hrEmployeeDetail,
+                    name: RoutePaths.hrEmployeeDetailName,
+                    builder: (_, state) => EmployeeDetailPage(
+                      employeeId: state.pathParameters[
+                              RoutePaths.hrEmployeeDetailIdParam] ??
+                          '',
+                    ),
+                  ),
+                  // Phase 7.2 — Leave management. Register `/new`
+                  // BEFORE the dynamic detail route so go_router matches
+                  // "new" as the literal path first.
+                  GoRoute(
+                    path: RoutePaths.hrLeaveRequestNew,
+                    name: RoutePaths.hrLeaveRequestNewName,
+                    builder: (_, __) => const LeaveRequestFormPage(),
+                  ),
+                  GoRoute(
+                    path: RoutePaths.hrLeaveRequests,
+                    name: RoutePaths.hrLeaveRequestsName,
+                    builder: (_, __) => const LeaveRequestsListPage(),
+                  ),
+                  GoRoute(
+                    path: RoutePaths.hrLeaveBalance,
+                    name: RoutePaths.hrLeaveBalanceName,
+                    builder: (_, __) => const LeaveBalancePage(),
+                  ),
+                  // Phase 7.3 — Attendance + payslips.
+                  GoRoute(
+                    path: RoutePaths.hrAttendance,
+                    name: RoutePaths.hrAttendanceName,
+                    builder: (_, __) => const AttendancePage(),
+                  ),
+                  GoRoute(
+                    path: RoutePaths.hrPayslips,
+                    name: RoutePaths.hrPayslipsName,
+                    builder: (_, __) => const PayslipsListPage(),
+                  ),
+                  GoRoute(
+                    path: RoutePaths.hrPayslipDetail,
+                    name: RoutePaths.hrPayslipDetailName,
+                    builder: (_, state) => PayslipDetailPage(
+                      payslipId: state.pathParameters[
+                              RoutePaths.hrPayslipDetailIdParam] ??
+                          '',
+                    ),
+                  ),
+                  // Project Management (Module 8) — Phase 8.1 projects + tasks.
+                  GoRoute(
+                    path: RoutePaths.projectList,
+                    name: RoutePaths.projectListName,
+                    builder: (_, __) => const ProjectListPage(),
+                  ),
+                  GoRoute(
+                    path: RoutePaths.projectDetail,
+                    name: RoutePaths.projectDetailName,
+                    builder: (_, state) => ProjectDetailPage(
+                      projectId: state.pathParameters[
+                              RoutePaths.projectDetailIdParam] ??
+                          '',
+                    ),
+                  ),
+                  GoRoute(
+                    path: RoutePaths.projectBoard,
+                    name: RoutePaths.projectBoardName,
+                    builder: (_, state) => ProjectBoardPage(
+                      projectId: state.pathParameters[
+                              RoutePaths.projectDetailIdParam] ??
+                          '',
+                    ),
+                  ),
+                  GoRoute(
+                    path: RoutePaths.taskDetail,
+                    name: RoutePaths.taskDetailName,
+                    builder: (_, state) => TaskDetailPage(
+                      taskId: state.pathParameters[
+                              RoutePaths.taskDetailTaskIdParam] ??
+                          '',
+                    ),
+                  ),
+                  // Phase 8.2 — Timesheets. `/new` registered BEFORE
+                  // any dynamic routes so go_router prefers literal.
+                  GoRoute(
+                    path: RoutePaths.timesheetNew,
+                    name: RoutePaths.timesheetNewName,
+                    builder: (_, __) => const TimesheetFormPage(),
+                  ),
+                  GoRoute(
+                    path: RoutePaths.timesheets,
+                    name: RoutePaths.timesheetsName,
+                    builder: (_, __) => const TimesheetsListPage(),
+                  ),
+                  GoRoute(
+                    path: RoutePaths.timesheetUtilization,
+                    name: RoutePaths.timesheetUtilizationName,
+                    builder: (_, __) => const UtilizationPage(),
+                  ),
                 ],
               ),
               // Branch 1 — Modules. Hosts the permission-filtered shortcut
@@ -482,13 +615,64 @@ class AppRouter {
                   ),
                 ],
               ),
-              // Branch 2 — Settings (Module 9 fills it).
+              // Branch 2 — Settings (Module 9). Hosts the settings hub
+              // and all 9 sub-pages so they all live under the Settings
+              // shell branch and the bottom nav stays on Settings while
+              // the user drills down.
               StatefulShellBranch(
                 routes: [
                   GoRoute(
                     path: RoutePaths.settings,
                     name: RoutePaths.settingsName,
-                    builder: (_, __) => const SettingsPlaceholderPage(),
+                    builder: (_, __) => const SettingsHomePage(),
+                  ),
+                  // Phase 9.1 — preferences.
+                  GoRoute(
+                    path: RoutePaths.settingsAppearance,
+                    name: RoutePaths.settingsAppearanceName,
+                    builder: (_, __) => const AppearancePage(),
+                  ),
+                  GoRoute(
+                    path: RoutePaths.settingsLanguage,
+                    name: RoutePaths.settingsLanguageName,
+                    builder: (_, __) => const LanguagePage(),
+                  ),
+                  GoRoute(
+                    path: RoutePaths.settingsNotifications,
+                    name: RoutePaths.settingsNotificationsName,
+                    builder: (_, __) => const NotificationPreferencesPage(),
+                  ),
+                  // Phase 9.2 — admin.
+                  GoRoute(
+                    path: RoutePaths.settingsUsers,
+                    name: RoutePaths.settingsUsersName,
+                    builder: (_, __) => const UserManagementPage(),
+                  ),
+                  GoRoute(
+                    path: RoutePaths.settingsRoles,
+                    name: RoutePaths.settingsRolesName,
+                    builder: (_, __) => const RoleEditorPage(),
+                  ),
+                  GoRoute(
+                    path: RoutePaths.settingsApiConfig,
+                    name: RoutePaths.settingsApiConfigName,
+                    builder: (_, __) => const ApiConfigPage(),
+                  ),
+                  // Phase 9.3 — security.
+                  GoRoute(
+                    path: RoutePaths.settingsSessions,
+                    name: RoutePaths.settingsSessionsName,
+                    builder: (_, __) => const SessionsPage(),
+                  ),
+                  GoRoute(
+                    path: RoutePaths.settingsAuditLog,
+                    name: RoutePaths.settingsAuditLogName,
+                    builder: (_, __) => const AuditLogPage(),
+                  ),
+                  GoRoute(
+                    path: RoutePaths.settingsAppLock,
+                    name: RoutePaths.settingsAppLockName,
+                    builder: (_, __) => const AppLockPage(),
                   ),
                 ],
               ),
