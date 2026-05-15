@@ -88,7 +88,7 @@ class _OtpInputFieldState extends State<OtpInputField> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               for (var i = 0; i < widget.length; i++) ...[
-                if (i > 0) const SizedBox(width: AppSpacing.sm),
+                if (i > 0) const SizedBox(width: AppSpacing.xs),
                 _OtpDigitBox(
                   digit: i < _controller.text.length
                       ? _controller.text[i]
@@ -165,7 +165,7 @@ class _OtpDigitBox extends StatelessWidget {
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 120),
-      width: 48,
+      width: 42,
       height: 56,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadii.sm),

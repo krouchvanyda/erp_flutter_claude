@@ -1,11 +1,16 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/router/auth_session.dart';
 import '../../../../core/router/route_paths.dart';
-import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../data/demo_sign_in.dart';
 import '../../data/repositories/stub_otp_repository.dart';
 import '../../domain/entities/otp_verification_result.dart';
 import '../bloc/otp_bloc.dart';
@@ -13,14 +18,6 @@ import '../bloc/otp_event.dart';
 import '../bloc/otp_state.dart';
 import '../widgets/otp_input_field.dart';
 
-/// Multi-factor authentication step — user types a 6-digit code received
-/// out-of-band (TOTP authenticator app or SMS) and the verifier accepts
-/// or rejects it.
-///
-/// **Memory-only** (per CLAUDE.md Slice 1.2.1): the typed code is held in
-/// the bloc's state. Nothing is written to drift, secure storage, or
-/// shared_preferences — the bloc is factory-scoped in DI so it's
-/// disposed (and the code wiped) the moment the user navigates away.
 class OtpEntryPage extends StatelessWidget {
   const OtpEntryPage({super.key});
 
@@ -44,89 +41,205 @@ class _OtpEntryView extends StatelessWidget {
     return BlocConsumer<OtpBloc, OtpState>(
       listenWhen: (prev, next) =>
           prev.hasSucceeded == false && next.hasSucceeded,
-      listener: (context, state) {
-        // Demo: on success, bounce to the dashboard. In the real MFA
-        // flow this is where the auth-bloc would hand back the token
-        // and the router redirect would handle the destination.
-        context.goNamed(RoutePaths.dashboardName);
+      listener: (context, state) async {
+        // Perform demo sign-in simulation to trigger global auth state
+        await getIt<DemoSignInService>().seed();
+        final session = getIt<AuthSession>();
+        if (session is StubAuthSession) {
+          session.simulateSignIn();
+        }
+        
+        if (context.mounted) {
+          context.goNamed(RoutePaths.dashboardName);
+        }
       },
       builder: (context, state) {
         return Scaffold(
-          appBar: AppBar(title: Text(l10n.otpPageTitle)),
-          body: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Icon(
-                      Icons.shield_outlined,
-                      size: 56,
-                      color: theme.colorScheme.primary,
+          body: DynamicStatusBar(
+            child: Stack(
+              children: [
+                // Background Gradient
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomRight,
+                      end: Alignment.topLeft,
+                      colors: [
+                        theme.colorScheme.secondaryContainer.withOpacity(0.8),
+                        theme.colorScheme.surface,
+                        theme.colorScheme.primaryContainer.withOpacity(0.3),
+                      ],
                     ),
-                    const SizedBox(height: AppSpacing.lg),
-                    Text(
-                      l10n.otpSubtitle,
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyLarge,
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    Text(
-                      l10n.otpDevHint(StubOtpRepository.devCode),
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    OtpInputField(
-                      length: state.length,
-                      enabled: !state.isSubmitting,
-                      hasError: state.hasError,
-                      onChanged: (code) => context
-                          .read<OtpBloc>()
-                          .add(OtpEvent.codeChanged(code)),
-                      onCompleted: (_) => context
-                          .read<OtpBloc>()
-                          .add(const OtpEvent.submitted()),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    SizedBox(
-                      height: 24,
-                      child: state.hasError
-                          ? Text(
-                              _errorMessage(l10n, state.rejectionReason!),
-                              textAlign: TextAlign.center,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.error,
-                              ),
-                            )
-                          : null,
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    FilledButton(
-                      onPressed: state.canSubmit
-                          ? () => context
-                              .read<OtpBloc>()
-                              .add(const OtpEvent.submitted())
-                          : null,
-                      child: state.isSubmitting
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : Text(l10n.otpVerifyButton),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+                
+                // Decorative Circle
+                Positioned(
+                  bottom: -100,
+                  left: -100,
+                  child: CircleAvatar(
+                    radius: 150,
+                    backgroundColor: theme.colorScheme.secondary.withOpacity(0.05),
+                  ),
+                ).animate().fadeIn(duration: 1200.ms).scale(begin: const Offset(0.5, 0.5)),
+
+                SafeArea(
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              onPressed: () => context.canPop() ? context.pop() : context.goNamed(RoutePaths.loginName),
+                              icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                              style: IconButton.styleFrom(
+                                backgroundColor: theme.colorScheme.surface.withOpacity(0.5),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ).animate().fadeIn().slideX(begin: -0.1, end: 0),
+                      
+                      Expanded(
+                        child: Center(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 400),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Icon(
+                                    Icons.shield_moon_rounded,
+                                    size: 72,
+                                    color: theme.colorScheme.primary,
+                                  ).animate().scale(duration: 600.ms, curve: Curves.easeOutBack),
+                                  
+                                  const SizedBox(height: 24),
+                                  
+                                  Text(
+                                    l10n.otpPageTitle,
+                                    textAlign: TextAlign.center,
+                                    style: theme.textTheme.headlineMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: theme.colorScheme.onSurface,
+                                    ),
+                                  ).animate().fadeIn(delay: 200.ms),
+                                  
+                                  const SizedBox(height: 12),
+                                  
+                                  Text(
+                                    l10n.otpSubtitle,
+                                    textAlign: TextAlign.center,
+                                    style: theme.textTheme.bodyLarge?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ).animate().fadeIn(delay: 300.ms),
+                                  
+                                  const SizedBox(height: 48),
+                                  
+                                  // Glassmorphic OTP Card
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(28),
+                                    child: BackdropFilter(
+                                      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                                      child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
+                                      decoration: BoxDecoration(
+                                        color: theme.colorScheme.surface.withOpacity(0.7),
+                                          borderRadius: BorderRadius.circular(28),
+                                          border: Border.all(
+                                            color: theme.colorScheme.onSurface.withOpacity(0.1),
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(0.05),
+                                              blurRadius: 24,
+                                              offset: const Offset(0, 12),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                                          children: [
+                                            OtpInputField(
+                                              length: state.length,
+                                              enabled: !state.isSubmitting,
+                                              hasError: state.hasError,
+                                              onChanged: (code) => context
+                                                  .read<OtpBloc>()
+                                                  .add(OtpEvent.codeChanged(code)),
+                                              onCompleted: (_) => context
+                                                  .read<OtpBloc>()
+                                                  .add(const OtpEvent.submitted()),
+                                            ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.1, end: 0),
+                                            
+                                            const SizedBox(height: 24),
+                                            
+                                            if (state.hasError)
+                                              Text(
+                                                _errorMessage(l10n, state.rejectionReason!),
+                                                textAlign: TextAlign.center,
+                                                style: theme.textTheme.bodySmall?.copyWith(
+                                                  color: theme.colorScheme.error,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ).animate().shake(),
+                                            
+                                            const SizedBox(height: 24),
+                                            
+                                            FilledButton(
+                                              onPressed: state.canSubmit
+                                                  ? () => context
+                                                      .read<OtpBloc>()
+                                                      .add(const OtpEvent.submitted())
+                                                  : null,
+                                              child: state.isSubmitting
+                                                  ? const SizedBox(
+                                                      width: 20,
+                                                      height: 20,
+                                                      child: CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                        color: Colors.white,
+                                                      ),
+                                                    )
+                                                  : Text(l10n.otpVerifyButton),
+                                            ).animate().shimmer(delay: 2000.ms, duration: 1500.ms),
+                                            
+                                            const SizedBox(height: 16),
+                                            
+                                            TextButton(
+                                              onPressed: () {}, // Resend logic
+                                              child: const Text('Resend Code (30s)'),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ).animate().fadeIn(delay: 400.ms).scale(begin: const Offset(0.95, 0.95)),
+                                  
+                                  const SizedBox(height: 40),
+                                  
+                                  Text(
+                                    l10n.otpDevHint(StubOtpRepository.devCode),
+                                    textAlign: TextAlign.center,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ).animate().fadeIn(delay: 800.ms),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         );

@@ -1,0 +1,155 @@
+import 'dart:ui';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../core/di/injection.dart';
+import '../../../../core/router/auth_session.dart';
+import '../../../../core/router/route_paths.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../l10n/app_localizations.dart';
+import '../../data/demo_sign_in.dart';
+
+class BiometricUnlockPage extends StatefulWidget {
+  const BiometricUnlockPage({super.key});
+
+  @override
+  State<BiometricUnlockPage> createState() => _BiometricUnlockPageState();
+}
+
+class _BiometricUnlockPageState extends State<BiometricUnlockPage> {
+  bool _isAuthenticating = false;
+
+  void _simulateAuth() async {
+    setState(() => _isAuthenticating = true);
+    
+    // Simulate a delay for biometric check
+    await Future.delayed(const Duration(milliseconds: 1500));
+    
+    if (mounted) {
+      // Perform demo sign-in simulation to trigger global auth state
+      await getIt<DemoSignInService>().seed();
+      final session = getIt<AuthSession>();
+      if (session is StubAuthSession) {
+        session.simulateSignIn();
+      }
+      
+      // Navigate to dashboard
+      context.goNamed(RoutePaths.dashboardName);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+
+    return Scaffold(
+      body: DynamicStatusBar(
+        child: Stack(
+          children: [
+            // Background Gradient
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    theme.colorScheme.primaryContainer.withOpacity(0.4),
+                    theme.colorScheme.surface,
+                  ],
+                ),
+              ),
+            ),
+            
+            SafeArea(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Animated Biometric Icon
+                      Container(
+                        padding: const EdgeInsets.all(40),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: theme.colorScheme.primary.withOpacity(0.2),
+                            width: 2,
+                          ),
+                        ),
+                        child: _isAuthenticating 
+                          ? const SizedBox(
+                              width: 100,
+                              height: 100,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Icon(
+                              Icons.fingerprint_rounded,
+                              size: 100,
+                              color: theme.colorScheme.primary,
+                            ),
+                      )
+                          .animate(onPlay: (controller) => controller.repeat(reverse: true))
+                          .scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 2000.ms, curve: Curves.easeInOut)
+                          .animate()
+                          .fadeIn(duration: 800.ms),
+                      
+                      const SizedBox(height: 48),
+                      
+                      Text(
+                        _isAuthenticating ? 'Authenticating...' : 'Biometric Unlock',
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2, end: 0),
+                      
+                      const SizedBox(height: 16),
+                      
+                      Text(
+                        _isAuthenticating 
+                          ? 'Please hold your finger on the sensor' 
+                          : 'Use your fingerprint or face to continue',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ).animate().fadeIn(delay: 600.ms),
+                      
+                      const SizedBox(height: 64),
+                      
+                      // Action Buttons
+                      if (!_isAuthenticating)
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 300),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              FilledButton(
+                                onPressed: _simulateAuth,
+                                child: const Text('Unlock Now'),
+                              ).animate().fadeIn(delay: 800.ms).slideY(begin: 0.5, end: 0),
+                              
+                              const SizedBox(height: 16),
+                              
+                              TextButton(
+                                onPressed: () => context.goNamed(RoutePaths.loginName),
+                                child: const Text('Use Password Instead'),
+                              ).animate().fadeIn(delay: 1000.ms),
+                            ],
+                          ),
+                        ).animate().fadeIn(),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

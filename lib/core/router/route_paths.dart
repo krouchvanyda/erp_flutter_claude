@@ -19,6 +19,13 @@ abstract final class RoutePaths {
   static const otp = '/mfa/otp';
   static const otpName = 'otp';
 
+  // Biometric & Recovery (Phase 1.2) ─────────────────────────────
+  static const biometricUnlock = '/biometric-unlock';
+  static const biometricUnlockName = 'biometricUnlock';
+
+  static const forgotPassword = '/forgot-password';
+  static const forgotPasswordName = 'forgotPassword';
+
   // Dashboard (Module 2) ─────────────────────────────────────────
   static const dashboard = '/dashboard';
   static const dashboardName = 'dashboard';
@@ -321,5 +328,5 @@ abstract final class RoutePaths {
   /// user is *mid-challenge* at that point (credentials submitted, no
   /// session token yet); the auth guard would otherwise bounce them to
   /// `/login` and lose the challenge context.
-  static const publicLocations = <String>{splash, login, otp};
+  static const publicLocations = <String>{splash, login, otp, forgotPassword, biometricUnlock};
 }

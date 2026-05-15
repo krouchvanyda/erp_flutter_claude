@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:injectable/injectable.dart';
 
+import '../../features/auth/presentation/pages/biometric_unlock_page.dart';
+import '../../features/auth/presentation/pages/forgot_password_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/otp_entry_page.dart';
 import '../../features/auth/presentation/pages/splash_page.dart';
@@ -164,6 +166,16 @@ class AppRouter {
             path: RoutePaths.otp,
             name: RoutePaths.otpName,
             builder: (_, __) => const OtpEntryPage(),
+          ),
+          GoRoute(
+            path: RoutePaths.biometricUnlock,
+            name: RoutePaths.biometricUnlockName,
+            builder: (_, __) => const BiometricUnlockPage(),
+          ),
+          GoRoute(
+            path: RoutePaths.forgotPassword,
+            name: RoutePaths.forgotPasswordName,
+            builder: (_, __) => const ForgotPasswordPage(),
           ),
 
           // ── Authenticated shell (bottom nav / rail / drawer) ─────

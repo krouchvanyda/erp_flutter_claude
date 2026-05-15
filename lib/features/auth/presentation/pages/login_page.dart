@@ -188,7 +188,7 @@ class _LoginPageState extends State<LoginPage> {
                                     Align(
                                       alignment: Alignment.centerRight,
                                       child: TextButton(
-                                        onPressed: () {},
+                                        onPressed: () => context.pushNamed(RoutePaths.forgotPasswordName),
                                         child: const Text('Forgot Password?'),
                                       ),
                                     ),
@@ -203,7 +203,7 @@ class _LoginPageState extends State<LoginPage> {
                                     const SizedBox(height: 16),
                                     
                                     OutlinedButton.icon(
-                                      onPressed: () {},
+                                      onPressed: () => context.pushNamed(RoutePaths.biometricUnlockName),
                                       icon: Icon(
                                         Icons.fingerprint_rounded,
                                         color: theme.colorScheme.primary,
@@ -221,7 +221,7 @@ class _LoginPageState extends State<LoginPage> {
                         
                         // Demo Link
                         TextButton(
-                          onPressed: () => context.goNamed(RoutePaths.otpName),
+                          onPressed: () => context.pushNamed(RoutePaths.otpName),
                           child: Text(l10n.loginOtpDemoLink),
                         ).animate().fadeIn(delay: 800.ms),
                       ],
