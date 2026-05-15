@@ -9,9 +9,7 @@ import '../../features/dashboard/presentation/pages/admin_demo_page.dart';
 import '../../features/dashboard/presentation/pages/coming_soon_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/dashboard/presentation/pages/modules_page.dart';
-import '../../features/auth/data/demo_sign_in.dart';
 import '../../features/finance/presentation/pages/account_detail_page.dart';
-import '../di/injection.dart';
 import '../../features/finance/presentation/pages/chart_of_accounts_page.dart';
 import '../../features/finance/presentation/pages/invoice_detail_page.dart';
 import '../../features/finance/presentation/pages/invoice_form_page.dart';
@@ -143,22 +141,14 @@ class AppRouter {
           GoRoute(
             path: RoutePaths.login,
             name: RoutePaths.loginName,
-            builder: (_, __) => LoginPage(
-              // Placeholder wiring until the real AuthBloc lands: flipping
-              // the stub auth session emits a listener notification, which
-              // GoRouter picks up via `refreshListenable` and bounces to
-              // /dashboard via the redirect policy. No `context.go` here.
-              onSimulatedLogin: () async {
-                // Slice 3.2.4 — write the demo user + finance.approve
-                // permission BEFORE flipping the auth flag so the
-                // permissions snapshot has a current user by the time
-                // the redirect bounces us into the dashboard.
-                await getIt<DemoSignInService>().seed();
-                if (session is StubAuthSession) {
-                  session.simulateSignIn();
-                }
-              },
-            ),
+            // Screen 1.1 — LoginPage is now self-contained: it builds
+            // its own AuthBloc + LoginFormBloc via DI, validates the
+            // form, and on success the demo SignInWithPasswordUseCase
+            // takes care of seeding the demo user + flipping the stub
+            // session — same end behaviour as the previous
+            // `onSimulatedLogin` callback, but the page no longer
+            // needs the prop.
+            builder: (_, __) => const LoginPage(),
           ),
           GoRoute(
             path: RoutePaths.otp,

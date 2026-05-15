@@ -7,6 +7,7 @@ import 'core/error/crash_hooks.dart';
 import 'core/error/logging_crash_reporter.dart';
 import 'core/sync/sync_engine.dart';
 import 'core/utils/logger/console_logger.dart';
+import 'features/auth/auth_di.dart';
 import 'features/bootstrap/bootstrap_di.dart';
 import 'features/hr/hr_di.dart';
 import 'features/inventory/inventory_di.dart';
@@ -26,6 +27,7 @@ void main() {
       WidgetsFlutterBinding.ensureInitialized();
       configureDependencies(environment: Environment.prod);
       registerBootstrapModule(getIt);
+      registerAuthModule(getIt);
       registerProcurementModule(getIt);
       registerInventoryModule(getIt);
       registerSalesModule(getIt);

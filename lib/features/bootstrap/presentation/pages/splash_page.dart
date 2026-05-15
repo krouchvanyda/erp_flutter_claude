@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/widgets/adaptive_status_bar.dart';
 import '../bloc/app_init_bloc.dart';
 import '../bloc/app_init_event.dart';
 import '../bloc/app_init_state.dart';
@@ -51,21 +51,16 @@ class _SplashView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // True edge-to-edge:
-    //   - `AnnotatedRegion` makes the status bar + nav bar transparent
-    //     with light icons (gradient is dark, so icons must be light).
+    //   - `AdaptiveStatusBar(surfaceBrightness: Brightness.dark)`
+    //     resolves to *light* status-bar / nav-bar icons (gradient is
+    //     dark, so icons must be light).
     //   - `SafeArea` is *only* applied around the foreground content
     //     (logo, indicator, version) so they don't slide under the
     //     notch / camera cutout / gesture nav, while the gradient
     //     itself extends from the very top of the status bar to the
     //     very bottom of the system nav bar.
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,   // Android
-        statusBarBrightness: Brightness.dark,        // iOS
-        systemNavigationBarColor: Colors.transparent,
-        systemNavigationBarIconBrightness: Brightness.light,
-      ),
+    return AdaptiveStatusBar(
+      surfaceBrightness: Brightness.dark,
       child: Scaffold(
         // No AppBar; body fills the whole window.
         body: BlocListener<AppInitBloc, AppInitState>(

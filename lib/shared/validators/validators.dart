@@ -62,4 +62,19 @@ class Validators {
     if (!re.hasMatch(v)) return 'invalid_email';
     return null;
   }
+
+  /// Login password (Screen 1.1).
+  ///
+  /// Empty → `'required'`. Anything < [minLength] → `'too_short'`.
+  ///
+  /// We **don't** check complexity (uppercase / digit / symbol) on the
+  /// login form — that's a sign-up concern and would lock real users
+  /// with policy-noncompliant historical passwords out of their own
+  /// account. The server is the source of truth on credential
+  /// rejection; we just block the obvious zero-length submit.
+  static String? loginPassword(String? value, {int minLength = 6}) {
+    if (value == null || value.isEmpty) return 'required';
+    if (value.length < minLength) return 'too_short';
+    return null;
+  }
 }

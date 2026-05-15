@@ -101,6 +101,29 @@ void main() {
     });
   });
 
+  group('Validators.loginPassword', () {
+    test('null / empty → required', () {
+      expect(Validators.loginPassword(null), 'required');
+      expect(Validators.loginPassword(''), 'required');
+    });
+    test('shorter than minLength → too_short', () {
+      expect(Validators.loginPassword('abc'), 'too_short');
+      expect(Validators.loginPassword('12345'), 'too_short');
+    });
+    test('default minLength = 6 chars → null', () {
+      expect(Validators.loginPassword('abcdef'), isNull);
+      expect(Validators.loginPassword('abcdef!'), isNull);
+    });
+    test('respects custom minLength', () {
+      expect(Validators.loginPassword('1234567', minLength: 8), 'too_short');
+      expect(Validators.loginPassword('12345678', minLength: 8), isNull);
+    });
+    test('whitespace-only is NOT treated as empty (could be valid pwd)', () {
+      // Only the empty-string rule fires; '      ' (≥ minLength) passes.
+      expect(Validators.loginPassword('      '), isNull);
+    });
+  });
+
   group('Validators.compose', () {
     test('returns the FIRST failing rule', () {
       final result = Validators.compose(
