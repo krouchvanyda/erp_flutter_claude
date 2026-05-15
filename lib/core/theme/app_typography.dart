@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// Typography scale tuned for an enterprise ERP — legible body type at
 /// dense data-table sizes, tight headlines for KPI tiles, monospace numerics
 /// for currency/quantity columns.
 abstract final class AppTypography {
-  static const String _sansFamily  = 'Roboto';     // Material default
+  static String get _sansFamily  => GoogleFonts.inter().fontFamily!;
   static const String _monoFamily  = 'RobotoMono'; // future-proof for fonts
   // ── Letter spacings tuned to M3 defaults ─────────────────────
   static const double _displayTracking = -0.25;
@@ -15,7 +16,7 @@ abstract final class AppTypography {
 
   /// Returns a complete [TextTheme]. Colours are deliberately omitted —
   /// `ThemeData` resolves them from the active [ColorScheme].
-  static TextTheme textTheme() => const TextTheme(
+  static TextTheme textTheme() => TextTheme(
         displayLarge: TextStyle(
           fontFamily: _sansFamily,
           fontSize: 57, height: 1.12, fontWeight: FontWeight.w400,

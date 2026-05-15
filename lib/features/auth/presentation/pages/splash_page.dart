@@ -1,19 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/route_paths.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../l10n/app_localizations.dart';
 
-/// Bootstrap landing page.
-///
-/// Placeholder probe: after a brief delay the page pushes to `/login`.
-/// The router's redirect policy then takes over — if a session already
-/// exists (the real silent-refresh probe in a future slice would write
-/// tokens before this delay elapses), it bounces straight to
-/// `/dashboard` without a flash of the login screen.
-///
-/// Replace with the real probe once `AuthBloc` lands.
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
 
@@ -22,7 +16,8 @@ class SplashPage extends StatefulWidget {
 }
 
 class _SplashPageState extends State<SplashPage> {
-  static const _probeDelay = Duration(milliseconds: 700);
+  // Increased delay for better viewing of animations
+  static const _probeDelay = Duration(milliseconds: 4500);
   Timer? _timer;
 
   @override
@@ -33,9 +28,6 @@ class _SplashPageState extends State<SplashPage> {
 
   void _decide() {
     if (!mounted) return;
-    // Always navigate to /login — the router's `resolveAuthRedirect`
-    // forwards to /dashboard automatically when a session is active,
-    // so we don't need to branch here.
     context.goNamed(RoutePaths.loginName);
   }
 
@@ -47,8 +39,162 @@ class _SplashPageState extends State<SplashPage> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+
+    return Scaffold(
+      body: DynamicStatusBar(
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                theme.colorScheme.primaryContainer.withOpacity(0.9),
+                theme.colorScheme.surface,
+                theme.colorScheme.secondaryContainer.withOpacity(0.4),
+              ],
+            ),
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Floating background blobs
+              Positioned(
+                top: -50,
+                left: -50,
+                child: _CircularBlob(
+                  color: theme.colorScheme.primary.withOpacity(0.05),
+                  radius: 120,
+                ).animate(onPlay: (controller) => controller.repeat(reverse: true))
+                 .moveY(begin: 0, end: 20, duration: 3000.ms, curve: Curves.easeInOut),
+              ),
+              
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Animated Logo
+                  Container(
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: theme.colorScheme.primary.withOpacity(0.1),
+                          blurRadius: 40,
+                          spreadRadius: 10,
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.business_center_rounded,
+                      size: 96,
+                      color: theme.colorScheme.primary,
+                    ),
+                  )
+                      .animate()
+                      .fadeIn(duration: 1000.ms)
+                      .scale(
+                        delay: 200.ms,
+                        duration: 800.ms,
+                        curve: Curves.easeOutBack,
+                      )
+                      .shimmer(delay: 1500.ms, duration: 2000.ms)
+                      .then()
+                      .animate(onPlay: (controller) => controller.repeat(reverse: true))
+                      .moveY(begin: 0, end: -10, duration: 2000.ms, curve: Curves.easeInOut),
+                  
+                  const SizedBox(height: 32),
+                  
+                  // Animated App Name
+                  Text(
+                    l10n.appName,
+                    style: theme.textTheme.displaySmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 4,
+                      color: theme.colorScheme.primary,
+                    ),
+                  )
+                      .animate()
+                      .fadeIn(delay: 800.ms, duration: 1000.ms)
+                      .slideY(begin: 0.3, end: 0, curve: Curves.easeOutCubic),
+                  
+                  const SizedBox(height: 12),
+                  
+                  // Subtle Tagline
+                  Text(
+                    'Enterprise Excellence',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                      letterSpacing: 2,
+                      fontWeight: FontWeight.w300,
+                    ),
+                  )
+                      .animate()
+                      .fadeIn(delay: 1200.ms, duration: 800.ms),
+                ],
+              ),
+              
+              const Positioned(
+                bottom: 64,
+                child: _SplashFooter(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CircularBlob extends StatelessWidget {
+  final Color color;
+  final double radius;
+
+  const _CircularBlob({required this.color, required this.radius});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: radius * 2,
+      height: radius * 2,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+}
+
+class _SplashFooter extends StatelessWidget {
+  const _SplashFooter();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      children: [
+        SizedBox(
+          width: 44,
+          height: 44,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: theme.colorScheme.primary.withOpacity(0.4),
+          ),
+        ).animate().fadeIn(delay: 1500.ms),
+        const SizedBox(height: 32),
+        Text(
+          'v1.0.0',
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4),
+            letterSpacing: 3,
+            fontWeight: FontWeight.bold,
+          ),
+        ).animate().fadeIn(delay: 1800.ms),
+      ],
     );
   }
 }

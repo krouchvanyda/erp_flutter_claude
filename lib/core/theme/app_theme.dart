@@ -44,35 +44,39 @@ abstract final class AppTheme {
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadii.md),
-          side: BorderSide(color: scheme.outlineVariant),
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+          side: BorderSide(color: scheme.outlineVariant.withOpacity(0.5)),
         ),
-        color: scheme.surfaceContainerLow,
+        color: scheme.surfaceContainerLow.withOpacity(0.8),
       ),
 
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size(64, 44),
+          minimumSize: const Size(64, 52),
           padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
+            horizontal: AppSpacing.xl,
             vertical: AppSpacing.md,
           ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadii.sm),
+            borderRadius: BorderRadius.circular(AppRadii.lg),
           ),
-          textStyle: textTheme.labelLarge,
+          textStyle: textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.1,
+          ),
+          elevation: 2,
         ),
       ),
 
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size(64, 44),
+          minimumSize: const Size(64, 52),
           padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
+            horizontal: AppSpacing.xl,
             vertical: AppSpacing.md,
           ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadii.sm),
+            borderRadius: BorderRadius.circular(AppRadii.lg),
           ),
           textStyle: textTheme.labelLarge,
         ),
@@ -84,32 +88,38 @@ abstract final class AppTheme {
             horizontal: AppSpacing.md,
             vertical: AppSpacing.sm,
           ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.md),
+          ),
           textStyle: textTheme.labelLarge,
         ),
       ),
 
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: scheme.surfaceContainerHighest,
+        fillColor: scheme.surfaceContainerHighest.withOpacity(0.5),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.lg,
-          vertical: AppSpacing.md,
+          horizontal: AppSpacing.xl,
+          vertical: AppSpacing.lg,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadii.sm),
-          borderSide: BorderSide(color: scheme.outline),
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadii.sm),
-          borderSide: BorderSide(color: scheme.outline),
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+          borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadii.sm),
-          borderSide: BorderSide(color: scheme.primary, width: 2),
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+          borderSide: BorderSide(color: scheme.primary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadii.sm),
-          borderSide: BorderSide(color: scheme.error),
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+          borderSide: BorderSide(color: scheme.error, width: 1),
+        ),
+        hintStyle: textTheme.bodyMedium?.copyWith(
+          color: scheme.onSurfaceVariant.withOpacity(0.6),
         ),
       ),
 

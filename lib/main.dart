@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:injectable/injectable.dart';
 
 import 'app.dart';
@@ -23,6 +24,13 @@ void main() {
     reporter: reporter,
     body: () {
       WidgetsFlutterBinding.ensureInitialized();
+      SystemChrome.setSystemUIOverlayStyle(
+        const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
+        ),
+      );
       configureDependencies(environment: Environment.prod);
       registerProcurementModule(getIt);
       registerInventoryModule(getIt);
