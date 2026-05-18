@@ -24,6 +24,8 @@ class DemoSignInService {
   static const Set<String> demoRoles = {
     'finance.approve',
     'finance.*',
+    // Module 4 — surfaces the procurement tile on the Modules grid.
+    'procurement.*',
     // Module 5 — surfaces the inventory tile on the Modules grid
     // (Slice 2.1.2 is permission-filtered).
     'inventory.*',
