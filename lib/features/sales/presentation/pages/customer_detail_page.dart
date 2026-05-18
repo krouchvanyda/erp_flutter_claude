@@ -60,28 +60,41 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
     );
   }
 
-  void _reload() => setState(() => _future = _load());
+  void _reload() {
+    // Block body so the closure returns `void`. The arrow form
+    // `setState(() => _future = _load())` evaluates to the assigned
+    // Future, which makes the closure async-typed and trips Flutter's
+    // "setState callback argument returned a Future" warning.
+    setState(() {
+      _future = _load();
+    });
+  }
 
   Future<void> _deleteContact(String contactId) async {
     final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      // Name the dialog context so the action buttons can pop the
+      // dialog (and only the dialog). Reusing the enclosing `context`
+      // would pop the customer-detail page itself — `Navigator.of`
+      // walks up from page-context to the router's navigator, not the
+      // overlay's modal navigator.
+      builder: (dialogContext) => AlertDialog(
         title: Text(l10n.salesContactDeleteTitle),
         content: Text(l10n.salesContactDeleteBody),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.lg)),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
             child: Text(l10n.invoiceActionCancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
+              backgroundColor: Theme.of(dialogContext).colorScheme.error,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
             ),
-            onPressed: () => Navigator.of(context).pop(true),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
             child: Text(l10n.salesContactDeleteConfirm),
           ),
         ],
