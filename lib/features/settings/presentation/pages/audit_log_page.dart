@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../domain/entities/audit_log_entry.dart';
 import '../../domain/repositories/security_repositories.dart';
 import '../../domain/usecases/query_audit_log.dart';
 
 /// Slice 9.3.2 — read-only audit log with filter chips + search.
 class AuditLogPage extends StatefulWidget {
-  const AuditLogPage();
+  const AuditLogPage({super.key});
 
   @override
   State<AuditLogPage> createState() => _AuditLogPageState();
@@ -20,75 +24,147 @@ class _AuditLogPageState extends State<AuditLogPage> {
   @override
   Widget build(BuildContext context) {
     final repo = GetIt.I<AuditLogRepository>();
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Audit log')),
-      body: StreamBuilder<List<AuditLogEntry>>(
-        stream: repo.watchAll(),
-        builder: (context, snap) {
-          if (!snap.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final all = snap.data!;
-          final visible = queryAuditLog(
-            all,
-            actionFilter: _actionFilter,
-            searchQuery: _searchQuery,
-          );
-          return Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: TextField(
-                  onChanged: (q) => setState(() => _searchQuery = q),
-                  decoration: InputDecoration(
-                    hintText: 'Search actor, target, or detail…',
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    isDense: true,
-                  ),
+      extendBodyBehindAppBar: true,
+      appBar: const DynamicAppBar(
+        title: 'Audit Log',
+        centerTitle: true,
+      ),
+      body: DynamicStatusBar(
+        child: Stack(
+          children: [
+            // Background Canvas
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.12),
+                    theme.colorScheme.surface,
+                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.04),
+                  ],
                 ),
               ),
-              SizedBox(
-                height: 44,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  itemCount: AuditAction.values.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 6),
-                  itemBuilder: (_, idx) {
-                    final action = AuditAction.values[idx];
-                    return FilterChip(
-                      label: Text(action.name),
-                      selected: _actionFilter.contains(action),
-                      onSelected: (sel) => setState(() {
-                        if (sel) {
-                          _actionFilter.add(action);
-                        } else {
-                          _actionFilter.remove(action);
-                        }
-                      }),
-                    );
-                  },
-                ),
-              ),
-              if (visible.isEmpty)
-                const Expanded(
-                  child: Center(child: Text('No log entries match.')),
-                )
-              else
-                Expanded(
-                  child: ListView.separated(
-                    itemCount: visible.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
-                    itemBuilder: (_, idx) =>
-                        _LogEntryTile(entry: visible[idx]),
-                  ),
-                ),
-            ],
-          );
-        },
+            ),
+            StreamBuilder<List<AuditLogEntry>>(
+              stream: repo.watchAll(),
+              builder: (context, snap) {
+                if (!snap.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final all = snap.data!;
+                final visible = queryAuditLog(
+                  all,
+                  actionFilter: _actionFilter,
+                  searchQuery: _searchQuery,
+                );
+                return Column(
+                  children: [
+                    // Top spacing for Custom AppBar
+                    SizedBox(height: context.dynamicAppBarPadding),
+                    // Search Bar
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surface,
+                          borderRadius: BorderRadius.circular(AppRadii.md),
+                          border: Border.all(
+                            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.01),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: TextField(
+                          onChanged: (q) => setState(() => _searchQuery = q),
+                          decoration: InputDecoration(
+                            hintText: 'Search actor, target, or details…',
+                            prefixIcon: Icon(Icons.search, color: theme.colorScheme.primary),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                    ).animate().fadeIn().slideY(begin: -0.05, end: 0, duration: 300.ms),
+                    const SizedBox(height: 12),
+                    // Horizontal Filter Chips
+                    SizedBox(
+                      height: 48,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: AuditAction.values.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        itemBuilder: (_, idx) {
+                          final action = AuditAction.values[idx];
+                          final isSelected = _actionFilter.contains(action);
+                          return FilterChip(
+                            label: Text(
+                              action.name,
+                              style: TextStyle(
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                              ),
+                            ),
+                            selected: isSelected,
+                            selectedColor: theme.colorScheme.primaryContainer,
+                            checkmarkColor: theme.colorScheme.primary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppRadii.pill),
+                              side: BorderSide(
+                                color: isSelected
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
+                              ),
+                            ),
+                            onSelected: (sel) => setState(() {
+                              if (sel) {
+                                _actionFilter.add(action);
+                              } else {
+                                _actionFilter.remove(action);
+                              }
+                            }),
+                          );
+                        },
+                      ),
+                    ).animate().fadeIn(delay: 80.ms),
+                    const SizedBox(height: 8),
+                    // List view
+                    if (visible.isEmpty)
+                      const Expanded(
+                        child: Center(
+                          child: Text(
+                            'No log entries match your filters.',
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      )
+                    else
+                      Expanded(
+                        child: ListView.separated(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          itemCount: visible.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 10),
+                          itemBuilder: (_, idx) => _LogEntryTile(entry: visible[idx])
+                              .animate()
+                              .fadeIn(delay: (idx * 50).clamp(0, 400).ms)
+                              .slideY(begin: 0.05, end: 0, duration: 300.ms),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -100,29 +176,231 @@ class _LogEntryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: _actionColor(entry.action),
-        child: Icon(_actionIcon(entry.action), color: Colors.white),
-      ),
-      title: Text(
-        '${entry.actorName} ${_actionVerb(entry.action)} ${entry.targetLabel}',
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '${entry.targetType} • ${_fmt(entry.occurredAt)}',
-            style: Theme.of(context).textTheme.bodySmall,
+    final theme = Theme.of(context);
+
+    return InkWell(
+      onTap: () => _showDetailsSheet(context),
+      borderRadius: BorderRadius.circular(AppRadii.lg),
+      child: Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+          border: Border.all(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
           ),
-          if (entry.detail != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                entry.detail!,
-                style: const TextStyle(fontStyle: FontStyle.italic),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.015),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: _actionColor(entry.action).withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                _actionIcon(entry.action),
+                color: _actionColor(entry.action),
+                size: 20,
               ),
             ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  RichText(
+                    text: TextSpan(
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: entry.actorName,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        TextSpan(
+                          text: ' ${_actionVerb(entry.action)} ',
+                          style: TextStyle(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        TextSpan(
+                          text: entry.targetLabel,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(AppRadii.pill),
+                        ),
+                        child: Text(
+                          entry.targetType.toUpperCase(),
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _fmt(entry.occurredAt),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (entry.detail != null) ...[
+                    const SizedBox(height: 6),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(AppRadii.xs),
+                      ),
+                      child: Text(
+                        entry.detail!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontStyle: FontStyle.italic,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              Icons.chevron_right,
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+              size: 16,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDetailsSheet(BuildContext context) {
+    final theme = Theme.of(context);
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Audit Entry Details',
+              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            _metaRow(context, 'Actor ID', entry.actorId),
+            _metaRow(context, 'Actor Name', entry.actorName),
+            _metaRow(context, 'Action Verb', _actionVerb(entry.action).toUpperCase()),
+            _metaRow(context, 'Target Type', entry.targetType),
+            _metaRow(context, 'Target ID', entry.targetId),
+            _metaRow(context, 'Target Label', entry.targetLabel),
+            _metaRow(context, 'Timestamp', entry.occurredAt.toIso8601String()),
+            if (entry.detail != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Additional Metadata:',
+                style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                  border: Border.all(color: theme.colorScheme.outlineVariant),
+                ),
+                child: Text(
+                  entry.detail!,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => Navigator.pop(sheetCtx),
+                child: const Text('Close'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _metaRow(BuildContext context, String label, String value) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
         ],
       ),
     );

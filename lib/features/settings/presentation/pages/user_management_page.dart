@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../core/error/failure.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../domain/entities/managed_user.dart';
 import '../../domain/repositories/admin_repositories.dart';
 import '../../domain/usecases/manage_users.dart';
 
 /// Slice 9.2.1 — admin-only user management.
-///
-/// **RBAC** is enforced at the route layer (the catalog tile + route
-/// guard); this page assumes the caller already passed the `admin`
-/// permission gate.
 class UserManagementPage extends StatefulWidget {
-  const UserManagementPage({this.currentUserId = 'user-demo'});
+  const UserManagementPage({super.key, this.currentUserId = 'user-demo'});
   final String currentUserId;
 
   @override
@@ -25,60 +25,139 @@ class _UserManagementPageState extends State<UserManagementPage> {
   @override
   Widget build(BuildContext context) {
     final usersRepo = GetIt.I<ManagedUsersRepository>();
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('User management'),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(48),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-            child: Wrap(
-              spacing: 6,
+      extendBodyBehindAppBar: true,
+      appBar: const DynamicAppBar(
+        title: 'User Managements',
+        centerTitle: true,
+      ),
+      body: DynamicStatusBar(
+        child: Stack(
+          children: [
+            // Background Canvas
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.12),
+                    theme.colorScheme.surface,
+                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.04),
+                  ],
+                ),
+              ),
+            ),
+            Column(
               children: [
-                _filterChip('All', null),
-                _filterChip('Active', ManagedUserStatus.active),
-                _filterChip('Invited', ManagedUserStatus.invited),
-                _filterChip('Suspended', ManagedUserStatus.suspended),
+                SizedBox(height: context.dynamicAppBarPadding + 55),
+                // Custom Filter Row
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(AppRadii.lg),
+                      border: Border.all(
+                        color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _filterTab('All', null),
+                          _filterTab('Active', ManagedUserStatus.active),
+                          _filterTab('Invited', ManagedUserStatus.invited),
+                          _filterTab('Suspended', ManagedUserStatus.suspended),
+                        ],
+                      ),
+                    ),
+                  ),
+                ).animate().fadeIn().slideY(begin: -0.05, end: 0, duration: 300.ms),
+                const SizedBox(height: 12),
+                // Users List
+                Expanded(
+                  child: StreamBuilder<List<ManagedUser>>(
+                    stream: usersRepo.watchAll(),
+                    builder: (context, snap) {
+                      if (!snap.hasData) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      final users = snap.data!
+                          .where((u) => _filter == null || u.status == _filter)
+                          .toList();
+                      if (users.isEmpty) {
+                        return const Center(
+                          child: Text(
+                            'No users match the selected status.',
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                        );
+                      }
+                      return ListView.separated(
+                        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 80),
+                        itemCount: users.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (_, idx) => _UserRow(
+                          user: users[idx],
+                          currentUserId: widget.currentUserId,
+                        ).animate().fadeIn(delay: (idx * 60).clamp(0, 300).ms).slideY(
+                              begin: 0.04,
+                              end: 0,
+                              duration: 300.ms,
+                            ),
+                      );
+                    },
+                  ),
+                ),
               ],
             ),
-          ),
+          ],
         ),
-      ),
-      body: StreamBuilder<List<ManagedUser>>(
-        stream: usersRepo.watchAll(),
-        builder: (context, snap) {
-          if (!snap.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final users = snap.data!
-              .where((u) => _filter == null || u.status == _filter)
-              .toList();
-          if (users.isEmpty) {
-            return const Center(child: Text('No users match.'));
-          }
-          return ListView.separated(
-            itemCount: users.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (_, idx) => _UserRow(
-              user: users[idx],
-              currentUserId: widget.currentUserId,
-            ),
-          );
-        },
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showInviteSheet,
+        elevation: 4,
         icon: const Icon(Icons.person_add),
-        label: const Text('Invite'),
-      ),
+        label: const Text('Invite User', style: TextStyle(fontWeight: FontWeight.bold)),
+      ).animate().scale(delay: 200.ms, duration: 250.ms),
     );
   }
 
-  Widget _filterChip(String label, ManagedUserStatus? value) {
-    return ChoiceChip(
-      label: Text(label),
-      selected: _filter == value,
-      onSelected: (_) => setState(() => _filter = value),
+  Widget _filterTab(String label, ManagedUserStatus? value) {
+    final theme = Theme.of(context);
+    final isSelected = _filter == value;
+    return GestureDetector(
+      onTap: () => setState(() => _filter = value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? theme.colorScheme.surface : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : [],
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+            fontSize: 13,
+          ),
+        ),
+      ),
     );
   }
 
@@ -89,54 +168,84 @@ class _UserManagementPageState extends State<UserManagementPage> {
     String? errorMsg;
     final rolesRepo = GetIt.I<RolesRepository>();
     final allRoles = await rolesRepo.getAll();
+    final theme = Theme.of(context);
 
     if (!mounted) return;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (sheetCtx) => StatefulBuilder(
         builder: (sheetCtx, setSheet) => Padding(
           padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 16,
-            bottom: MediaQuery.of(sheetCtx).viewInsets.bottom + 16,
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(sheetCtx).viewInsets.bottom + 20,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
               Text(
-                'Invite a user',
-                style: Theme.of(sheetCtx).textTheme.titleLarge,
+                'Invite a new user',
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: emailCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: 'Email Address',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
+                  prefixIcon: const Icon(Icons.email_outlined),
                 ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: nameCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Name',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: 'Full Name',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
+                  prefixIcon: const Icon(Icons.person_outline),
                 ),
               ),
               const SizedBox(height: 16),
-              const Text('Roles',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
+              Text(
+                'Assign Roles',
+                style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 8),
               Wrap(
-                spacing: 6,
+                spacing: 8,
+                runSpacing: 8,
                 children: [
                   for (final r in allRoles)
                     FilterChip(
                       label: Text(r.name),
                       selected: selectedRoles.contains(r.id),
+                      checkmarkColor: theme.colorScheme.primary,
+                      selectedColor: theme.colorScheme.primaryContainer,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadii.pill),
+                        side: BorderSide(
+                          color: selectedRoles.contains(r.id)
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.outlineVariant,
+                        ),
+                      ),
                       onSelected: (sel) => setSheet(() {
                         if (sel) {
                           selectedRoles.add(r.id);
@@ -148,42 +257,55 @@ class _UserManagementPageState extends State<UserManagementPage> {
                 ],
               ),
               if (errorMsg != null) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 Container(
+                  width: double.infinity,
                   padding: const EdgeInsets.all(12),
-                  color: Colors.red.shade100,
-                  child: Text(errorMsg!,
-                      style: TextStyle(color: Colors.red.shade900)),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.errorContainer,
+                    borderRadius: BorderRadius.circular(AppRadii.md),
+                  ),
+                  child: Text(
+                    errorMsg!,
+                    style: TextStyle(
+                      color: theme.colorScheme.onErrorContainer,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ],
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: () async {
-                  try {
-                    final draft = inviteUser(
-                      email: emailCtrl.text,
-                      name: nameCtrl.text,
-                      roleIds: selectedRoles.toList(),
-                      now: DateTime.now(),
-                    );
-                    await GetIt.I<ManagedUsersRepository>().create(draft);
-                    if (sheetCtx.mounted) {
-                      Navigator.pop(sheetCtx);
-                    }
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                            content: Text(
-                                'Invited ${emailCtrl.text.trim()}')),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () async {
+                    try {
+                      final draft = inviteUser(
+                        email: emailCtrl.text,
+                        name: nameCtrl.text,
+                        roleIds: selectedRoles.toList(),
+                        now: DateTime.now(),
                       );
+                      await GetIt.I<ManagedUsersRepository>().create(draft);
+                      if (sheetCtx.mounted) {
+                        Navigator.pop(sheetCtx);
+                      }
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Invited ${emailCtrl.text.trim()}'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    } on ValidationFailure catch (f) {
+                      setSheet(() => errorMsg = f.fieldErrors.entries
+                          .map((e) => '${e.key}: ${e.value.join(', ')}')
+                          .join('\n'));
                     }
-                  } on ValidationFailure catch (f) {
-                    setSheet(() => errorMsg = f.fieldErrors.entries
-                        .map((e) => '${e.key}: ${e.value.join(', ')}')
-                        .join('\n'));
-                  }
-                },
-                child: const Text('Send invite'),
+                  },
+                  child: const Text('Send Invitation', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
               ),
             ],
           ),
@@ -201,32 +323,138 @@ class _UserRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isMe = user.id == currentUserId;
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: _statusColor(user.status),
-        child: Text(user.name.isEmpty ? '?' : user.name[0]),
-      ),
-      title: Row(
-        children: [
-          Expanded(child: Text(user.name)),
-          if (isMe)
-            const Padding(
-              padding: EdgeInsets.only(left: 4),
-              child: Chip(
-                label: Text('You'),
-                visualDensity: VisualDensity.compact,
-              ),
-            ),
+    final theme = Theme.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.015),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
         ],
       ),
-      subtitle: Text('${user.email} • ${user.roleIds.join(', ')}'),
-      trailing: PopupMenuButton<String>(
-        onSelected: (action) => _runAction(context, action),
-        itemBuilder: (_) => [
-          if (user.status != ManagedUserStatus.active)
-            const PopupMenuItem(value: 'activate', child: Text('Activate')),
-          if (user.status == ManagedUserStatus.active)
-            const PopupMenuItem(value: 'suspend', child: Text('Suspend')),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          // Styled Initials Avatar
+          CircleAvatar(
+            radius: 22,
+            backgroundColor: _avatarColor(user.status, theme),
+            child: Text(
+              user.name.isEmpty ? '?' : user.name[0].toUpperCase(),
+              style: TextStyle(
+                color: _textColor(user.status, theme),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        user.name.isEmpty ? 'New User' : user.name,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (isMe)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(AppRadii.pill),
+                        ),
+                        child: Text(
+                          'You',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            fontSize: 9,
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      )
+                    else
+                      _statusBadge(user.status, theme),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  user.email,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 4,
+                  children: [
+                    for (final role in user.roleIds)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(AppRadii.xs),
+                        ),
+                        child: Text(
+                          role.replaceAll('role-', '').toUpperCase(),
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          PopupMenuButton<String>(
+            icon: Icon(
+              Icons.more_vert,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            onSelected: (action) => _runAction(context, action),
+            itemBuilder: (_) => [
+              if (user.status != ManagedUserStatus.active)
+                const PopupMenuItem(
+                  value: 'activate',
+                  child: Row(
+                    children: [
+                      Icon(Icons.check_circle_outline, size: 18, color: Colors.green),
+                      SizedBox(width: 8),
+                      Text('Activate User'),
+                    ],
+                  ),
+                ),
+              if (user.status == ManagedUserStatus.active)
+                const PopupMenuItem(
+                  value: 'suspend',
+                  child: Row(
+                    children: [
+                      Icon(Icons.block_flipped, size: 18, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('Suspend User'),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ],
       ),
     );
@@ -246,26 +474,63 @@ class _UserRow extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Status set to ${next.status.name}.')),
+            content: Text('Status set to ${next.status.name}.'),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } on ConflictFailure catch (f) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(f.message ?? 'Cannot apply.')),
+          SnackBar(
+            content: Text(f.message ?? 'Cannot apply.'),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     }
   }
 
-  Color _statusColor(ManagedUserStatus s) {
+  Color _avatarColor(ManagedUserStatus s, ThemeData theme) {
     switch (s) {
       case ManagedUserStatus.active:
-        return Colors.green.shade100;
+        return Colors.green.withValues(alpha: 0.1);
       case ManagedUserStatus.invited:
-        return Colors.blue.shade100;
+        return Colors.blue.withValues(alpha: 0.1);
       case ManagedUserStatus.suspended:
-        return Colors.red.shade100;
+        return Colors.red.withValues(alpha: 0.1);
     }
+  }
+
+  Color _textColor(ManagedUserStatus s, ThemeData theme) {
+    switch (s) {
+      case ManagedUserStatus.active:
+        return Colors.green.shade700;
+      case ManagedUserStatus.invited:
+        return Colors.blue.shade700;
+      case ManagedUserStatus.suspended:
+        return Colors.red.shade700;
+    }
+  }
+
+  Widget _statusBadge(ManagedUserStatus s, ThemeData theme) {
+    final bg = _avatarColor(s, theme);
+    final text = _textColor(s, theme);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+      ),
+      child: Text(
+        s.name.toUpperCase(),
+        style: theme.textTheme.labelSmall?.copyWith(
+          fontSize: 9,
+          color: text,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
   }
 }

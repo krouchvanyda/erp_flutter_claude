@@ -26,8 +26,8 @@
   "adminDemoTitle": "ទំព័រសាកល្បងអ្នកគ្រប់គ្រង",
   "adminDemoBody": "អ្នកបានចូលដល់ផ្លូវសាកល្បងសម្រាប់អ្នកគ្រប់គ្រង — RBAC ដំណើរការ។",
   "dashboardAdminDemoLink": "[demo] បើកទំព័រអ្នកគ្រប់គ្រង",
-  "permissionGuardDemoGranted": "[demo] PermissionGuard: អនុញ្ញាតជាអ្នកគ្រប់គ្រង",
-  "permissionGuardDemoDenied": "[demo] PermissionGuard: មិនអនុញ្ញាតជាអ្នកគ្រប់គ្រង",
+  "permissionGuardDemoGranted": "[demo] អនុញ្ញាតជាអ្នកគ្រប់គ្រង",
+  "permissionGuardDemoDenied": "[demo] មិនអនុញ្ញាតជាអ្នកគ្រប់គ្រង",
 
   "shellHome": "ដើម",
   "shellModules": "ម៉ូឌុល",

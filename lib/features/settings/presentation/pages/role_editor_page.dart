@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../core/error/failure.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../domain/entities/managed_user.dart';
 import '../../domain/repositories/admin_repositories.dart';
 import '../../domain/usecases/manage_roles.dart';
 
 /// Slice 9.2.2 — role + permission scope editor.
-///
-/// **Why a static well-known scope list**: the permission token names
-/// are part of the API contract; surfacing them as a chip palette in
-/// the editor keeps admins from typing free-form scopes that would
-/// silently no-op when the backend evaluates them.
 const _knownScopes = <String>[
   'admin',
   'finance.*',
@@ -26,31 +25,71 @@ const _knownScopes = <String>[
 ];
 
 class RoleEditorPage extends StatelessWidget {
-  const RoleEditorPage();
+  const RoleEditorPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     final repo = GetIt.I<RolesRepository>();
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Roles & permissions')),
-      body: StreamBuilder<List<Role>>(
-        stream: repo.watchAll(),
-        builder: (context, snap) {
-          if (!snap.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final roles = snap.data!;
-          return ListView(
-            padding: const EdgeInsets.all(8),
-            children: [for (final r in roles) _RoleCard(role: r)],
-          );
-        },
+      extendBodyBehindAppBar: true,
+      appBar: const DynamicAppBar(
+        title: 'Roles & Permissions',
+        centerTitle: true,
+      ),
+      body: DynamicStatusBar(
+        child: Stack(
+          children: [
+            // Background Canvas
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.12),
+                    theme.colorScheme.surface,
+                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.04),
+                  ],
+                ),
+              ),
+            ),
+            StreamBuilder<List<Role>>(
+              stream: repo.watchAll(),
+              builder: (context, snap) {
+                if (!snap.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final roles = snap.data!;
+                return ListView.separated(
+                  padding: EdgeInsets.only(
+                    top: context.dynamicAppBarPadding,
+                    left: 16,
+                    right: 16,
+                    bottom: 100,
+                  ),
+                  itemCount: roles.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, idx) {
+                    final role = roles[idx];
+                    return _RoleCard(role: role)
+                        .animate()
+                        .fadeIn(delay: (idx * 80).clamp(0, 300).ms)
+                        .slideY(begin: 0.04, end: 0, duration: 300.ms);
+                  },
+                );
+              },
+            ),
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showCreateSheet(context),
+        elevation: 4,
         icon: const Icon(Icons.add),
-        label: const Text('New role'),
-      ),
+        label: const Text('New Role', style: TextStyle(fontWeight: FontWeight.bold)),
+      ).animate().scale(delay: 200.ms),
     );
   }
 
@@ -59,54 +98,81 @@ class RoleEditorPage extends StatelessWidget {
     final descCtrl = TextEditingController();
     Set<String> selectedScopes = {};
     String? errorMsg;
+    final theme = Theme.of(context);
 
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (sheetCtx) => StatefulBuilder(
         builder: (sheetCtx, setSheet) => Padding(
           padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 16,
-            bottom: MediaQuery.of(sheetCtx).viewInsets.bottom + 16,
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(sheetCtx).viewInsets.bottom + 20,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
               Text(
-                'Create a role',
-                style: Theme.of(sheetCtx).textTheme.titleLarge,
+                'Create Custom Role',
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: nameCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Name',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: 'Role Name (e.g. Finance Admin)',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
                 ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: descCtrl,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Description',
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
                 ),
               ),
               const SizedBox(height: 16),
-              const Text('Permission scopes',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
+              Text(
+                'Assign Permission Scopes',
+                style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 8),
               Wrap(
-                spacing: 6,
-                runSpacing: 6,
+                spacing: 8,
+                runSpacing: 8,
                 children: [
                   for (final scope in _knownScopes)
                     FilterChip(
                       label: Text(scope),
                       selected: selectedScopes.contains(scope),
+                      checkmarkColor: theme.colorScheme.primary,
+                      selectedColor: theme.colorScheme.primaryContainer,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadii.pill),
+                        side: BorderSide(
+                          color: selectedScopes.contains(scope)
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.outlineVariant,
+                        ),
+                      ),
                       onSelected: (sel) => setSheet(() {
                         if (sel) {
                           selectedScopes.add(scope);
@@ -118,32 +184,44 @@ class RoleEditorPage extends StatelessWidget {
                 ],
               ),
               if (errorMsg != null) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 Container(
+                  width: double.infinity,
                   padding: const EdgeInsets.all(12),
-                  color: Colors.red.shade100,
-                  child: Text(errorMsg!,
-                      style: TextStyle(color: Colors.red.shade900)),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.errorContainer,
+                    borderRadius: BorderRadius.circular(AppRadii.md),
+                  ),
+                  child: Text(
+                    errorMsg!,
+                    style: TextStyle(
+                      color: theme.colorScheme.onErrorContainer,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ],
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: () async {
-                  try {
-                    final draft = createRole(
-                      name: nameCtrl.text,
-                      description: descCtrl.text,
-                      permissionTokens: selectedScopes.toList(),
-                    );
-                    await GetIt.I<RolesRepository>().create(draft);
-                    if (sheetCtx.mounted) Navigator.pop(sheetCtx);
-                  } on ValidationFailure catch (f) {
-                    setSheet(() => errorMsg = f.fieldErrors.entries
-                        .map((e) => '${e.key}: ${e.value.join(', ')}')
-                        .join('\n'));
-                  }
-                },
-                child: const Text('Create'),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () async {
+                    try {
+                      final draft = createRole(
+                        name: nameCtrl.text,
+                        description: descCtrl.text,
+                        permissionTokens: selectedScopes.toList(),
+                      );
+                      await GetIt.I<RolesRepository>().create(draft);
+                      if (sheetCtx.mounted) Navigator.pop(sheetCtx);
+                    } on ValidationFailure catch (f) {
+                      setSheet(() => errorMsg = f.fieldErrors.entries
+                          .map((e) => '${e.key}: ${e.value.join(', ')}')
+                          .join('\n'));
+                    }
+                  },
+                  child: const Text('Create Role', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
               ),
             ],
           ),
@@ -153,106 +231,202 @@ class RoleEditorPage extends StatelessWidget {
   }
 }
 
-class _RoleCard extends StatelessWidget {
+class _RoleCard extends StatefulWidget {
   const _RoleCard({required this.role});
   final Role role;
 
   @override
+  State<_RoleCard> createState() => _RoleCardState();
+}
+
+class _RoleCardState extends State<_RoleCard> {
+  bool _isExpanded = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Card(
-      child: ExpansionTile(
-        leading: Icon(
-          role.isSystem ? Icons.lock_outline : Icons.shield_outlined,
+    final theme = Theme.of(context);
+    final isSys = widget.role.isSystem;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
         ),
-        title: Row(
-          children: [
-            Expanded(child: Text(role.name)),
-            if (role.isSystem)
-              const Chip(
-                label: Text('Built-in'),
-                visualDensity: VisualDensity.compact,
-              ),
-          ],
-        ),
-        subtitle: Text(role.description),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.015),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Scopes',
-                    style: TextStyle(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    for (final scope in _knownScopes)
-                      FilterChip(
-                        label: Text(scope),
-                        selected:
-                            role.permissionTokens.contains(scope),
-                        onSelected: role.isSystem
-                            ? null
-                            : (sel) async {
-                                final next =
-                                    Set<String>.of(role.permissionTokens);
-                                if (sel) {
-                                  next.add(scope);
-                                } else {
-                                  next.remove(scope);
-                                }
-                                try {
-                                  final updated = updateRolePermissions(
-                                    role: role,
-                                    permissionTokens: next.toList(),
-                                  );
-                                  await GetIt.I<RolesRepository>()
-                                      .update(updated);
-                                } on Failure catch (f) {
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context)
-                                        .showSnackBar(
-                                      SnackBar(
-                                          content:
-                                              Text('Cannot update: $f')),
-                                    );
-                                  }
-                                }
-                              },
-                      ),
-                  ],
-                ),
-                if (!role.isSystem) ...[
-                  const SizedBox(height: 12),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton.icon(
-                      style: TextButton.styleFrom(
-                          foregroundColor: Colors.red),
-                      icon: const Icon(Icons.delete_outline),
-                      label: const Text('Delete role'),
-                      onPressed: () => _confirmDelete(context),
+          InkWell(
+            onTap: () => setState(() => _isExpanded = !_isExpanded),
+            borderRadius: BorderRadius.vertical(
+              top: const Radius.circular(AppRadii.lg),
+              bottom: Radius.circular(_isExpanded ? 0 : AppRadii.lg),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: (isSys ? Colors.blueGrey : theme.colorScheme.primary)
+                          .withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isSys ? Icons.lock_outline : Icons.shield_outlined,
+                      color: isSys ? Colors.blueGrey : theme.colorScheme.primary,
+                      size: 20,
                     ),
                   ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              widget.role.name,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            if (isSys)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.surfaceContainerHighest,
+                                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                                ),
+                                child: Text(
+                                  'SYSTEM',
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          widget.role.description,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    _isExpanded ? Icons.expand_less : Icons.expand_more,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ],
-              ],
+              ),
             ),
           ),
+          if (_isExpanded) ...[
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'PERMISSION SCOPES',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final scope in _knownScopes)
+                        _PermissionChip(
+                          scope: scope,
+                          isEnabled: widget.role.permissionTokens.contains(scope),
+                          isSystem: isSys,
+                          onToggle: (selected) => _toggleScope(scope, selected),
+                        ),
+                    ],
+                  ),
+                  if (!isSys) ...[
+                    const SizedBox(height: 16),
+                    const Divider(height: 1),
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                        label: const Text('Delete Role', style: TextStyle(fontWeight: FontWeight.bold)),
+                        onPressed: () => _confirmDelete(context),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
+  Future<void> _toggleScope(String scope, bool selected) async {
+    final next = Set<String>.of(widget.role.permissionTokens);
+    if (selected) {
+      next.add(scope);
+    } else {
+      next.remove(scope);
+    }
+    try {
+      final updated = updateRolePermissions(
+        role: widget.role,
+        permissionTokens: next.toList(),
+      );
+      await GetIt.I<RolesRepository>().update(updated);
+    } on Failure catch (f) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Cannot update permissions: $f'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _confirmDelete(BuildContext context) async {
     final users = await GetIt.I<ManagedUsersRepository>().getAll();
     try {
-      ensureRoleIsDeletable(role: role, currentUsers: users);
+      ensureRoleIsDeletable(role: widget.role, currentUsers: users);
     } on ConflictFailure catch (f) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(f.message ?? 'Cannot delete.')),
+          SnackBar(
+            content: Text(f.message ?? 'Cannot delete.'),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
       return;
@@ -261,23 +435,81 @@ class _RoleCard extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        title: Text('Delete "${role.name}"?'),
-        content: const Text('This cannot be undone.'),
+        title: Text('Delete "${widget.role.name}"?'),
+        content: const Text('This action cannot be undone and will strip permissions from all assigned users.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.lg)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx, false),
             child: const Text('Cancel'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
             onPressed: () => Navigator.pop(dialogCtx, true),
-            child: const Text('Delete'),
+            child: const Text('Delete', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
     );
     if (confirmed == true) {
-      await GetIt.I<RolesRepository>().delete(role.id);
+      await GetIt.I<RolesRepository>().delete(widget.role.id);
     }
+  }
+}
+
+class _PermissionChip extends StatelessWidget {
+  const _PermissionChip({
+    required this.scope,
+    required this.isEnabled,
+    required this.isSystem,
+    required this.onToggle,
+  });
+
+  final String scope;
+  final bool isEnabled;
+  final bool isSystem;
+  final ValueChanged<bool> onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return InkWell(
+      onTap: isSystem ? null : () => onToggle(!isEnabled),
+      borderRadius: BorderRadius.circular(AppRadii.pill),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isEnabled
+              ? theme.colorScheme.primaryContainer
+              : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(AppRadii.pill),
+          border: Border.all(
+            color: isEnabled
+                ? theme.colorScheme.primary
+                : theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isEnabled ? Icons.check_circle : Icons.radio_button_off,
+              size: 14,
+              color: isEnabled ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              scope,
+              style: theme.textTheme.labelMedium?.copyWith(
+                fontWeight: isEnabled ? FontWeight.bold : FontWeight.w500,
+                color: isEnabled ? theme.colorScheme.onPrimaryContainer : theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

@@ -131,7 +131,7 @@ class _EmployeeListView extends StatelessWidget {
 
                 return Column(
                   children: [
-                    SizedBox(height: context.dynamicAppBarPadding),
+                    SizedBox(height: context.dynamicAppBarPadding - 10),
                     // Search & Filters Header Container
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

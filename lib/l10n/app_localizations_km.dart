@@ -88,12 +88,10 @@ class AppLocalizationsKm extends AppLocalizations {
   String get dashboardAdminDemoLink => '[demo] បើកទំព័រអ្នកគ្រប់គ្រង';
 
   @override
-  String get permissionGuardDemoGranted =>
-      '[demo] PermissionGuard: អនុញ្ញាតជាអ្នកគ្រប់គ្រង';
+  String get permissionGuardDemoGranted => '[demo] អនុញ្ញាតជាអ្នកគ្រប់គ្រង';
 
   @override
-  String get permissionGuardDemoDenied =>
-      '[demo] PermissionGuard: មិនអនុញ្ញាតជាអ្នកគ្រប់គ្រង';
+  String get permissionGuardDemoDenied => '[demo] មិនអនុញ្ញាតជាអ្នកគ្រប់គ្រង';
 
   @override
   String get shellHome => 'ដើម';

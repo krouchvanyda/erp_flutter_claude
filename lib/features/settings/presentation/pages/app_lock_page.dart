@@ -1,139 +1,382 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../core/error/failure.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../domain/entities/app_lock_settings.dart';
 import '../../domain/repositories/security_repositories.dart';
 import '../../domain/usecases/manage_app_lock.dart';
 
 /// Slice 9.3.3 — PIN + biometric re-auth on resume.
-///
-/// **Storage boundary** is enforced here: the PIN itself goes through
-/// [PinSecretStore] (memory-only stub today, `flutter_secure_storage`
-/// in prod). The PIN-enabled flag lives in [AppLockSettings] (drift in
-/// prod) so wiping drift never invalidates the secret on its own.
 class AppLockPage extends StatelessWidget {
-  const AppLockPage();
+  const AppLockPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     final settingsRepo = GetIt.I<AppLockSettingsRepository>();
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('App lock')),
-      body: StreamBuilder<AppLockSettings>(
-        stream: settingsRepo.watch(),
-        builder: (context, snap) {
-          if (!snap.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final settings = snap.data!;
-          return ListView(
-            children: [
-              SwitchListTile(
-                title: const Text('App PIN'),
-                subtitle:
-                    const Text('Require a 4–8 digit PIN on resume'),
-                value: settings.pinEnabled,
-                onChanged: (v) async {
-                  if (v) {
-                    final pin = await _promptForNewPin(context);
-                    if (pin == null) return;
-                    await GetIt.I<PinSecretStore>().setPin(pin);
-                    await settingsRepo.update(setPinEnabled(
-                        current: settings, enabled: true));
-                  } else {
-                    await GetIt.I<PinSecretStore>().clearPin();
-                    await settingsRepo.update(setPinEnabled(
-                        current: settings, enabled: false));
-                  }
-                },
-              ),
-              SwitchListTile(
-                title: const Text('Biometric unlock'),
-                subtitle: const Text(
-                    'Use Face ID / fingerprint instead of typing the PIN'),
-                value: settings.biometricEnabled,
-                onChanged: settings.pinEnabled
-                    ? (v) async {
-                        try {
-                          await settingsRepo.update(
-                            setBiometricEnabled(
-                                current: settings, enabled: v),
-                          );
-                        } on ConflictFailure catch (f) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text(
-                                      f.message ?? 'Cannot enable.')),
-                            );
-                          }
-                        }
-                      }
-                    : null,
-              ),
-              const Divider(),
-              ListTile(
-                title: const Text('Auto-lock after'),
-                subtitle: Text(
-                  settings.autoLockMinutes == 0
-                      ? 'Lock immediately on resume'
-                      : '${settings.autoLockMinutes} min after backgrounding',
-                ),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: settings.pinEnabled
-                    ? () => _pickAutoLock(context, settings)
-                    : null,
-              ),
-              if (settings.pinEnabled)
-                ListTile(
-                  leading: const Icon(Icons.password),
-                  title: const Text('Change PIN'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () async {
-                    final pin = await _promptForNewPin(context);
-                    if (pin == null) return;
-                    await GetIt.I<PinSecretStore>().setPin(pin);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('PIN updated.')),
-                      );
-                    }
-                  },
-                ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(
-                  'PIN is stored in flutter_secure_storage (the OS-backed keystore). Wiping app data clears the PIN.',
-                  style: Theme.of(context).textTheme.bodySmall,
+      extendBodyBehindAppBar: true,
+      appBar: const DynamicAppBar(
+        title: 'App Lock Settings',
+        centerTitle: true,
+      ),
+      body: DynamicStatusBar(
+        child: Stack(
+          children: [
+            // Background Canvas
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.12),
+                    theme.colorScheme.surface,
+                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.04),
+                  ],
                 ),
               ),
-            ],
-          );
-        },
+            ),
+            StreamBuilder<AppLockSettings>(
+              stream: settingsRepo.watch(),
+              builder: (context, snap) {
+                if (!snap.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final settings = snap.data!;
+
+                return ListView(
+                  padding: EdgeInsets.only(
+                    top: context.dynamicAppBarPadding,
+                    left: 16,
+                    right: 16,
+                    bottom: 40,
+                  ),
+                  children: [
+                    // Security Shield Header Status Panel
+                    _SecurityHeader(isActive: settings.pinEnabled)
+                        .animate()
+                        .fadeIn(duration: 400.ms)
+                        .scale(begin: const Offset(0.96, 0.96), end: const Offset(1, 1)),
+                    const SizedBox(height: 24),
+                    Text(
+                      'DEVICE PROTECTION',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // Switches Card Container
+                    Container(
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(AppRadii.lg),
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.015),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          SwitchListTile(
+                            secondary: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(Icons.password, color: theme.colorScheme.primary, size: 20),
+                            ),
+                            title: const Text('App Lock PIN', style: TextStyle(fontWeight: FontWeight.bold)),
+                            subtitle: const Text('Require a secure 4–8 digit PIN on resume'),
+                            value: settings.pinEnabled,
+                            onChanged: (v) async {
+                              if (v) {
+                                final pin = await _promptForNewPin(context);
+                                if (pin == null) return;
+                                await GetIt.I<PinSecretStore>().setPin(pin);
+                                await settingsRepo.update(
+                                  setPinEnabled(current: settings, enabled: true),
+                                );
+                              } else {
+                                await GetIt.I<PinSecretStore>().clearPin();
+                                await settingsRepo.update(
+                                  setPinEnabled(current: settings, enabled: false),
+                                );
+                              }
+                            },
+                          ),
+                          const Divider(height: 1, indent: 64),
+                          SwitchListTile(
+                            secondary: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: (settings.pinEnabled
+                                        ? theme.colorScheme.primary
+                                        : Colors.grey)
+                                    .withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.fingerprint,
+                                color: settings.pinEnabled ? theme.colorScheme.primary : Colors.grey,
+                                size: 20,
+                              ),
+                            ),
+                            title: const Text('Biometric Authentication', style: TextStyle(fontWeight: FontWeight.bold)),
+                            subtitle: const Text('Use Face ID / Fingerprint instead of entering PIN'),
+                            value: settings.biometricEnabled,
+                            onChanged: settings.pinEnabled
+                                ? (v) async {
+                                    try {
+                                      await settingsRepo.update(
+                                        setBiometricEnabled(current: settings, enabled: v),
+                                      );
+                                    } on ConflictFailure catch (f) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text(f.message ?? 'Cannot enable.'),
+                                            behavior: SnackBarBehavior.floating,
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  }
+                                : null,
+                          ),
+                        ],
+                      ),
+                    ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.04, end: 0),
+                    const SizedBox(height: 24),
+                    Text(
+                      'TIMEOUT CONFIGURATION',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // Action List Tiles
+                    Container(
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(AppRadii.lg),
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.015),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          ListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: (settings.pinEnabled
+                                        ? theme.colorScheme.primary
+                                        : Colors.grey)
+                                    .withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.timer_outlined,
+                                color: settings.pinEnabled ? theme.colorScheme.primary : Colors.grey,
+                                size: 20,
+                              ),
+                            ),
+                            title: Text(
+                              'Auto-lock Duration',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: settings.pinEnabled
+                                    ? theme.colorScheme.onSurface
+                                    : theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                              ),
+                            ),
+                            subtitle: Text(
+                              settings.pinEnabled
+                                  ? (settings.autoLockMinutes == 0
+                                      ? 'Lock immediately on backgrounding'
+                                      : '${settings.autoLockMinutes} minutes after backgrounding')
+                                  : 'Requires App Lock PIN to be enabled',
+                              style: TextStyle(
+                                color: settings.pinEnabled
+                                    ? theme.colorScheme.onSurfaceVariant
+                                    : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                              ),
+                            ),
+                            trailing: Icon(
+                              Icons.chevron_right,
+                              color: settings.pinEnabled ? theme.colorScheme.primary : Colors.grey,
+                            ),
+                            onTap: settings.pinEnabled ? () => _pickAutoLock(context, settings) : null,
+                          ),
+                          if (settings.pinEnabled) ...[
+                            const Divider(height: 1, indent: 64),
+                            ListTile(
+                              leading: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(Icons.lock_reset, color: theme.colorScheme.primary, size: 20),
+                              ),
+                              title: const Text('Change Lock PIN', style: TextStyle(fontWeight: FontWeight.bold)),
+                              subtitle: const Text('Replace existing security entry code'),
+                              trailing: Icon(Icons.chevron_right, color: theme.colorScheme.primary),
+                              onTap: () async {
+                                final pin = await _promptForNewPin(context);
+                                if (pin == null) return;
+                                await GetIt.I<PinSecretStore>().setPin(pin);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('PIN updated successfully.'),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+                          ],
+                        ],
+                      ),
+                    ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.04, end: 0),
+                    const SizedBox(height: 24),
+                    // Footnote Info Card
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(AppRadii.lg),
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_outline, color: theme.colorScheme.onSurfaceVariant, size: 20),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Text(
+                              'Your PIN and biometric metrics are secure. Keys are strictly kept inside the hardware OS-backed Keystore / Keychain. Uninstalling or wiping application storage resets lock settings.',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                                height: 1.3,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ).animate().fadeIn(delay: 280.ms),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Future<void> _pickAutoLock(
-      BuildContext context, AppLockSettings settings) async {
+  Future<void> _pickAutoLock(BuildContext context, AppLockSettings settings) async {
     final repo = GetIt.I<AppLockSettingsRepository>();
-    final value = await showDialog<int>(
+    final theme = Theme.of(context);
+
+    final value = await showModalBottomSheet<int>(
       context: context,
-      builder: (dialogCtx) => SimpleDialog(
-        title: const Text('Auto-lock after'),
-        children: [
-          for (final minutes in [0, 1, 5, 15, 30, 60])
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(dialogCtx, minutes),
-              child: Text(minutes == 0
-                  ? 'Immediately'
-                  : '$minutes minute${minutes == 1 ? '' : 's'}'),
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.5),
+      builder: (bottomSheetCtx) {
+        return Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 20,
+                offset: const Offset(0, -5),
+              ),
+            ],
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 12),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Auto-lock Duration',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Select the inactivity grace period before the app locks',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Divider(),
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    children: [
+                      for (final minutes in [0, 1, 5, 15, 30, 60]) ...[
+                        _AutoLockOption(
+                          minutes: minutes,
+                          isSelected: settings.autoLockMinutes == minutes,
+                          onTap: () => Navigator.pop(bottomSheetCtx, minutes),
+                        ),
+                        if (minutes != 60) const SizedBox(height: 8),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
             ),
-        ],
-      ),
+          ),
+        );
+      },
     );
+
     if (value == null) return;
     try {
       await repo.update(
@@ -142,7 +385,10 @@ class AppLockPage extends StatelessWidget {
     } on ValidationFailure catch (f) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${f.fieldErrors}')),
+          SnackBar(
+            content: Text('${f.fieldErrors}'),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     }
@@ -152,11 +398,14 @@ class AppLockPage extends StatelessWidget {
     final pinCtrl = TextEditingController();
     final confirmCtrl = TextEditingController();
     String? errorMsg;
+    final theme = Theme.of(context);
+
     return showDialog<String>(
       context: context,
       builder: (dialogCtx) => StatefulBuilder(
         builder: (dialogCtx, setDialog) => AlertDialog(
-          title: const Text('Set a PIN'),
+          title: const Text('Set Secure PIN', style: TextStyle(fontWeight: FontWeight.bold)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.lg)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -168,8 +417,10 @@ class AppLockPage extends StatelessWidget {
                   FilteringTextInputFormatter.digitsOnly,
                   LengthLimitingTextInputFormatter(8),
                 ],
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'PIN (4–8 digits)',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
+                  prefixIcon: const Icon(Icons.lock_outline),
                 ),
               ),
               const SizedBox(height: 12),
@@ -181,14 +432,30 @@ class AppLockPage extends StatelessWidget {
                   FilteringTextInputFormatter.digitsOnly,
                   LengthLimitingTextInputFormatter(8),
                 ],
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Confirm PIN',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
+                  prefixIcon: const Icon(Icons.lock_outline),
                 ),
               ),
               if (errorMsg != null) ...[
                 const SizedBox(height: 12),
-                Text(errorMsg!,
-                    style: const TextStyle(color: Colors.red)),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.errorContainer,
+                    borderRadius: BorderRadius.circular(AppRadii.sm),
+                  ),
+                  child: Text(
+                    errorMsg!,
+                    style: TextStyle(
+                      color: theme.colorScheme.onErrorContainer,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
               ],
             ],
           ),
@@ -207,13 +474,160 @@ class AppLockPage extends StatelessWidget {
                   );
                   Navigator.pop(dialogCtx, pinCtrl.text);
                 } on ValidationFailure catch (f) {
-                  setDialog(() => errorMsg = f.fieldErrors.values
-                      .expand((e) => e)
-                      .join(', '));
+                  setDialog(() => errorMsg = f.fieldErrors.values.expand((e) => e).join(', '));
                 }
               },
-              child: const Text('Save'),
+              child: const Text('Save PIN', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SecurityHeader extends StatelessWidget {
+  const _SecurityHeader({required this.isActive});
+  final bool isActive;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.xl),
+        border: Border.all(
+          color: (isActive ? Colors.green : theme.colorScheme.primary).withValues(alpha: 0.3),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Shield Graphic Node
+          Center(
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: (isActive ? Colors.green : theme.colorScheme.primary).withValues(alpha: 0.1),
+                  ),
+                ),
+                Icon(
+                  isActive ? Icons.verified_user : Icons.gpp_maybe,
+                  color: isActive ? Colors.green : theme.colorScheme.primary,
+                  size: 38,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            isActive ? 'App Protection Enabled' : 'App Protection Disabled',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            isActive
+                ? 'Your device settings mandate a security checkpoint upon resume.'
+                : 'Configure a security PIN below to safeguard your ERP environment data.',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AutoLockOption extends StatelessWidget {
+  const _AutoLockOption({
+    required this.minutes,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final int minutes;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final String title = minutes == 0 ? 'Immediately' : '$minutes minute${minutes == 1 ? '' : 's'}';
+    final String subtitle = minutes == 0
+        ? 'Lock the app the instant it goes to background'
+        : 'Lock the app after $minutes minute${minutes == 1 ? '' : 's'} in background';
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? theme.colorScheme.primary.withValues(alpha: 0.08)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? theme.colorScheme.primary
+                : theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              minutes == 0 ? Icons.bolt_rounded : Icons.timer_outlined,
+              color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+              size: 22,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected)
+              Icon(
+                Icons.check_circle_rounded,
+                color: theme.colorScheme.primary,
+                size: 22,
+              ),
           ],
         ),
       ),

@@ -1,21 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../core/error/failure.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../domain/entities/device_session.dart';
 import '../../domain/repositories/security_repositories.dart';
 import '../../domain/usecases/manage_sessions.dart';
 
 /// Slice 9.3.1 — active devices list with revoke actions.
 class SessionsPage extends StatelessWidget {
-  const SessionsPage();
+  const SessionsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     final repo = GetIt.I<DeviceSessionsRepository>();
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Active devices'),
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: 'Active devices',
+        centerTitle: true,
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
@@ -25,7 +33,9 @@ class SessionsPage extends StatelessWidget {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                        content: Text('Other devices signed out.')),
+                      content: Text('Other devices signed out.'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
                   );
                 }
               }
@@ -33,28 +43,63 @@ class SessionsPage extends StatelessWidget {
             itemBuilder: (_) => const [
               PopupMenuItem(
                 value: 'revoke-others',
-                child: Text('Sign out of all other devices'),
+                child: Row(
+                  children: [
+                    Icon(Icons.logout, size: 18),
+                    SizedBox(width: 8),
+                    Text('Sign out all other devices'),
+                  ],
+                ),
               ),
             ],
           ),
         ],
       ),
-      body: StreamBuilder<List<DeviceSession>>(
-        stream: repo.watchAll(),
-        builder: (context, snap) {
-          if (!snap.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final sessions = snap.data!;
-          if (sessions.isEmpty) {
-            return const Center(child: Text('No active sessions.'));
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.all(8),
-            itemCount: sessions.length,
-            itemBuilder: (_, idx) => _SessionCard(session: sessions[idx]),
-          );
-        },
+      body: DynamicStatusBar(
+        child: Stack(
+          children: [
+            // Background Canvas
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.12),
+                    theme.colorScheme.surface,
+                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.04),
+                  ],
+                ),
+              ),
+            ),
+            StreamBuilder<List<DeviceSession>>(
+              stream: repo.watchAll(),
+              builder: (context, snap) {
+                if (!snap.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final sessions = snap.data!;
+                if (sessions.isEmpty) {
+                  return const Center(child: Text('No active sessions.'));
+                }
+                return ListView.separated(
+                  padding: EdgeInsets.only(
+                    top: context.dynamicAppBarPadding,
+                    left: 16,
+                    right: 16,
+                    bottom: 40,
+                  ),
+                  itemCount: sessions.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (_, idx) => _SessionCard(session: sessions[idx])
+                      .animate()
+                      .fadeIn(delay: (idx * 100).ms)
+                      .slideY(begin: 0.05, end: 0, duration: 350.ms),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -66,72 +111,118 @@ class _SessionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  _platformIcon(session.platform),
-                  color: session.isCurrent ? Colors.green : Colors.grey,
-                  size: 32,
+    final theme = Theme.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(
+          color: session.isCurrent
+              ? theme.colorScheme.primary.withValues(alpha: 0.5)
+              : theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+          width: session.isCurrent ? 2 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.015),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: (session.isCurrent ? theme.colorScheme.primary : Colors.grey)
+                      .withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              session.deviceLabel,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w600),
+                child: Icon(
+                  _platformIcon(session.platform),
+                  color: session.isCurrent ? theme.colorScheme.primary : Colors.grey,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            session.deviceLabel,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                          if (session.isCurrent)
-                            const Chip(
-                              label: Text('This device'),
-                              backgroundColor: Colors.greenAccent,
-                              visualDensity: VisualDensity.compact,
+                        ),
+                        if (session.isCurrent)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(AppRadii.pill),
                             ),
-                        ],
+                            child: Text(
+                              'This device',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      session.platform,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
-                      Text(
-                        session.platform,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const Divider(height: 24),
-            _kv('Last active',
-                _fmt(session.lastActiveAt, withTime: true)),
-            _kv('Signed in', _fmt(session.signedInAt)),
-            _kv('Location', session.location),
-            if (session.ipAddress != null)
-              _kv('IP', session.ipAddress!),
-            if (!session.isCurrent) ...[
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  style: TextButton.styleFrom(foregroundColor: Colors.red),
-                  icon: const Icon(Icons.logout),
-                  label: const Text('Revoke'),
-                  onPressed: () => _revoke(context),
+                    ),
+                  ],
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 16),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
+          _kv(context, 'Last active', _fmt(session.lastActiveAt, withTime: true)),
+          _kv(context, 'Signed in', _fmt(session.signedInAt)),
+          _kv(context, 'Location', session.location),
+          if (session.ipAddress != null)
+            _kv(context, 'IP Address', session.ipAddress!),
+          if (!session.isCurrent) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: theme.colorScheme.errorContainer,
+                  foregroundColor: theme.colorScheme.onErrorContainer,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadii.md),
+                  ),
+                ),
+                icon: const Icon(Icons.logout, size: 16),
+                label: const Text('Revoke Access', style: TextStyle(fontWeight: FontWeight.bold)),
+                onPressed: () => _revoke(context),
+              ),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -142,31 +233,53 @@ class _SessionCard extends StatelessWidget {
       await GetIt.I<DeviceSessionsRepository>().revoke(session.id);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${session.deviceLabel} signed out.')),
+          SnackBar(
+            content: Text('${session.deviceLabel} signed out.'),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } on ConflictFailure catch (f) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(f.message ?? 'Cannot revoke.')),
+          SnackBar(
+            content: Text(f.message ?? 'Cannot revoke.'),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     }
   }
 
-  Widget _kv(String label, String value) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 96,
-              child: Text(label,
-                  style: const TextStyle(fontWeight: FontWeight.w500)),
+  Widget _kv(BuildContext context, String label, String value) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            Expanded(child: Text(value)),
-          ],
-        ),
-      );
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   IconData _platformIcon(String platform) {
     final p = platform.toLowerCase();
