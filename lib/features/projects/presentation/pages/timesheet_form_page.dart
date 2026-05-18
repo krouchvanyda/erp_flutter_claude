@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../core/error/failure.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../domain/entities/project.dart';
 import '../../domain/repositories/projects_repository.dart';
 import '../../domain/repositories/timesheets_repository.dart';
@@ -10,6 +14,7 @@ import '../../domain/usecases/submit_timesheet.dart';
 /// Slice 8.2.1 — daily timesheet entry form.
 class TimesheetFormPage extends StatefulWidget {
   const TimesheetFormPage({
+    super.key,
     this.employeeId = 'emp-001',
     this.employeeName = 'Demo Approver',
   });
@@ -96,116 +101,208 @@ class _TimesheetFormPageState extends State<TimesheetFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Log Time')),
-      body: FutureBuilder<List<Project>>(
-        future: _projectsFuture,
-        builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final projects = snap.data ?? const <Project>[];
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              DropdownButtonFormField<Project>(
-                initialValue: _project,
-                decoration: InputDecoration(
-                  labelText: 'Project',
-                  border: const OutlineInputBorder(),
-                  errorText: _errFor('projectId'),
+      extendBodyBehindAppBar: true,
+      appBar: const DynamicAppBar(
+        title: 'Log Time',
+        centerTitle: true,
+      ),
+      body: DynamicStatusBar(
+        child: Stack(
+          children: [
+            // Background Gradient
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.15),
+                    theme.colorScheme.surface,
+                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.05),
+                  ],
                 ),
-                items: projects
-                    .map((p) => DropdownMenuItem(
-                          value: p,
-                          child: Text('${p.code} — ${p.name}'),
-                        ))
-                    .toList(),
-                onChanged: (p) => setState(() => _project = p),
               ),
-              const SizedBox(height: 16),
-              InputDecorator(
-                decoration: InputDecoration(
-                  labelText: 'Date',
-                  border: const OutlineInputBorder(),
-                  errorText: _errFor('date'),
-                ),
-                child: InkWell(
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: _date ?? DateTime.now(),
-                      firstDate: DateTime.now()
-                          .subtract(const Duration(days: 90)),
-                      lastDate: DateTime.now(),
-                    );
-                    if (picked != null) setState(() => _date = picked);
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
-                      _date == null
-                          ? 'Select date'
-                          : _date!.toIso8601String().split('T').first,
-                    ),
+            ),
+            FutureBuilder<List<Project>>(
+              future: _projectsFuture,
+              builder: (context, snap) {
+                if (snap.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final projects = snap.data ?? const <Project>[];
+                return ListView(
+                  padding: EdgeInsets.only(
+                    top: context.dynamicAppBarPadding + 16,
+                    left: 16,
+                    right: 16,
+                    bottom: 40,
                   ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _hoursCtrl,
-                keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true),
-                decoration: InputDecoration(
-                  labelText: 'Hours (decimal)',
-                  helperText: '0.25 = 15 min',
-                  border: const OutlineInputBorder(),
-                  errorText: _errFor('hours'),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _descCtrl,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  labelText: 'What did you work on?',
-                  border: const OutlineInputBorder(),
-                  errorText: _errFor('description'),
-                ),
-              ),
-              const SizedBox(height: 16),
-              SwitchListTile(
-                title: const Text('Submit for approval immediately'),
-                subtitle: const Text(
-                    'Otherwise it lands as a draft you can edit.'),
-                value: _submitImmediately,
-                onChanged: (v) => setState(() => _submitImmediately = v),
-              ),
-              if (_topError != null) ...[
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  color: Colors.red.shade100,
-                  child: Text(
-                    _topError!,
-                    style: TextStyle(color: Colors.red.shade900),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 24),
-              FilledButton(
-                onPressed: _isSubmitting ? null : _submit,
-                child: _isSubmitting
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Save'),
-              ),
-            ],
-          );
-        },
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(AppRadii.lg),
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.02),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          DropdownButtonFormField<Project>(
+                            initialValue: _project,
+                            decoration: InputDecoration(
+                              labelText: 'Project',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(AppRadii.md),
+                              ),
+                              errorText: _errFor('projectId'),
+                              prefixIcon: const Icon(Icons.folder_open_rounded),
+                            ),
+                            items: projects
+                                .map((p) => DropdownMenuItem(
+                                      value: p,
+                                      child: Text('${p.code} — ${p.name}'),
+                                    ))
+                                .toList(),
+                            onChanged: (p) => setState(() => _project = p),
+                          ),
+                          const SizedBox(height: 16),
+                          InputDecorator(
+                            decoration: InputDecoration(
+                              labelText: 'Date',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(AppRadii.md),
+                              ),
+                              errorText: _errFor('date'),
+                              prefixIcon: const Icon(Icons.calendar_today_rounded),
+                            ),
+                            child: InkWell(
+                              onTap: () async {
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: _date ?? DateTime.now(),
+                                  firstDate: DateTime.now()
+                                      .subtract(const Duration(days: 90)),
+                                  lastDate: DateTime.now(),
+                                );
+                                if (picked != null) setState(() => _date = picked);
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                child: Text(
+                                  _date == null
+                                      ? 'Select Date'
+                                      : _date!.toIso8601String().split('T').first,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: _hoursCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            decoration: InputDecoration(
+                              labelText: 'Hours (decimal)',
+                              helperText: 'e.g., 0.25 = 15 min, 8.0 = full day',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(AppRadii.md),
+                              ),
+                              errorText: _errFor('hours'),
+                              prefixIcon: const Icon(Icons.timer_outlined),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: _descCtrl,
+                            maxLines: 3,
+                            decoration: InputDecoration(
+                              labelText: 'What did you work on?',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(AppRadii.md),
+                              ),
+                              errorText: _errFor('description'),
+                              prefixIcon: const Icon(Icons.edit_note_rounded),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(
+                              'Submit for approval immediately',
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            subtitle: Text(
+                              'Otherwise it lands as a draft you can edit later.',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            value: _submitImmediately,
+                            onChanged: (v) => setState(() => _submitImmediately = v),
+                          ),
+                          if (_topError != null) ...[
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.errorContainer,
+                                borderRadius: BorderRadius.circular(AppRadii.md),
+                              ),
+                              child: Text(
+                                _topError!,
+                                style: TextStyle(color: theme.colorScheme.onErrorContainer),
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 24),
+                          SizedBox(
+                            height: 48,
+                            child: FilledButton(
+                              style: FilledButton.styleFrom(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(AppRadii.md),
+                                ),
+                              ),
+                              onPressed: _isSubmitting ? null : _submit,
+                              child: _isSubmitting
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                    )
+                                  : const Text(
+                                      'Save Timesheet',
+                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ).animate().fadeIn().slideY(begin: 0.05, end: 0, duration: 300.ms),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

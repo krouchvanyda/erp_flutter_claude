@@ -1,18 +1,18 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../domain/entities/timesheet_entry.dart';
 import '../../domain/repositories/timesheets_repository.dart';
 import '../../domain/usecases/compute_utilization.dart';
 
 /// Slice 8.2.3 — utilization report.
-///
-/// Bar chart of approved hours per employee against the weekday-based
-/// target for the selected window. Window toggles between "this week"
-/// and "this month" without leaving the page.
 class UtilizationPage extends StatefulWidget {
-  const UtilizationPage();
+  const UtilizationPage({super.key});
 
   @override
   State<UtilizationPage> createState() => _UtilizationPageState();
@@ -41,80 +41,164 @@ class _UtilizationPageState extends State<UtilizationPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Utilization')),
-      body: StreamBuilder<List<TimesheetEntry>>(
-        stream: GetIt.I<TimesheetsRepository>().watchAll(),
-        builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final entries = snap.data ?? const <TimesheetEntry>[];
-          final r = _range(DateTime.now());
-          final buckets = computeUtilization(
-            entries: entries,
-            from: r.from,
-            to: r.to,
-          );
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              SegmentedButton<_Window>(
-                segments: const [
-                  ButtonSegment(
-                      value: _Window.week, label: Text('This week')),
-                  ButtonSegment(
-                      value: _Window.month, label: Text('This month')),
-                ],
-                selected: {_window},
-                onSelectionChanged: (s) =>
-                    setState(() => _window = s.first),
-              ),
-              const SizedBox(height: 16),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Approved hours vs target',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${r.from.toIso8601String().split('T').first} → '
-                        '${r.to.toIso8601String().split('T').first}',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      const SizedBox(height: 16),
-                      if (buckets.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.all(24),
-                          child: Center(
-                            child: Text('No approved hours in this window.'),
-                          ),
-                        )
-                      else
-                        SizedBox(
-                          height: 240,
-                          child: _UtilizationBarChart(buckets: buckets),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Card(
-                child: Column(
-                  children: [
-                    for (final b in buckets) _LeaderRow(bucket: b),
+      extendBodyBehindAppBar: true,
+      appBar: const DynamicAppBar(
+        title: 'Utilization',
+        centerTitle: true,
+      ),
+      body: DynamicStatusBar(
+        child: Stack(
+          children: [
+            // Background Gradient
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.15),
+                    theme.colorScheme.surface,
+                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.05),
                   ],
                 ),
               ),
-            ],
-          );
-        },
+            ),
+            StreamBuilder<List<TimesheetEntry>>(
+              stream: GetIt.I<TimesheetsRepository>().watchAll(),
+              builder: (context, snap) {
+                if (snap.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final entries = snap.data ?? const <TimesheetEntry>[];
+                final r = _range(DateTime.now());
+                final buckets = computeUtilization(
+                  entries: entries,
+                  from: r.from,
+                  to: r.to,
+                );
+                return ListView(
+                  padding: EdgeInsets.only(
+                    top: context.dynamicAppBarPadding + 16,
+                    left: 16,
+                    right: 16,
+                    bottom: 40,
+                  ),
+                  children: [
+                    SegmentedButton<_Window>(
+                      style: const ButtonStyle(
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      segments: const [
+                        ButtonSegment(
+                          value: _Window.week,
+                          label: Text('This week'),
+                        ),
+                        ButtonSegment(
+                          value: _Window.month,
+                          label: Text('This month'),
+                        ),
+                      ],
+                      selected: {_window},
+                      onSelectionChanged: (s) =>
+                          setState(() => _window = s.first),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(AppRadii.lg),
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.02),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'APPROVED HOURS VS TARGET',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${r.from.toIso8601String().split('T').first}  →  '
+                            '${r.to.toIso8601String().split('T').first}',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.outline,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          if (buckets.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 40),
+                              child: Center(
+                                child: Text(
+                                  'No approved hours in this window.',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: theme.colorScheme.outline,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            )
+                          else
+                            SizedBox(
+                              height: 220,
+                              child: _UtilizationBarChart(buckets: buckets),
+                            ),
+                        ],
+                      ),
+                    ).animate().fadeIn().slideY(begin: 0.05, end: 0, duration: 300.ms),
+                    const SizedBox(height: 20),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(AppRadii.lg),
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.02),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          for (var i = 0; i < buckets.length; i++) ...[
+                            _LeaderRow(bucket: buckets[i])
+                                .animate()
+                                .fadeIn(delay: (i * 50).ms)
+                                .slideY(begin: 0.05, end: 0, duration: 250.ms),
+                            if (i < buckets.length - 1)
+                              const Divider(height: 1, thickness: 0.5),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -126,6 +210,7 @@ class _UtilizationBarChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final maxY = buckets.fold<double>(
       0,
       (m, b) => b.loggedHours > m ? b.loggedHours : m,
@@ -137,14 +222,25 @@ class _UtilizationBarChart extends StatelessWidget {
       BarChartData(
         maxY: yMax,
         alignment: BarChartAlignment.spaceAround,
-        gridData: const FlGridData(show: true, drawVerticalLine: false),
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          getDrawingHorizontalLine: (value) {
+            return FlLine(
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.2),
+              strokeWidth: 1,
+            );
+          },
+        ),
         borderData: FlBorderData(show: false),
         titlesData: FlTitlesData(
           show: true,
           rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false)),
+            sideTitles: SideTitles(showTitles: false),
+          ),
           topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false)),
+            sideTitles: SideTitles(showTitles: false),
+          ),
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
@@ -152,7 +248,11 @@ class _UtilizationBarChart extends StatelessWidget {
               interval: yMax / 4,
               getTitlesWidget: (v, _) => Text(
                 v.toInt().toString(),
-                style: const TextStyle(fontSize: 10),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.outline,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 10,
+                ),
               ),
             ),
           ),
@@ -168,10 +268,14 @@ class _UtilizationBarChart extends StatelessWidget {
                 final name = buckets[idx].employeeName;
                 final short = name.split(' ').first;
                 return Padding(
-                  padding: const EdgeInsets.only(top: 4),
+                  padding: const EdgeInsets.only(top: 8),
                   child: Text(
                     short,
-                    style: const TextStyle(fontSize: 10),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10,
+                    ),
                   ),
                 );
               },
@@ -185,9 +289,12 @@ class _UtilizationBarChart extends StatelessWidget {
               barRods: [
                 BarChartRodData(
                   toY: buckets[i].loggedHours,
-                  width: 18,
+                  width: 16,
                   color: _utilizationColor(buckets[i].utilizationPct),
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(4),
+                    topRight: Radius.circular(4),
+                  ),
                 ),
               ],
             ),
@@ -197,10 +304,10 @@ class _UtilizationBarChart extends StatelessWidget {
   }
 
   Color _utilizationColor(double pct) {
-    if (pct >= 100) return Colors.green.shade600;
-    if (pct >= 75) return Colors.blue.shade500;
-    if (pct >= 50) return Colors.amber.shade600;
-    return Colors.red.shade400;
+    if (pct >= 100) return Colors.green;
+    if (pct >= 75) return Colors.blue;
+    if (pct >= 50) return Colors.amber.shade700;
+    return Colors.red;
   }
 }
 
@@ -210,9 +317,12 @@ class _LeaderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final pct = bucket.utilizationPct.clamp(0.0, 200.0);
+    final indicatorColor = _indicatorColor(pct);
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -221,27 +331,55 @@ class _LeaderRow extends StatelessWidget {
               Expanded(
                 child: Text(
                   bucket.employeeName,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               Text(
-                '${bucket.loggedHours.toStringAsFixed(1)}h '
-                '/ ${bucket.targetHours.toStringAsFixed(0)}h '
-                '(${pct.toStringAsFixed(0)}%)',
+                '${bucket.loggedHours.toStringAsFixed(1)}h / ${bucket.targetHours.toStringAsFixed(0)}h',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: indicatorColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '${pct.toStringAsFixed(0)}%',
+                  style: TextStyle(
+                    color: indicatorColor,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(AppRadii.pill),
             child: LinearProgressIndicator(
               value: (pct / 100).clamp(0.0, 1.0),
               minHeight: 6,
-              backgroundColor: Colors.grey.shade200,
+              backgroundColor: theme.colorScheme.outlineVariant.withValues(alpha: 0.2),
+              color: indicatorColor,
             ),
           ),
         ],
       ),
     );
+  }
+
+  Color _indicatorColor(double pct) {
+    if (pct >= 100) return Colors.green;
+    if (pct >= 75) return Colors.blue;
+    if (pct >= 50) return Colors.amber.shade700;
+    return Colors.red;
   }
 }
