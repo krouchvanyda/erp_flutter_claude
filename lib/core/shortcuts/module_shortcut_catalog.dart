@@ -37,8 +37,9 @@ abstract final class ModuleShortcutCatalog {
       id: 'procurement',
       icon: Icons.shopping_cart_outlined,
       labelOf: _procurementLabel,
-      routeName: RoutePaths.comingSoonName,
-      pathParameters: {RoutePaths.comingSoonLabelParam: 'procurement'},
+      // Module 4 — flipped from `coming-soon` to the real PR list now
+      // that all 8 procurement screens have shipped (Slices 4.1.1–4.3.3).
+      routeName: RoutePaths.purchaseRequestListName,
       requiredPermission: Permission(token: 'procurement.*'),
     ),
     ModuleShortcut(
