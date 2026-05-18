@@ -1,9 +1,14 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/route_paths.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/sales_quotation.dart';
 import '../../domain/repositories/quotations_repository.dart';
@@ -36,9 +41,12 @@ class _QuotationListPageState extends State<QuotationListPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.salesQuotationListTitle),
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: l10n.salesQuotationListTitle,
+        centerTitle: true,
         actions: [
           IconButton(
             tooltip: l10n.salesQuotationNewTooltip,
@@ -51,91 +59,165 @@ class _QuotationListPageState extends State<QuotationListPage> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextField(
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search),
-                    hintText: l10n.salesQuotationSearchHint,
-                    border: const OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                  onChanged: (q) => setState(() => _search = q),
+      body: DynamicStatusBar(
+        child: Stack(
+          children: [
+            // Background Canvas Gradient
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.12),
+                    theme.colorScheme.surface,
+                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.04),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            for (final s in QuotationStatus.values) ...[
-                              FilterChip(
-                                label: Text(quotationStatusLabel(l10n, s)),
-                                selected: _statusFilter.contains(s),
-                                onSelected: (_) => setState(() {
-                                  if (!_statusFilter.remove(s)) {
-                                    _statusFilter.add(s);
-                                  }
-                                }),
-                              ),
-                              const SizedBox(width: 8),
-                            ],
+              ),
+            ),
+            Column(
+              children: [
+                SizedBox(height: context.dynamicAppBarPadding),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surface,
+                          borderRadius: BorderRadius.circular(AppRadii.lg),
+                          border: Border.all(
+                            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.015),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
                           ],
                         ),
+                        child: TextField(
+                          decoration: InputDecoration(
+                            prefixIcon: Icon(Icons.search, color: theme.colorScheme.primary),
+                            hintText: l10n.salesQuotationSearchHint,
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          ),
+                          onChanged: (q) => setState(() => _search = q),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    PopupMenuButton<QuotationSort>(
-                      tooltip: l10n.salesQuotationSortTooltip,
-                      icon: const Icon(Icons.sort),
-                      initialValue: _sort,
-                      onSelected: (s) => setState(() => _sort = s),
-                      itemBuilder: (_) => [
-                        for (final s in QuotationSort.values)
-                          PopupMenuItem(
-                              value: s, child: Text(_sortLabel(l10n, s))),
-                      ],
-                    ),
-                  ],
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              physics: const BouncingScrollPhysics(),
+                              child: Row(
+                                children: [
+                                  for (final s in QuotationStatus.values) ...[
+                                    FilterChip(
+                                      label: Text(quotationStatusLabel(l10n, s)),
+                                      selected: _statusFilter.contains(s),
+                                      onSelected: (_) => setState(() {
+                                        if (!_statusFilter.remove(s)) {
+                                          _statusFilter.add(s);
+                                        }
+                                      }),
+                                      selectedColor: theme.colorScheme.primary.withValues(alpha: 0.15),
+                                      checkmarkColor: theme.colorScheme.primary,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(AppRadii.md),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surface,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+                              ),
+                            ),
+                            child: PopupMenuButton<QuotationSort>(
+                              tooltip: l10n.salesQuotationSortTooltip,
+                              icon: const Icon(Icons.sort),
+                              initialValue: _sort,
+                              onSelected: (s) => setState(() => _sort = s),
+                              itemBuilder: (_) => [
+                                for (final s in QuotationSort.values)
+                                  PopupMenuItem(
+                                      value: s, child: Text(_sortLabel(l10n, s))),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.02, end: 0),
+                Expanded(
+                  child: FutureBuilder<List<SalesQuotation>>(
+                    future: _future,
+                    builder: (context, snap) {
+                      if (snap.connectionState != ConnectionState.done) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      final all = snap.data ?? const <SalesQuotation>[];
+                      final visible = applyQuotationQuery(
+                        all,
+                        statusFilter: _statusFilter,
+                        searchQuery: _search,
+                        sort: _sort,
+                      );
+                      if (visible.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(Icons.request_quote_outlined, size: 48, color: theme.colorScheme.primary),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                l10n.salesQuotationListEmpty,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                      return ListView.builder(
+                        padding: const EdgeInsets.only(bottom: 40),
+                        physics: const BouncingScrollPhysics(),
+                        itemCount: visible.length,
+                        itemBuilder: (_, i) =>
+                            _QuotationTile(quotation: visible[i]),
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
-          ),
-          Expanded(
-            child: FutureBuilder<List<SalesQuotation>>(
-              future: _future,
-              builder: (context, snap) {
-                if (snap.connectionState != ConnectionState.done) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final all = snap.data ?? const <SalesQuotation>[];
-                final visible = applyQuotationQuery(
-                  all,
-                  statusFilter: _statusFilter,
-                  searchQuery: _search,
-                  sort: _sort,
-                );
-                if (visible.isEmpty) {
-                  return Center(
-                      child: Text(l10n.salesQuotationListEmpty));
-                }
-                return ListView.separated(
-                  itemCount: visible.length,
-                  separatorBuilder: (_, __) => const Divider(height: 0),
-                  itemBuilder: (_, i) =>
-                      _QuotationTile(quotation: visible[i]),
-                );
-              },
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -160,61 +242,89 @@ class _QuotationTile extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final color = quotationStatusColor(theme, quotation.status);
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: color.withValues(alpha: 0.15),
-        foregroundColor: color,
-        child: const Icon(Icons.request_quote_outlined),
-      ),
-      title: Row(
-        children: [
-          Text(
-            quotation.number,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+          border: Border.all(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              quotation.customerName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.015),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          leading: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.request_quote_outlined, color: color, size: 24),
+          ),
+          title: Row(
+            children: [
+              Text(
+                quotation.number,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
               ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  quotation.customerName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 4.0),
+            child: Text(
+              '${_date.format(quotation.createdAt.toLocal())} • '
+              '${l10n.salesQuotationValidUntilLabel(_date.format(quotation.validUntil.toLocal()))}',
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
           ),
-        ],
-      ),
-      subtitle: Text(
-        '${_date.format(quotation.createdAt.toLocal())} · '
-        '${l10n.salesQuotationValidUntilLabel(_date.format(quotation.validUntil.toLocal()))}',
-        style: theme.textTheme.labelSmall,
-      ),
-      trailing: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            quotation.totalAmount,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
+          trailing: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                quotation.totalAmount,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.primary,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+              const SizedBox(height: 4),
+              QuotationStatusBadge(status: quotation.status),
+            ],
           ),
-          const SizedBox(height: 2),
-          QuotationStatusBadge(status: quotation.status),
-        ],
+          onTap: () => context.goNamed(
+            RoutePaths.salesQuotationDetailName,
+            pathParameters: {
+              RoutePaths.salesQuotationDetailIdParam: quotation.id,
+            },
+          ),
+        ),
       ),
-      onTap: () => context.goNamed(
-        RoutePaths.salesQuotationDetailName,
-        pathParameters: {
-          RoutePaths.salesQuotationDetailIdParam: quotation.id,
-        },
-      ),
-    );
+    ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.02, end: 0);
   }
 }
 
@@ -227,14 +337,14 @@ class QuotationStatusBadge extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final color = quotationStatusColor(theme, status);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(AppRadii.sm),
       ),
       child: Text(
         quotationStatusLabel(l10n, status),
-        style: theme.textTheme.labelSmall?.copyWith(color: color),
+        style: theme.textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.bold),
       ),
     );
   }

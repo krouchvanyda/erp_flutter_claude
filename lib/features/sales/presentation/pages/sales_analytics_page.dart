@@ -1,8 +1,13 @@
+import 'dart:ui';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/activity_event.dart';
 import '../../domain/entities/sales_order.dart';
@@ -15,11 +20,6 @@ import '../../domain/usecases/sales_rep_leaderboard.dart';
 import '../../domain/usecases/top_rankings.dart';
 
 /// Sales analytics page (Slices 6.3.1 + 6.3.2 + 6.3.3).
-///
-/// Three stacked sections:
-///   1. Revenue chart — `fl_chart` bar chart with a weekly/monthly toggle.
-///   2. Top customers + top products — side-by-side cards.
-///   3. Sales rep leaderboard.
 class SalesAnalyticsPage extends StatefulWidget {
   const SalesAnalyticsPage({super.key});
 
@@ -52,30 +52,61 @@ class _SalesAnalyticsPageState extends State<SalesAnalyticsPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.salesAnalyticsTitle)),
-      body: FutureBuilder<_Bundle>(
-        future: _future,
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final b = snap.data!;
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              _RevenueChartCard(
-                orders: b.orders,
-                period: _period,
-                onPeriodChanged: (p) => setState(() => _period = p),
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: l10n.salesAnalyticsTitle,
+        centerTitle: true,
+      ),
+      body: DynamicStatusBar(
+        child: Stack(
+          children: [
+            // Background Canvas Gradient
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.12),
+                    theme.colorScheme.surface,
+                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.04),
+                  ],
+                ),
               ),
-              const SizedBox(height: 12),
-              _TopRankingsRow(orders: b.orders),
-              const SizedBox(height: 12),
-              _LeaderboardCard(activities: b.orderActivities, reps: b.reps),
-            ],
-          );
-        },
+            ),
+            FutureBuilder<_Bundle>(
+              future: _future,
+              builder: (context, snap) {
+                if (snap.connectionState != ConnectionState.done) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final b = snap.data!;
+                return ListView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: EdgeInsets.only(
+                    top: context.dynamicAppBarPadding + 12,
+                    left: 16,
+                    right: 16,
+                    bottom: 40,
+                  ),
+                  children: [
+                    _RevenueChartCard(
+                      orders: b.orders,
+                      period: _period,
+                      onPeriodChanged: (p) => setState(() => _period = p),
+                    ).animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.98, 0.98), end: const Offset(1, 1)),
+                    const SizedBox(height: 16),
+                    _TopRankingsRow(orders: b.orders).animate().fadeIn(delay: 150.ms),
+                    const SizedBox(height: 16),
+                    _LeaderboardCard(activities: b.orderActivities, reps: b.reps).animate().fadeIn(delay: 300.ms),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -110,8 +141,6 @@ class _RevenueChartCard extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
 
-    // Range: last 6 buckets ending in the *next* boundary so the
-    // current week/month is included.
     final now = DateTime.now().toUtc();
     final (from, to) = _rangeFor(now, period);
     final buckets = revenueByPeriod(
@@ -125,7 +154,21 @@ class _RevenueChartCard extends StatelessWidget {
       (m, b) => b.amount > m ? b.amount : m,
     );
 
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.015),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -134,31 +177,47 @@ class _RevenueChartCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(l10n.salesAnalyticsRevenueHeading,
-                      style: theme.textTheme.titleMedium),
+                  child: Row(
+                    children: [
+                      Icon(Icons.bar_chart_outlined, color: theme.colorScheme.primary, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        l10n.salesAnalyticsRevenueHeading,
+                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
                 ),
                 SegmentedButton<RevenuePeriod>(
                   segments: [
                     ButtonSegment(
                       value: RevenuePeriod.weekly,
-                      label: Text(l10n.salesAnalyticsPeriodWeekly),
+                      label: Text(l10n.salesAnalyticsPeriodWeekly, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                     ),
                     ButtonSegment(
                       value: RevenuePeriod.monthly,
-                      label: Text(l10n.salesAnalyticsPeriodMonthly),
+                      label: Text(l10n.salesAnalyticsPeriodMonthly, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                     ),
                   ],
                   selected: {period},
                   onSelectionChanged: (s) => onPeriodChanged(s.first),
+                  style: SegmentedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             if (buckets.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24),
-                child: Text(l10n.salesAnalyticsRevenueEmpty,
-                    style: theme.textTheme.bodySmall),
+                child: Center(
+                  child: Text(
+                    l10n.salesAnalyticsRevenueEmpty,
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ),
               )
             else
               SizedBox(
@@ -167,8 +226,25 @@ class _RevenueChartCard extends StatelessWidget {
                   BarChartData(
                     alignment: BarChartAlignment.spaceAround,
                     maxY: (maxRevenue == 0 ? 1 : maxRevenue * 1.1).toDouble(),
-                    barTouchData: BarTouchData(enabled: false),
-                    gridData: const FlGridData(show: true),
+                    barTouchData: BarTouchData(
+                      touchTooltipData: BarTouchTooltipData(
+                        getTooltipColor: (_) => theme.colorScheme.inverseSurface,
+                        getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                          return BarTooltipItem(
+                            buckets[groupIndex].amount.toStringAsFixed(2),
+                            TextStyle(color: theme.colorScheme.onInverseSurface, fontWeight: FontWeight.bold),
+                          );
+                        },
+                      ),
+                    ),
+                    gridData: FlGridData(
+                      show: true,
+                      drawVerticalLine: false,
+                      getDrawingHorizontalLine: (value) => FlLine(
+                        color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                        strokeWidth: 1,
+                      ),
+                    ),
                     borderData: FlBorderData(show: false),
                     titlesData: FlTitlesData(
                       rightTitles: const AxisTitles(
@@ -185,10 +261,13 @@ class _RevenueChartCard extends StatelessWidget {
                               return const SizedBox.shrink();
                             }
                             return Padding(
-                              padding: const EdgeInsets.only(top: 4),
+                              padding: const EdgeInsets.only(top: 6),
                               child: Text(
                                 _xLabel(buckets[idx].start, period),
-                                style: theme.textTheme.labelSmall,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             );
                           },
@@ -199,10 +278,13 @@ class _RevenueChartCard extends StatelessWidget {
                           showTitles: true,
                           reservedSize: 48,
                           getTitlesWidget: (v, meta) => Padding(
-                            padding: const EdgeInsets.only(right: 4),
+                            padding: const EdgeInsets.only(right: 6),
                             child: Text(
                               _compactCurrency(v),
-                              style: theme.textTheme.labelSmall,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
@@ -215,10 +297,17 @@ class _RevenueChartCard extends StatelessWidget {
                           barRods: [
                             BarChartRodData(
                               toY: buckets[i].amount.toDouble(),
-                              color: theme.colorScheme.primary,
+                              gradient: LinearGradient(
+                                colors: [
+                                  theme.colorScheme.primary,
+                                  theme.colorScheme.primary.withValues(alpha: 0.7),
+                                ],
+                                begin: Alignment.bottomCenter,
+                                end: Alignment.topCenter,
+                              ),
                               width: 16,
                               borderRadius:
-                                  BorderRadius.circular(4),
+                                  BorderRadius.circular(AppRadii.sm),
                             ),
                           ],
                         ),
@@ -235,7 +324,6 @@ class _RevenueChartCard extends StatelessWidget {
   static (DateTime, DateTime) _rangeFor(DateTime now, RevenuePeriod p) {
     switch (p) {
       case RevenuePeriod.weekly:
-        // 6 weeks ending on the current week's Monday + 7 days.
         final daysFromMonday = (now.weekday - DateTime.monday) % 7;
         final thisMonday = DateTime.utc(now.year, now.month, now.day)
             .subtract(Duration(days: daysFromMonday));
@@ -243,9 +331,7 @@ class _RevenueChartCard extends StatelessWidget {
         final to = thisMonday.add(const Duration(days: 7));
         return (from, to);
       case RevenuePeriod.monthly:
-        // 6 months ending the 1st of next month.
         final thisMonthStart = DateTime.utc(now.year, now.month, 1);
-        // Walk back 5 months.
         var cursor = thisMonthStart;
         for (var i = 0; i < 5; i++) {
           final m = cursor.month == 1 ? 12 : cursor.month - 1;
@@ -310,7 +396,7 @@ class _TopRankingsRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(child: cards[0]),
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
             Expanded(child: cards[1]),
           ],
         );
@@ -318,7 +404,7 @@ class _TopRankingsRow extends StatelessWidget {
       return Column(
         children: [
           cards[0],
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           cards[1],
         ],
       );
@@ -342,7 +428,21 @@ class _RankingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.015),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -350,45 +450,62 @@ class _RankingCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Row(
               children: [
-                Icon(icon, color: theme.colorScheme.primary),
+                Icon(icon, color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
-                Text(title, style: theme.textTheme.titleMedium),
+                Text(
+                  title,
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                ),
               ],
             ),
           ),
+          const Divider(height: 1),
           if (entries.isEmpty)
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text(emptyMessage, style: theme.textTheme.bodySmall),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+              child: Center(
+                child: Text(
+                  emptyMessage,
+                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
+              ),
             )
           else
-            for (var i = 0; i < entries.length; i++)
-              ListTile(
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: entries.length,
+              separatorBuilder: (_, __) => const Divider(height: 1, indent: 56),
+              itemBuilder: (_, i) => ListTile(
                 dense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
                 leading: CircleAvatar(
                   radius: 14,
-                  backgroundColor: theme.colorScheme.primary
-                      .withValues(alpha: 0.15),
+                  backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
                   foregroundColor: theme.colorScheme.primary,
                   child: Text('${i + 1}',
-                      style: theme.textTheme.labelSmall),
+                      style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold)),
                 ),
                 title: Text(
                   entries[i].label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
                 ),
-                subtitle: Text('${entries[i].units}',
-                    style: theme.textTheme.labelSmall),
+                subtitle: Text(
+                  '${entries[i].units} units',
+                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
                 trailing: Text(
                   entries[i].amount,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
                     fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
               ),
+            ),
           const SizedBox(height: 8),
         ],
       ),
@@ -409,7 +526,21 @@ class _LeaderboardCard extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final ranked = salesRepLeaderboard(activities, reps: reps);
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.015),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -417,23 +548,34 @@ class _LeaderboardCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Row(
               children: [
-                Icon(Icons.emoji_events_outlined,
-                    color: theme.colorScheme.primary),
+                Icon(Icons.emoji_events_outlined, color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
-                Text(l10n.salesAnalyticsLeaderboardHeading,
-                    style: theme.textTheme.titleMedium),
+                Text(
+                  l10n.salesAnalyticsLeaderboardHeading,
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                ),
               ],
             ),
           ),
+          const Divider(height: 1),
           if (ranked.isEmpty)
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text(l10n.salesAnalyticsLeaderboardEmpty,
-                  style: theme.textTheme.bodySmall),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+              child: Center(
+                child: Text(
+                  l10n.salesAnalyticsLeaderboardEmpty,
+                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
+              ),
             )
           else
-            for (final entry in ranked) _LeaderboardRow(entry: entry),
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: ranked.length,
+              separatorBuilder: (_, __) => const Divider(height: 1, indent: 64),
+              itemBuilder: (_, index) => _LeaderboardRow(entry: ranked[index]),
+            ),
           const SizedBox(height: 8),
         ],
       ),
@@ -455,56 +597,68 @@ class _LeaderboardRow extends StatelessWidget {
             ? theme.colorScheme.primary
             : theme.colorScheme.error;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           CircleAvatar(
             radius: 18,
-            backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.15),
+            backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
             foregroundColor: theme.colorScheme.primary,
-            child: Text('${entry.rank}',
-                style: theme.textTheme.titleSmall),
+            child: Text(
+              '${entry.rank}',
+              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+            ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(entry.rep.name, style: theme.textTheme.titleSmall),
+                Text(
+                  entry.rep.name,
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 2),
                 Text(
                   l10n.salesAnalyticsLeaderboardDealsLabel(
                     entry.dealsClosed.toString(),
                   ),
-                  style: theme.textTheme.labelSmall,
+                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(AppRadii.sm),
                   child: LinearProgressIndicator(
                     value: (entry.attainmentPct / 100).clamp(0.0, 1.5),
                     backgroundColor:
-                        theme.colorScheme.surfaceContainerHighest,
+                        theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
                     valueColor: AlwaysStoppedAnimation(attainmentColor),
                     minHeight: 6,
                   ),
                 ),
-                if (entry.rep.targetAmount.isNotEmpty)
+                if (entry.rep.targetAmount.isNotEmpty) ...[
+                  const SizedBox(height: 4),
                   Text(
                     l10n.salesAnalyticsLeaderboardAttainmentLabel(
                       entry.attainmentPct.toStringAsFixed(0),
                       entry.rep.targetAmount,
                     ),
-                    style: theme.textTheme.labelSmall,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: attainmentColor,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
+                ],
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Text(
             entry.formattedRevenue,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.primary,
               fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),

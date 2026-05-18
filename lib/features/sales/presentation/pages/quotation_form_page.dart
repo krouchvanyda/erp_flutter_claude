@@ -1,8 +1,13 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/validators/validators.dart';
 import '../../domain/entities/customer.dart';
@@ -66,6 +71,18 @@ class _QuotationFormPageState extends State<QuotationFormPage> {
       initialDate: _validUntil,
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            dialogTheme: DialogThemeData(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadii.lg),
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
     if (picked != null) setState(() => _validUntil = picked);
   }
@@ -77,7 +94,10 @@ class _QuotationFormPageState extends State<QuotationFormPage> {
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(
-            SnackBar(content: Text(l10n.salesQuotationPickCustomer)));
+            SnackBar(
+              content: Text(l10n.salesQuotationPickCustomer),
+              behavior: SnackBarBehavior.floating,
+            ));
       return;
     }
     if (!(_formKey.currentState?.validate() ?? false)) return;
@@ -116,13 +136,18 @@ class _QuotationFormPageState extends State<QuotationFormPage> {
       if (!mounted) return;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(l10n.salesQuotationSavedSnack)));
+        ..showSnackBar(SnackBar(
+          content: Text(l10n.salesQuotationSavedSnack),
+          behavior: SnackBarBehavior.floating,
+        ));
       if (context.canPop()) context.pop();
     } catch (e) {
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(
-            content: Text(l10n.salesQuotationSaveFailed(e.toString()))));
+          content: Text(l10n.salesQuotationSaveFailed(e.toString())),
+          behavior: SnackBarBehavior.floating,
+        ));
     }
   }
 
@@ -140,83 +165,158 @@ class _QuotationFormPageState extends State<QuotationFormPage> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.salesQuotationNewTitle)),
-      body: FutureBuilder<List<Customer>>(
-        future: _customersFuture,
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final customers = snap.data ?? const <Customer>[];
-          return Form(
-            key: _formKey,
-            autovalidateMode: AutovalidateMode.onUserInteraction,
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                DropdownButtonFormField<Customer>(
-                  initialValue: _customer,
-                  decoration: InputDecoration(
-                    labelText: l10n.salesQuotationCustomerLabel,
-                    border: const OutlineInputBorder(),
-                  ),
-                  items: [
-                    for (final c in customers)
-                      DropdownMenuItem(value: c, child: Text(c.name)),
-                  ],
-                  onChanged: (c) => setState(() => _customer = c),
-                ),
-                const SizedBox(height: 12),
-                InkWell(
-                  onTap: _pickValidUntil,
-                  child: InputDecorator(
-                    decoration: InputDecoration(
-                      labelText: l10n.salesQuotationValidUntilField,
-                      border: const OutlineInputBorder(),
-                      suffixIcon: const Icon(Icons.calendar_today_outlined),
-                    ),
-                    child: Text(
-                      '${_validUntil.year.toString().padLeft(4, '0')}-'
-                      '${_validUntil.month.toString().padLeft(2, '0')}-'
-                      '${_validUntil.day.toString().padLeft(2, '0')}',
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(l10n.salesQuotationLinesHeading,
-                          style: theme.textTheme.titleSmall),
-                    ),
-                    TextButton.icon(
-                      onPressed: _addLine,
-                      icon: const Icon(Icons.add),
-                      label: Text(l10n.salesQuotationAddLineAction),
-                    ),
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: l10n.salesQuotationNewTitle,
+        centerTitle: true,
+      ),
+      body: DynamicStatusBar(
+        child: Stack(
+          children: [
+            // Background Canvas Gradient
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.12),
+                    theme.colorScheme.surface,
+                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.04),
                   ],
                 ),
-                for (var i = 0; i < _lines.length; i++) ...[
-                  _LineEditor(
-                    key: ValueKey(_lines[i]),
-                    draft: _lines[i],
-                    index: i,
-                    resolve: (c) => _resolve(l10n, c),
-                    onRemove:
-                        _lines.length == 1 ? null : () => _removeLine(i),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                const SizedBox(height: 12),
-                FilledButton.icon(
-                  onPressed: _submit,
-                  icon: const Icon(Icons.save_outlined),
-                  label: Text(l10n.salesQuotationSaveAction),
-                ),
-              ],
+              ),
             ),
-          );
-        },
+            FutureBuilder<List<Customer>>(
+              future: _customersFuture,
+              builder: (context, snap) {
+                if (snap.connectionState != ConnectionState.done) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final customers = snap.data ?? const <Customer>[];
+                return Form(
+                  key: _formKey,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  child: ListView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: EdgeInsets.only(
+                      top: context.dynamicAppBarPadding + 12,
+                      left: 16,
+                      right: 16,
+                      bottom: 40,
+                    ),
+                    children: [
+                      // Header Form Card
+                      Container(
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surface,
+                          borderRadius: BorderRadius.circular(AppRadii.lg),
+                          border: Border.all(
+                            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.015),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              DropdownButtonFormField<Customer>(
+                                initialValue: _customer,
+                                decoration: InputDecoration(
+                                  labelText: l10n.salesQuotationCustomerLabel,
+                                  prefixIcon: Icon(Icons.business_outlined, color: theme.colorScheme.primary),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                ),
+                                items: [
+                                  for (final c in customers)
+                                    DropdownMenuItem(value: c, child: Text(c.name)),
+                                ],
+                                onChanged: (c) => setState(() => _customer = c),
+                              ),
+                              const SizedBox(height: 16),
+                              InkWell(
+                                onTap: _pickValidUntil,
+                                borderRadius: BorderRadius.circular(AppRadii.md),
+                                child: InputDecorator(
+                                  decoration: InputDecoration(
+                                    labelText: l10n.salesQuotationValidUntilField,
+                                    prefixIcon: Icon(Icons.calendar_today_outlined, color: theme.colorScheme.primary),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  ),
+                                  child: Text(
+                                    '${_validUntil.year.toString().padLeft(4, '0')}-'
+                                    '${_validUntil.month.toString().padLeft(2, '0')}-'
+                                    '${_validUntil.day.toString().padLeft(2, '0')}',
+                                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ).animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.98, 0.98), end: const Offset(1, 1)),
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          Icon(Icons.format_list_bulleted_outlined, color: theme.colorScheme.primary, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              l10n.salesQuotationLinesHeading,
+                              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          TextButton.icon(
+                            onPressed: _addLine,
+                            icon: const Icon(Icons.add_circle_outline, size: 18),
+                            label: Text(
+                              l10n.salesQuotationAddLineAction,
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      for (var i = 0; i < _lines.length; i++) ...[
+                        _LineEditor(
+                          key: ValueKey(_lines[i]),
+                          draft: _lines[i],
+                          index: i,
+                          resolve: (c) => _resolve(l10n, c),
+                          onRemove:
+                              _lines.length == 1 ? null : () => _removeLine(i),
+                        ).animate().fadeIn(delay: 50.ms).slideY(begin: 0.02, end: 0),
+                        const SizedBox(height: 12),
+                      ],
+                      const SizedBox(height: 16),
+                      FilledButton.icon(
+                        onPressed: _submit,
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
+                        ),
+                        icon: const Icon(Icons.save_outlined),
+                        label: Text(
+                          l10n.salesQuotationSaveAction,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                      ).animate().fadeIn(delay: 150.ms),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -251,32 +351,59 @@ class _LineEditor extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return Card(
-      margin: EdgeInsets.zero,
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.015),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Text(l10n.salesQuotationLineHeading(index + 1),
-                    style: theme.textTheme.labelLarge),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppRadii.sm),
+                  ),
+                  child: Text(
+                    l10n.salesQuotationLineHeading(index + 1),
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
                 const Spacer(),
                 if (onRemove != null)
                   IconButton(
                     tooltip: l10n.salesQuotationRemoveLineTooltip,
-                    icon: const Icon(Icons.delete_outline),
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
                     onPressed: onRemove,
                   ),
               ],
             ),
+            const SizedBox(height: 12),
             TextFormField(
               controller: draft.description,
               decoration: InputDecoration(
                 labelText: l10n.salesQuotationLineDescriptionLabel,
-                border: const OutlineInputBorder(),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
                 isDense: true,
+                prefixIcon: Icon(Icons.description_outlined, color: theme.colorScheme.primary.withValues(alpha: 0.6)),
               ),
               validator: (v) {
                 final code = Validators.required(v);
@@ -285,7 +412,7 @@ class _LineEditor extends StatelessWidget {
                 return m.isEmpty ? null : m;
               },
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
@@ -299,8 +426,9 @@ class _LineEditor extends StatelessWidget {
                     ],
                     decoration: InputDecoration(
                       labelText: l10n.salesQuotationLineQuantityLabel,
-                      border: const OutlineInputBorder(),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
                       isDense: true,
+                      prefixIcon: Icon(Icons.shopping_basket_outlined, color: theme.colorScheme.primary.withValues(alpha: 0.6)),
                     ),
                     validator: (v) {
                       final code = Validators.positiveNumber(v);
@@ -310,7 +438,7 @@ class _LineEditor extends StatelessWidget {
                     },
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 Expanded(
                   child: TextFormField(
                     controller: draft.unitPrice,
@@ -322,8 +450,9 @@ class _LineEditor extends StatelessWidget {
                     ],
                     decoration: InputDecoration(
                       labelText: l10n.salesQuotationLineUnitPriceLabel,
-                      border: const OutlineInputBorder(),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
                       isDense: true,
+                      prefixIcon: Icon(Icons.attach_money_outlined, color: theme.colorScheme.primary.withValues(alpha: 0.6)),
                     ),
                     validator: (v) {
                       final code = Validators.positiveNumber(v);

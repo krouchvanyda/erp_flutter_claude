@@ -1,10 +1,15 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/route_paths.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/customer.dart';
 import '../bloc/customer_list_bloc.dart';
@@ -30,9 +35,12 @@ class _ListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.salesCustomersTitle),
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: l10n.salesCustomersTitle,
+        centerTitle: true,
         actions: [
           IconButton(
             tooltip: l10n.salesAnalyticsTooltip,
@@ -42,8 +50,44 @@ class _ListView extends StatelessWidget {
           ),
         ],
       ),
-      body: const Column(
-        children: [_Toolbar(), Expanded(child: _Body())],
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('New Customer Form is coming soon!'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        },
+        icon: const Icon(Icons.add),
+        label: const Text('New Customer', style: TextStyle(fontWeight: FontWeight.bold)),
+      ),
+      body: DynamicStatusBar(
+        child: Stack(
+          children: [
+            // Background Canvas Gradient
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.12),
+                    theme.colorScheme.surface,
+                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.04),
+                  ],
+                ),
+              ),
+            ),
+            Column(
+              children: [
+                SizedBox(height: context.dynamicAppBarPadding + 45),
+                const _Toolbar(),
+                const Expanded(child: _Body()),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -55,21 +99,38 @@ class _Toolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final bloc = context.read<CustomerListBloc>();
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextField(
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.search),
-              hintText: l10n.salesCustomersSearchHint,
-              border: const OutlineInputBorder(),
-              isDense: true,
+          Container(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(AppRadii.lg),
+              border: Border.all(
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.015),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
-            onChanged: (q) => bloc.add(CustomerListSearchChanged(q)),
+            child: TextField(
+              decoration: InputDecoration(
+                prefixIcon: Icon(Icons.search, color: theme.colorScheme.primary),
+                hintText: l10n.salesCustomersSearchHint,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+              onChanged: (q) => bloc.add(CustomerListSearchChanged(q)),
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           BlocBuilder<CustomerListBloc, CustomerListState>(
             buildWhen: (a, b) =>
                 a.statusFilter != b.statusFilter ||
@@ -80,6 +141,7 @@ class _Toolbar extends StatelessWidget {
                 Expanded(
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
                     child: Row(
                       children: [
                         for (final s in CustomerStatus.values) ...[
@@ -88,6 +150,11 @@ class _Toolbar extends StatelessWidget {
                             selected: state.statusFilter.contains(s),
                             onSelected: (_) =>
                                 bloc.add(CustomerListStatusToggled(s)),
+                            selectedColor: theme.colorScheme.primary.withValues(alpha: 0.15),
+                            checkmarkColor: theme.colorScheme.primary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppRadii.md),
+                            ),
                           ),
                           const SizedBox(width: 8),
                         ],
@@ -97,6 +164,11 @@ class _Toolbar extends StatelessWidget {
                             selected: state.segmentFilter.contains(s),
                             onSelected: (_) =>
                                 bloc.add(CustomerListSegmentToggled(s)),
+                            selectedColor: theme.colorScheme.primary.withValues(alpha: 0.15),
+                            checkmarkColor: theme.colorScheme.primary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppRadii.md),
+                            ),
                           ),
                           const SizedBox(width: 8),
                         ],
@@ -105,13 +177,22 @@ class _Toolbar extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                _SortMenu(current: state.sort),
+                Container(
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: _SortMenu(current: state.sort),
+                ),
               ],
             ),
           ),
         ],
       ),
-    );
+    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.02, end: 0);
   }
 }
 
@@ -152,9 +233,10 @@ class _Body extends StatelessWidget {
         if (state.visible.isEmpty) {
           return _CenteredMessage(text: l10n.salesCustomersEmpty);
         }
-        return ListView.separated(
+        return ListView.builder(
+          padding: const EdgeInsets.only(bottom: 80),
+          physics: const BouncingScrollPhysics(),
           itemCount: state.visible.length,
-          separatorBuilder: (_, __) => const Divider(height: 0),
           itemBuilder: (_, i) => _Tile(customer: state.visible[i]),
         );
       },
@@ -172,39 +254,76 @@ class _Tile extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final color = customerStatusColor(theme, customer.status);
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: color.withValues(alpha: 0.15),
-        foregroundColor: color,
-        child: const Icon(Icons.business_outlined),
-      ),
-      title: Row(
-        children: [
-          Expanded(
-            child: Text(customer.name, style: theme.textTheme.titleSmall),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+          border: Border.all(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
           ),
-          CustomerStatusBadge(status: customer.status),
-        ],
-      ),
-      subtitle: Text(
-        '${customerSegmentLabel(l10n, customer.segment)} · '
-        '${l10n.salesCustomersOnboardedLabel(_date.format(customer.onboardedAt.toLocal()))}',
-        style: theme.textTheme.labelSmall,
-      ),
-      trailing: Text(
-        customer.lifetimeValue,
-        style: theme.textTheme.bodyMedium?.copyWith(
-          fontWeight: FontWeight.w600,
-          fontFeatures: const [FontFeature.tabularFigures()],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.015),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          leading: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.business_outlined, color: color, size: 24),
+          ),
+          title: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  customer.name,
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ),
+              CustomerStatusBadge(status: customer.status),
+            ],
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 4.0),
+            child: Text(
+              '${customerSegmentLabel(l10n, customer.segment)} • '
+              '${l10n.salesCustomersOnboardedLabel(_date.format(customer.onboardedAt.toLocal()))}',
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                customer.lifetimeValue,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.primary,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6)),
+            ],
+          ),
+          onTap: () => context.goNamed(
+            RoutePaths.salesCustomerDetailName,
+            pathParameters: {
+              RoutePaths.salesCustomerDetailIdParam: customer.id,
+            },
+          ),
         ),
       ),
-      onTap: () => context.goNamed(
-        RoutePaths.salesCustomerDetailName,
-        pathParameters: {
-          RoutePaths.salesCustomerDetailIdParam: customer.id,
-        },
-      ),
-    );
+    ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.02, end: 0);
   }
 }
 
@@ -217,14 +336,14 @@ class CustomerStatusBadge extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final color = customerStatusColor(theme, status);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(AppRadii.sm),
       ),
       child: Text(
         customerStatusLabel(l10n, status),
-        style: theme.textTheme.labelSmall?.copyWith(color: color),
+        style: theme.textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -242,10 +361,24 @@ class _CenteredMessage extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.business_outlined,
-                size: 64, color: theme.colorScheme.outline),
-            const SizedBox(height: 12),
-            Text(text, textAlign: TextAlign.center),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.business_outlined,
+                  size: 48, color: theme.colorScheme.primary),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              text,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ],
         ),
       ),

@@ -1,8 +1,13 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/error/failure.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/sales_order.dart';
 import '../../domain/repositories/sales_orders_repository.dart';
@@ -42,8 +47,6 @@ class _SalesOrderDetailPageState extends State<SalesOrderDetailPage> {
     final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      // Run the pure transition first so an illegal hop / missing
-      // tracking reference surfaces *before* we touch the repo.
       final updated = advanceFulfillment(
         order,
         to: next,
@@ -64,6 +67,7 @@ class _SalesOrderDetailPageState extends State<SalesOrderDetailPage> {
           content: Text(l10n.salesOrderAdvancedSnack(
             salesOrderStatusLabel(l10n, updated.status),
           )),
+          behavior: SnackBarBehavior.floating,
         ));
       _reload();
     } on ValidationFailure {
@@ -71,18 +75,21 @@ class _SalesOrderDetailPageState extends State<SalesOrderDetailPage> {
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(
           content: Text(l10n.salesOrderTrackingRequired),
+          behavior: SnackBarBehavior.floating,
         ));
     } on Failure catch (f) {
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(
           content: Text(l10n.salesOrderAdvanceFailed(f.toString())),
+          behavior: SnackBarBehavior.floating,
         ));
     } catch (e) {
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(
           content: Text(l10n.salesOrderAdvanceFailed(e.toString())),
+          behavior: SnackBarBehavior.floating,
         ));
     }
   }
@@ -94,12 +101,13 @@ class _SalesOrderDetailPageState extends State<SalesOrderDetailPage> {
       context: context,
       builder: (_) => AlertDialog(
         title: Text(l10n.salesOrderTrackingDialogTitle),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.lg)),
         content: TextField(
           controller: ctrl,
           autofocus: true,
           decoration: InputDecoration(
             labelText: l10n.salesOrderTrackingLabel,
-            border: const OutlineInputBorder(),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
           ),
         ),
         actions: [
@@ -108,6 +116,9 @@ class _SalesOrderDetailPageState extends State<SalesOrderDetailPage> {
             child: Text(l10n.invoiceActionCancel),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
+            ),
             onPressed: () =>
                 Navigator.of(context).pop(ctrl.text.trim()),
             child: Text(l10n.salesOrderTrackingConfirm),
@@ -123,38 +134,76 @@ class _SalesOrderDetailPageState extends State<SalesOrderDetailPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.salesOrderDetailTitle)),
-      body: FutureBuilder<SalesOrder?>(
-        future: _future,
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final order = snap.data;
-          if (order == null) {
-            return Center(
-                child: Text(l10n.salesOrderNotFound(widget.orderId)));
-          }
-          return _Body(order: order);
-        },
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: l10n.salesOrderDetailTitle,
+        centerTitle: true,
+      ),
+      body: DynamicStatusBar(
+        child: Stack(
+          children: [
+            // Background Canvas Gradient
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.12),
+                    theme.colorScheme.surface,
+                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.04),
+                  ],
+                ),
+              ),
+            ),
+            FutureBuilder<SalesOrder?>(
+              future: _future,
+              builder: (context, snap) {
+                if (snap.connectionState != ConnectionState.done) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final order = snap.data;
+                if (order == null) {
+                  return Center(
+                      child: Text(l10n.salesOrderNotFound(widget.orderId)));
+                }
+                return _Body(order: order);
+              },
+            ),
+          ],
+        ),
       ),
       bottomNavigationBar: FutureBuilder<SalesOrder?>(
         future: _future,
         builder: (context, snap) {
           final order = snap.data;
           if (order == null) return const SizedBox.shrink();
-          return SafeArea(child: _ActionBar(
-            order: order,
-            onAdvance: (next) async {
-              String? tracking;
-              if (next == SalesOrderStatus.shipped) {
-                tracking = await _promptTracking();
-                if (tracking == null) return;
-              }
-              await _advanceTo(order, next, tracking: tracking);
-            },
-          ));
+          return Container(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              border: Border(
+                top: BorderSide(
+                  color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                ),
+              ),
+            ),
+            child: SafeArea(
+              child: _ActionBar(
+                order: order,
+                onAdvance: (next) async {
+                  String? tracking;
+                  if (next == SalesOrderStatus.shipped) {
+                    tracking = await _promptTracking();
+                    if (tracking == null) return;
+                  }
+                  await _advanceTo(order, next, tracking: tracking);
+                },
+              ),
+            ),
+          );
         },
       ),
     );
@@ -173,7 +222,7 @@ class _ActionBar extends StatelessWidget {
     switch (order.status) {
       case SalesOrderStatus.pending:
         return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
           child: Row(
             children: [
               Expanded(
@@ -183,6 +232,9 @@ class _ActionBar extends StatelessWidget {
                   label: Text(l10n.salesOrderCancelAction),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: theme.colorScheme.error,
+                    side: BorderSide(color: theme.colorScheme.error.withValues(alpha: 0.5)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                 ),
               ),
@@ -192,6 +244,10 @@ class _ActionBar extends StatelessWidget {
                   onPressed: () => onAdvance(SalesOrderStatus.packing),
                   icon: const Icon(Icons.inventory_2_outlined),
                   label: Text(l10n.salesOrderStartPackingAction),
+                  style: FilledButton.styleFrom(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
                 ),
               ),
             ],
@@ -199,7 +255,7 @@ class _ActionBar extends StatelessWidget {
         );
       case SalesOrderStatus.packing:
         return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
           child: Row(
             children: [
               Expanded(
@@ -209,6 +265,9 @@ class _ActionBar extends StatelessWidget {
                   label: Text(l10n.salesOrderCancelAction),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: theme.colorScheme.error,
+                    side: BorderSide(color: theme.colorScheme.error.withValues(alpha: 0.5)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                 ),
               ),
@@ -218,6 +277,10 @@ class _ActionBar extends StatelessWidget {
                   onPressed: () => onAdvance(SalesOrderStatus.shipped),
                   icon: const Icon(Icons.local_shipping_outlined),
                   label: Text(l10n.salesOrderShipAction),
+                  style: FilledButton.styleFrom(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
                 ),
               ),
             ],
@@ -225,11 +288,15 @@ class _ActionBar extends StatelessWidget {
         );
       case SalesOrderStatus.shipped:
         return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
           child: FilledButton.icon(
             onPressed: () => onAdvance(SalesOrderStatus.delivered),
             icon: const Icon(Icons.check_circle_outline),
             label: Text(l10n.salesOrderMarkDeliveredAction),
+            style: FilledButton.styleFrom(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
           ),
         );
       case SalesOrderStatus.delivered:
@@ -250,29 +317,77 @@ class _Body extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     return ListView(
-      padding: const EdgeInsets.all(16),
+      physics: const BouncingScrollPhysics(),
+      padding: EdgeInsets.only(
+        top: context.dynamicAppBarPadding + 12,
+        left: 16,
+        right: 16,
+        bottom: 40,
+      ),
       children: [
-        Card(
+        // Order Header Card
+        Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            border: Border.all(
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.015),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.shopping_bag_outlined, color: theme.colorScheme.primary, size: 28),
+                    ),
+                    const SizedBox(width: 14),
                     Expanded(
-                      child: Text(order.number,
-                          style: theme.textTheme.titleLarge),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            order.number,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            order.customerName,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     SalesOrderStatusBadge(status: order.status),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(order.customerName, style: theme.textTheme.bodyMedium),
+                const SizedBox(height: 18),
+                const Divider(),
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 16,
-                  runSpacing: 4,
+                  runSpacing: 12,
                   children: [
                     _MetaChip(
                       label: l10n.salesOrderCreatedLabel,
@@ -303,58 +418,110 @@ class _Body extends StatelessWidget {
               ],
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-        Card(
+        ).animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.98, 0.98), end: const Offset(1, 1)),
+        const SizedBox(height: 16),
+        // Line Items Card
+        Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            border: Border.all(
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.015),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Text(l10n.salesOrderDetailLinesHeading,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    )),
-              ),
-              for (final line in order.lineItems)
-                ListTile(
-                  dense: true,
-                  title: Text(line.description),
-                  subtitle: line.sku == null ? null : Text(line.sku!),
-                  trailing: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('${line.quantity} × ${line.unitPrice}',
-                          style: theme.textTheme.labelSmall),
-                      Text(
-                        line.lineTotal,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              const Divider(height: 0),
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   children: [
-                    Text(l10n.salesQuotationTotalLabel,
-                        style: theme.textTheme.titleSmall),
+                    Icon(Icons.format_list_bulleted, color: theme.colorScheme.primary, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      l10n.salesOrderDetailLinesHeading,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: order.lineItems.length,
+                separatorBuilder: (_, __) => const Divider(height: 1, indent: 16),
+                itemBuilder: (_, index) {
+                  final line = order.lineItems[index];
+                  return ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    title: Text(
+                      line.description,
+                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: line.sku == null
+                        ? null
+                        : Padding(
+                            padding: const EdgeInsets.only(top: 2.0),
+                            child: Text(
+                              line.sku!,
+                              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.primary),
+                            ),
+                          ),
+                    trailing: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '${line.quantity} × ${line.unitPrice}',
+                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          line.lineTotal,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                child: Row(
+                  children: [
+                    Text(
+                      l10n.salesQuotationTotalLabel,
+                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    ),
                     const Spacer(),
-                    Text(order.totalAmount,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        )),
+                    Text(
+                      order.totalAmount,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.primary,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
                   ],
                 ),
               ),
             ],
           ),
-        ),
+        ).animate().fadeIn(delay: 150.ms),
       ],
     );
   }
@@ -367,16 +534,29 @@ class _MetaChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(label,
+    return SizedBox(
+      width: 130,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
             style: theme.textTheme.labelSmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
-            )),
-        Text(value, style: theme.textTheme.bodyMedium),
-      ],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

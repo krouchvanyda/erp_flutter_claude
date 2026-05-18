@@ -1,9 +1,14 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/route_paths.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/activity_event.dart';
 import '../../domain/entities/contact.dart';
@@ -19,14 +24,6 @@ import 'customer_list_page.dart'
         customerStatusColor;
 
 /// Customer detail (Slices 6.1.2 + 6.1.3).
-///
-/// Three stacked cards:
-///   1. **Header** — name, status, segment, contact info, lifetime value.
-///   2. **Contacts** — list of linked [`CustomerContact`]s with
-///      add/edit/delete actions (Slice 6.1.2).
-///   3. **Activity timeline** — append-only feed of
-///      [`ActivityEvent`]s newest-first (Slice 6.1.3) with a
-///      "Log activity" action that pushes the manual composer.
 class CustomerDetailPage extends StatefulWidget {
   const CustomerDetailPage({super.key, required this.customerId});
 
@@ -73,6 +70,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
       builder: (_) => AlertDialog(
         title: Text(l10n.salesContactDeleteTitle),
         content: Text(l10n.salesContactDeleteBody),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.lg)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -81,6 +79,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
             ),
             onPressed: () => Navigator.of(context).pop(true),
             child: Text(l10n.salesContactDeleteConfirm),
@@ -93,61 +92,90 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
     if (!mounted) return;
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(l10n.salesContactDeletedSnack)));
+      ..showSnackBar(SnackBar(
+        content: Text(l10n.salesContactDeletedSnack),
+        behavior: SnackBarBehavior.floating,
+      ));
     _reload();
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.salesCustomerDetailTitle)),
-      body: FutureBuilder<_Bundle>(
-        future: _future,
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final bundle = snap.data;
-          if (bundle == null || bundle.customer == null) {
-            return Center(
-              child: Text(l10n.salesCustomerNotFound(widget.customerId)),
-            );
-          }
-          return _Body(
-            bundle: bundle,
-            onAddContact: () async {
-              await context.pushNamed(
-                RoutePaths.salesContactNewName,
-                pathParameters: {
-                  RoutePaths.salesCustomerDetailIdParam: widget.customerId,
-                },
-              );
-              if (mounted) _reload();
-            },
-            onEditContact: (c) async {
-              await context.pushNamed(
-                RoutePaths.salesContactEditName,
-                pathParameters: {
-                  RoutePaths.salesCustomerDetailIdParam: widget.customerId,
-                  RoutePaths.salesContactIdParam: c.id,
-                },
-                extra: c,
-              );
-              if (mounted) _reload();
-            },
-            onDeleteContact: _deleteContact,
-            onLogActivity: () async {
-              await context.pushNamed(
-                RoutePaths.salesActivityNewName,
-                pathParameters: {
-                  RoutePaths.salesCustomerDetailIdParam: widget.customerId,
-                },
-              );
-              if (mounted) _reload();
-            },
-          );
-        },
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: l10n.salesCustomerDetailTitle,
+        centerTitle: true,
+      ),
+      body: DynamicStatusBar(
+        child: Stack(
+          children: [
+            // Background Canvas Gradient
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.12),
+                    theme.colorScheme.surface,
+                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.04),
+                  ],
+                ),
+              ),
+            ),
+            FutureBuilder<_Bundle>(
+              future: _future,
+              builder: (context, snap) {
+                if (snap.connectionState != ConnectionState.done) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final bundle = snap.data;
+                if (bundle == null || bundle.customer == null) {
+                  return Center(
+                    child: Text(l10n.salesCustomerNotFound(widget.customerId)),
+                  );
+                }
+                return _Body(
+                  bundle: bundle,
+                  onAddContact: () async {
+                    await context.pushNamed(
+                      RoutePaths.salesContactNewName,
+                      pathParameters: {
+                        RoutePaths.salesCustomerDetailIdParam: widget.customerId,
+                      },
+                    );
+                    if (mounted) _reload();
+                  },
+                  onEditContact: (c) async {
+                    await context.pushNamed(
+                      RoutePaths.salesContactEditName,
+                      pathParameters: {
+                        RoutePaths.salesCustomerDetailIdParam: widget.customerId,
+                        RoutePaths.salesContactIdParam: c.id,
+                      },
+                      extra: c,
+                    );
+                    if (mounted) _reload();
+                  },
+                  onDeleteContact: _deleteContact,
+                  onLogActivity: () async {
+                    await context.pushNamed(
+                      RoutePaths.salesActivityNewName,
+                      pathParameters: {
+                        RoutePaths.salesCustomerDetailIdParam: widget.customerId,
+                      },
+                    );
+                    if (mounted) _reload();
+                  },
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -188,182 +216,356 @@ class _Body extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final c = bundle.customer!;
     return ListView(
-      padding: const EdgeInsets.all(16),
+      physics: const BouncingScrollPhysics(),
+      padding: EdgeInsets.only(
+        top: context.dynamicAppBarPadding,
+        left: 16,
+        right: 16,
+        bottom: 40,
+      ),
       children: [
-        // ── Header ───────────────────────────────────────────
-        Card(
+        // ── Header Card ───────────────────────────────────────
+        Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            border: Border.all(
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.015),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.business_outlined, color: theme.colorScheme.primary, size: 28),
+                    ),
+                    const SizedBox(width: 14),
                     Expanded(
-                      child: Text(c.name, style: theme.textTheme.titleLarge),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            c.name,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${customerSegmentLabel(l10n, c.segment)}'
+                            '${c.industry == null ? '' : ' · ${c.industry}'}',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     CustomerStatusBadge(status: c.status),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '${customerSegmentLabel(l10n, c.segment)}'
-                  '${c.industry == null ? '' : ' · ${c.industry}'}',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                const SizedBox(height: 18),
+                const Divider(),
+                const SizedBox(height: 10),
+                _kv(theme, l10n.salesCustomerDetailEmailLabel, c.email, Icons.email_outlined),
+                _kv(theme, l10n.salesCustomerDetailPhoneLabel, c.phone, Icons.phone_outlined),
+                _kv(theme, l10n.salesCustomerDetailAddressLabel, c.billingAddress, Icons.place_outlined),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(AppRadii.md),
+                    border: Border.all(
+                      color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                _kv(theme, l10n.salesCustomerDetailEmailLabel, c.email),
-                _kv(theme, l10n.salesCustomerDetailPhoneLabel, c.phone),
-                _kv(theme, l10n.salesCustomerDetailAddressLabel,
-                    c.billingAddress),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 16,
-                  runSpacing: 4,
-                  children: [
-                    _MetaChip(
-                      label: l10n.salesCustomerDetailLifetimeValueLabel,
-                      value: c.lifetimeValue,
-                    ),
-                    _MetaChip(
-                      label: l10n.salesCustomerDetailSinceLabel,
-                      value: _date.format(c.onboardedAt.toLocal()),
-                    ),
-                  ],
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _MetaChip(
+                          label: l10n.salesCustomerDetailLifetimeValueLabel,
+                          value: c.lifetimeValue,
+                          isHighlight: true,
+                        ),
+                      ),
+                      Container(
+                        width: 1,
+                        height: 32,
+                        color: theme.colorScheme.outlineVariant,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _MetaChip(
+                          label: l10n.salesCustomerDetailSinceLabel,
+                          value: _date.format(c.onboardedAt.toLocal()),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-        ),
+        ).animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.98, 0.98), end: const Offset(1, 1)),
         if (c.notes != null) ...[
-          const SizedBox(height: 12),
-          Card(
+          const SizedBox(height: 16),
+          // ── Notes Card ─────────────────────────────────────
+          Container(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(AppRadii.lg),
+              border: Border.all(
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.015),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Row(
+                    children: [
+                      Icon(Icons.notes_outlined, color: theme.colorScheme.primary, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        l10n.salesCustomerDetailNotesHeading,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
                   Text(
-                    l10n.salesCustomerDetailNotesHeading,
-                    style: theme.textTheme.labelMedium?.copyWith(
+                    c.notes!,
+                    style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
+                      height: 1.4,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(c.notes!),
                 ],
               ),
             ),
-          ),
+          ).animate().fadeIn(delay: 100.ms),
         ],
-        // ── Contacts ───────────────────────────────────────
-        const SizedBox(height: 12),
-        Card(
+        // ── Contacts Card ───────────────────────────────────────
+        const SizedBox(height: 16),
+        Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            border: Border.all(
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.015),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
+                padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
                 child: Row(
                   children: [
+                    Icon(Icons.people_outline, color: theme.colorScheme.primary, size: 20),
+                    const SizedBox(width: 8),
                     Expanded(
-                      child: Text(l10n.salesCustomerDetailContactsHeading,
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          )),
+                      child: Text(
+                        l10n.salesCustomerDetailContactsHeading,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                     TextButton.icon(
                       onPressed: onAddContact,
-                      icon: const Icon(Icons.person_add_outlined),
-                      label: Text(l10n.salesContactAddAction),
+                      icon: const Icon(Icons.person_add_alt_1_outlined, size: 18),
+                      label: Text(
+                        l10n.salesContactAddAction,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ],
                 ),
               ),
+              const Divider(height: 1),
               if (bundle.contacts.isEmpty)
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Text(l10n.salesCustomerDetailContactsEmpty,
-                      style: theme.textTheme.bodySmall),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                  child: Center(
+                    child: Text(
+                      l10n.salesCustomerDetailContactsEmpty,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
                 )
               else
-                for (final contact in bundle.contacts)
-                  _ContactTile(
-                    contact: contact,
-                    onEdit: () => onEditContact(contact),
-                    onDelete: () => onDeleteContact(contact.id),
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: bundle.contacts.length,
+                  padding: EdgeInsets.zero,
+                  separatorBuilder: (_, __) => const Divider(height: 1, indent: 68),
+                  itemBuilder: (_, index) => _ContactTile(
+                    contact: bundle.contacts[index],
+                    onEdit: () => onEditContact(bundle.contacts[index]),
+                    onDelete: () => onDeleteContact(bundle.contacts[index].id),
                   ),
-              const SizedBox(height: 8),
+                ),
             ],
           ),
-        ),
-        // ── Activity timeline ─────────────────────────────
-        const SizedBox(height: 12),
-        Card(
+        ).animate().fadeIn(delay: 200.ms),
+        // ── Activity Timeline Card ─────────────────────────────
+        const SizedBox(height: 16),
+        Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            border: Border.all(
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.015),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
+                padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
                 child: Row(
                   children: [
+                    Icon(Icons.history_toggle_off_outlined, color: theme.colorScheme.primary, size: 20),
+                    const SizedBox(width: 8),
                     Expanded(
-                      child: Text(l10n.salesCustomerDetailTimelineHeading,
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          )),
+                      child: Text(
+                        l10n.salesCustomerDetailTimelineHeading,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                     TextButton.icon(
                       onPressed: onLogActivity,
-                      icon: const Icon(Icons.add_comment_outlined),
-                      label: Text(l10n.salesActivityLogAction),
+                      icon: const Icon(Icons.add_comment_outlined, size: 18),
+                      label: Text(
+                        l10n.salesActivityLogAction,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ],
                 ),
               ),
+              const Divider(height: 1),
               if (bundle.activities.isEmpty)
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Text(l10n.salesCustomerDetailTimelineEmpty,
-                      style: theme.textTheme.bodySmall),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                  child: Center(
+                    child: Text(
+                      l10n.salesCustomerDetailTimelineEmpty,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
                 )
               else
-                for (final a in bundle.activities)
-                  _ActivityTile(activity: a, stamp: _stamp),
-              const SizedBox(height: 8),
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: bundle.activities.length,
+                  padding: EdgeInsets.zero,
+                  separatorBuilder: (_, __) => const Divider(height: 1, indent: 68),
+                  itemBuilder: (_, index) => _ActivityTile(
+                    activity: bundle.activities[index],
+                    stamp: _stamp,
+                  ),
+                ),
             ],
           ),
-        ),
+        ).animate().fadeIn(delay: 300.ms),
       ],
     );
   }
 
-  Widget _kv(ThemeData theme, String label, String value) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
+  Widget _kv(ThemeData theme, String label, String value, IconData icon) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Icon(icon, size: 16, color: theme.colorScheme.primary.withValues(alpha: 0.6)),
+            const SizedBox(width: 10),
             SizedBox(
-              width: 96,
-              child: Text(label,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  )),
+              width: 84,
+              child: Text(
+                label,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ),
-            Expanded(child: Text(value, style: theme.textTheme.bodyMedium)),
+            Expanded(
+              child: Text(
+                value,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+            ),
           ],
         ),
       );
 }
 
 class _MetaChip extends StatelessWidget {
-  const _MetaChip({required this.label, required this.value});
+  const _MetaChip({
+    required this.label,
+    required this.value,
+    this.isHighlight = false,
+  });
+
   final String label;
   final String value;
+  final bool isHighlight;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -371,14 +573,22 @@ class _MetaChip extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            )),
-        Text(value,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontFeatures: const [FontFeature.tabularFigures()],
-            )),
+        Text(
+          label,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: isHighlight ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
       ],
     );
   }
@@ -400,40 +610,51 @@ class _ContactTile extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: CircleAvatar(
         backgroundColor: contact.isPrimary
-            ? theme.colorScheme.primary.withValues(alpha: 0.15)
-            : theme.colorScheme.surfaceContainerHighest,
+            ? theme.colorScheme.primary.withValues(alpha: 0.1)
+            : theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
         foregroundColor: contact.isPrimary
             ? theme.colorScheme.primary
             : theme.colorScheme.onSurfaceVariant,
-        child: const Icon(Icons.person_outline),
+        child: const Icon(Icons.person_outline, size: 20),
       ),
       title: Row(
         children: [
-          Expanded(child: Text(contact.name, style: theme.textTheme.titleSmall)),
+          Expanded(
+            child: Text(
+              contact.name,
+              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+            ),
+          ),
           if (contact.isPrimary)
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color:
-                    theme.colorScheme.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(4),
+                color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(AppRadii.sm),
               ),
               child: Text(
                 l10n.salesContactPrimaryBadge,
-                style: theme.textTheme.labelSmall
-                    ?.copyWith(color: theme.colorScheme.primary),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
         ],
       ),
-      subtitle: Text(
-        '${contact.role} · ${contact.email}',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: theme.textTheme.labelSmall,
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 2.0),
+        child: Text(
+          '${contact.role} · ${contact.email}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
       ),
       trailing: PopupMenuButton<String>(
         onSelected: (v) {
@@ -443,7 +664,11 @@ class _ContactTile extends StatelessWidget {
         itemBuilder: (_) => [
           PopupMenuItem(value: 'edit', child: Text(l10n.salesContactEditAction)),
           PopupMenuItem(
-              value: 'delete', child: Text(l10n.salesContactDeleteAction)),
+              value: 'delete',
+              child: Text(
+                l10n.salesContactDeleteAction,
+                style: const TextStyle(color: Colors.red),
+              )),
         ],
       ),
     );
@@ -461,24 +686,34 @@ class _ActivityTile extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final color = _typeColor(theme, activity.type);
     return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: CircleAvatar(
-        backgroundColor: color.withValues(alpha: 0.12),
+        backgroundColor: color.withValues(alpha: 0.1),
         foregroundColor: color,
-        child: Icon(activityTypeIcon(activity.type), size: 20),
+        child: Icon(activityTypeIcon(activity.type), size: 18),
       ),
-      title: Text(activity.summary),
-      subtitle: Text(
-        '${activityTypeLabel(l10n, activity.type)} · '
-        '${stamp.format(activity.occurredAt.toLocal())} · ${activity.actor}'
-        '${activity.reference == null ? '' : ' · ${activity.reference}'}',
-        style: theme.textTheme.labelSmall,
+      title: Text(
+        activity.summary,
+        style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+      ),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 2.0),
+        child: Text(
+          '${activityTypeLabel(l10n, activity.type)} · '
+          '${stamp.format(activity.occurredAt.toLocal())} · ${activity.actor}'
+          '${activity.reference == null ? '' : ' · ${activity.reference}'}',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
       ),
       trailing: activity.amount == null
           ? null
           : Text(
               activity.amount!,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
@@ -487,7 +722,7 @@ class _ActivityTile extends StatelessWidget {
 
   Color _typeColor(ThemeData theme, ActivityEventType t) {
     return switch (t) {
-      ActivityEventType.note => theme.colorScheme.onSurfaceVariant,
+      ActivityEventType.note => theme.colorScheme.outline,
       ActivityEventType.call => theme.colorScheme.primary,
       ActivityEventType.meeting => theme.colorScheme.secondary,
       ActivityEventType.email => theme.colorScheme.primary,
