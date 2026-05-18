@@ -1,9 +1,14 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/error/failure.dart';
 import '../../../../core/router/route_paths.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../domain/entities/leave_request.dart';
 import '../../domain/repositories/leave_requests_repository.dart';
 import '../../domain/usecases/decide_leave_request.dart';
@@ -12,7 +17,7 @@ import '../../domain/usecases/decide_leave_request.dart';
 /// approve / reject actions. Mine vs. Pending toggle keeps the same
 /// page useful for employees too.
 class LeaveRequestsListPage extends StatefulWidget {
-  const LeaveRequestsListPage({this.currentUserId = 'emp-001'});
+  const LeaveRequestsListPage({super.key, this.currentUserId = 'emp-001'});
   final String currentUserId;
 
   @override
@@ -26,23 +31,43 @@ class _LeaveRequestsListPageState extends State<LeaveRequestsListPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Leave Requests'),
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: 'Leave Requests',
+        centerTitle: true,
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(48),
+          preferredSize: const Size.fromHeight(56),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: SegmentedButton<_Filter>(
               segments: const [
-                ButtonSegment(value: _Filter.all, label: Text('All')),
+                ButtonSegment(
+                  value: _Filter.all,
+                  label: Text('All'),
+                  icon: Icon(Icons.list_alt_rounded),
+                ),
                 ButtonSegment(
                   value: _Filter.pending,
                   label: Text('Pending'),
+                  icon: Icon(Icons.hourglass_empty_rounded),
                 ),
-                ButtonSegment(value: _Filter.mine, label: Text('Mine')),
+                ButtonSegment(
+                  value: _Filter.mine,
+                  label: Text('Mine'),
+                  icon: Icon(Icons.person_outline_rounded),
+                ),
               ],
               selected: {_filter},
+              style: SegmentedButton.styleFrom(
+                selectedBackgroundColor: theme.colorScheme.primaryContainer,
+                selectedForegroundColor: theme.colorScheme.onPrimaryContainer,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                ),
+              ),
               onSelectionChanged: (s) =>
                   setState(() => _filter = s.first),
             ),
@@ -51,30 +76,99 @@ class _LeaveRequestsListPageState extends State<LeaveRequestsListPage> {
         actions: [
           IconButton(
             tooltip: 'New request',
-            icon: const Icon(Icons.add),
+            icon: const Icon(Icons.add_circle_outline_rounded, size: 26),
             onPressed: () =>
                 context.pushNamed(RoutePaths.hrLeaveRequestNewName),
           ),
         ],
       ),
-      body: StreamBuilder<List<LeaveRequest>>(
-        stream: GetIt.I<LeaveRequestsRepository>().watchAll(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final all = snapshot.data ?? const <LeaveRequest>[];
-          final visible = all.where(_match).toList();
-          if (visible.isEmpty) {
-            return const Center(child: Text('No leave requests.'));
-          }
-          return ListView.separated(
-            itemCount: visible.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (_, idx) =>
-                _RequestCard(request: visible[idx], approverId: widget.currentUserId),
-          );
-        },
+      body: DynamicStatusBar(
+        child: Stack(
+          children: [
+            // Background Gradient
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.15),
+                    theme.colorScheme.surface,
+                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.05),
+                  ],
+                ),
+              ),
+            ),
+            StreamBuilder<List<LeaveRequest>>(
+              stream: GetIt.I<LeaveRequestsRepository>().watchAll(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final all = snapshot.data ?? const <LeaveRequest>[];
+                final visible = all.where(_match).toList();
+
+                if (visible.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.event_busy_rounded,
+                            size: 64,
+                            color: theme.colorScheme.outline,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No leave requests',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'There are no requests matching this filter.',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ).animate().fadeIn(),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: EdgeInsets.only(
+                    top: context.dynamicAppBarPadding + 16,
+                    left: 16,
+                    right: 16,
+                    bottom: 80,
+                  ),
+                  itemCount: visible.length,
+                  itemBuilder: (context, idx) {
+                    final request = visible[idx];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _RequestCard(
+                        request: request,
+                        approverId: widget.currentUserId,
+                      ).animate()
+                        .fadeIn(delay: (idx * 30).ms)
+                        .slideY(begin: 0.05, end: 0, duration: 300.ms),
+                    );
+                  },
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -98,53 +192,138 @@ class _RequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final canAct = request.status == LeaveRequestStatus.pending;
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    final statusColor = _statusColor(theme, request.status);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    request.employeeName,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        request.employeeName,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        request.type.name.toUpperCase(),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                Chip(
-                  label: Text(request.status.name),
-                  backgroundColor: _statusColor(request.status),
-                  visualDensity: VisualDensity.compact,
+                _StatusBadge(status: request.status, color: statusColor),
+              ],
+            ),
+            const Divider(height: 24),
+            Row(
+              children: [
+                Icon(
+                  Icons.date_range_rounded,
+                  size: 16,
+                  color: theme.colorScheme.outline,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${request.fromDate.toIso8601String().split('T').first}   ➔   ${request.toDate.toIso8601String().split('T').first}',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(AppRadii.pill),
+                  ),
+                  child: Text(
+                    '${request.days} day(s)',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              '${request.type.name} • ${request.days} day(s) • '
-              '${request.fromDate.toIso8601String().split('T').first} → '
-              '${request.toDate.toIso8601String().split('T').first}',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
             if (request.reason.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Text(request.reason),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                ),
+                child: Text(
+                  request.reason,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontStyle: FontStyle.italic,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
             ],
             if (canAct) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  TextButton(
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: theme.colorScheme.error,
+                      side: BorderSide(color: theme.colorScheme.error.withValues(alpha: 0.4)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadii.pill),
+                      ),
+                    ),
+                    icon: const Icon(Icons.close_rounded, size: 16),
+                    label: const Text('Reject'),
                     onPressed: () => _reject(context),
-                    child: const Text('Reject'),
                   ),
-                  const SizedBox(width: 8),
-                  FilledButton(
+                  const SizedBox(width: 12),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: theme.colorScheme.primary,
+                      foregroundColor: theme.colorScheme.onPrimary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadii.pill),
+                      ),
+                    ),
+                    icon: const Icon(Icons.check_rounded, size: 16),
+                    label: const Text('Approve'),
                     onPressed: () => _approve(context),
-                    child: const Text('Approve'),
                   ),
                 ],
               ),
@@ -166,39 +345,75 @@ class _RequestCard extends StatelessWidget {
       await repo.update(updated);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Leave approved.')),
+          const SnackBar(
+            content: Text('Leave request approved.'),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } on ConflictFailure catch (f) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(f.message ?? 'Cannot approve.')),
+          SnackBar(
+            content: Text(f.message ?? 'Cannot approve.'),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     }
   }
 
   Future<void> _reject(BuildContext context) async {
+    final theme = Theme.of(context);
     final reasonCtrl = TextEditingController();
     final reason = await showDialog<String>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        title: const Text('Reject leave'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: theme.colorScheme.error),
+            const SizedBox(width: 8),
+            const Text('Reject Leave Request'),
+          ],
+        ),
         content: TextField(
           controller: reasonCtrl,
           autofocus: true,
           maxLines: 3,
-          decoration: const InputDecoration(
-            labelText: 'Reason (required)',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: 'Reason for rejection (required)',
+            alignLabelWithHint: true,
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              borderSide: BorderSide(
+                color: theme.colorScheme.outlineVariant,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              borderSide: BorderSide(
+                color: theme.colorScheme.error,
+                width: 1.5,
+              ),
+            ),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('Cancel'),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: theme.colorScheme.outline),
+            ),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: theme.colorScheme.error,
+              foregroundColor: theme.colorScheme.onError,
+            ),
             onPressed: () => Navigator.pop(dialogCtx, reasonCtrl.text),
             child: const Text('Reject'),
           ),
@@ -216,34 +431,70 @@ class _RequestCard extends StatelessWidget {
       await GetIt.I<LeaveRequestsRepository>().update(updated);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Leave rejected.')),
+          const SnackBar(
+            content: Text('Leave request rejected.'),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } on ValidationFailure {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('A rejection reason is required.')),
+          const SnackBar(
+            content: Text('A rejection reason is required.'),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } on ConflictFailure catch (f) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(f.message ?? 'Cannot reject.')),
+          SnackBar(
+            content: Text(f.message ?? 'Cannot reject.'),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     }
   }
 
-  Color _statusColor(LeaveRequestStatus s) {
+  Color _statusColor(ThemeData theme, LeaveRequestStatus s) {
     switch (s) {
       case LeaveRequestStatus.pending:
-        return Colors.orange.shade100;
+        return Colors.orange;
       case LeaveRequestStatus.approved:
-        return Colors.green.shade100;
+        return Colors.green;
       case LeaveRequestStatus.rejected:
-        return Colors.red.shade100;
+        return Colors.red;
       case LeaveRequestStatus.cancelled:
-        return Colors.grey.shade300;
+        return Colors.grey;
     }
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.status, required this.color});
+  final LeaveRequestStatus status;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        status.name.toUpperCase(),
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
   }
 }

@@ -1,7 +1,12 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../core/error/failure.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../domain/entities/leave_request.dart';
 import '../../domain/repositories/leave_requests_repository.dart';
 import '../../domain/usecases/submit_leave_request.dart';
@@ -14,6 +19,7 @@ import '../../domain/usecases/submit_leave_request.dart';
 /// rather than dumping a single banner.
 class LeaveRequestFormPage extends StatefulWidget {
   const LeaveRequestFormPage({
+    super.key,
     this.employeeId = 'emp-001',
     this.employeeName = 'Demo Approver',
   });
@@ -34,6 +40,11 @@ class _LeaveRequestFormPageState extends State<LeaveRequestFormPage> {
   Map<String, List<String>> _fieldErrors = const {};
   String? _topError;
 
+  // Modern File Upload / Attachment States
+  String? _attachedFileName;
+  String? _attachedFileSize;
+  bool _isUploadingAttachment = false;
+
   @override
   void dispose() {
     _reasonCtrl.dispose();
@@ -50,6 +61,18 @@ class _LeaveRequestFormPageState extends State<LeaveRequestFormPage> {
       initialDate: initial.isBefore(first) ? first : initial,
       firstDate: first,
       lastDate: first.add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            dialogTheme: DialogThemeData(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadii.lg),
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
     if (picked != null) {
       setState(() {
@@ -61,6 +84,32 @@ class _LeaveRequestFormPageState extends State<LeaveRequestFormPage> {
         }
       });
     }
+  }
+
+  // Trigger Attachment Selection
+  void _pickAttachment() {
+    setState(() => _isUploadingAttachment = true);
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (!mounted) return;
+      setState(() {
+        _attachedFileName = 'medical_certificate_slip.pdf';
+        _attachedFileSize = '1.4 MB';
+        _isUploadingAttachment = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('"${_attachedFileName}" attached successfully.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    });
+  }
+
+  void _removeAttachment() {
+    setState(() {
+      _attachedFileName = null;
+      _attachedFileSize = null;
+    });
   }
 
   Future<void> _submit() async {
@@ -82,7 +131,10 @@ class _LeaveRequestFormPageState extends State<LeaveRequestFormPage> {
       await GetIt.I<LeaveRequestsRepository>().create(draft);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Leave request submitted.')),
+        const SnackBar(
+          content: Text('Leave request submitted successfully.'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
       Navigator.of(context).pop();
     } on ValidationFailure catch (f) {
@@ -102,93 +154,670 @@ class _LeaveRequestFormPageState extends State<LeaveRequestFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final balanceRepo = GetIt.I<LeaveBalancesRepository>();
+
     String fmt(DateTime? d) =>
         d == null ? 'Select date' : d.toIso8601String().split('T').first;
+
+    // Calculated Day Duration
+    int daysCount = 0;
+    if (_from != null && _to != null) {
+      final start = DateTime.utc(_from!.year, _from!.month, _from!.day);
+      final end = DateTime.utc(_to!.year, _to!.month, _to!.day);
+      daysCount = end.difference(start).inDays + 1;
+    }
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Request Leave')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          DropdownButtonFormField<LeaveType>(
-            initialValue: _type,
-            decoration: const InputDecoration(
-              labelText: 'Leave type',
-              border: OutlineInputBorder(),
-            ),
-            items: LeaveType.values
-                .map((t) =>
-                    DropdownMenuItem(value: t, child: Text(t.name)))
-                .toList(),
-            onChanged: (v) =>
-                setState(() => _type = v ?? LeaveType.annual),
-          ),
-          const SizedBox(height: 16),
-          InputDecorator(
-            decoration: InputDecoration(
-              labelText: 'From',
-              border: const OutlineInputBorder(),
-              errorText: _errFor('fromDate'),
-            ),
-            child: InkWell(
-              onTap: () => _pickDate(isFrom: true),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text(fmt(_from)),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          InputDecorator(
-            decoration: InputDecoration(
-              labelText: 'To',
-              border: const OutlineInputBorder(),
-              errorText: _errFor('toDate'),
-            ),
-            child: InkWell(
-              onTap: () => _pickDate(isFrom: false),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text(fmt(_to)),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _reasonCtrl,
-            maxLines: 3,
-            decoration: InputDecoration(
-              labelText: 'Reason',
-              border: const OutlineInputBorder(),
-              errorText: _errFor('reason'),
-            ),
-          ),
-          if (_topError != null) ...[
-            const SizedBox(height: 16),
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: 'New Leave Request',
+        centerTitle: true,
+      ),
+      body: DynamicStatusBar(
+        child: Stack(
+          children: [
+            // Background Gradient
             Container(
-              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.red.shade100,
-                borderRadius: BorderRadius.circular(4),
+                gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.15),
+                    theme.colorScheme.surface,
+                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.05),
+                  ],
+                ),
               ),
-              child: Text(
-                _topError!,
-                style: TextStyle(color: Colors.red.shade900),
+            ),
+            ListView(
+              padding: EdgeInsets.only(
+                top: context.dynamicAppBarPadding + 50,
+                left: 16,
+                right: 16,
+                bottom: 16, // Extra padding to avoid overlapping the floating bottom bar
               ),
+              children: [
+
+
+                // Form Card
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(AppRadii.lg),
+                    border: Border.all(
+                      color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.02),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'LEAVE PREFERENCES',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Leave Type Dropdown
+                      DropdownButtonFormField<LeaveType>(
+                        initialValue: _type,
+                        decoration: InputDecoration(
+                          labelText: 'Leave Type',
+                          prefixIcon: Icon(
+                            Icons.category_outlined,
+                            color: theme.colorScheme.primary,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadii.md),
+                            borderSide: BorderSide(
+                              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.8),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadii.md),
+                            borderSide: BorderSide(
+                              color: theme.colorScheme.primary,
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                        items: LeaveType.values
+                            .map((t) => DropdownMenuItem(
+                                  value: t,
+                                  child: Text(
+                                    t.name.toUpperCase(),
+                                    style: const TextStyle(fontWeight: FontWeight.w600),
+                                  ),
+                                ))
+                            .toList(),
+                        onChanged: (v) =>
+                            setState(() => _type = v ?? LeaveType.annual),
+                      ).animate().fadeIn(duration: 300.ms),
+                      const SizedBox(height: 16),
+
+                      // Live Entitlement Balance Stream Row
+                      StreamBuilder<List<LeaveBalance>>(
+                        stream: balanceRepo.watchForEmployee(widget.employeeId),
+                        builder: (context, balanceSnap) {
+                          final list = balanceSnap.data ?? const <LeaveBalance>[];
+                          final currentBalance = list.isEmpty
+                              ? null
+                              : list.firstWhere(
+                                  (b) => b.type == _type,
+                                  orElse: () => list.first,
+                                );
+                          if (currentBalance == null) return const SizedBox.shrink();
+
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(AppRadii.md),
+                              border: Border.all(
+                                color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Current ${_type.name.toUpperCase()} Balance:',
+                                  style: theme.textTheme.labelMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                ),
+                                Text(
+                                  '${currentBalance.remainingDays} days available',
+                                  style: theme.textTheme.labelMedium?.copyWith(
+                                    fontWeight: FontWeight.w900,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ).animate().fadeIn(delay: 50.ms),
+                      const Divider(height: 36),
+
+                      Text(
+                        'DURATION SELECTOR',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Premium Date Pickers - Vertical Split Stacking
+                      _CustomDatePickerTile(
+                        labelText: 'Start Date',
+                        valueText: fmt(_from),
+                        isSelected: _from != null,
+                        errorText: _errFor('fromDate'),
+                        onTap: () => _pickDate(isFrom: true),
+                      ),
+                      const SizedBox(height: 12),
+                      Center(
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary.withValues(alpha: 0.05),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.arrow_downward_rounded,
+                            size: 16,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      _CustomDatePickerTile(
+                        labelText: 'End Date',
+                        valueText: fmt(_to),
+                        isSelected: _to != null,
+                        errorText: _errFor('toDate'),
+                        onTap: () => _pickDate(isFrom: false),
+                      ),
+
+                      if (daysCount > 0) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.teal,
+                                Colors.teal.withValues(alpha: 0.8),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(AppRadii.md),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.teal.withValues(alpha: 0.15),
+                                blurRadius: 6,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.info_outline_rounded, color: Colors.white),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'You are requesting $daysCount consecutive working days of leave.',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ).animate().fadeIn().slideY(begin: 0.05, end: 0),
+                      ],
+                      const Divider(height: 36),
+
+                      Text(
+                        'ATTACHMENTS & EVIDENCE',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Premium File Upload Attachment Card
+                      _FileAttachmentCard(
+                        fileName: _attachedFileName,
+                        fileSize: _attachedFileSize,
+                        isUploading: _isUploadingAttachment,
+                        onAttach: _pickAttachment,
+                        onRemove: _removeAttachment,
+                      ).animate().fadeIn(delay: 150.ms),
+
+                      const Divider(height: 36),
+
+                      Text(
+                        'JUSTIFICATION',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Reason Input Field
+                      TextField(
+                        controller: _reasonCtrl,
+                        maxLines: 4,
+                        decoration: InputDecoration(
+                          labelText: 'Reason for Leave',
+                          alignLabelWithHint: true,
+                          errorText: _errFor('reason'),
+                          prefixIcon: Padding(
+                            padding: const EdgeInsets.only(bottom: 56.0),
+                            child: Icon(
+                              Icons.edit_note_rounded,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadii.md),
+                            borderSide: BorderSide(
+                              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.8),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadii.md),
+                            borderSide: BorderSide(
+                              color: theme.colorScheme.primary,
+                              width: 1.5,
+                            ),
+                          ),
+                          errorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadii.md),
+                            borderSide: BorderSide(
+                              color: theme.colorScheme.error,
+                            ),
+                          ),
+                          focusedErrorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadii.md),
+                            borderSide: BorderSide(
+                              color: theme.colorScheme.error,
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                      ).animate().fadeIn(delay: 200.ms),
+
+                      if (_topError != null) ...[
+                        const SizedBox(height: 20),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.errorContainer,
+                            borderRadius: BorderRadius.circular(AppRadii.md),
+                            border: Border.all(color: theme.colorScheme.error.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.error_outline, color: theme.colorScheme.onErrorContainer),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _topError!,
+                                  style: TextStyle(
+                                    color: theme.colorScheme.onErrorContainer,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ).animate().shake(),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
-          const SizedBox(height: 24),
-          FilledButton(
-            onPressed: _isSubmitting ? null : _submit,
-            child: _isSubmitting
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Submit Request'),
+        ),
+      ),
+      // Sticky, Frosted Glassmorphic Bottom Navigation Bar
+      bottomNavigationBar: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 16,
+              bottom: MediaQuery.of(context).padding.bottom + 16,
+            ),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface.withValues(alpha: 0.8),
+              border: Border(
+                top: BorderSide(
+                  color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                ),
+              ),
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: FilledButton(
+                onPressed: _isSubmitting ? null : _submit,
+                style: FilledButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadii.pill),
+                  ),
+                  elevation: 0,
+                  shadowColor: theme.colorScheme.primary.withValues(alpha: 0.2),
+                ),
+                child: _isSubmitting
+                    ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Text(
+                        'Submit Leave Request',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ).animate().fadeIn(duration: 300.ms);
+  }
+}
+
+class _CustomDatePickerTile extends StatelessWidget {
+  const _CustomDatePickerTile({
+    required this.labelText,
+    required this.valueText,
+    required this.isSelected,
+    required this.onTap,
+    this.errorText,
+  });
+
+  final String labelText;
+  final String valueText;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final String? errorText;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isError = errorText != null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          labelText,
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: isError
+                ? theme.colorScheme.error
+                : theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? theme.colorScheme.primary.withValues(alpha: 0.03)
+                  : theme.colorScheme.surfaceVariant.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              border: Border.all(
+                color: isError
+                    ? theme.colorScheme.error
+                    : isSelected
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.outlineVariant.withValues(alpha: 0.8),
+                width: isSelected ? 1.5 : 1.0,
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.05),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.calendar_today_rounded,
+                  size: 18,
+                  color: isError
+                      ? theme.colorScheme.error
+                      : isSelected
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.outline,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    valueText,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                      color: isError
+                          ? theme.colorScheme.error
+                          : isSelected
+                              ? theme.colorScheme.onSurface
+                              : theme.colorScheme.outline,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (isError) ...[
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Text(
+              errorText!,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.error,
+              ),
+            ),
           ),
         ],
+      ],
+    );
+  }
+}
+
+class _FileAttachmentCard extends StatelessWidget {
+  const _FileAttachmentCard({
+    required this.fileName,
+    required this.fileSize,
+    required this.isUploading,
+    required this.onAttach,
+    required this.onRemove,
+  });
+
+  final String? fileName;
+  final String? fileSize;
+  final bool isUploading;
+  final VoidCallback onAttach;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isAttached = fileName != null;
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
       ),
+      clipBehavior: Clip.antiAlias,
+      child: isUploading
+          ? Container(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                children: [
+                  const SizedBox(
+                    height: 28,
+                    width: 28,
+                    child: CircularProgressIndicator(strokeWidth: 2.5),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Uploading attachment...',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : isAttached
+              ? Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.picture_as_pdf_rounded,
+                          color: Colors.red,
+                          size: 26,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              fileName!,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Text(
+                                  fileSize!,
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: theme.colorScheme.outline,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const CircleAvatar(radius: 2, backgroundColor: Colors.green),
+                                const SizedBox(width: 4),
+                                const Text(
+                                  'Ready to upload',
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Remove',
+                        icon: Icon(Icons.cancel_rounded, color: theme.colorScheme.outline),
+                        onPressed: onRemove,
+                      ),
+                    ],
+                  ),
+                )
+              : Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: onAttach,
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.cloud_upload_outlined,
+                            size: 32,
+                            color: theme.colorScheme.primary,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'TAP TO UPLOAD DOCUMENT',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: theme.colorScheme.primary,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Support PDF, PNG, JPG up to 10MB (Medical Cert, etc.)',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.outline,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
     );
   }
 }

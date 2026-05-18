@@ -1,7 +1,12 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../core/error/failure.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../domain/entities/attendance_entry.dart';
 import '../../domain/repositories/attendance_repository.dart';
 import '../../domain/usecases/toggle_clock.dart';
@@ -12,7 +17,7 @@ import '../../domain/usecases/toggle_clock.dart';
 /// do next given the latest entry, so the page truth is the use case,
 /// not local UI state.
 class AttendancePage extends StatefulWidget {
-  const AttendancePage({this.employeeId = 'emp-001'});
+  const AttendancePage({super.key, this.employeeId = 'emp-001'});
   final String employeeId;
 
   @override
@@ -56,99 +61,238 @@ class _AttendancePageState extends State<AttendancePage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final repo = GetIt.I<AttendanceRepository>();
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Attendance')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          FutureBuilder<AttendanceEntry?>(
-            future: repo.latestFor(widget.employeeId),
-            builder: (context, snap) {
-              final latest = snap.data;
-              final isOpen = latest?.isOpen ?? false;
-              return Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: 'Attendance Log',
+        centerTitle: true,
+      ),
+      body: DynamicStatusBar(
+        child: Stack(
+          children: [
+            // Background Gradient
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.15),
+                    theme.colorScheme.surface,
+                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.05),
+                  ],
+                ),
+              ),
+            ),
+            ListView(
+              padding: EdgeInsets.only(
+                top: context.dynamicAppBarPadding + 16,
+                left: 16,
+                right: 16,
+                bottom: 40,
+              ),
+              children: [
+                FutureBuilder<AttendanceEntry?>(
+                  future: repo.latestFor(widget.employeeId),
+                  builder: (context, snap) {
+                    final latest = snap.data;
+                    final isOpen = latest?.isOpen ?? false;
+                    final accentColor = isOpen ? Colors.teal : theme.colorScheme.primary;
+
+                    return Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(AppRadii.lg),
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.02),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          // Clock Circle Visualisation
+                          Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: accentColor.withValues(alpha: 0.08),
+                              border: Border.all(
+                                color: accentColor.withValues(alpha: 0.2),
+                                width: 4,
+                              ),
+                            ),
+                            child: Icon(
+                              isOpen
+                                  ? Icons.timer_outlined
+                                  : Icons.timer_off_outlined,
+                              size: 44,
+                              color: accentColor,
+                            ),
+                          ).animate().scale(duration: 400.ms),
+                          const SizedBox(height: 16),
+                          Text(
+                            isOpen ? 'YOU ARE CLOCKED IN' : 'YOU ARE CLOCKED OUT',
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: accentColor,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                          if (latest != null) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              isOpen
+                                  ? 'Since ${_fmt(latest.clockIn)}'
+                                  : 'Last out at ${_fmt(latest.clockOut!)}',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 24),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 52,
+                            child: FilledButton.icon(
+                              onPressed: _isSubmitting ? null : _toggle,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: isOpen ? theme.colorScheme.error : theme.colorScheme.primary,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                                ),
+                              ),
+                              icon: Icon(
+                                isOpen ? Icons.logout_rounded : Icons.login_rounded,
+                              ),
+                              label: _isSubmitting
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      ),
+                                    )
+                                  : Text(
+                                      isOpen ? 'Clock Out Now' : 'Clock In Now',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                          if (_error != null) ...[
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.errorContainer,
+                                borderRadius: BorderRadius.circular(AppRadii.md),
+                              ),
+                              child: Text(
+                                _error!,
+                                style: TextStyle(
+                                  color: theme.colorScheme.onErrorContainer,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ).animate().shake(),
+                          ],
+                        ],
+                      ),
+                    ).animate().fadeIn().slideY(begin: 0.05, end: 0);
+                  },
+                ),
+                const SizedBox(height: 32),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Row(
                     children: [
                       Icon(
-                        isOpen
-                            ? Icons.timer_outlined
-                            : Icons.timer_off_outlined,
-                        size: 48,
-                        color: isOpen ? Colors.green : Colors.grey,
+                        Icons.history_rounded,
+                        size: 20,
+                        color: theme.colorScheme.primary,
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(width: 8),
                       Text(
-                        isOpen ? 'Clocked in' : 'Clocked out',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      if (latest != null) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          isOpen
-                              ? 'Since ${_fmt(latest.clockIn)}'
-                              : 'Last out ${_fmt(latest.clockOut!)}',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: _isSubmitting ? null : _toggle,
-                          icon: Icon(
-                            isOpen ? Icons.logout : Icons.login,
-                          ),
-                          label: Text(
-                            isOpen ? 'Clock Out' : 'Clock In',
-                          ),
+                        'RECENT ENTRIES',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          color: theme.colorScheme.primary,
+                          letterSpacing: 0.5,
                         ),
                       ),
-                      if (_error != null) ...[
-                        const SizedBox(height: 12),
-                        Text(
-                          _error!,
-                          style: const TextStyle(color: Colors.red),
-                        ),
-                      ],
                     ],
                   ),
                 ),
-              );
-            },
-          ),
-          const SizedBox(height: 24),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
-              'Recent entries',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+                const SizedBox(height: 12),
+                StreamBuilder<List<AttendanceEntry>>(
+                  stream: repo.watchForEmployee(widget.employeeId),
+                  builder: (context, snap) {
+                    final entries = snap.data ?? const <AttendanceEntry>[];
+                    if (entries.isEmpty) {
+                      return Container(
+                        padding: const EdgeInsets.all(32),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surface,
+                          borderRadius: BorderRadius.circular(AppRadii.lg),
+                          border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4)),
+                        ),
+                        child: Center(
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.calendar_today_rounded,
+                                size: 40,
+                                color: theme.colorScheme.outline,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'No attendance records yet',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.colorScheme.outline,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+                    return Column(
+                      children: [
+                        for (int i = 0; i < entries.length; i++)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _EntryCard(entry: entries[i])
+                                .animate()
+                                .fadeIn(delay: (i * 30).ms)
+                                .slideY(begin: 0.05, end: 0, duration: 250.ms),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 8),
-          StreamBuilder<List<AttendanceEntry>>(
-            stream: repo.watchForEmployee(widget.employeeId),
-            builder: (context, snap) {
-              final entries = snap.data ?? const <AttendanceEntry>[];
-              if (entries.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text('No attendance yet.'),
-                );
-              }
-              return Column(
-                children: entries
-                    .map((e) => _EntryTile(entry: e))
-                    .toList(),
-              );
-            },
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -157,35 +301,94 @@ class _AttendancePageState extends State<AttendancePage> {
       dt.toIso8601String().split('.').first.replaceFirst('T', ' ');
 }
 
-class _EntryTile extends StatelessWidget {
-  const _EntryTile({required this.entry});
+class _EntryCard extends StatelessWidget {
+  const _EntryCard({required this.entry});
   final AttendanceEntry entry;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final hours = entry.workedMinutes / 60.0;
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      child: ListTile(
-        leading: Icon(
-          entry.isOpen
-              ? Icons.timer_outlined
-              : Icons.check_circle_outline,
-          color: entry.isOpen ? Colors.green : Colors.grey,
+    final accentColor = entry.isOpen ? Colors.teal : theme.colorScheme.primary;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
         ),
-        title: Text(entry.date.toIso8601String().split('T').first),
-        subtitle: Text(
-          entry.isOpen
-              ? 'In ${_fmt(entry.clockIn)} (open)'
-              : '${_fmt(entry.clockIn)} → ${_fmt(entry.clockOut!)}',
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.01),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: accentColor.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                entry.isOpen
+                    ? Icons.timer_outlined
+                    : Icons.check_circle_outline_rounded,
+                color: accentColor,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    entry.date.toIso8601String().split('T').first,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    entry.isOpen
+                        ? 'In ${_fmtTime(entry.clockIn)} (open)'
+                        : '${_fmtTime(entry.clockIn)}   ➔   ${_fmtTime(entry.clockOut!)}',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (!entry.isOpen)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                ),
+                child: Text(
+                  '${hours.toStringAsFixed(1)} h',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.onPrimaryContainer,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+          ],
         ),
-        trailing: entry.isOpen
-            ? null
-            : Text('${hours.toStringAsFixed(1)} h'),
       ),
     );
   }
 
-  static String _fmt(DateTime dt) =>
+  static String _fmtTime(DateTime dt) =>
       dt.toIso8601String().split('.').first.split('T').last.substring(0, 5);
 }

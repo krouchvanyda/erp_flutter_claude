@@ -1,8 +1,13 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/route_paths.dart';
+import '../../../../core/theme/app_radii.dart';
+import '../../../../core/widgets/dynamic_app_bar.dart';
+import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../domain/entities/payslip.dart';
 import '../../domain/repositories/payslips_repository.dart';
 import '../../domain/usecases/summarize_payslip.dart';
@@ -11,33 +16,106 @@ import '../../domain/usecases/summarize_payslip.dart';
 /// top so the user sees overtime / deductions at a glance without
 /// drilling into individual slips.
 class PayslipsListPage extends StatelessWidget {
-  const PayslipsListPage({this.employeeId = 'emp-001'});
+  const PayslipsListPage({super.key, this.employeeId = 'emp-001'});
   final String employeeId;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Payslips')),
-      body: StreamBuilder<List<Payslip>>(
-        stream: GetIt.I<PayslipsRepository>().watchForEmployee(employeeId),
-        builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final slips = snap.data ?? const <Payslip>[];
-          if (slips.isEmpty) {
-            return const Center(child: Text('No payslips on file.'));
-          }
-          final summary = summarizePeriod(slips);
-          return ListView(
-            padding: const EdgeInsets.all(12),
-            children: [
-              _SummaryCard(buckets: summary, periods: slips.length),
-              const SizedBox(height: 16),
-              for (final slip in slips) _PayslipRow(slip: slip),
-            ],
-          );
-        },
+      extendBodyBehindAppBar: true,
+      appBar: DynamicAppBar(
+        title: 'Payslips History',
+        centerTitle: true,
+      ),
+      body: DynamicStatusBar(
+        child: Stack(
+          children: [
+            // Background Gradient
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.15),
+                    theme.colorScheme.surface,
+                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.05),
+                  ],
+                ),
+              ),
+            ),
+            StreamBuilder<List<Payslip>>(
+              stream: GetIt.I<PayslipsRepository>().watchForEmployee(employeeId),
+              builder: (context, snap) {
+                if (snap.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final slips = snap.data ?? const <Payslip>[];
+                if (slips.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.receipt_long_outlined,
+                          size: 64,
+                          color: theme.colorScheme.outline,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No payslips on file',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                final summary = summarizePeriod(slips);
+
+                return ListView(
+                  padding: EdgeInsets.only(
+                    top: context.dynamicAppBarPadding + 16,
+                    left: 16,
+                    right: 16,
+                    bottom: 40,
+                  ),
+                  children: [
+                    _SummaryCard(buckets: summary, periods: slips.length)
+                        .animate()
+                        .fadeIn()
+                        .slideY(begin: 0.05, end: 0, duration: 350.ms),
+                    const SizedBox(height: 28),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Text(
+                        'PAYSLIP ARCHIVE',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          color: theme.colorScheme.primary,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    for (int i = 0; i < slips.length; i++)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _PayslipRow(slip: slips[i])
+                            .animate()
+                            .fadeIn(delay: (i * 30).ms)
+                            .slideY(begin: 0.05, end: 0, duration: 250.ms),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -50,54 +128,121 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Period Summary ($periods slips)',
-              style: Theme.of(context).textTheme.titleMedium,
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Aggregate Summary',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                ),
+                child: Text(
+                  '$periods Periods',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _row(context, 'Total Earnings', formatAmount(buckets.earnings)),
+          _row(context, 'Total Overtime', formatAmount(buckets.overtime)),
+          _row(context, 'Total Deductions', '-${formatAmount(buckets.deductions)}', isDeduction: true),
+          _row(context, 'Total Tax', '-${formatAmount(buckets.tax)}', isDeduction: true),
+          const Divider(height: 24),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.teal.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              border: Border.all(
+                color: Colors.teal.withValues(alpha: 0.2),
+              ),
             ),
-            const SizedBox(height: 12),
-            _row('Earnings', formatAmount(buckets.earnings)),
-            _row('Overtime', formatAmount(buckets.overtime)),
-            _row('Deductions', '-${formatAmount(buckets.deductions)}'),
-            _row('Tax', '-${formatAmount(buckets.tax)}'),
-            const Divider(),
-            _row(
-              'Net pay',
+            child: _row(
+              context,
+              'Cumulative Net Pay',
               formatAmount(buckets.netPay),
               bold: true,
+              color: Colors.teal,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _row(String label, String value, {bool bold = false}) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontWeight: bold ? FontWeight.w700 : FontWeight.normal,
-                ),
+  Widget _row(
+    BuildContext context,
+    String label,
+    String value, {
+    bool bold = false,
+    bool isDeduction = false,
+    Color? color,
+  }) {
+    final theme = Theme.of(context);
+    final displayColor = color ??
+        (isDeduction
+            ? theme.colorScheme.error
+            : bold
+                ? theme.colorScheme.primary
+                : theme.colorScheme.onSurface);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: bold ? FontWeight.bold : FontWeight.w500,
+                color: bold ? theme.colorScheme.onSurface : theme.colorScheme.onSurfaceVariant,
               ),
             ),
-            Text(
-              value,
-              style: TextStyle(
-                fontWeight: bold ? FontWeight.w700 : FontWeight.normal,
-              ),
+          ),
+          Text(
+            value,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: bold ? FontWeight.w900 : FontWeight.bold,
+              color: displayColor,
+              fontSize: bold ? 18 : 14.5,
             ),
-          ],
-        ),
-      );
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _PayslipRow extends StatelessWidget {
@@ -106,15 +251,78 @@ class _PayslipRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      child: ListTile(
-        title: Text(
-          '${slip.periodStart.toIso8601String().split('T').first} → '
-          '${slip.periodEnd.toIso8601String().split('T').first}',
+    final theme = Theme.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
         ),
-        subtitle: Text('Net ${slip.netPay} • Gross ${slip.grossPay}'),
-        trailing: const Icon(Icons.chevron_right),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.01),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primary.withValues(alpha: 0.06),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            Icons.receipt_long_rounded,
+            color: theme.colorScheme.primary,
+            size: 22,
+          ),
+        ),
+        title: Text(
+          '${_formatDate(slip.periodStart)}   ➔   ${_formatDate(slip.periodEnd)}',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            fontSize: 14.5,
+          ),
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 6.0),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.teal.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                  border: Border.all(color: Colors.teal.withValues(alpha: 0.15)),
+                ),
+                child: Text(
+                  'Net: ${slip.netPay}',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: Colors.teal,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Gross: ${slip.grossPay}',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+        trailing: Icon(
+          Icons.chevron_right_rounded,
+          color: theme.colorScheme.outline,
+        ),
         onTap: () => context.pushNamed(
           RoutePaths.hrPayslipDetailName,
           pathParameters: {RoutePaths.hrPayslipDetailIdParam: slip.id},
@@ -122,4 +330,6 @@ class _PayslipRow extends StatelessWidget {
       ),
     );
   }
+
+  String _formatDate(DateTime dt) => dt.toIso8601String().split('T').first;
 }
