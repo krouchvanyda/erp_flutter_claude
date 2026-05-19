@@ -509,12 +509,7 @@ class _LeaveRequestFormPageState extends State<LeaveRequestFormPage> {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Container(
-            padding: EdgeInsets.only(
-              left: 20,
-              right: 20,
-              top: 16,
-              bottom: MediaQuery.of(context).padding.bottom + 16,
-            ),
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
               color: theme.colorScheme.surface.withValues(alpha: 0.8),
               border: Border(

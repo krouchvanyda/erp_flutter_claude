@@ -233,14 +233,6 @@ class ProjectDetailPage extends StatelessWidget {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.pushNamed(
-          RoutePaths.projectBoardName,
-          pathParameters: {RoutePaths.projectDetailIdParam: projectId},
-        ),
-        icon: const Icon(Icons.view_kanban_outlined),
-        label: const Text('Open task board'),
-      ),
     );
   }
 

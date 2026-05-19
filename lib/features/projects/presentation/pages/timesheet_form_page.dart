@@ -162,6 +162,11 @@ class _TimesheetFormPageState extends State<TimesheetFormPage> {
                         children: [
                           DropdownButtonFormField<Project>(
                             initialValue: _project,
+                            // Expand the field + ellipsise long
+                            // "{code} — {name}" labels so the
+                            // InputDecorator's internal Row doesn't
+                            // overflow on narrow phones.
+                            isExpanded: true,
                             decoration: InputDecoration(
                               labelText: 'Project',
                               border: OutlineInputBorder(
@@ -173,7 +178,12 @@ class _TimesheetFormPageState extends State<TimesheetFormPage> {
                             items: projects
                                 .map((p) => DropdownMenuItem(
                                       value: p,
-                                      child: Text('${p.code} — ${p.name}'),
+                                      child: Text(
+                                        '${p.code} — ${p.name}',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        softWrap: false,
+                                      ),
                                     ))
                                 .toList(),
                             onChanged: (p) => setState(() => _project = p),

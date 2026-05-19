@@ -112,7 +112,7 @@ class _ProjectListViewState extends State<_ProjectListView> {
                 }
                 return Column(
                   children: [
-                    SizedBox(height: context.dynamicAppBarPadding + 16),
+                    SizedBox(height: context.dynamicAppBarPadding),
                     // Search & View Mode Card
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
