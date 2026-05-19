@@ -6,6 +6,7 @@ import 'package:get_it/get_it.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../domain/entities/employee.dart';
 import '../../domain/repositories/employees_repository.dart';
 import '../../domain/usecases/build_org_chart.dart';
@@ -31,20 +32,7 @@ class OrgChartPage extends StatelessWidget {
       body: DynamicStatusBar(
         child: Stack(
           children: [
-            // Background Gradient
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [
-                    theme.colorScheme.primaryContainer.withValues(alpha: 0.15),
-                    theme.colorScheme.surface,
-                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.05),
-                  ],
-                ),
-              ),
-            ),
+            const AppBackgroundGradient(),
             FutureBuilder<List<Employee>>(
               future: GetIt.I<EmployeesRepository>().getAll(),
               builder: (context, snapshot) {

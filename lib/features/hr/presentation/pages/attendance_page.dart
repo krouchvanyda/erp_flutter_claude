@@ -7,6 +7,7 @@ import '../../../../core/error/failure.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../domain/entities/attendance_entry.dart';
 import '../../domain/repositories/attendance_repository.dart';
 import '../../domain/usecases/toggle_clock.dart';
@@ -73,20 +74,7 @@ class _AttendancePageState extends State<AttendancePage> {
       body: DynamicStatusBar(
         child: Stack(
           children: [
-            // Background Gradient
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [
-                    theme.colorScheme.primaryContainer.withValues(alpha: 0.15),
-                    theme.colorScheme.surface,
-                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.05),
-                  ],
-                ),
-              ),
-            ),
+            const AppBackgroundGradient(),
             ListView(
               padding: EdgeInsets.only(
                 top: context.dynamicAppBarPadding + 16,

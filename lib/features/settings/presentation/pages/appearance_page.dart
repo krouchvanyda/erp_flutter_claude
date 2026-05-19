@@ -5,6 +5,7 @@ import 'package:get_it/get_it.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../domain/entities/user_preferences.dart';
 import '../../domain/repositories/preferences_repository.dart';
 
@@ -26,20 +27,7 @@ class AppearancePage extends StatelessWidget {
       body: DynamicStatusBar(
         child: Stack(
           children: [
-            // Background Canvas
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [
-                    theme.colorScheme.primaryContainer.withValues(alpha: 0.15),
-                    theme.colorScheme.surface,
-                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.05),
-                  ],
-                ),
-              ),
-            ),
+            const AppBackgroundGradient(),
             StreamBuilder<UserPreferences>(
               stream: repo.watch(),
               builder: (context, snap) {

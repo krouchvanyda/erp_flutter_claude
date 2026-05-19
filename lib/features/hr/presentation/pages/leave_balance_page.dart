@@ -8,6 +8,7 @@ import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../domain/entities/leave_request.dart';
 import '../../domain/repositories/leave_requests_repository.dart';
 import '../../domain/usecases/compute_leave_balance.dart';
@@ -49,20 +50,7 @@ class LeaveBalancePage extends StatelessWidget {
       body: DynamicStatusBar(
         child: Stack(
           children: [
-            // Background Gradient
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [
-                    theme.colorScheme.primaryContainer.withValues(alpha: 0.15),
-                    theme.colorScheme.surface,
-                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.05),
-                  ],
-                ),
-              ),
-            ),
+            const AppBackgroundGradient(),
             StreamBuilder<List<LeaveBalance>>(
               stream: balanceRepo.watchForEmployee(employeeId),
               builder: (context, balanceSnap) {

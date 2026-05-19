@@ -26,7 +26,7 @@ import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/charts/chart_data.dart';
 import '../../../../shared/widgets/kpi/kpi_data.dart';
 import '../../../../shared/widgets/permission_guard.dart';
-
+import '../../../../shared/widgets/app_background_gradient.dart';
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
 
@@ -172,28 +172,11 @@ class _DashboardPageState extends State<DashboardPage> {
         child: Stack(
           children: [
             // Background Elements
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              height: 300,
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      theme.colorScheme.primary.withOpacity(0.15),
-                      theme.colorScheme.surface.withOpacity(0),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+            const AppBackgroundGradient(),
             
             SingleChildScrollView(
               padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + kToolbarHeight + 20,
+                top: context.dynamicAppBarPadding + kToolbarHeight ,
                 left: 16,
                 right: 16,
                 bottom: 100,
@@ -222,7 +205,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     ],
                   ),
                   
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 20),
                   
                   // Main Content
                   DashboardGrid(layout: _buildDefaultLayout(l10n)).animate().fadeIn(delay: 400.ms).scale(begin: const Offset(0.95, 0.95)),

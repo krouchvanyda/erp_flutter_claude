@@ -102,12 +102,12 @@ class _ShortcutTile extends StatelessWidget {
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(AppRadii.lg),
         border: Border.all(
-          color: theme.colorScheme.outlineVariant.withOpacity(0.4),
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -128,7 +128,7 @@ class _ShortcutTile extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.08),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.08),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(

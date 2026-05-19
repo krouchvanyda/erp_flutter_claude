@@ -15,7 +15,7 @@ import '../account_type_visual.dart';
 import '../bloc/account_tree_bloc.dart';
 import '../bloc/account_tree_event.dart';
 import '../bloc/account_tree_state.dart';
-
+import '../../../../shared/widgets/app_background_gradient.dart';
 class ChartOfAccountsPage extends StatelessWidget {
   const ChartOfAccountsPage({super.key});
 
@@ -69,17 +69,22 @@ class _ChartView extends StatelessWidget {
         ],
       ),
       body: DynamicStatusBar(
-        child: BlocBuilder<AccountTreeBloc, AccountTreeState>(
-          builder: (context, state) => switch (state) {
-            AccountTreeInitial() ||
-            AccountTreeLoading() =>
-              const Center(child: CircularProgressIndicator()),
-            AccountTreeFailure(:final message) =>
-              _CenteredMessage(text: l10n.chartOfAccountsError(message)),
-            AccountTreeLoaded(:final roots, :final expandedIds) => roots.isEmpty
-                ? _CenteredMessage(text: l10n.chartOfAccountsEmpty)
-                : _AccountTreeList(roots: roots, expandedIds: expandedIds),
-          },
+        child: Stack(
+          children: [
+            const AppBackgroundGradient(),
+            BlocBuilder<AccountTreeBloc, AccountTreeState>(
+              builder: (context, state) => switch (state) {
+                AccountTreeInitial() ||
+                AccountTreeLoading() =>
+                  const Center(child: CircularProgressIndicator()),
+                AccountTreeFailure(:final message) =>
+                  _CenteredMessage(text: l10n.chartOfAccountsError(message)),
+                AccountTreeLoaded(:final roots, :final expandedIds) => roots.isEmpty
+                    ? _CenteredMessage(text: l10n.chartOfAccountsEmpty)
+                    : _AccountTreeList(roots: roots, expandedIds: expandedIds),
+              },
+            ),
+          ],
         ),
       ),
     );
