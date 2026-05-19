@@ -28,9 +28,7 @@ import '../../../../shared/widgets/kpi/kpi_data.dart';
 import '../../../../shared/widgets/permission_guard.dart';
 
 class DashboardPage extends StatefulWidget {
-  const DashboardPage({super.key, this.onSignOut});
-
-  final VoidCallback? onSignOut;
+  const DashboardPage({super.key});
 
   @override
   State<DashboardPage> createState() => _DashboardPageState();
@@ -164,16 +162,10 @@ class _DashboardPageState extends State<DashboardPage> {
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
         title: l10n.dashboardTitle,
-        actions: [
-          const RealtimeStatusIndicator(),
-          const NotificationsBadge(),
-          const GlobalSearchAnchor(),
-          if (widget.onSignOut != null)
-            IconButton(
-              icon: const Icon(Icons.logout_rounded),
-              onPressed: widget.onSignOut,
-              tooltip: l10n.signOutTooltip,
-            ),
+        actions: const [
+          RealtimeStatusIndicator(),
+          NotificationsBadge(),
+          GlobalSearchAnchor(),
         ],
       ),
       body: DynamicStatusBar(

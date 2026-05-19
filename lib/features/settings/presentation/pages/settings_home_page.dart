@@ -10,7 +10,9 @@ import '../../../../core/router/route_paths.dart';
 /// Module 9 settings hub. Groups every sub-page from Phases 9.1–9.3
 /// into three sections so the user can scan the surface at a glance.
 class SettingsHomePage extends StatelessWidget {
-  const SettingsHomePage({super.key});
+  const SettingsHomePage({super.key, required this.onSignOut});
+
+  final VoidCallback onSignOut;
 
   @override
   Widget build(BuildContext context) {
@@ -18,10 +20,7 @@ class SettingsHomePage extends StatelessWidget {
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: const DynamicAppBar(
-        title: 'Settings',
-        centerTitle: true,
-      ),
+      appBar: const DynamicAppBar(title: 'Settings', centerTitle: true),
       body: DynamicStatusBar(
         child: Stack(
           children: [
@@ -34,7 +33,9 @@ class SettingsHomePage extends StatelessWidget {
                   colors: [
                     theme.colorScheme.primaryContainer.withValues(alpha: 0.1),
                     theme.colorScheme.surface,
-                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.05),
+                    theme.colorScheme.secondaryContainer.withValues(
+                      alpha: 0.05,
+                    ),
                   ],
                 ),
               ),
@@ -72,7 +73,9 @@ class SettingsHomePage extends StatelessWidget {
                     children: [
                       CircleAvatar(
                         radius: 32,
-                        backgroundColor: theme.colorScheme.onPrimary.withValues(alpha: 0.2),
+                        backgroundColor: theme.colorScheme.onPrimary.withValues(
+                          alpha: 0.2,
+                        ),
                         child: Text(
                           'DA',
                           style: theme.textTheme.headlineSmall?.copyWith(
@@ -96,16 +99,25 @@ class SettingsHomePage extends StatelessWidget {
                             Text(
                               'demo@erp.example',
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onPrimary.withValues(alpha: 0.8),
+                                color: theme.colorScheme.onPrimary.withValues(
+                                  alpha: 0.8,
+                                ),
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                             const SizedBox(height: 6),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
-                                color: theme.colorScheme.onPrimary.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(AppRadii.pill),
+                                color: theme.colorScheme.onPrimary.withValues(
+                                  alpha: 0.15,
+                                ),
+                                borderRadius: BorderRadius.circular(
+                                  AppRadii.pill,
+                                ),
                               ),
                               child: Text(
                                 'Administrator',
@@ -121,102 +133,134 @@ class SettingsHomePage extends StatelessWidget {
                       ),
                     ],
                   ),
-                ).animate().fadeIn().slideY(begin: 0.05, end: 0, duration: 350.ms),
+                ).animate().fadeIn().slideY(
+                  begin: 0.05,
+                  end: 0,
+                  duration: 350.ms,
+                ),
                 const SizedBox(height: 24),
 
                 // Preferences Group
                 _Section(
-                  title: 'Preferences',
-                  children: [
-                    _Tile(
-                      icon: Icons.brightness_6_outlined,
-                      title: 'Appearance',
-                      subtitle: 'Light, dark, or follow system',
-                      routeName: RoutePaths.settingsAppearanceName,
-                      color: Colors.blue,
-                    ),
-                    const Divider(height: 1, indent: 56),
-                    _Tile(
-                      icon: Icons.language_outlined,
-                      title: 'Language',
-                      subtitle: 'English / ខ្មែរ',
-                      routeName: RoutePaths.settingsLanguageName,
-                      color: Colors.indigo,
-                    ),
-                    const Divider(height: 1, indent: 56),
-                    _Tile(
-                      icon: Icons.notifications_outlined,
-                      title: 'Notifications',
-                      subtitle: 'Push + email per category',
-                      routeName: RoutePaths.settingsNotificationsName,
-                      color: Colors.amber.shade800,
-                    ),
-                  ],
-                ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.05, end: 0, duration: 300.ms),
+                      title: 'Preferences',
+                      children: [
+                        _Tile(
+                          icon: Icons.brightness_6_outlined,
+                          title: 'Appearance',
+                          subtitle: 'Light, dark, or follow system',
+                          routeName: RoutePaths.settingsAppearanceName,
+                          color: Colors.blue,
+                        ),
+                        const Divider(height: 1, indent: 56),
+                        _Tile(
+                          icon: Icons.language_outlined,
+                          title: 'Language',
+                          subtitle: 'English / ខ្មែរ',
+                          routeName: RoutePaths.settingsLanguageName,
+                          color: Colors.indigo,
+                        ),
+                        const Divider(height: 1, indent: 56),
+                        _Tile(
+                          icon: Icons.notifications_outlined,
+                          title: 'Notifications',
+                          subtitle: 'Push + email per category',
+                          routeName: RoutePaths.settingsNotificationsName,
+                          color: Colors.amber.shade800,
+                        ),
+                      ],
+                    )
+                    .animate()
+                    .fadeIn(delay: 100.ms)
+                    .slideY(begin: 0.05, end: 0, duration: 300.ms),
 
                 const SizedBox(height: 20),
 
                 // Security Group
                 _Section(
-                  title: 'Security & Access',
-                  children: [
-                    _Tile(
-                      icon: Icons.devices_other_outlined,
-                      title: 'Active devices',
-                      subtitle: 'Sessions you can revoke',
-                      routeName: RoutePaths.settingsSessionsName,
-                      color: Colors.teal,
-                    ),
-                    const Divider(height: 1, indent: 56),
-                    _Tile(
-                      icon: Icons.history_edu_outlined,
-                      title: 'Audit log',
-                      subtitle: 'Who did what, when',
-                      routeName: RoutePaths.settingsAuditLogName,
-                      color: Colors.deepPurple,
-                    ),
-                    const Divider(height: 1, indent: 56),
-                    _Tile(
-                      icon: Icons.lock_outline,
-                      title: 'App lock',
-                      subtitle: 'PIN + biometric re-auth',
-                      routeName: RoutePaths.settingsAppLockName,
-                      color: Colors.pink,
-                    ),
-                  ],
-                ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.05, end: 0, duration: 300.ms),
+                      title: 'Security & Access',
+                      children: [
+                        _Tile(
+                          icon: Icons.devices_other_outlined,
+                          title: 'Active devices',
+                          subtitle: 'Sessions you can revoke',
+                          routeName: RoutePaths.settingsSessionsName,
+                          color: Colors.teal,
+                        ),
+                        const Divider(height: 1, indent: 56),
+                        _Tile(
+                          icon: Icons.history_edu_outlined,
+                          title: 'Audit log',
+                          subtitle: 'Who did what, when',
+                          routeName: RoutePaths.settingsAuditLogName,
+                          color: Colors.deepPurple,
+                        ),
+                        const Divider(height: 1, indent: 56),
+                        _Tile(
+                          icon: Icons.lock_outline,
+                          title: 'App lock',
+                          subtitle: 'PIN + biometric re-auth',
+                          routeName: RoutePaths.settingsAppLockName,
+                          color: Colors.pink,
+                        ),
+                      ],
+                    )
+                    .animate()
+                    .fadeIn(delay: 200.ms)
+                    .slideY(begin: 0.05, end: 0, duration: 300.ms),
 
                 const SizedBox(height: 20),
 
                 // Administration Group
                 _Section(
-                  title: 'Administration',
-                  children: [
-                    _Tile(
-                      icon: Icons.people_alt_outlined,
-                      title: 'User management',
-                      subtitle: 'Invite, suspend, assign roles',
-                      routeName: RoutePaths.settingsUsersName,
-                      color: Colors.orange.shade700,
+                      title: 'Administration',
+                      children: [
+                        _Tile(
+                          icon: Icons.people_alt_outlined,
+                          title: 'User management',
+                          subtitle: 'Invite, suspend, assign roles',
+                          routeName: RoutePaths.settingsUsersName,
+                          color: Colors.orange.shade700,
+                        ),
+                        const Divider(height: 1, indent: 56),
+                        _Tile(
+                          icon: Icons.shield_outlined,
+                          title: 'Roles & permissions',
+                          subtitle: 'Editor for custom roles',
+                          routeName: RoutePaths.settingsRolesName,
+                          color: Colors.cyan.shade700,
+                        ),
+                        const Divider(height: 1, indent: 56),
+                        _Tile(
+                          icon: Icons.cloud_outlined,
+                          title: 'API configuration',
+                          subtitle: 'Switch environment / tenant',
+                          routeName: RoutePaths.settingsApiConfigName,
+                          color: Colors.blueGrey,
+                        ),
+                      ],
+                    )
+                    .animate()
+                    .fadeIn(delay: 300.ms)
+                    .slideY(begin: 0.05, end: 0, duration: 300.ms),
+
+                Container(
+                  margin: EdgeInsets.only(bottom: 16, top: 16),
+                  child: Center(
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: theme.colorScheme.errorContainer,
+                        foregroundColor: theme.colorScheme.onErrorContainer,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                      ),
+                      onPressed: onSignOut,
+                      icon: const Icon(Icons.logout_rounded),
+                      label: const Text('Sign out'),
                     ),
-                    const Divider(height: 1, indent: 56),
-                    _Tile(
-                      icon: Icons.shield_outlined,
-                      title: 'Roles & permissions',
-                      subtitle: 'Editor for custom roles',
-                      routeName: RoutePaths.settingsRolesName,
-                      color: Colors.cyan.shade700,
-                    ),
-                    const Divider(height: 1, indent: 56),
-                    _Tile(
-                      icon: Icons.cloud_outlined,
-                      title: 'API configuration',
-                      subtitle: 'Switch environment / tenant',
-                      routeName: RoutePaths.settingsApiConfigName,
-                      color: Colors.blueGrey,
-                    ),
-                  ],
-                ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.05, end: 0, duration: 300.ms),
+                  ).animate().fadeIn(delay: 400.ms),
+                ),
               ],
             ),
           ],
@@ -264,9 +308,7 @@ class _Section extends StatelessWidget {
               ),
             ],
           ),
-          child: Column(
-            children: children,
-          ),
+          child: Column(children: children),
         ),
       ],
     );
@@ -300,11 +342,7 @@ class _Tile extends StatelessWidget {
           color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(AppRadii.md),
         ),
-        child: Icon(
-          icon,
-          color: color,
-          size: 20,
-        ),
+        child: Icon(icon, color: color, size: 20),
       ),
       title: Text(
         title,

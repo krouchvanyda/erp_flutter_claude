@@ -192,12 +192,7 @@ class AppRouter {
                   GoRoute(
                     path: RoutePaths.dashboard,
                     name: RoutePaths.dashboardName,
-                    builder: (_, __) => DashboardPage(
-                      // Same dance in reverse: AuthSession.signOut notifies,
-                      // the router re-evaluates, and the redirect policy
-                      // sends the user back to /login.
-                      onSignOut: () => session.signOut(),
-                    ),
+                    builder: (_, __) => const DashboardPage(),
                   ),
                   GoRoute(
                     path: RoutePaths.adminDemo,
@@ -642,7 +637,9 @@ class AppRouter {
                   GoRoute(
                     path: RoutePaths.settings,
                     name: RoutePaths.settingsName,
-                    builder: (_, __) => const SettingsHomePage(),
+                    builder: (_, __) => SettingsHomePage(
+                      onSignOut: () => session.signOut(),
+                    ),
                   ),
                   // Phase 9.1 — preferences.
                   GoRoute(
