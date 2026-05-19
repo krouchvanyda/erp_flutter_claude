@@ -91,7 +91,7 @@ class _JournalCard extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.goNamed(
+        onTap: () => context.pushNamed(
           RoutePaths.journalEntryDetailName,
           pathParameters: {RoutePaths.journalEntryDetailIdParam: entry.id},
         ),

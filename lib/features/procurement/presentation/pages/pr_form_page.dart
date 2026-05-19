@@ -132,15 +132,6 @@ class _PurchaseRequestFormPageState extends State<PurchaseRequestFormPage> {
       appBar: DynamicAppBar(
         title: l10n.prFormCreateTitle,
         centerTitle: true,
-        actions: [
-          TextButton(
-            onPressed: _submit,
-            child: Text(
-              l10n.prFormSaveTooltip.toUpperCase(),
-              style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.w800),
-            ),
-          ),
-        ],
       ),
       body: DynamicStatusBar(
         child: Form(

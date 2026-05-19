@@ -55,7 +55,7 @@ class _ListView extends StatelessWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.goNamed(RoutePaths.invoiceNewName),
+        onPressed: () => context.pushNamed(RoutePaths.invoiceNewName),
         icon: const Icon(Icons.add_rounded),
         label: Text(l10n.invoiceFormCreateTitle),
         elevation: 4,
@@ -230,7 +230,7 @@ class _InvoiceCard extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.goNamed(
+        onTap: () => context.pushNamed(
           RoutePaths.invoiceDetailName,
           pathParameters: {RoutePaths.invoiceDetailIdParam: invoice.id},
         ),

@@ -155,75 +155,82 @@ class _AccountRow extends StatelessWidget {
         ],
       ),
       clipBehavior: Clip.antiAlias,
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        leading: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(
-            accountTypeIcon(account.type),
-            color: theme.colorScheme.primary,
-            size: 20,
-          ),
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+          hoverColor: Colors.transparent,
         ),
-        title: Row(
-          children: [
-            Text(
-              account.code,
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.bold,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          leading: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                account.name,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.onSurface,
+            child: Icon(
+              accountTypeIcon(account.type),
+              color: theme.colorScheme.primary,
+              size: 20,
+            ),
+          ),
+          title: Row(
+            children: [
+              Text(
+                account.code,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
-            ),
-          ],
-        ),
-        subtitle: account.formattedBalance == null
-            ? null
-            : Padding(
-                padding: const EdgeInsets.only(top: 4),
+              const SizedBox(width: 8),
+              Expanded(
                 child: Text(
-                  account.formattedBalance!,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w500,
+                  account.name,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          subtitle: account.formattedBalance == null
+              ? null
+              : Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    account.formattedBalance!,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
-              ),
-        trailing: isLeaf
-            ? Icon(Icons.chevron_right_rounded, color: theme.colorScheme.outline)
-            : AnimatedRotation(
-                turns: expanded ? 0.25 : 0,
-                duration: const Duration(milliseconds: 200),
-                child: Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  size: 14,
-                  color: theme.colorScheme.primary,
+          trailing: isLeaf
+              ? Icon(Icons.chevron_right_rounded, color: theme.colorScheme.outline)
+              : AnimatedRotation(
+                  turns: expanded ? 0.25 : 0,
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 14,
+                    color: theme.colorScheme.primary,
+                  ),
                 ),
-              ),
-        onTap: isLeaf
-            ? () => context.goNamed(
-                  RoutePaths.accountDetailName,
-                  pathParameters: {
-                    RoutePaths.accountDetailIdParam: account.id,
-                  },
-                )
-            : () => bloc.add(AccountTreeEvent.nodeToggled(account.id)),
+          onTap: isLeaf
+              ? () => context.pushNamed(
+                    RoutePaths.accountDetailName,
+                    pathParameters: {
+                      RoutePaths.accountDetailIdParam: account.id,
+                    },
+                  )
+              : () => bloc.add(AccountTreeEvent.nodeToggled(account.id)),
+        ),
       ),
     );
   }
