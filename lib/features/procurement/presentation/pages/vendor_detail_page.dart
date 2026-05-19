@@ -148,7 +148,7 @@ class _Body extends StatelessWidget {
           child: OutlinedButton.icon(
             icon: const Icon(Icons.insights_rounded),
             label: Text(l10n.vendorDetailScorecardAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
-            onPressed: () => context.goNamed(
+            onPressed: () => context.pushNamed(
               RoutePaths.vendorScorecardName,
               pathParameters: {RoutePaths.vendorScorecardIdParam: vendor.id},
             ),

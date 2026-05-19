@@ -57,7 +57,7 @@ class VendorListPage extends StatelessWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.goNamed(RoutePaths.vendorNewName),
+        onPressed: () => context.pushNamed(RoutePaths.vendorNewName),
         icon: const Icon(Icons.add_business_rounded),
         label: Text(l10n.vendorListNewTooltip),
         elevation: 4,
@@ -85,7 +85,7 @@ class _VendorCard extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.goNamed(
+        onTap: () => context.pushNamed(
           RoutePaths.vendorDetailName,
           pathParameters: {RoutePaths.vendorDetailIdParam: vendor.id},
         ),

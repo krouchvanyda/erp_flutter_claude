@@ -54,7 +54,7 @@ class _ListView extends StatelessWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.goNamed(RoutePaths.purchaseRequestNewName),
+        onPressed: () => context.pushNamed(RoutePaths.purchaseRequestNewName),
         icon: const Icon(Icons.add_rounded),
         label: Text(l10n.prListNewTooltip),
         elevation: 4,
@@ -229,7 +229,7 @@ class _PurchaseRequestCard extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.goNamed(
+        onTap: () => context.pushNamed(
           RoutePaths.purchaseRequestDetailName,
           pathParameters: {RoutePaths.purchaseRequestDetailIdParam: pr.id},
         ),

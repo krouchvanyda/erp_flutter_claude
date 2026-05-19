@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../domain/entities/purchase_request.dart';
 import '../../domain/repositories/purchase_requests_repository.dart';
 
@@ -127,12 +129,21 @@ class StubPurchaseRequestsRepository implements PurchaseRequestsRepository {
 
   static int _idCounter = 100;
 
+  // Broadcast channel so `watchAll` subscribers re-receive after any
+  // mutation. Without this the bloc only sees the initial yield and a
+  // newly-created PR never shows up in the list.
+  static final StreamController<List<PurchaseRequest>> _changes =
+      StreamController<List<PurchaseRequest>>.broadcast();
+
+  static void _emit() => _changes.add(List.unmodifiable(_seed));
+
   @override
   Future<List<PurchaseRequest>> getAll() async => List.unmodifiable(_seed);
 
   @override
   Stream<List<PurchaseRequest>> watchAll() async* {
     yield List.unmodifiable(_seed);
+    yield* _changes.stream;
   }
 
   @override
@@ -151,6 +162,7 @@ class StubPurchaseRequestsRepository implements PurchaseRequestsRepository {
     final idx = _seed.indexWhere((p) => p.id == id);
     if (idx == -1) throw StateError('Purchase request "$id" not found');
     _seed[idx] = _seed[idx].copyWith(status: newStatus);
+    _emit();
   }
 
   @override
@@ -164,6 +176,7 @@ class StubPurchaseRequestsRepository implements PurchaseRequestsRepository {
       createdAt: DateTime.now().toUtc(),
     );
     _seed.insert(0, persisted);
+    _emit();
     return persisted;
   }
 }

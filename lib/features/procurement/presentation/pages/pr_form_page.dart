@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -92,7 +93,15 @@ class _PurchaseRequestFormPageState extends State<PurchaseRequestFormPage> {
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text(l10n.prFormSavedSnack), behavior: SnackBarBehavior.floating));
-      if (context.canPop()) context.pop();
+      // Pop back to the list (form was pushed from it). Using pop
+      // preserves the Modules → list history so the list's back
+      // button still returns to Modules. goNamed would replace
+      // the whole stack and break that.
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.goNamed(RoutePaths.purchaseRequestListName);
+      }
     } catch (e) {
       messenger
         ..hideCurrentSnackBar()

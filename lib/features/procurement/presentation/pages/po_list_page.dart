@@ -81,7 +81,7 @@ class _PurchaseOrderCard extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.goNamed(
+        onTap: () => context.pushNamed(
           RoutePaths.purchaseOrderDetailName,
           pathParameters: {RoutePaths.purchaseOrderDetailIdParam: po.id},
         ),
