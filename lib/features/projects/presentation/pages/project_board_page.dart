@@ -62,7 +62,7 @@ class _ProjectBoardPageState extends State<ProjectBoardPage> {
                 final groups = groupTasksByStatus(tasks);
                 return Column(
                   children: [
-                    SizedBox(height: context.dynamicAppBarPadding + 16),
+                    SizedBox(height: context.dynamicAppBarPadding - 8),
                     if (_flashMessage != null)
                       Container(
                         width: double.infinity,

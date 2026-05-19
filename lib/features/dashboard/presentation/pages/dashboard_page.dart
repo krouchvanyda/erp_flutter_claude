@@ -237,16 +237,16 @@ class _DashboardPageState extends State<DashboardPage> {
                     spacing: 12,
                     runSpacing: 12,
                     children: [
-                      _QuickActionChip(
-                        label: 'Admin Demo',
-                        icon: Icons.admin_panel_settings_outlined,
-                        onTap: () => context.goNamed(RoutePaths.adminDemoName),
-                      ),
-                      _QuickActionChip(
-                        label: 'Chart of Accounts',
-                        icon: Icons.account_balance_outlined,
-                        onTap: () => context.goNamed(RoutePaths.chartOfAccountsName),
-                      ),
+                      // _QuickActionChip(
+                      //   label: 'Admin Demo',
+                      //   icon: Icons.admin_panel_settings_outlined,
+                      //   onTap: () => context.goNamed(RoutePaths.adminDemoName),
+                      // ),
+                      // _QuickActionChip(
+                      //   label: 'Chart of Accounts',
+                      //   icon: Icons.account_balance_outlined,
+                      //   onTap: () => context.goNamed(RoutePaths.chartOfAccountsName),
+                      // ),
                       if (_pushService is LocalPushSimulator) ...[
                         _QuickActionChip(
                           label: 'Simulate Push',
@@ -265,44 +265,44 @@ class _DashboardPageState extends State<DashboardPage> {
                   const SizedBox(height: 32),
                   
                   // Permission Status
-                  _SectionHeader(title: 'Security Context', icon: Icons.security_rounded),
-                  const SizedBox(height: 16),
-                  PermissionGuard.builder(
-                    required: _adminPermission,
-                    builder: (context, allowed) {
-                      final color = allowed
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.error;
-                      return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: color.withOpacity(0.2)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              allowed ? Icons.verified_user_rounded : Icons.lock_person_rounded,
-                              color: color,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              allowed
-                                  ? l10n.permissionGuardDemoGranted
-                                  : l10n.permissionGuardDemoDenied,
-                              style: theme.textTheme.labelLarge?.copyWith(
-                                color: color,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ).animate().fadeIn(delay: 800.ms),
+                  // _SectionHeader(title: 'Security Context', icon: Icons.security_rounded),
+                  // const SizedBox(height: 16),
+                  // PermissionGuard.builder(
+                  //   required: _adminPermission,
+                  //   builder: (context, allowed) {
+                  //     final color = allowed
+                  //         ? theme.colorScheme.primary
+                  //         : theme.colorScheme.error;
+                  //     return Container(
+                  //       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  //       decoration: BoxDecoration(
+                  //         color: color.withOpacity(0.08),
+                  //         borderRadius: BorderRadius.circular(16),
+                  //         border: Border.all(color: color.withOpacity(0.2)),
+                  //       ),
+                  //       child: Row(
+                  //         mainAxisSize: MainAxisSize.min,
+                  //         children: [
+                  //           Icon(
+                  //             allowed ? Icons.verified_user_rounded : Icons.lock_person_rounded,
+                  //             color: color,
+                  //             size: 20,
+                  //           ),
+                  //           const SizedBox(width: 12),
+                  //           Text(
+                  //             allowed
+                  //                 ? l10n.permissionGuardDemoGranted
+                  //                 : l10n.permissionGuardDemoDenied,
+                  //             style: theme.textTheme.labelLarge?.copyWith(
+                  //               color: color,
+                  //               fontWeight: FontWeight.bold,
+                  //             ),
+                  //           ),
+                  //         ],
+                  //       ),
+                  //     );
+                  //   },
+                  // ).animate().fadeIn(delay: 800.ms),
                 ],
               ),
             ),
