@@ -54,13 +54,16 @@ class ErrorBoundaryWidget extends StatelessWidget {
       ),
     );
 
-    return Material(
-      color: theme.colorScheme.errorContainer.withValues(alpha: 0.1),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        side: BorderSide(color: theme.colorScheme.error),
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Material(
+        color: theme.colorScheme.errorContainer.withValues(alpha: 0.1),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          side: BorderSide(color: theme.colorScheme.error),
+        ),
+        child: body,
       ),
-      child: body,
     );
   }
 }

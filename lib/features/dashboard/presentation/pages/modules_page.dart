@@ -115,7 +115,7 @@ class _ShortcutTile extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.goNamed(
+        onTap: () => context.pushNamed(
           shortcut.routeName,
           pathParameters: shortcut.pathParameters,
         ),

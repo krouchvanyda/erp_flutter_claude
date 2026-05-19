@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../l10n/app_localizations.dart';
 import '../layout/responsive_breakpoint.dart';
 import '../widgets/dynamic_status_bar.dart';
+import 'route_paths.dart';
 
 class ShellDestination {
   const ShellDestination({
@@ -61,35 +62,45 @@ class AppShell extends StatelessWidget {
   Scaffold _buildCompact(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
+    final location = GoRouterState.of(context).uri.path;
+    final isRootPage = [
+      RoutePaths.dashboard,
+      RoutePaths.modules,
+      RoutePaths.settings,
+    ].contains(location);
     
     return Scaffold(
       extendBody: true, // Crucial for floating nav bar
       body: navigationShell,
-      bottomNavigationBar: SafeArea(
-        child: Container(
-          height: 72,
-          margin: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      bottomNavigationBar: AnimatedSlide(
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutCubic,
+        offset: isRootPage ? Offset.zero : const Offset(0, 1.5),
+        child: SafeArea(
+          child: Container(
+          height: 74,
+          margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(32),
+            borderRadius: BorderRadius.circular(36),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
+                color: theme.shadowColor.withValues(alpha: 0.12),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(32),
+            borderRadius: BorderRadius.circular(36),
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surface.withValues(alpha: 0.85),
-                  borderRadius: BorderRadius.circular(32),
+                  color: theme.colorScheme.surface.withValues(alpha: 0.8),
+                  borderRadius: BorderRadius.circular(36),
                   border: Border.all(
-                    color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                    color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
                     width: 1,
                   ),
                 ),
@@ -104,6 +115,7 @@ class AppShell extends StatelessWidget {
                         label: _shellDestinations[i].label(l10n),
                       ),
                   ],
+                ),
                 ),
               ),
             ),
@@ -174,39 +186,70 @@ class _BottomNavItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     
-    return InkWell(
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutCubic,
+        padding: EdgeInsets.symmetric(
+          horizontal: isSelected ? 20 : 16, 
+          vertical: 12,
+        ),
         decoration: BoxDecoration(
           color: isSelected 
-              ? theme.colorScheme.primary.withValues(alpha: 0.1) 
+              ? theme.colorScheme.primary.withValues(alpha: 0.15) 
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: isSelected ? [
+            BoxShadow(
+              color: theme.colorScheme.primary.withValues(alpha: 0.05),
+              blurRadius: 10,
+              spreadRadius: 2,
+            )
+          ] : [],
         ),
-        child: Column(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              isSelected ? destination.selectedIcon : destination.icon,
-              color: isSelected 
-                  ? theme.colorScheme.primary 
-                  : theme.colorScheme.onSurfaceVariant,
-              size: 26,
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              transitionBuilder: (child, animation) {
+                return ScaleTransition(
+                  scale: animation,
+                  child: child,
+                );
+              },
+              child: Icon(
+                isSelected ? destination.selectedIcon : destination.icon,
+                key: ValueKey<bool>(isSelected),
+                color: isSelected 
+                    ? theme.colorScheme.primary 
+                    : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                size: 26,
+              ),
             ),
-            if (isSelected) ...[
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.bold,
+            AnimatedSize(
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeOutCubic,
+              child: SizedBox(
+                width: isSelected ? null : 0,
+                child: Padding(
+                  padding: isSelected 
+                      ? const EdgeInsets.only(left: 8) 
+                      : EdgeInsets.zero,
+                  child: Text(
+                    label,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.clip,
+                  ),
                 ),
               ),
-            ],
+            ),
           ],
         ),
       ),

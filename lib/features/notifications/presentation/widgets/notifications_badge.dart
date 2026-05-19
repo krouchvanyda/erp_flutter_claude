@@ -38,7 +38,7 @@ class NotificationsBadge extends StatelessWidget {
         return IconButton(
           tooltip: l10n.notificationsBadgeTooltip,
           onPressed: () =>
-              context.goNamed(RoutePaths.notificationInboxName),
+              context.pushNamed(RoutePaths.notificationInboxName),
           icon: Badge(
             isLabelVisible: count > 0,
             label: Text(count > 99 ? '99+' : '$count'),
