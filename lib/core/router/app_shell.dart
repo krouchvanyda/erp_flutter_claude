@@ -73,7 +73,7 @@ class AppShell extends StatelessWidget {
             borderRadius: BorderRadius.circular(32),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.08),
+                color: Colors.black.withValues(alpha: 0.08),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -86,10 +86,10 @@ class AppShell extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surface.withOpacity(0.85),
+                  color: theme.colorScheme.surface.withValues(alpha: 0.85),
                   borderRadius: BorderRadius.circular(32),
                   border: Border.all(
-                    color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+                    color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
                     width: 1,
                   ),
                 ),
@@ -125,7 +125,7 @@ class AppShell extends StatelessWidget {
             onDestinationSelected: _goBranch,
             extended: extended,
             backgroundColor: theme.colorScheme.surface,
-            indicatorColor: theme.colorScheme.primary.withOpacity(0.1),
+            indicatorColor: theme.colorScheme.primary.withValues(alpha: 0.1),
             labelType: extended
                 ? NavigationRailLabelType.none
                 : NavigationRailLabelType.all,
@@ -141,7 +141,7 @@ class AppShell extends StatelessWidget {
           VerticalDivider(
             thickness: 1, 
             width: 1, 
-            color: theme.colorScheme.outlineVariant.withOpacity(0.3),
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
           ),
           Expanded(child: navigationShell),
         ],
@@ -183,7 +183,7 @@ class _BottomNavItem extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected 
-              ? theme.colorScheme.primary.withOpacity(0.1) 
+              ? theme.colorScheme.primary.withValues(alpha: 0.1) 
               : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
         ),
