@@ -96,7 +96,7 @@ class _OrderTile extends StatelessWidget {
           SalesOrderStatusBadge(status: order.status),
         ],
       ),
-      onTap: () => context.goNamed(
+      onTap: () => context.pushNamed(
         RoutePaths.salesOrderDetailName,
         pathParameters: {
           RoutePaths.salesOrderDetailIdParam: order.id,

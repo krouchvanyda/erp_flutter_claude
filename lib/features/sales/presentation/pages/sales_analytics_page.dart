@@ -86,7 +86,7 @@ class _SalesAnalyticsPageState extends State<SalesAnalyticsPage> {
                 return ListView(
                   physics: const BouncingScrollPhysics(),
                   padding: EdgeInsets.only(
-                    top: context.dynamicAppBarPadding + 12,
+                    top: context.dynamicAppBarPadding,
                     left: 16,
                     right: 16,
                     bottom: 40,
@@ -475,6 +475,7 @@ class _RankingCard extends StatelessWidget {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: entries.length,
+              padding: EdgeInsets.zero,
               separatorBuilder: (_, __) => const Divider(height: 1, indent: 56),
               itemBuilder: (_, i) => ListTile(
                 dense: true,
@@ -573,6 +574,7 @@ class _LeaderboardCard extends StatelessWidget {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: ranked.length,
+              padding: EdgeInsets.zero,
               separatorBuilder: (_, __) => const Divider(height: 1, indent: 64),
               itemBuilder: (_, index) => _LeaderboardRow(entry: ranked[index]),
             ),

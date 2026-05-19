@@ -316,7 +316,7 @@ class _QuotationTile extends StatelessWidget {
               QuotationStatusBadge(status: quotation.status),
             ],
           ),
-          onTap: () => context.goNamed(
+          onTap: () => context.pushNamed(
             RoutePaths.salesQuotationDetailName,
             pathParameters: {
               RoutePaths.salesQuotationDetailIdParam: quotation.id,

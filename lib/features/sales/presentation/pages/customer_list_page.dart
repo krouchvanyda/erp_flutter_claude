@@ -46,7 +46,7 @@ class _ListView extends StatelessWidget {
             tooltip: l10n.salesAnalyticsTooltip,
             icon: const Icon(Icons.analytics_outlined),
             onPressed: () =>
-                context.goNamed(RoutePaths.salesAnalyticsName),
+                context.pushNamed(RoutePaths.salesAnalyticsName),
           ),
         ],
       ),
@@ -315,7 +315,7 @@ class _Tile extends StatelessWidget {
               Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6)),
             ],
           ),
-          onTap: () => context.goNamed(
+          onTap: () => context.pushNamed(
             RoutePaths.salesCustomerDetailName,
             pathParameters: {
               RoutePaths.salesCustomerDetailIdParam: customer.id,
