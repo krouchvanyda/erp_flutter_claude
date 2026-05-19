@@ -106,7 +106,7 @@ class _AlertRow extends StatelessWidget {
           ),
         ],
       ),
-      onTap: () => context.goNamed(
+      onTap: () => context.pushNamed(
         RoutePaths.inventoryItemDetailName,
         pathParameters: {RoutePaths.inventoryItemDetailIdParam: item.id},
       ),

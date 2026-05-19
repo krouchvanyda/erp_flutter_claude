@@ -291,13 +291,22 @@ class _Body extends StatelessWidget {
               else
                 DropdownButtonFormField<InventoryItem>(
                   value: destination,
+                  // `isExpanded` lets the selected-item area fill the
+                  // remaining width so a long warehouse/location label
+                  // can ellipsise instead of overflowing the Row.
+                  isExpanded: true,
                   decoration: _inputDecoration(context, l10n.inventoryTransferDestinationLabel, Icons.login_rounded),
                   icon: const Icon(Icons.arrow_drop_down_rounded),
                   items: [
                     for (final d in destinations)
                       DropdownMenuItem(
                         value: d,
-                        child: Text('${d.warehouseCode}/${d.locationCode} (${l10n.inventoryItemsOnHand(d.onHandQty.toString())})'),
+                        child: Text(
+                          '${d.warehouseCode}/${d.locationCode} (${l10n.inventoryItemsOnHand(d.onHandQty.toString())})',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          softWrap: false,
+                        ),
                       ),
                   ],
                   onChanged: submitting || destinations.isEmpty ? null : onDestinationChanged,

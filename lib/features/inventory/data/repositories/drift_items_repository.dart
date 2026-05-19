@@ -31,13 +31,21 @@ class DriftItemsRepository implements ItemsRepository {
   Future<void>? _bootstrap;
 
   Future<void> _ensureBootstrapped() {
-    return _bootstrap ??= _seedIfEmpty();
+    return _bootstrap ??= _seedMissing();
   }
 
-  Future<void> _seedIfEmpty() async {
-    final count = await _dao.countItems();
-    if (count > 0) return;
-    await _dao.upsertItems(InventorySeed.items);
+  // Idempotent seed: inserts any [`InventorySeed.items`] whose IDs
+  // aren't already in the DB. Lets the seed file pick up new rows
+  // (e.g. sibling bins for Slice 5.2.3 Transfer) without overwriting
+  // mutable fields on existing items the user has touched.
+  Future<void> _seedMissing() async {
+    final existing = await _dao.getAllItems();
+    final existingIds = existing.map((i) => i.id).toSet();
+    final missing = InventorySeed.items
+        .where((i) => !existingIds.contains(i.id))
+        .toList(growable: false);
+    if (missing.isEmpty) return;
+    await _dao.upsertItems(missing);
   }
 
   @override

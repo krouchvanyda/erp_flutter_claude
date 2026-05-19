@@ -45,7 +45,11 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     return _Bundle(item: item, movements: movements);
   }
 
-  void _reload() => setState(() => _future = _load());
+  void _reload() {
+    setState(() {
+      _future = _load();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -84,10 +88,15 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
               color: theme.colorScheme.surface,
               boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -4))],
             ),
+            // Three actions in a single row — wrapped with Flexible
+            // labels so the localised text can ellipsise instead of
+            // overflowing the Expanded slot on narrow phones (the
+            // built-in `*Button.icon` constructor doesn't make the
+            // label flexible, which is why it overflowed by ~71 px).
             child: Row(
               children: [
                 Expanded(
-                  child: OutlinedButton.icon(
+                  child: OutlinedButton(
                     onPressed: () async {
                       await context.pushNamed(
                         RoutePaths.inventoryGoodsIssueName,
@@ -95,18 +104,17 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                       );
                       if (mounted) _reload();
                     },
-                    icon: const Icon(Icons.outbox_rounded, size: 18),
-                    label: Text(l10n.inventoryIssueAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11)),
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
                       side: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.5)),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
                     ),
+                    child: _ActionLabel(icon: Icons.outbox_rounded, text: l10n.inventoryIssueAction),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: OutlinedButton.icon(
+                  child: OutlinedButton(
                     onPressed: () async {
                       await context.pushNamed(
                         RoutePaths.inventoryGoodsReceiptName,
@@ -114,18 +122,17 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                       );
                       if (mounted) _reload();
                     },
-                    icon: const Icon(Icons.inbox_rounded, size: 18),
-                    label: Text(l10n.inventoryReceiptAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11)),
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
                       side: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.5)),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
                     ),
+                    child: _ActionLabel(icon: Icons.inbox_rounded, text: l10n.inventoryReceiptAction),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: FilledButton.icon(
+                  child: FilledButton(
                     onPressed: () async {
                       await context.pushNamed(
                         RoutePaths.inventoryTransferName,
@@ -133,12 +140,11 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                       );
                       if (mounted) _reload();
                     },
-                    icon: const Icon(Icons.swap_horiz_rounded, size: 18),
-                    label: Text(l10n.inventoryTransferAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11)),
                     style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
                     ),
+                    child: _ActionLabel(icon: Icons.swap_horiz_rounded, text: l10n.inventoryTransferAction),
                   ),
                 ),
               ],
@@ -478,6 +484,39 @@ class _CenteredMessage extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Icon + uppercase label for the bottom action row. The label sits
+/// inside a `Flexible` with `ellipsis` so a long localised string
+/// (Khmer, etc.) clips cleanly instead of overflowing the parent
+/// `Expanded` slot — which is what caused the ~71 px RenderFlex error
+/// when the action labels rendered in full.
+class _ActionLabel extends StatelessWidget {
+  const _ActionLabel({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, size: 18),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            text.toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            softWrap: false,
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11),
+          ),
+        ),
+      ],
     );
   }
 }

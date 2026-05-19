@@ -99,6 +99,34 @@ class InventorySeed {
       unitCost: r'$850.00',
       status: InventoryItemStatus.active,
     ),
+    // Sibling bins for Slice 5.2.3 — Transfer needs at least one
+    // candidate row with matching SKU at a different bin. These two
+    // start empty so the source's on-hand is visible as "available
+    // to transfer".
+    InventoryItem(
+      id: 'inv-itm-009',
+      sku: 'WID-A-100',
+      name: 'Widget — model A',
+      barcode: '7000000000017',
+      warehouseCode: 'WH-PP-NORTH',
+      locationCode: 'A1-50',
+      onHandQty: 0,
+      reorderPoint: 25,
+      unitCost: r'$12.50',
+      status: InventoryItemStatus.active,
+    ),
+    InventoryItem(
+      id: 'inv-itm-010',
+      sku: 'MON-DELL-24',
+      name: 'Dell P2422H 24" monitor',
+      barcode: '5397184468036',
+      warehouseCode: 'WH-PP-NORTH',
+      locationCode: 'D1-04',
+      onHandQty: 0,
+      reorderPoint: 5,
+      unitCost: r'$320.00',
+      status: InventoryItemStatus.active,
+    ),
   ];
 
   static List<StockMovement> movements() => <StockMovement>[

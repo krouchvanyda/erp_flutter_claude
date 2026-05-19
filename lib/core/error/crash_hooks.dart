@@ -39,6 +39,14 @@ void runWithCrashHooks({
   required FutureOr<void> Function() body,
 }) {
   FlutterError.onError = (details) {
+    // In debug, also let Flutter print its full diagnostic dump (with
+    // the offending widget tree, source locations, etc.) so render
+    // errors like RenderFlex overflows are actionable. The reporter
+    // call below still funnels the exception into the crash logger.
+    assert(() {
+      FlutterError.dumpErrorToConsole(details);
+      return true;
+    }());
     reporter.report(
       details.exception,
       details.stack,

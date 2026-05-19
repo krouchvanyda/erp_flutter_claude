@@ -43,12 +43,12 @@ class _ListView extends StatelessWidget {
           IconButton(
             tooltip: l10n.inventoryScanTooltip,
             icon: const Icon(Icons.qr_code_scanner_rounded),
-            onPressed: () => context.goNamed(RoutePaths.inventoryScannerName),
+            onPressed: () => context.pushNamed(RoutePaths.inventoryScannerName),
           ),
           IconButton(
             tooltip: l10n.inventoryLowStockAlertsTooltip,
             icon: const Icon(Icons.warning_amber_rounded),
-            onPressed: () => context.goNamed(RoutePaths.inventoryLowStockName),
+            onPressed: () => context.pushNamed(RoutePaths.inventoryLowStockName),
           ),
           _SortAction(),
         ],
@@ -223,7 +223,7 @@ class _ItemCard extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.goNamed(
+        onTap: () => context.pushNamed(
           RoutePaths.inventoryItemDetailName,
           pathParameters: {RoutePaths.inventoryItemDetailIdParam: item.id},
         ),

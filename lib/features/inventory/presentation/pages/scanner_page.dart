@@ -222,7 +222,13 @@ class _ManualEntryBar extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             TextButton.icon(
-              onPressed: () => context.goNamed(RoutePaths.inventoryItemsName),
+              // Scanner is normally pushed from the items list — pop
+              // returns there and keeps the rest of the back stack
+              // intact. Fall back to a named navigation if we got here
+              // via deep-link (nothing to pop).
+              onPressed: () => context.canPop()
+                  ? context.pop()
+                  : context.goNamed(RoutePaths.inventoryItemsName),
               icon: const Icon(Icons.list_alt_outlined),
               label: Text(l10n.inventoryScannerBrowseFallback),
             ),
