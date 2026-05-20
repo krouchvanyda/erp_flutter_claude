@@ -28,8 +28,9 @@ samples, guidance on mobile development, and a full API reference.
 create new customer on module sales
 create approve or reject leave request on module HR
 create profile info on module  seeting 
-create use roles & permisstion
+create use roles & permisstion on module  seeting
 create project update project,task assign task on module  projects
-add chat module
+add chat (list chat screen, inbox, seen, edit, delete, reaction, reply, send chat) module
+add voie call on chat module (if can video call it good)
 
 -> Next Strt => Procurement module — flat-MVVM refactor
