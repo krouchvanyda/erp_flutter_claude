@@ -32,5 +32,3 @@ create use roles & permisstion on module  seeting
 create project update project,task assign task on module  projects
 add chat (list chat screen, inbox, seen, edit, delete, reaction, reply, send chat) module
 add voie call on chat module (if can video call it good)
-
--> Next Strt => Procurement module — flat-MVVM refactor
