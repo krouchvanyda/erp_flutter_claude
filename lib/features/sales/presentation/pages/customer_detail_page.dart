@@ -18,6 +18,7 @@ import '../../entities/customer.dart';
 import 'activity_form_page.dart'
     show ActivityFormPage, activityTypeIcon, activityTypeLabel;
 import 'contact_form_page.dart';
+import 'customer_form_page.dart';
 import 'customer_list_page.dart'
     show
         CustomerStatusBadge,
@@ -118,42 +119,69 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: DynamicAppBar(
-        title: l10n.salesCustomerDetailTitle,
-        centerTitle: true,
-      ),
-      body: DynamicStatusBar(
-        child: Stack(
-          children: [
-            // Background Canvas Gradient
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [
-                    theme.colorScheme.primaryContainer.withValues(alpha: 0.12),
-                    theme.colorScheme.surface,
-                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.04),
-                  ],
-                ),
-              ),
+    return FutureBuilder<_Bundle>(
+      future: _future,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return Scaffold(
+            extendBodyBehindAppBar: true,
+            appBar: DynamicAppBar(
+              title: l10n.salesCustomerDetailTitle,
+              centerTitle: true,
             ),
-            FutureBuilder<_Bundle>(
-              future: _future,
-              builder: (context, snap) {
-                if (snap.connectionState != ConnectionState.done) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final bundle = snap.data;
-                if (bundle == null || bundle.customer == null) {
-                  return Center(
-                    child: Text(l10n.salesCustomerNotFound(widget.customerId)),
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
+        final bundle = snap.data;
+        if (bundle == null || bundle.customer == null) {
+          return Scaffold(
+            extendBodyBehindAppBar: true,
+            appBar: DynamicAppBar(
+              title: l10n.salesCustomerDetailTitle,
+              centerTitle: true,
+            ),
+            body: Center(
+              child: Text(l10n.salesCustomerNotFound(widget.customerId)),
+            ),
+          );
+        }
+        final c = bundle.customer!;
+        return Scaffold(
+          extendBodyBehindAppBar: true,
+          appBar: DynamicAppBar(
+            title: l10n.salesCustomerDetailTitle,
+            centerTitle: true,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.edit_outlined),
+                onPressed: () async {
+                  await ConfigRouter.pushPageAnimation(
+                    context,
+                    CustomerFormPage(initial: c),
                   );
-                }
-                return _Body(
+                  _reload();
+                },
+              ),
+            ],
+          ),
+          body: DynamicStatusBar(
+            child: Stack(
+              children: [
+                // Background Canvas Gradient
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                      colors: [
+                        theme.colorScheme.primaryContainer.withValues(alpha: 0.12),
+                        theme.colorScheme.surface,
+                        theme.colorScheme.secondaryContainer.withValues(alpha: 0.04),
+                      ],
+                    ),
+                  ),
+                ),
+                _Body(
                   bundle: bundle,
                   onAddContact: () async {
                     await ConfigRouter.pushPageAnimation(
@@ -180,12 +208,12 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
                     );
                     if (mounted) _reload();
                   },
-                );
-              },
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

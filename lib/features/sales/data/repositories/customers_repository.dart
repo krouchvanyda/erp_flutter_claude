@@ -8,6 +8,7 @@ class CustomersRepository {
   CustomersRepository();
 
   static final List<Customer> _seed = List<Customer>.of(SalesSeed.customers);
+  static int _idCounter = 100;
 
   final StreamController<List<Customer>> _changes =
       StreamController<List<Customer>>.broadcast();
@@ -24,6 +25,26 @@ class CustomersRepository {
       if (c.id == id) return c;
     }
     return null;
+  }
+
+  Future<Customer> create(Customer draft) async {
+    _idCounter++;
+    final persisted = draft.copyWith(
+      id: 'cust-${_idCounter.toString().padLeft(3, '0')}',
+      onboardedAt: draft.onboardedAt,
+      lifetimeValue: draft.lifetimeValue.isEmpty ? '฿0.00' : draft.lifetimeValue,
+    );
+    _seed.add(persisted);
+    _changes.add(List.unmodifiable(_seed));
+    return persisted;
+  }
+
+  Future<Customer> update(Customer updated) async {
+    final idx = _seed.indexWhere((c) => c.id == updated.id);
+    if (idx == -1) throw StateError('Customer "${updated.id}" not found');
+    _seed[idx] = updated;
+    _changes.add(List.unmodifiable(_seed));
+    return updated;
   }
 }
 

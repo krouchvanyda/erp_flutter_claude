@@ -15,6 +15,7 @@ import '../bloc/customer_list_bloc.dart';
 import '../bloc/customer_list_event.dart';
 import '../bloc/customer_list_state.dart';
 import 'customer_detail_page.dart';
+import 'customer_form_page.dart';
 import 'sales_analytics_page.dart';
 
 /// Customer list (Slice 6.1.1).
@@ -52,14 +53,10 @@ class _ListView extends StatelessWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('New Customer Form is coming soon!'),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        },
+        onPressed: () => ConfigRouter.pushPageAnimation(
+          context,
+          const CustomerFormPage(),
+        ),
         icon: const Icon(Icons.add),
         label: const Text('New Customer', style: TextStyle(fontWeight: FontWeight.bold)),
       ),
