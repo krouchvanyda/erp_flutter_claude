@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:erp_mobile/shared/widgets/app_background_gradient.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -60,19 +61,7 @@ class _SalesAnalyticsPageState extends State<SalesAnalyticsPage> {
         child: Stack(
           children: [
             // Background Canvas Gradient
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [
-                    theme.colorScheme.primaryContainer.withValues(alpha: 0.12),
-                    theme.colorScheme.surface,
-                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.04),
-                  ],
-                ),
-              ),
-            ),
+            AppBackgroundGradient(),
             FutureBuilder<_Bundle>(
               future: _future,
               builder: (context, snap) {

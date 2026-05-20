@@ -1,3 +1,4 @@
+import 'package:erp_mobile/shared/widgets/app_background_gradient.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
@@ -10,6 +11,8 @@ import 'app_lock_page.dart';
 import 'appearance_page.dart';
 import 'audit_log_page.dart';
 import 'language_page.dart';
+import 'my_profile_page.dart';
+import 'my_roles_page.dart';
 import 'notification_preferences_page.dart';
 import 'role_editor_page.dart';
 import 'sessions_page.dart';
@@ -33,21 +36,7 @@ class SettingsHomePage extends StatelessWidget {
         child: Stack(
           children: [
             // Background Canvas
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [
-                    theme.colorScheme.primaryContainer.withValues(alpha: 0.1),
-                    theme.colorScheme.surface,
-                    theme.colorScheme.secondaryContainer.withValues(
-                      alpha: 0.05,
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            AppBackgroundGradient(),
             ListView(
               padding: EdgeInsets.only(
                 top: context.dynamicAppBarPadding + 60,
@@ -56,97 +45,33 @@ class SettingsHomePage extends StatelessWidget {
                 bottom: 100,
               ),
               children: [
-                // Profile Hero Card
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        theme.colorScheme.primary,
-                        theme.colorScheme.secondary,
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+
+                // Account Group — Slices 9.1.4 / 9.1.5.
+                _Section(
+                  title: 'Account',
+                  children: [
+                    _Tile(
+                      icon: Icons.person_outline,
+                      title: 'My profile',
+                      subtitle: 'Contact, personal, security',
+                      page: const MyProfilePage(),
+                      color: Colors.deepPurple,
                     ),
-                    borderRadius: BorderRadius.circular(AppRadii.lg),
-                    boxShadow: [
-                      BoxShadow(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.2),
-                        blurRadius: 15,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 32,
-                        backgroundColor: theme.colorScheme.onPrimary.withValues(
-                          alpha: 0.2,
-                        ),
-                        child: Text(
-                          'DA',
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            color: theme.colorScheme.onPrimary,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Demo Approver',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                color: theme.colorScheme.onPrimary,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            Text(
-                              'demo@erp.example',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onPrimary.withValues(
-                                  alpha: 0.8,
-                                ),
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.onPrimary.withValues(
-                                  alpha: 0.15,
-                                ),
-                                borderRadius: BorderRadius.circular(
-                                  AppRadii.pill,
-                                ),
-                              ),
-                              child: Text(
-                                'Administrator',
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: theme.colorScheme.onPrimary,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 10,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ).animate().fadeIn().slideY(
-                  begin: 0.05,
-                  end: 0,
-                  duration: 350.ms,
-                ),
-                const SizedBox(height: 24),
+                    const Divider(height: 1, indent: 56),
+                    _Tile(
+                      icon: Icons.shield_outlined,
+                      title: 'My roles & permissions',
+                      subtitle: 'What you can do in the app',
+                      page: const MyRolesPage(),
+                      color: Colors.cyan.shade700,
+                    ),
+                  ],
+                )
+                    .animate()
+                    .fadeIn(delay: 80.ms)
+                    .slideY(begin: 0.05, end: 0, duration: 300.ms),
+
+                const SizedBox(height: 20),
 
                 // Preferences Group
                 _Section(

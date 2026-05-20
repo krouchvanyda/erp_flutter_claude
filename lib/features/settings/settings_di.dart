@@ -1,6 +1,7 @@
 import 'package:get_it/get_it.dart';
 
 import 'data/repositories/admin_repositories.dart';
+import 'data/repositories/my_profile_repository.dart';
 import 'data/repositories/preferences_repository.dart';
 import 'data/repositories/security_repositories.dart';
 
@@ -13,6 +14,12 @@ void registerSettingsModule(GetIt getIt) {
   if (!getIt.isRegistered<PreferencesRepository>()) {
     getIt.registerLazySingleton<PreferencesRepository>(
       PreferencesRepository.new,
+    );
+  }
+  // Slice 9.1.4 — signed-in user's own profile (in-memory demo state).
+  if (!getIt.isRegistered<MyProfileRepository>()) {
+    getIt.registerLazySingleton<MyProfileRepository>(
+      MyProfileRepository.new,
     );
   }
   // Phase 9.2 — admin.

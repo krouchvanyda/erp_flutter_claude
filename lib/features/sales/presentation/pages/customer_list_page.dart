@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:erp_mobile/shared/widgets/app_background_gradient.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -64,19 +65,7 @@ class _ListView extends StatelessWidget {
         child: Stack(
           children: [
             // Background Canvas Gradient
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [
-                    theme.colorScheme.primaryContainer.withValues(alpha: 0.12),
-                    theme.colorScheme.surface,
-                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.04),
-                  ],
-                ),
-              ),
-            ),
+            AppBackgroundGradient(),
             Column(
               children: [
                 SizedBox(height: context.dynamicAppBarPadding + 45),
