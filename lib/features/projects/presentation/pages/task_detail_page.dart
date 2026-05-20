@@ -30,6 +30,17 @@ class TaskDetailPage extends StatefulWidget {
 class _TaskDetailPageState extends State<TaskDetailPage> {
   final _commentCtrl = TextEditingController();
   bool _isPosting = false;
+  // Cache the task future so setState() (e.g. toggling _isPosting on
+  // each comment post) doesn't recreate it and flip the FutureBuilder
+  // back to ConnectionState.waiting — which would unmount the comment
+  // list + input mid-post and make new comments appear to fail.
+  late Future<ProjectTask?> _taskFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _taskFuture = GetIt.I<TasksRepository>().findById(widget.taskId);
+  }
 
   @override
   void dispose() {
@@ -117,7 +128,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
           children: [
             const AppBackgroundGradient(),
             FutureBuilder<ProjectTask?>(
-              future: GetIt.I<TasksRepository>().findById(widget.taskId),
+              future: _taskFuture,
               builder: (context, snap) {
                 if (snap.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -133,7 +144,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                     Expanded(
                       child: ListView(
                         padding: EdgeInsets.only(
-                          top: context.dynamicAppBarPadding + 16,
+                          top: context.dynamicAppBarPadding,
                           left: 16,
                           right: 16,
                           bottom: 24,

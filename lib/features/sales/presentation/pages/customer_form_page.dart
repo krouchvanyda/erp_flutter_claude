@@ -160,7 +160,7 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
               child: ListView(
                 physics: const BouncingScrollPhysics(),
                 padding: EdgeInsets.only(
-                  top: context.dynamicAppBarPadding + 12,
+                  top: context.dynamicAppBarPadding + 50,
                   left: 16,
                   right: 16,
                   bottom: 40,

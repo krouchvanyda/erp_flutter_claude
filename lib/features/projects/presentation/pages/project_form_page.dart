@@ -11,6 +11,7 @@ import '../../../../features/hr/entities/employee.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/projects_repository.dart';
 import '../../entities/project.dart';
+import 'package:flutter/services.dart';
 
 /// Slice 8.1.4 — Create / Edit Project charter form.
 ///
@@ -120,7 +121,7 @@ class _ProjectFormPageState extends State<ProjectFormPage> {
                   autovalidateMode: AutovalidateMode.onUserInteraction,
                   child: ListView(
                     padding: EdgeInsets.only(
-                      top: context.dynamicAppBarPadding + 16,
+                      top: context.dynamicAppBarPadding,
                       left: 16,
                       right: 16,
                       bottom: 120,
@@ -478,6 +479,7 @@ class _BudgetCard extends StatelessWidget {
     return _Card(
       child: TextFormField(
         controller: controller,
+        keyboardType: TextInputType.number,
         decoration: _dec(context, 'Budget (formatted)', Icons.attach_money_rounded)
             .copyWith(hintText: r'$120,000.00'),
       ),

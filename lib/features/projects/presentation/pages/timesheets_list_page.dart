@@ -104,7 +104,7 @@ class _TimesheetsListPageState extends State<TimesheetsListPage> {
                 }
                 return ListView.builder(
                   padding: EdgeInsets.only(
-                    top: context.dynamicAppBarPadding + 36,
+                    top: context.dynamicAppBarPadding,
                     left: 16,
                     right: 16,
                     bottom: 80,

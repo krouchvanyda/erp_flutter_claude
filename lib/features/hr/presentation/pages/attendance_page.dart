@@ -76,7 +76,7 @@ class _AttendancePageState extends State<AttendancePage> {
             const AppBackgroundGradient(),
             ListView(
               padding: EdgeInsets.only(
-                top: context.dynamicAppBarPadding + 16,
+                top: context.dynamicAppBarPadding + 60,
                 left: 16,
                 right: 16,
                 bottom: 40,

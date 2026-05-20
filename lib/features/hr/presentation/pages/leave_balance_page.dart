@@ -100,7 +100,7 @@ class LeaveBalancePage extends StatelessWidget {
 
                     return ListView(
                       padding: EdgeInsets.only(
-                        top: context.dynamicAppBarPadding + 16,
+                        top: context.dynamicAppBarPadding,
                         left: 16,
                         right: 16,
                         bottom: 40,
