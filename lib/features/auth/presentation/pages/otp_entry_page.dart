@@ -50,7 +50,15 @@ class _OtpEntryView extends StatelessWidget {
         }
         
         if (context.mounted) {
-          context.goNamed(RoutePaths.dashboardName);
+          // OtpEntryPage is pushed onto the root Navigator from
+          // LoginPage via ConfigRouter, so go_router's location is
+          // still `/login`. `goNamed(dashboardName)` would be a no-op
+          // here. Pop instead — the simulateSignIn above already
+          // fires the router's refreshListenable, and the auth-redirect
+          // policy bounces the revealed `/login` to `/dashboard`.
+          if (Navigator.canPop(context)) {
+            Navigator.pop(context);
+          }
         }
       },
       builder: (context, state) {

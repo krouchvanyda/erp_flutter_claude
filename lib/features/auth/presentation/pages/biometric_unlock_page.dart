@@ -34,9 +34,16 @@ class _BiometricUnlockPageState extends State<BiometricUnlockPage> {
       if (session is StubAuthSession) {
         session.simulateSignIn();
       }
-      
-      // Navigate to dashboard
-      context.goNamed(RoutePaths.dashboardName);
+
+      // Pop this page (it was pushed via ConfigRouter on top of
+      // LoginPage). The simulateSignIn above fires the router's
+      // refreshListenable; the auth-redirect policy then bounces
+      // the now-revealed `/login` to `/dashboard`. Calling
+      // `goNamed(dashboardName)` directly is a no-op here because
+      // go_router still thinks the location is `/login`.
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
     }
   }
 
@@ -56,7 +63,7 @@ class _BiometricUnlockPageState extends State<BiometricUnlockPage> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    theme.colorScheme.primaryContainer.withOpacity(0.4),
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.4),
                     theme.colorScheme.surface,
                   ],
                 ),
@@ -74,10 +81,10 @@ class _BiometricUnlockPageState extends State<BiometricUnlockPage> {
                       Container(
                         padding: const EdgeInsets.all(40),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withOpacity(0.1),
+                          color: theme.colorScheme.primary.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: theme.colorScheme.primary.withOpacity(0.2),
+                            color: theme.colorScheme.primary.withValues(alpha: 0.2),
                             width: 2,
                           ),
                         ),
@@ -136,7 +143,13 @@ class _BiometricUnlockPageState extends State<BiometricUnlockPage> {
                               const SizedBox(height: 16),
                               
                               TextButton(
-                                onPressed: () => context.goNamed(RoutePaths.loginName),
+                                // This page is pushed onto the root
+                                // Navigator from LoginPage via
+                                // ConfigRouter; go_router's location
+                                // is still `/login`, so `goNamed(login)`
+                                // is a no-op. Pop instead — reveals
+                                // the LoginPage that pushed us here.
+                                onPressed: () => Navigator.pop(context),
                                 child: const Text('Use Password Instead'),
                               ).animate().fadeIn(delay: 1000.ms),
                             ],
