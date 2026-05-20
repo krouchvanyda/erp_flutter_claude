@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:bloc/bloc.dart';
 
-import '../../domain/entities/account.dart';
-import '../../domain/entities/transaction.dart';
-import '../../domain/repositories/accounts_repository.dart';
-import '../../domain/repositories/transactions_repository.dart';
+import '../../data/repositories/accounts_repository.dart';
+import '../../data/repositories/transactions_repository.dart';
+import '../../entities/account.dart';
+import '../../entities/transaction.dart';
 import 'account_detail_event.dart';
 import 'account_detail_state.dart';
 

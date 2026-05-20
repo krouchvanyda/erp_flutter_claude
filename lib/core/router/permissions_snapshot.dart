@@ -4,10 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:injectable/injectable.dart';
 
 import '../../features/auth/data/datasources/cached_user_dao.dart';
-import '../../features/auth/domain/entities/permission.dart';
-import '../../features/auth/domain/entities/user.dart';
-import '../../features/auth/domain/permission_gate.dart';
-import '../../features/auth/domain/repositories/permissions_repository.dart';
+import '../../features/auth/data/repositories/permissions_repository.dart';
+import '../../features/auth/entities/permission.dart';
+import '../../features/auth/entities/user.dart';
+import '../../features/auth/permission_gate.dart';
 
 /// In-memory mirror of the signed-in user's permission set, updated
 /// reactively from drift.

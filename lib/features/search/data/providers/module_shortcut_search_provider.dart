@@ -1,6 +1,6 @@
 import '../../../../core/shortcuts/module_shortcut.dart';
 import '../../../../core/shortcuts/module_shortcut_catalog.dart';
-import '../../../auth/domain/entities/permission.dart';
+import '../../../auth/entities/permission.dart';
 import '../../domain/entities/search_result.dart';
 import '../../domain/repositories/search_provider.dart';
 

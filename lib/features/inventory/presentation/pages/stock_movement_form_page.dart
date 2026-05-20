@@ -11,10 +11,10 @@ import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/validators/validators.dart';
-import '../../domain/entities/inventory_item.dart';
-import '../../domain/entities/stock_movement.dart';
-import '../../domain/repositories/items_repository.dart';
-import '../../domain/usecases/record_stock_movement.dart';
+import '../../data/repositories/items_repository.dart';
+import '../../data/repositories/stock_movements_repository.dart';
+import '../../entities/inventory_item.dart';
+import '../../entities/stock_movement.dart';
 
 class StockMovementFormPage extends StatefulWidget {
   const StockMovementFormPage({
@@ -73,7 +73,9 @@ class _StockMovementFormPageState extends State<StockMovementFormPage> {
     });
 
     try {
-      await getIt<RecordStockMovementUseCase>()(
+      await recordStockMovement(
+        itemsRepo: getIt<ItemsRepository>(),
+        movementsRepo: getIt<StockMovementsRepository>(),
         itemId: item.id,
         type: widget.type,
         quantity: num.parse(_qtyCtrl.text.trim()),

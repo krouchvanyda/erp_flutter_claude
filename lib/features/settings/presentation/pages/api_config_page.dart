@@ -6,9 +6,8 @@ import '../../../../core/error/failure.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
-import '../../domain/entities/api_environment.dart';
-import '../../domain/repositories/admin_repositories.dart';
-import '../../domain/usecases/manage_environments.dart';
+import '../../data/repositories/admin_repositories.dart';
+import '../../entities/api_environment.dart';
 
 /// Slice 9.2.3 — API environment / tenant switcher.
 class ApiConfigPage extends StatelessWidget {
@@ -179,11 +178,10 @@ class ApiConfigPage extends StatelessWidget {
                 child: FilledButton(
                   onPressed: () async {
                     try {
-                      final draft = validateApiEnvironment(
+                      await GetIt.I<ApiEnvironmentsRepository>().createFromInput(
                         name: nameCtrl.text,
                         baseUrl: urlCtrl.text,
                       );
-                      await GetIt.I<ApiEnvironmentsRepository>().create(draft);
                       if (sheetCtx.mounted) Navigator.pop(sheetCtx);
                     } on ValidationFailure catch (f) {
                       setSheet(() => errors = f.fieldErrors);
@@ -405,11 +403,10 @@ class _EnvTile extends StatelessWidget {
 
   Future<void> _deleteEnv(BuildContext context) async {
     try {
-      ensureEnvironmentIsDeletable(
+      await GetIt.I<ApiEnvironmentsRepository>().deleteGuarded(
         env: env,
         currentEnvironmentId: currentId,
       );
-      await GetIt.I<ApiEnvironmentsRepository>().delete(env.id);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

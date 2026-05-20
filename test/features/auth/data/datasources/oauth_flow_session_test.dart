@@ -1,5 +1,5 @@
 import 'package:erp_mobile/features/auth/data/datasources/oauth_flow_session.dart';
-import 'package:erp_mobile/features/auth/domain/entities/pkce_challenge.dart';
+import 'package:erp_mobile/features/auth/entities/pkce_challenge.dart';
 import 'package:test/test.dart';
 
 const _challenge = PkceChallenge(

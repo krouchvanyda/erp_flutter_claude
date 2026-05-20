@@ -5,8 +5,8 @@ import 'package:intl/intl.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../../domain/entities/sales_order.dart';
-import '../../domain/repositories/sales_orders_repository.dart';
+import '../../data/repositories/sales_orders_repository.dart';
+import '../../entities/sales_order.dart';
 
 /// Sales order list (Slice 6.2.1 / 6.2.3).
 class SalesOrderListPage extends StatelessWidget {

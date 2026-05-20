@@ -7,10 +7,9 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
-import '../../domain/entities/project.dart';
-import '../../domain/repositories/projects_repository.dart';
-import '../../domain/repositories/timesheets_repository.dart';
-import '../../domain/usecases/submit_timesheet.dart';
+import '../../data/repositories/projects_repository.dart';
+import '../../data/repositories/timesheets_repository.dart';
+import '../../entities/project.dart';
 
 /// Slice 8.2.1 — daily timesheet entry form.
 class TimesheetFormPage extends StatefulWidget {
@@ -67,7 +66,8 @@ class _TimesheetFormPageState extends State<TimesheetFormPage> {
     });
     try {
       final hours = num.tryParse(_hoursCtrl.text.trim()) ?? -1;
-      final draft = validateTimesheetEntry(
+      final repo = GetIt.I<TimesheetsRepository>();
+      final draft = repo.validate(
         employeeId: widget.employeeId,
         employeeName: widget.employeeName,
         projectId: _project?.id ?? '',
@@ -77,9 +77,8 @@ class _TimesheetFormPageState extends State<TimesheetFormPage> {
         description: _descCtrl.text,
         now: DateTime.now(),
       );
-      final stamped =
-          _submitImmediately ? submitTimesheetEntry(draft) : draft;
-      await GetIt.I<TimesheetsRepository>().create(stamped);
+      final stamped = _submitImmediately ? repo.submit(draft) : draft;
+      await repo.create(stamped);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

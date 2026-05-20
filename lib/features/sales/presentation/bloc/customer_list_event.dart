@@ -1,4 +1,4 @@
-import '../../domain/entities/customer.dart';
+import '../../entities/customer.dart';
 
 /// Inputs to [CustomerListBloc] (Slice 6.1.1).
 sealed class CustomerListEvent {

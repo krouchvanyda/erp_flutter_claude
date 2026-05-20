@@ -6,9 +6,8 @@ import '../../../../core/error/failure.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
-import '../../domain/entities/managed_user.dart';
-import '../../domain/repositories/admin_repositories.dart';
-import '../../domain/usecases/manage_roles.dart';
+import '../../data/repositories/admin_repositories.dart';
+import '../../entities/managed_user.dart';
 
 /// Slice 9.2.2 — role + permission scope editor.
 const _knownScopes = <String>[
@@ -207,12 +206,11 @@ class RoleEditorPage extends StatelessWidget {
                 child: FilledButton(
                   onPressed: () async {
                     try {
-                      final draft = createRole(
+                      await GetIt.I<RolesRepository>().createFromInput(
                         name: nameCtrl.text,
                         description: descCtrl.text,
                         permissionTokens: selectedScopes.toList(),
                       );
-                      await GetIt.I<RolesRepository>().create(draft);
                       if (sheetCtx.mounted) Navigator.pop(sheetCtx);
                     } on ValidationFailure catch (f) {
                       setSheet(() => errorMsg = f.fieldErrors.entries
@@ -399,11 +397,10 @@ class _RoleCardState extends State<_RoleCard> {
       next.remove(scope);
     }
     try {
-      final updated = updateRolePermissions(
+      await GetIt.I<RolesRepository>().updatePermissions(
         role: widget.role,
         permissionTokens: next.toList(),
       );
-      await GetIt.I<RolesRepository>().update(updated);
     } on Failure catch (f) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -417,17 +414,26 @@ class _RoleCardState extends State<_RoleCard> {
   }
 
   Future<void> _confirmDelete(BuildContext context) async {
+    final rolesRepo = GetIt.I<RolesRepository>();
     final users = await GetIt.I<ManagedUsersRepository>().getAll();
-    try {
-      ensureRoleIsDeletable(role: widget.role, currentUsers: users);
-    } on ConflictFailure catch (f) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(f.message ?? 'Cannot delete.'),
-            behavior: SnackBarBehavior.floating,
-          ),
+    // Pre-check: refuse early so we don't even show the confirm dialog
+    // for a guaranteed-fail delete.
+    if (widget.role.isSystem ||
+        users.any((u) => u.roleIds.contains(widget.role.id))) {
+      try {
+        await rolesRepo.deleteGuarded(
+          role: widget.role,
+          currentUsers: users,
         );
+      } on ConflictFailure catch (f) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(f.message ?? 'Cannot delete.'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
       }
       return;
     }
@@ -452,7 +458,7 @@ class _RoleCardState extends State<_RoleCard> {
       ),
     );
     if (confirmed == true) {
-      await GetIt.I<RolesRepository>().delete(widget.role.id);
+      await rolesRepo.deleteGuarded(role: widget.role, currentUsers: users);
     }
   }
 }

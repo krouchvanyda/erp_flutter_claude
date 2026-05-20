@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../../../core/database/app_database.dart';
-import '../../domain/entities/user.dart';
+import '../../entities/user.dart';
 import 'tables/cached_user.dart';
 import 'tables/user_permissions.dart';
 

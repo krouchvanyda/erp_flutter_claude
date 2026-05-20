@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
 
-import '../../features/auth/domain/entities/permission.dart';
+import '../../features/auth/entities/permission.dart';
 import '../../l10n/app_localizations.dart';
 
 /// One tile in the Modules grid (Slice 2.1.2).

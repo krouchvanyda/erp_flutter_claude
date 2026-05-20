@@ -1,6 +1,6 @@
 import 'package:erp_mobile/core/router/route_access.dart';
 import 'package:erp_mobile/core/router/route_paths.dart';
-import 'package:erp_mobile/features/auth/domain/entities/permission.dart';
+import 'package:erp_mobile/features/auth/entities/permission.dart';
 import 'package:test/test.dart';
 
 void main() {

@@ -9,10 +9,9 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../../domain/entities/goods_receipt.dart';
-import '../../domain/entities/purchase_order.dart';
-import '../../domain/repositories/purchase_orders_repository.dart';
-import '../../domain/usecases/validate_goods_receipt.dart';
+import '../../data/repositories/purchase_orders_repository.dart';
+import '../../entities/goods_receipt.dart';
+import '../../entities/purchase_order.dart';
 
 class GoodsReceiptFormPage extends StatefulWidget {
   const GoodsReceiptFormPage({super.key, required this.purchaseOrderId});

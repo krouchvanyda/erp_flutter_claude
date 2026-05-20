@@ -7,9 +7,8 @@ import '../../../../core/error/failure.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
-import '../../domain/entities/app_lock_settings.dart';
-import '../../domain/repositories/security_repositories.dart';
-import '../../domain/usecases/manage_app_lock.dart';
+import '../../data/repositories/security_repositories.dart';
+import '../../entities/app_lock_settings.dart';
 
 /// Slice 9.3.3 — PIN + biometric re-auth on resume.
 class AppLockPage extends StatelessWidget {
@@ -108,14 +107,16 @@ class AppLockPage extends StatelessWidget {
                               if (v) {
                                 final pin = await _promptForNewPin(context);
                                 if (pin == null) return;
-                                await GetIt.I<PinSecretStore>().setPin(pin);
-                                await settingsRepo.update(
-                                  setPinEnabled(current: settings, enabled: true),
+                                await GetIt.I<InMemoryPinSecretStore>().setPin(pin);
+                                await settingsRepo.setPinEnabled(
+                                  current: settings,
+                                  enabled: true,
                                 );
                               } else {
-                                await GetIt.I<PinSecretStore>().clearPin();
-                                await settingsRepo.update(
-                                  setPinEnabled(current: settings, enabled: false),
+                                await GetIt.I<InMemoryPinSecretStore>().clearPin();
+                                await settingsRepo.setPinEnabled(
+                                  current: settings,
+                                  enabled: false,
                                 );
                               }
                             },
@@ -143,8 +144,9 @@ class AppLockPage extends StatelessWidget {
                             onChanged: settings.pinEnabled
                                 ? (v) async {
                                     try {
-                                      await settingsRepo.update(
-                                        setBiometricEnabled(current: settings, enabled: v),
+                                      await settingsRepo.setBiometricEnabled(
+                                        current: settings,
+                                        enabled: v,
                                       );
                                     } on ConflictFailure catch (f) {
                                       if (context.mounted) {
@@ -250,7 +252,7 @@ class AppLockPage extends StatelessWidget {
                               onTap: () async {
                                 final pin = await _promptForNewPin(context);
                                 if (pin == null) return;
-                                await GetIt.I<PinSecretStore>().setPin(pin);
+                                await GetIt.I<InMemoryPinSecretStore>().setPin(pin);
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
@@ -379,9 +381,7 @@ class AppLockPage extends StatelessWidget {
 
     if (value == null) return;
     try {
-      await repo.update(
-        setAutoLockMinutes(current: settings, minutes: value),
-      );
+      await repo.setAutoLockMinutes(current: settings, minutes: value);
     } on ValidationFailure catch (f) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -467,8 +467,8 @@ class AppLockPage extends StatelessWidget {
             FilledButton(
               onPressed: () {
                 try {
-                  validatePinFormat(pinCtrl.text);
-                  ensurePinConfirmationMatches(
+                  InMemoryPinSecretStore.validatePinFormat(pinCtrl.text);
+                  InMemoryPinSecretStore.ensurePinConfirmationMatches(
                     pin: pinCtrl.text,
                     confirm: confirmCtrl.text,
                   );

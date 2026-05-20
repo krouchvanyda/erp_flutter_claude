@@ -9,9 +9,8 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
-import '../../domain/entities/payslip.dart';
-import '../../domain/repositories/payslips_repository.dart';
-import '../../domain/usecases/summarize_payslip.dart';
+import '../../data/repositories/payslips_repository.dart';
+import '../../entities/payslip.dart';
 
 /// Slice 7.3.2 + 7.3.3 — payslip history with a period rollup card on
 /// top so the user sees overtime / deductions at a glance without

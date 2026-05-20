@@ -4,13 +4,8 @@ import '../../core/database/sync_queue_dao.dart';
 import '../../core/push/push_notification_service.dart';
 import 'data/datasources/items_dao.dart';
 import 'data/low_stock_notifier.dart';
-import 'data/repositories/drift_items_repository.dart';
-import 'data/repositories/drift_stock_movements_repository.dart';
-import 'domain/repositories/items_repository.dart';
-import 'domain/repositories/stock_movements_repository.dart';
-import 'domain/usecases/apply_cycle_count.dart';
-import 'domain/usecases/record_stock_movement.dart';
-import 'domain/usecases/transfer_stock.dart';
+import 'data/repositories/items_repository.dart';
+import 'data/repositories/stock_movements_repository.dart';
 import 'presentation/bloc/items_list_bloc.dart';
 
 /// Manual DI registration for Module 5 (Inventory).
@@ -27,7 +22,7 @@ import 'presentation/bloc/items_list_bloc.dart';
 void registerInventoryModule(GetIt getIt) {
   if (!getIt.isRegistered<ItemsRepository>()) {
     getIt.registerLazySingleton<ItemsRepository>(
-      () => DriftItemsRepository(
+      () => ItemsRepository(
         dao: getIt<ItemsDao>(),
         syncQueue: getIt<SyncQueueDao>(),
       ),
@@ -35,33 +30,9 @@ void registerInventoryModule(GetIt getIt) {
   }
   if (!getIt.isRegistered<StockMovementsRepository>()) {
     getIt.registerLazySingleton<StockMovementsRepository>(
-      () => DriftStockMovementsRepository(
+      () => StockMovementsRepository(
         dao: getIt<ItemsDao>(),
         syncQueue: getIt<SyncQueueDao>(),
-      ),
-    );
-  }
-  if (!getIt.isRegistered<RecordStockMovementUseCase>()) {
-    getIt.registerLazySingleton<RecordStockMovementUseCase>(
-      () => RecordStockMovementUseCase(
-        itemsRepository: getIt(),
-        movementsRepository: getIt(),
-      ),
-    );
-  }
-  if (!getIt.isRegistered<TransferStockUseCase>()) {
-    getIt.registerLazySingleton<TransferStockUseCase>(
-      () => TransferStockUseCase(
-        itemsRepository: getIt(),
-        movementsRepository: getIt(),
-      ),
-    );
-  }
-  if (!getIt.isRegistered<ApplyCycleCountUseCase>()) {
-    getIt.registerLazySingleton<ApplyCycleCountUseCase>(
-      () => ApplyCycleCountUseCase(
-        itemsRepository: getIt(),
-        movementsRepository: getIt(),
       ),
     );
   }

@@ -10,10 +10,10 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../../domain/entities/cycle_count.dart';
-import '../../domain/entities/inventory_item.dart';
-import '../../domain/repositories/items_repository.dart';
-import '../../domain/usecases/apply_cycle_count.dart';
+import '../../data/repositories/items_repository.dart';
+import '../../data/repositories/stock_movements_repository.dart';
+import '../../entities/cycle_count.dart';
+import '../../entities/inventory_item.dart';
 
 class CycleCountPage extends StatefulWidget {
   const CycleCountPage({super.key});
@@ -83,7 +83,11 @@ class _CycleCountPageState extends State<CycleCountPage> {
     );
 
     try {
-      final out = await getIt<ApplyCycleCountUseCase>()(count);
+      final out = await applyCycleCount(
+        count,
+        itemsRepo: getIt<ItemsRepository>(),
+        movementsRepo: getIt<StockMovementsRepository>(),
+      );
       if (!mounted) return;
       messenger
         ..hideCurrentSnackBar()

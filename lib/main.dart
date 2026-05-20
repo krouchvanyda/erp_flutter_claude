@@ -8,6 +8,8 @@ import 'core/error/crash_hooks.dart';
 import 'core/error/logging_crash_reporter.dart';
 import 'core/sync/sync_engine.dart';
 import 'core/utils/logger/console_logger.dart';
+import 'features/auth/auth_di.dart';
+import 'features/finance/finance_di.dart';
 import 'features/hr/hr_di.dart';
 import 'features/inventory/inventory_di.dart';
 import 'features/procurement/procurement_di.dart';
@@ -32,6 +34,8 @@ void main() {
         ),
       );
       configureDependencies(environment: Environment.prod);
+      registerAuthModule(getIt);
+      registerFinanceModule(getIt);
       registerProcurementModule(getIt);
       registerInventoryModule(getIt);
       registerSalesModule(getIt);

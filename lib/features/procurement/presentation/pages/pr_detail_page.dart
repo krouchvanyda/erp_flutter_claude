@@ -9,13 +9,11 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../../domain/entities/purchase_request.dart';
-import '../../domain/entities/vendor.dart';
-import '../../domain/repositories/purchase_orders_repository.dart';
-import '../../domain/repositories/purchase_requests_repository.dart';
-import '../../domain/repositories/vendors_repository.dart';
-import '../../domain/usecases/convert_pr_to_po.dart';
-import '../../domain/usecases/pr_approval.dart';
+import '../../data/repositories/purchase_orders_repository.dart';
+import '../../data/repositories/purchase_requests_repository.dart';
+import '../../data/repositories/vendors_repository.dart';
+import '../../entities/purchase_request.dart';
+import '../../entities/vendor.dart';
 import 'pr_list_page.dart' show PurchaseRequestStatusBadge, prStatusLabel, prStatusColor;
 
 class PurchaseRequestDetailPage extends StatefulWidget {
@@ -30,7 +28,6 @@ class PurchaseRequestDetailPage extends StatefulWidget {
 class _PurchaseRequestDetailPageState extends State<PurchaseRequestDetailPage> {
   late PurchaseRequestsRepository _repo;
   late Future<PurchaseRequest?> _future;
-  final _approval = const PurchaseRequestApprovalUseCase();
 
   @override
   void initState() {
@@ -48,7 +45,7 @@ class _PurchaseRequestDetailPageState extends State<PurchaseRequestDetailPage> {
   Future<void> _onApprove(PurchaseRequest pr) async {
     final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    final outcome = _approval.approve(pr);
+    final outcome = _repo.approve(pr);
     if (outcome.result == PurchaseRequestApprovalResult.notAllowedFromCurrentStatus) {
       messenger
         ..hideCurrentSnackBar()
@@ -81,7 +78,7 @@ class _PurchaseRequestDetailPageState extends State<PurchaseRequestDetailPage> {
   Future<void> _onSubmit(PurchaseRequest pr) async {
     final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    final outcome = _approval.submit(pr);
+    final outcome = _repo.submit(pr);
     if (outcome.result != PurchaseRequestApprovalResult.ok) {
       messenger
         ..hideCurrentSnackBar()
@@ -160,7 +157,7 @@ class _PurchaseRequestDetailPageState extends State<PurchaseRequestDetailPage> {
     if (!mounted || reason == null) return;
     final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    final outcome = _approval.reject(pr, reason: reason);
+    final outcome = _repo.reject(pr, reason: reason);
     switch (outcome.result) {
       case PurchaseRequestApprovalResult.reasonRequired:
         return;

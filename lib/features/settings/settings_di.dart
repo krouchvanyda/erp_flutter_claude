@@ -1,11 +1,8 @@
 import 'package:get_it/get_it.dart';
 
-import 'data/repositories/stub_admin_repositories.dart';
-import 'data/repositories/stub_preferences_repository.dart';
-import 'data/repositories/stub_security_repositories.dart';
-import 'domain/repositories/admin_repositories.dart';
-import 'domain/repositories/preferences_repository.dart';
-import 'domain/repositories/security_repositories.dart';
+import 'data/repositories/admin_repositories.dart';
+import 'data/repositories/preferences_repository.dart';
+import 'data/repositories/security_repositories.dart';
 
 /// Manual DI registration for Module 9 (Settings & Administration).
 ///
@@ -15,43 +12,43 @@ void registerSettingsModule(GetIt getIt) {
   // Phase 9.1 — preferences.
   if (!getIt.isRegistered<PreferencesRepository>()) {
     getIt.registerLazySingleton<PreferencesRepository>(
-      StubPreferencesRepository.new,
+      PreferencesRepository.new,
     );
   }
   // Phase 9.2 — admin.
   if (!getIt.isRegistered<ManagedUsersRepository>()) {
     getIt.registerLazySingleton<ManagedUsersRepository>(
-      StubManagedUsersRepository.new,
+      ManagedUsersRepository.new,
     );
   }
   if (!getIt.isRegistered<RolesRepository>()) {
     getIt.registerLazySingleton<RolesRepository>(
-      StubRolesRepository.new,
+      RolesRepository.new,
     );
   }
   if (!getIt.isRegistered<ApiEnvironmentsRepository>()) {
     getIt.registerLazySingleton<ApiEnvironmentsRepository>(
-      StubApiEnvironmentsRepository.new,
+      ApiEnvironmentsRepository.new,
     );
   }
   // Phase 9.3 — security.
   if (!getIt.isRegistered<DeviceSessionsRepository>()) {
     getIt.registerLazySingleton<DeviceSessionsRepository>(
-      StubDeviceSessionsRepository.new,
+      DeviceSessionsRepository.new,
     );
   }
   if (!getIt.isRegistered<AuditLogRepository>()) {
     getIt.registerLazySingleton<AuditLogRepository>(
-      StubAuditLogRepository.new,
+      AuditLogRepository.new,
     );
   }
   if (!getIt.isRegistered<AppLockSettingsRepository>()) {
     getIt.registerLazySingleton<AppLockSettingsRepository>(
-      StubAppLockSettingsRepository.new,
+      AppLockSettingsRepository.new,
     );
   }
-  if (!getIt.isRegistered<PinSecretStore>()) {
-    getIt.registerLazySingleton<PinSecretStore>(
+  if (!getIt.isRegistered<InMemoryPinSecretStore>()) {
+    getIt.registerLazySingleton<InMemoryPinSecretStore>(
       InMemoryPinSecretStore.new,
     );
   }

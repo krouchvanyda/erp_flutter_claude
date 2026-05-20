@@ -1,5 +1,5 @@
-import '../domain/entities/inventory_item.dart';
-import '../domain/entities/stock_movement.dart';
+import '../entities/inventory_item.dart';
+import '../entities/stock_movement.dart';
 
 /// Single source of inventory seed data — shared by the stub repo
 /// (Phase 5.1) and the drift bootstrap (Slice 5.3.1).
@@ -119,7 +119,10 @@ class InventorySeed {
       id: 'inv-itm-010',
       sku: 'MON-DELL-24',
       name: 'Dell P2422H 24" monitor',
-      barcode: '5397184468036',
+      // No barcode on the sibling bin — barcodes uniquely identify
+      // a physical bin in this schema (findByBarcode uses getSingle),
+      // so giving the destination bin the same barcode as the source
+      // would break that invariant.
       warehouseCode: 'WH-PP-NORTH',
       locationCode: 'D1-04',
       onHandQty: 0,

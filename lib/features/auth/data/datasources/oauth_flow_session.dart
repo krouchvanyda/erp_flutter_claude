@@ -1,4 +1,4 @@
-import '../../domain/entities/pkce_challenge.dart';
+import '../../entities/pkce_challenge.dart';
 
 /// In-memory holder for the **single in-flight OAuth authorization
 /// flow**.

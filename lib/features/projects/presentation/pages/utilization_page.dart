@@ -7,9 +7,8 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
-import '../../domain/entities/timesheet_entry.dart';
-import '../../domain/repositories/timesheets_repository.dart';
-import '../../domain/usecases/compute_utilization.dart';
+import '../../data/repositories/timesheets_repository.dart';
+import '../../entities/timesheet_entry.dart';
 
 /// Slice 8.2.3 — utilization report.
 class UtilizationPage extends StatefulWidget {

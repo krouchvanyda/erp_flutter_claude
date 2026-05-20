@@ -1,4 +1,4 @@
-import '../../domain/entities/project.dart';
+import '../../entities/project.dart';
 
 sealed class ProjectListEvent {
   const ProjectListEvent();

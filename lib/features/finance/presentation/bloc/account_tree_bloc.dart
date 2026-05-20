@@ -3,10 +3,9 @@ import 'dart:async';
 import 'package:bloc/bloc.dart';
 
 import '../../../../core/utils/logger/app_logger.dart';
-import '../../domain/entities/account.dart';
-import '../../domain/entities/account_tree_node.dart';
-import '../../domain/repositories/accounts_repository.dart';
-import '../../domain/usecases/build_account_tree.dart';
+import '../../data/repositories/accounts_repository.dart';
+import '../../entities/account.dart';
+import '../../entities/account_tree_node.dart';
 import 'account_tree_event.dart';
 import 'account_tree_state.dart';
 

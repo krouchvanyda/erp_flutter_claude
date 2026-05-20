@@ -6,14 +6,14 @@
 |---|---|---|
 | UI Framework | Flutter (Dart) | Cross-platform iOS/Android |
 | State Management | flutter_bloc (open source) | BLoC pattern |
-| Architecture | MVVM + Clean Architecture | Separation of concerns |
+| Architecture | MVVM | View ↔ ViewModel/BLoC ↔ Repository (flat) |
 | DI | get_it + injectable | Service locator |
 | Networking | dio | HTTP client |
-| Local DB | drift (moor) | SQLite ORM, open source |
+| Local DB | SQLite | Open source |
 | Secure Storage | flutter_secure_storage | Tokens/credentials |
 | Navigation | go_router | Declarative routing |
 | Serialization | freezed + json_serializable | Immutable models |
-| Offline Sync | Custom sync engine (drift + dio) | No commercial deps |
+| Offline Sync | Custom sync engine (SQLite + dio) | No commercial deps |
 | Localization | flutter_localizations (built-in) | i18n |
 | Testing | bloc_test, mocktail, flutter_test | Unit + widget tests |
 
@@ -25,7 +25,7 @@
 lib/
 ├── core/                      # Shared infrastructure
 │   ├── network/               # Dio client, interceptors, error handler
-│   ├── database/              # Drift DB setup, DAOs
+│   ├── database/              # SQLite DB setup, DAOs
 │   ├── sync/                  # Offline-first sync engine
 │   ├── di/                    # Dependency injection setup
 │   ├── router/                # go_router configuration
@@ -34,15 +34,12 @@ lib/
 │   └── theme/                 # Design tokens, typography
 │
 ├── features/                  # One folder per ERP module
-│   └── [module]/
+│   └── [module]/              # Flat MVVM — no data/domain split
 │       ├── data/
-│       │   ├── datasources/   # Remote (API) + Local (Drift DAO)
+│       │   ├── datasources/   # Remote (API) + Local (SQLite DAO)
 │       │   ├── models/        # JSON ↔ Dart (freezed)
-│       │   └── repositories/  # Implements domain contracts
-│       ├── domain/
-│       │   ├── entities/      # Pure business objects
-│       │   ├── repositories/  # Abstract interfaces
-│       │   └── usecases/      # Single-responsibility business logic
+│       │   └── repositories/  # Concrete repositories (no abstract interface)
+│       ├── entities/          # Pure value objects (formerly under domain/)
 │       └── presentation/
 │           ├── bloc/          # BLoC: events, states, bloc class
 │           ├── viewmodels/    # MVVM ViewModel wrapping BLoC
@@ -53,6 +50,14 @@ lib/
     ├── widgets/
     └── validators/
 ```
+
+> **Legacy note** — Modules 1–9 were built under the older "MVVM + Clean
+> Architecture" convention and still ship a `domain/repositories/`
+> (abstract interfaces) and a `domain/usecases/` folder. **Do not refactor
+> them.** New modules (and new features inside existing modules) follow the
+> flat layout above: one concrete repository, no abstract interface, no
+> separate use-case classes — business rules live in the repository or
+> the BLoC/ViewModel.
 
 ### MVVM + BLoC Data Flow
 
@@ -66,14 +71,16 @@ ViewModel (exposes streams, commands)
 BLoC (processes events → emits states)
    │  calls
    ▼
-UseCase (domain logic)
+Repository (concrete — business rules live here)
    │  calls
-   ▼
-Repository (abstract interface)
-   │  implemented by
    ▼
 DataSource (Remote API / Local DB)
 ```
+
+> **Legacy variant** in Modules 1–9: an extra `UseCase` layer sits
+> between BLoC and Repository, and the Repository is reached through an
+> abstract interface. Keep that flow when editing those modules; use the
+> flat flow above for new work.
 
 ---
 
@@ -96,12 +103,12 @@ DataSource (Remote API / Local DB)
 - Slice 0.2.4: Network connectivity checker (`connectivity_plus`)
 
 #### Phase 0.3 — Local Database
-- Slice 0.3.1: `drift` database setup, migration strategy — register `CachedUser` + `UserPermissions` + `SyncQueue` tables
+- Slice 0.3.1: `SQLite` database setup, migration strategy — register `CachedUser` + `UserPermissions` + `SyncQueue` tables
 - Slice 0.3.2: Generic DAO base class
 - Slice 0.3.3: Cache invalidation policy (TTL-based)
 - Slice 0.3.4: `AuthDao` — upsertUser, getUser, deleteUser, upsertPermissions, getPermissions, deletePermissions
 
-**drift tables for auth:**
+**SQLite tables for auth:**
 ```
 TABLE: cached_user
   id             TEXT PRIMARY KEY
@@ -120,7 +127,7 @@ TABLE: user_permissions
 ```
 
 #### Phase 0.4 — Offline-First Sync Engine
-- Slice 0.4.1: Sync queue (pending operations stored in drift)
+- Slice 0.4.1: Sync queue (pending operations stored in SQLite)
 - Slice 0.4.2: Conflict resolution strategy (last-write-wins or server-wins, configurable)
 - Slice 0.4.3: Background sync trigger on connectivity restore
 - Slice 0.4.4: Sync status BLoC (UI-visible sync state)
@@ -137,40 +144,40 @@ TABLE: user_permissions
 
 #### Phase 1.1 — Auth Core
 - Slice 1.1.1: Login page (MVVM + BLoC)
-- Slice 1.1.2: JWT token storage (`flutter_secure_storage`) — tokens only, never in drift
-- Slice 1.1.2b: Cache user profile + permissions → drift (`cached_user` + `user_permissions` tables) ← **NEW**
-- Slice 1.1.3: Token refresh logic in interceptor — reads `user_id` from drift to re-attach context
-- Slice 1.1.4: Logout + token revocation + drift wipe (`deleteUser` + `deletePermissions`)
+- Slice 1.1.2: JWT token storage (`flutter_secure_storage`) — tokens only, never in SQLite
+- Slice 1.1.2b: Cache user profile + permissions → SQLite (`cached_user` + `user_permissions` tables) ← **NEW**
+- Slice 1.1.3: Token refresh logic in interceptor — reads `user_id` from SQLite to re-attach context
+- Slice 1.1.4: Logout + token revocation + SQLite wipe (`deleteUser` + `deletePermissions`)
 
 **Storage boundary for Phase 1.1:**
 ```
 Login API response
    ├── access_token  + refresh_token ──→ flutter_secure_storage  (secrets)
-   ├── user profile                  ──→ drift: cached_user       (structural)
-   └── permissions                   ──→ drift: user_permissions  (structural)
+   ├── user profile                  ──→ SQLite: cached_user       (structural)
+   └── permissions                   ──→ SQLite: user_permissions  (structural)
 ```
 
 #### Phase 1.2 — Multi-Factor & SSO
-- Slice 1.2.1: TOTP/OTP input screen — ephemeral, memory only, no drift
+- Slice 1.2.1: TOTP/OTP input screen — ephemeral, memory only, no SQLite
 - Slice 1.2.2: OAuth2 PKCE flow (`oauth2` package) — PKCE verifier/challenge in memory only, resulting tokens → `flutter_secure_storage`
-- Slice 1.2.3: Biometric unlock (`local_auth`) — reads `biometric_on` flag from drift, biometric keys stay in OS keychain
+- Slice 1.2.3: Biometric unlock (`local_auth`) — reads `biometric_on` flag from SQLite, biometric keys stay in OS keychain
 
 **Storage boundary for Phase 1.2:**
 ```
 OTP code          → memory only (ephemeral)
 PKCE verifier     → memory only (ephemeral)
 OAuth2 tokens     → flutter_secure_storage
-biometric_on flag → drift: cached_user
+biometric_on flag → SQLite: cached_user
 ```
 
 #### Phase 1.3 — Role-Based Access Control (RBAC)
-- Slice 1.3.1: Permission model (roles, scopes) from API — cached to drift `user_permissions`
-- Slice 1.3.2: Permission-aware route guard — reads from drift so it works offline
+- Slice 1.3.1: Permission model (roles, scopes) from API — cached to SQLite `user_permissions`
+- Slice 1.3.2: Permission-aware route guard — reads from SQLite so it works offline
 - Slice 1.3.3: Widget-level permission gating (`PermissionGuard` widget)
 
 **Full storage map — Module 1:**
 ```
-                flutter_secure_storage    drift                  Memory
+                flutter_secure_storage    SQLite                  Memory
                 ──────────────────────   ──────────────────────  ──────────────
 Login           access_token             cached_user             —
                 refresh_token            user_permissions
@@ -250,10 +257,10 @@ DRAFT → PENDING_APPROVAL → APPROVED
 **UI:**
 - Approve: single tap → confirmation bottom sheet → dispatch event
 - Reject: tap → bottom sheet with mandatory `reason` text field (`FormBLoC` with field-level validation) → dispatch event
-- Both buttons wrapped in `PermissionGuard` checking `finance.approve` scope from drift `user_permissions`
+- Both buttons wrapped in `PermissionGuard` checking `finance.approve` scope from SQLite `user_permissions`
 - Once status is `APPROVED` or `REJECTED` both buttons are disabled — status chip acts as visual lock
 
-**drift — additional columns on `cached_invoices`:**
+**SQLite — additional columns on `cached_invoices`:**
 ```
 TABLE: cached_invoices  (add to existing schema)
   status           TEXT       ← DRAFT / PENDING_APPROVAL / APPROVED / REJECTED
@@ -273,7 +280,7 @@ SyncQueue row
 
 **Storage boundary for Slice 3.2.4:**
 ```
-                drift                             SyncQueue              Memory
+                SQLite                             SyncQueue              Memory
                 ──────────────────────────────   ──────────────────────  ──────────────
 Online          cached_invoices (optimistic       —                       —
 approve/reject  status + actioned_at +
@@ -287,11 +294,11 @@ Sync restore    cached_invoices (overwrite        dequeue on success      —
 ```
 
 **Guardrails for this slice:**
-- Optimistic update on tap — write status to drift immediately, rollback on sync failure
+- Optimistic update on tap — write status to SQLite immediately, rollback on sync failure
 - RBAC gate enforced at both UseCase level (domain) and widget level (`PermissionGuard`) — never rely on UI alone
 - Rejection reason is mandatory — enforced in `RejectInvoiceUseCase`, not just the form validator
 - No double-action — once `APPROVED` or `REJECTED`, UseCases throw `InvalidStateFailure` if re-triggered
-- Audit trail — `approved_by` + `actioned_at` written to drift so Slice 9.3.2 (audit log viewer) can read offline
+- Audit trail — `approved_by` + `actioned_at` written to SQLite so Slice 9.3.2 (audit log viewer) can read offline
 
 #### Phase 3.3 — General Ledger & Reporting
 - Slice 3.3.1: Journal entry list + detail
@@ -333,7 +340,7 @@ Sync restore    cached_invoices (overwrite        dequeue on success      —
 - Slice 5.2.4: Inventory count / cycle count workflow
 
 #### Phase 5.3 — Offline Inventory
-- Slice 5.3.1: Download item master to local drift DB
+- Slice 5.3.1: Download item master to local SQLite DB
 - Slice 5.3.2: Queue scanned transactions offline
 - Slice 5.3.3: Batch sync on reconnect
 
@@ -414,19 +421,26 @@ Sync restore    cached_invoices (overwrite        dequeue on success      —
 
 ### What TO do
 - Keep BLoC events **immutable** (use `freezed`)
-- One UseCase = one business action, no logic leakage into BLoC
-- Repository interface lives in **domain**, never imports `dio` or `drift`
+- Business rules live in the Repository (or, when stateful, the BLoC) — not in widgets or ViewModels
+- Repository is a single concrete class; it owns the `dio`/`SQLite` calls directly
 - All forms use a dedicated `FormBLoC` with field-level validation
 - Write unit tests per slice before moving to the next
-- Version your drift DB with explicit migrations from day one
+- Version your SQLite DB with explicit migrations from day one
 
 ### What NOT to do
 - No business logic in widgets or ViewModels
-- No direct API calls from BLoC — always through UseCase → Repository
+- No direct API calls from BLoC — always through the Repository
 - No `BuildContext` inside BLoC or ViewModel
 - No hardcoded strings — always use l10n ARB keys
 - No commercial/paid packages — validate every package on pub.dev for open-source license (MIT, BSD, Apache 2.0)
 - Don't share BLoC instances across unrelated modules — use scoped BLoC providers
+- Don't introduce new `UseCase` classes or abstract repository interfaces — Modules 1–9 still have them for legacy reasons, but new code stays flat
+
+### Legacy modules (1–9)
+The existing modules were built under MVVM + Clean Architecture and still
+contain `domain/usecases/` + `domain/repositories/` (abstract). Honour
+that convention when editing those modules — don't mix flat and layered
+styles inside the same feature. New modules use flat MVVM (above).
 
 ---
 

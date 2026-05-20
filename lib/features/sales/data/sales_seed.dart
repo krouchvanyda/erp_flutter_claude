@@ -1,9 +1,9 @@
-import '../domain/entities/activity_event.dart';
-import '../domain/entities/contact.dart';
-import '../domain/entities/customer.dart';
-import '../domain/entities/sales_order.dart';
-import '../domain/entities/sales_quotation.dart';
-import '../domain/entities/sales_rep.dart';
+import '../entities/activity_event.dart';
+import '../entities/contact.dart';
+import '../entities/customer.dart';
+import '../entities/sales_order.dart';
+import '../entities/sales_quotation.dart';
+import '../entities/sales_rep.dart';
 
 /// Single source of demo data for Module 6 (Sales & CRM).
 class SalesSeed {

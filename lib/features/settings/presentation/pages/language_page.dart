@@ -5,8 +5,8 @@ import 'package:get_it/get_it.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
-import '../../domain/entities/user_preferences.dart';
-import '../../domain/repositories/preferences_repository.dart';
+import '../../data/repositories/preferences_repository.dart';
+import '../../entities/user_preferences.dart';
 
 /// Slice 9.1.2 — language selector.
 class LanguagePage extends StatelessWidget {

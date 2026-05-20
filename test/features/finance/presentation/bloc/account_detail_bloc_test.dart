@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:bloc_test/bloc_test.dart';
-import 'package:erp_mobile/features/finance/domain/entities/account.dart';
-import 'package:erp_mobile/features/finance/domain/entities/transaction.dart';
-import 'package:erp_mobile/features/finance/domain/repositories/accounts_repository.dart';
-import 'package:erp_mobile/features/finance/domain/repositories/transactions_repository.dart';
+import 'package:erp_mobile/features/finance/data/repositories/accounts_repository.dart';
+import 'package:erp_mobile/features/finance/data/repositories/transactions_repository.dart';
+import 'package:erp_mobile/features/finance/entities/account.dart';
+import 'package:erp_mobile/features/finance/entities/transaction.dart';
 import 'package:erp_mobile/features/finance/presentation/bloc/account_detail_bloc.dart';
 import 'package:erp_mobile/features/finance/presentation/bloc/account_detail_event.dart';
 import 'package:erp_mobile/features/finance/presentation/bloc/account_detail_state.dart';

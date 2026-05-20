@@ -1,6 +1,6 @@
-import '../domain/entities/invoice.dart';
-import '../domain/entities/invoice_detail.dart';
-import '../domain/entities/invoice_line_item.dart';
+import '../entities/invoice.dart';
+import '../entities/invoice_detail.dart';
+import '../entities/invoice_line_item.dart';
 
 /// Single source of seed data for invoices (Slice 3.2.4). Mirrors the
 /// [`FinanceSeed`] pattern for accounts so the drift bootstrap and any

@@ -1,4 +1,4 @@
-import '../../domain/entities/inventory_item.dart';
+import '../../entities/inventory_item.dart';
 
 /// Inputs to [ItemsListBloc] (Slice 5.1.1).
 sealed class ItemsListEvent {

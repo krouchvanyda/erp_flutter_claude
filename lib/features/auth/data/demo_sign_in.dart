@@ -1,6 +1,6 @@
 import 'package:injectable/injectable.dart';
 
-import '../domain/entities/user.dart';
+import '../entities/user.dart';
 import 'datasources/cached_user_dao.dart';
 
 /// Seeds a demo user + permission set into drift so the

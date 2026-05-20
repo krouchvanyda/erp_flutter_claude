@@ -1,4 +1,4 @@
-import '../../domain/entities/project.dart';
+import '../../entities/project.dart';
 
 class ProjectListState {
   const ProjectListState({

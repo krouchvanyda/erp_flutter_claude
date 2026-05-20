@@ -1,8 +1,8 @@
 import 'package:drift/native.dart';
 import 'package:erp_mobile/core/database/app_database.dart';
 import 'package:erp_mobile/features/finance/data/datasources/accounts_dao.dart';
-import 'package:erp_mobile/features/finance/domain/entities/account.dart';
-import 'package:erp_mobile/features/finance/domain/entities/transaction.dart';
+import 'package:erp_mobile/features/finance/entities/account.dart';
+import 'package:erp_mobile/features/finance/entities/transaction.dart';
 import 'package:test/test.dart';
 
 const _root = Account(

@@ -1,4 +1,4 @@
-import '../../domain/entities/employee.dart';
+import '../../entities/employee.dart';
 
 class EmployeeListState {
   const EmployeeListState({

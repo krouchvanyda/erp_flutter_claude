@@ -10,9 +10,8 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../../domain/entities/sales_quotation.dart';
-import '../../domain/repositories/quotations_repository.dart';
-import '../../domain/usecases/apply_quotation_query.dart';
+import '../../data/repositories/quotations_repository.dart';
+import '../../entities/sales_quotation.dart';
 
 /// Quotation list (Slice 6.2.1).
 class QuotationListPage extends StatefulWidget {

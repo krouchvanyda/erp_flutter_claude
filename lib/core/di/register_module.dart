@@ -47,41 +47,9 @@ import '../../features/auth/data/datasources/oauth_flow_session.dart';
 import '../../features/auth/data/datasources/oauth_token_data_source.dart';
 import '../../features/auth/data/datasources/pkce_generator.dart';
 import '../../features/auth/data/datasources/secure_token_storage.dart';
-import '../../features/auth/data/repositories/auth_repository_impl.dart';
-import '../../features/auth/data/repositories/permissions_repository_impl.dart';
-import '../../features/auth/data/repositories/stub_otp_repository.dart';
-import '../../features/auth/domain/repositories/auth_repository.dart';
-import '../../features/auth/domain/repositories/otp_repository.dart';
-import '../../features/auth/domain/repositories/permissions_repository.dart';
-import '../../features/auth/domain/usecases/check_permission.dart';
-import '../../features/auth/domain/usecases/exchange_authorization_code.dart';
-import '../../features/auth/domain/usecases/sign_out.dart';
-import '../../features/auth/domain/usecases/unlock_with_biometric.dart';
-import '../../features/auth/domain/usecases/verify_otp.dart';
-import '../../features/auth/presentation/bloc/otp_bloc.dart';
 import '../../features/finance/data/datasources/accounts_dao.dart';
 import '../../features/finance/data/datasources/invoices_dao.dart';
 import '../../features/inventory/data/datasources/items_dao.dart';
-import '../../features/finance/data/repositories/drift_accounts_repository.dart';
-import '../../features/finance/data/repositories/drift_invoices_repository.dart';
-import '../../features/finance/data/repositories/drift_transactions_repository.dart';
-import '../../features/finance/data/repositories/stub_journal_entries_repository.dart';
-import '../../features/finance/data/repositories/stub_trial_balance_repository.dart';
-import '../../features/finance/domain/repositories/accounts_repository.dart';
-import '../../features/finance/domain/repositories/invoices_repository.dart';
-import '../../features/finance/domain/repositories/journal_entries_repository.dart';
-import '../../features/finance/domain/repositories/transactions_repository.dart';
-import '../../features/finance/domain/repositories/trial_balance_repository.dart';
-import '../../features/auth/domain/permission_gate.dart';
-import '../../features/finance/domain/usecases/approve_invoice.dart';
-import '../../features/finance/domain/usecases/reject_invoice.dart';
-import '../../features/finance/domain/usecases/reopen_invoice.dart';
-import '../../features/finance/domain/usecases/submit_invoice_for_approval.dart';
-import '../../features/finance/presentation/bloc/invoice_action_bloc.dart';
-import '../router/permissions_snapshot.dart';
-import '../../features/finance/presentation/bloc/account_detail_bloc.dart';
-import '../../features/finance/presentation/bloc/account_tree_bloc.dart';
-import '../../features/finance/presentation/bloc/invoice_list_bloc.dart';
 import '../../features/notifications/data/datasources/notifications_dao.dart';
 import '../../features/notifications/data/repositories/notifications_repository_impl.dart';
 import '../../features/notifications/domain/repositories/notifications_repository.dart';
@@ -254,58 +222,17 @@ abstract class AppModule {
         crashReporter: crashReporter,
       );
 
-  // ── Auth feature (Slice 1.1.4 sign-out) ──────────────────────
+  // ── Auth datasources (Slices 1.1.x / 1.2.x) ─────────────────
   /// Dedicated Dio (no auth/error interceptors) — revoke calls follow
   /// RFC 7009 (refresh token in body, no Bearer required) and must not
   /// trigger a refresh dance during the user's sign-out flow.
+  ///
+  /// Higher-level auth bindings (repositories + bloc) are wired manually
+  /// from `features/auth/auth_di.dart` so the module stays self-contained
+  /// (same pattern as Modules 4–9).
   @lazySingleton
   AuthRemoteDataSource authRemoteDataSource(AppEnv env) =>
       DioAuthRemoteDataSource(dio: buildDio(env));
-
-  @lazySingleton
-  AuthRepository authRepository(
-    TokenStorage tokenStorage,
-    AuthRemoteDataSource remote,
-    CachedUserDao cachedUserDao,
-    AppLogger logger,
-    CrashReporter crashReporter,
-  ) =>
-      AuthRepositoryImpl(
-        tokenStorage: tokenStorage,
-        remote: remote,
-        cachedUserDao: cachedUserDao,
-        logger: logger,
-        crashReporter: crashReporter,
-      );
-
-  @lazySingleton
-  SignOutUseCase signOutUseCase(
-    AuthRepository authRepository,
-    SessionSignal sessionSignal,
-    AnalyticsService analytics,
-  ) =>
-      SignOutUseCase(
-        authRepository: authRepository,
-        sessionSignal: sessionSignal,
-        analytics: analytics,
-      );
-
-  // ── MFA / OTP (Slice 1.2.1) ──────────────────────────────────
-  /// Stub verifier — accepts the dev code `123456`. Replace this binding
-  /// when the real MFA backend comes online; nothing else changes.
-  @lazySingleton
-  OtpRepository get otpRepository => const StubOtpRepository();
-
-  @lazySingleton
-  VerifyOtpUseCase verifyOtpUseCase(OtpRepository repository) =>
-      VerifyOtpUseCase(repository: repository);
-
-  /// `@injectable` (factory) so each `OtpEntryPage` mount gets a fresh
-  /// bloc with `code = ''`. Memory-only contract: nothing about the
-  /// typed code survives the bloc's `close()`.
-  @injectable
-  OtpBloc otpBloc(VerifyOtpUseCase verifyOtp) =>
-      OtpBloc(verifyOtp: verifyOtp);
 
   // ── Biometric unlock (Slice 1.2.3) ───────────────────────────
   /// `local_auth` wrapper. The only file that imports `package:local_auth`
@@ -314,144 +241,12 @@ abstract class AppModule {
   @lazySingleton
   BiometricService get biometricService => LocalAuthBiometricService();
 
-  // ── Finance (Slice 3.1.1 / 3.1.3) ────────────────────────────
-  /// Drift DAO for the accounts + transactions cache.
+  // ── Finance DAOs (Slice 3.1.3 / 3.2.4) ───────────────────────
+  /// Drift DAOs for the offline finance cache. The higher-level repo +
+  /// bloc bindings live in `features/finance/finance_di.dart` so the
+  /// module stays self-contained (same pattern as Modules 1–2 and 4–9).
   @lazySingleton
   AccountsDao accountsDao(AppDatabase db) => db.accountsDao;
-
-  /// Drift-backed repo (Slice 3.1.3) — replaces the in-memory stub.
-  /// First call lazily seeds the cache from `FinanceSeed.accounts`.
-  @lazySingleton
-  DriftAccountsRepository driftAccountsRepository(AccountsDao dao) =>
-      DriftAccountsRepository(dao: dao);
-
-  @lazySingleton
-  AccountsRepository accountsRepository(DriftAccountsRepository impl) => impl;
-
-  /// `@injectable` (factory) so each `ChartOfAccountsPage` mount gets
-  /// a fresh bloc — ties the watch subscription's lifetime to the
-  /// page's lifetime.
-  @injectable
-  AccountTreeBloc accountTreeBloc(
-    AccountsRepository repo,
-    AppLogger logger,
-  ) =>
-      AccountTreeBloc(
-        repository: repo,
-        logger: logger.child('accounts'),
-      );
-
-  // ── Transactions (Slice 3.1.2 / 3.1.3) ───────────────────────
-  /// Drift-backed transactions repo. Bootstrap runs the accounts
-  /// bootstrap first because the FK requires accounts to exist.
-  @LazySingleton(as: TransactionsRepository)
-  DriftTransactionsRepository driftTransactionsRepository(
-    AccountsDao dao,
-    DriftAccountsRepository accountsRepo,
-  ) =>
-      DriftTransactionsRepository(
-        dao: dao,
-        // Force the accounts seed by reading once — cheap getAll() that
-        // triggers the lazy bootstrap on the accounts repo.
-        bootstrapAccounts: () async {
-          await accountsRepo.getAll();
-        },
-      );
-
-  // ── Invoices (Phase 3.2) ─────────────────────────────────────
-  /// Drift-backed [InvoicesRepository] (Slice 3.2.4) — persists the
-  /// header + lines + audit columns through `cached_invoices`. Seeds
-  /// on first call when the table is empty.
-  @LazySingleton(as: InvoicesRepository)
-  DriftInvoicesRepository driftInvoicesRepository(
-    InvoicesDao dao,
-    SyncQueueDao syncQueueDao,
-  ) =>
-      DriftInvoicesRepository(dao: dao, syncQueue: syncQueueDao);
-
-  @injectable
-  InvoiceListBloc invoiceListBloc(InvoicesRepository repo) =>
-      InvoiceListBloc(repository: repo);
-
-  // ── Slice 3.2.4 approve/reject workflow ─────────────────────
-  /// Binds the abstract [PermissionGate] (consumed by domain UseCases
-  /// + the action bloc) to the concrete in-memory snapshot the router
-  /// listens to. Keeps domain code Flutter-free per the layering rule.
-  @lazySingleton
-  PermissionGate permissionGate(PermissionsSnapshot snapshot) => snapshot;
-
-  @lazySingleton
-  ApproveInvoiceUseCase approveInvoiceUseCase(
-    InvoicesRepository repository,
-    PermissionGate permissions,
-  ) =>
-      ApproveInvoiceUseCase(
-        repository: repository,
-        permissions: permissions,
-      );
-
-  @lazySingleton
-  RejectInvoiceUseCase rejectInvoiceUseCase(
-    InvoicesRepository repository,
-    PermissionGate permissions,
-  ) =>
-      RejectInvoiceUseCase(
-        repository: repository,
-        permissions: permissions,
-      );
-
-  @lazySingleton
-  SubmitInvoiceForApprovalUseCase submitInvoiceForApprovalUseCase(
-    InvoicesRepository repository,
-  ) =>
-      SubmitInvoiceForApprovalUseCase(repository: repository);
-
-  @lazySingleton
-  ReopenInvoiceUseCase reopenInvoiceUseCase(
-    InvoicesRepository repository,
-  ) =>
-      ReopenInvoiceUseCase(repository: repository);
-
-  /// Factory — each detail page mount gets a fresh action bloc so the
-  /// `Loading → Success/Failure` state isn't leaked across invoices.
-  @injectable
-  InvoiceActionBloc invoiceActionBloc(
-    ApproveInvoiceUseCase approveInvoice,
-    RejectInvoiceUseCase rejectInvoice,
-    SubmitInvoiceForApprovalUseCase submitInvoice,
-    ReopenInvoiceUseCase reopenInvoice,
-    PermissionGate permissions,
-  ) =>
-      InvoiceActionBloc(
-        approveInvoice: approveInvoice,
-        rejectInvoice: rejectInvoice,
-        submitInvoice: submitInvoice,
-        reopenInvoice: reopenInvoice,
-        permissions: permissions,
-      );
-
-  // ── General Ledger (Phase 3.3) ───────────────────────────────
-  @LazySingleton(as: JournalEntriesRepository)
-  StubJournalEntriesRepository stubJournalEntriesRepository() =>
-      StubJournalEntriesRepository();
-
-  @LazySingleton(as: TrialBalanceRepository)
-  StubTrialBalanceRepository stubTrialBalanceRepository(
-    AccountsRepository accounts,
-  ) =>
-      StubTrialBalanceRepository(accounts: accounts);
-
-  /// `@injectable` (factory) — same rationale as the tree bloc: each
-  /// `AccountDetailPage` mount gets a fresh bloc + watch subscriptions.
-  @injectable
-  AccountDetailBloc accountDetailBloc(
-    AccountsRepository accountsRepository,
-    TransactionsRepository transactionsRepository,
-  ) =>
-      AccountDetailBloc(
-        accountsRepository: accountsRepository,
-        transactionsRepository: transactionsRepository,
-      );
 
   // ── Notifications (Slice 2.3.1) ──────────────────────────────
   @lazySingleton
@@ -498,30 +293,7 @@ abstract class AppModule {
         logger: logger.child('push'),
       );
 
-  // ── RBAC (Slice 1.3.1) ───────────────────────────────────────
-  @lazySingleton
-  PermissionsRepository permissionsRepository(CachedUserDao cachedUserDao) =>
-      PermissionsRepositoryImpl(cachedUserDao: cachedUserDao);
-
-  @lazySingleton
-  CheckPermissionUseCase checkPermissionUseCase(
-    PermissionsRepository repository,
-  ) =>
-      CheckPermissionUseCase(repository: repository);
-
-  @lazySingleton
-  UnlockWithBiometricUseCase unlockWithBiometricUseCase(
-    CachedUserDao cachedUserDao,
-    BiometricSettingsDao settingsDao,
-    BiometricService biometricService,
-  ) =>
-      UnlockWithBiometricUseCase(
-        cachedUserDao: cachedUserDao,
-        settingsDao: settingsDao,
-        biometricService: biometricService,
-      );
-
-  // ── OAuth2 PKCE (Slice 1.2.2) ───────────────────────────────
+  // ── OAuth2 PKCE datasources (Slice 1.2.2) ───────────────────
   /// Pure crypto — no platform deps, safe as a singleton. The internal
   /// `Random.secure()` is reseeded on every `generate()` from the OS RNG.
   @lazySingleton
@@ -539,20 +311,6 @@ abstract class AppModule {
   @lazySingleton
   OAuthTokenDataSource oauthTokenDataSource(AppEnv env) =>
       DioOAuthTokenDataSource(dio: buildDio(env));
-
-  @lazySingleton
-  ExchangeAuthorizationCodeUseCase exchangeAuthorizationCodeUseCase(
-    OAuthFlowSession session,
-    OAuthTokenDataSource dataSource,
-    TokenStorage tokenStorage,
-    AppEnv env,
-  ) =>
-      ExchangeAuthorizationCodeUseCase(
-        session: session,
-        dataSource: dataSource,
-        tokenStorage: tokenStorage,
-        env: env,
-      );
 
   /// Bridges the network-layer [SessionSignal] to the router-layer
   /// [AuthSession] without leaking Flutter into `core/network/`.

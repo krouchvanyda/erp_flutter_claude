@@ -1,11 +1,8 @@
 import 'package:bloc/bloc.dart';
 
 import '../../../../core/error/failure.dart';
-import '../../../auth/domain/permission_gate.dart';
-import '../../domain/usecases/approve_invoice.dart';
-import '../../domain/usecases/reject_invoice.dart';
-import '../../domain/usecases/reopen_invoice.dart';
-import '../../domain/usecases/submit_invoice_for_approval.dart';
+import '../../../auth/permission_gate.dart';
+import '../../data/repositories/invoices_repository.dart';
 import 'invoice_action_event.dart';
 import 'invoice_action_state.dart';
 
@@ -20,17 +17,16 @@ import 'invoice_action_state.dart';
 /// event-handle time rather than ctor time so the bloc still works if
 /// the snapshot's user changes (e.g. dev impersonation toggle in
 /// Storybook). For production this is the signed-in user.
+///
+/// Flat MVVM: the four workflow operations are free top-level functions
+/// living in `invoices_repository.dart` ([`approveInvoice`],
+/// [`rejectInvoice`], [`submitInvoiceForApproval`], [`reopenInvoice`])
+/// — no more use-case classes to inject.
 class InvoiceActionBloc extends Bloc<InvoiceActionEvent, InvoiceActionState> {
   InvoiceActionBloc({
-    required ApproveInvoiceUseCase approveInvoice,
-    required RejectInvoiceUseCase rejectInvoice,
-    required SubmitInvoiceForApprovalUseCase submitInvoice,
-    required ReopenInvoiceUseCase reopenInvoice,
+    required InvoicesRepository invoices,
     required PermissionGate permissions,
-  })  : _approve = approveInvoice,
-        _reject = rejectInvoice,
-        _submit = submitInvoice,
-        _reopen = reopenInvoice,
+  })  : _invoices = invoices,
         _permissions = permissions,
         super(const InvoiceActionInitial()) {
     on<InvoiceActionApprove>(_onApprove);
@@ -39,10 +35,7 @@ class InvoiceActionBloc extends Bloc<InvoiceActionEvent, InvoiceActionState> {
     on<InvoiceActionReopen>(_onReopen);
   }
 
-  final ApproveInvoiceUseCase _approve;
-  final RejectInvoiceUseCase _reject;
-  final SubmitInvoiceForApprovalUseCase _submit;
-  final ReopenInvoiceUseCase _reopen;
+  final InvoicesRepository _invoices;
   final PermissionGate _permissions;
 
   Future<void> _onApprove(
@@ -58,9 +51,11 @@ class InvoiceActionBloc extends Bloc<InvoiceActionEvent, InvoiceActionState> {
       return;
     }
     try {
-      final invoice = await _approve(
+      final invoice = await approveInvoice(
         invoiceId: event.invoiceId,
         approverId: approverId,
+        invoices: _invoices,
+        gate: _permissions,
       );
       emit(InvoiceActionSuccess(invoice));
     } on Failure catch (f) {
@@ -83,10 +78,12 @@ class InvoiceActionBloc extends Bloc<InvoiceActionEvent, InvoiceActionState> {
       return;
     }
     try {
-      final invoice = await _reject(
+      final invoice = await rejectInvoice(
         invoiceId: event.invoiceId,
         approverId: approverId,
         reason: event.reason,
+        invoices: _invoices,
+        gate: _permissions,
       );
       emit(InvoiceActionSuccess(invoice));
     } on Failure catch (f) {
@@ -102,7 +99,10 @@ class InvoiceActionBloc extends Bloc<InvoiceActionEvent, InvoiceActionState> {
   ) async {
     emit(const InvoiceActionLoading());
     try {
-      final invoice = await _submit(invoiceId: event.invoiceId);
+      final invoice = await submitInvoiceForApproval(
+        invoiceId: event.invoiceId,
+        invoices: _invoices,
+      );
       emit(InvoiceActionSuccess(invoice));
     } on Failure catch (f) {
       emit(InvoiceActionFailure(f));
@@ -117,7 +117,10 @@ class InvoiceActionBloc extends Bloc<InvoiceActionEvent, InvoiceActionState> {
   ) async {
     emit(const InvoiceActionLoading());
     try {
-      final invoice = await _reopen(invoiceId: event.invoiceId);
+      final invoice = await reopenInvoice(
+        invoiceId: event.invoiceId,
+        invoices: _invoices,
+      );
       emit(InvoiceActionSuccess(invoice));
     } on Failure catch (f) {
       emit(InvoiceActionFailure(f));

@@ -2,9 +2,8 @@ import 'dart:async';
 
 import 'package:bloc/bloc.dart';
 
-import '../../domain/entities/customer.dart';
-import '../../domain/repositories/customers_repository.dart';
-import '../../domain/usecases/apply_customer_query.dart';
+import '../../data/repositories/customers_repository.dart';
+import '../../entities/customer.dart';
 import 'customer_list_event.dart';
 import 'customer_list_state.dart';
 

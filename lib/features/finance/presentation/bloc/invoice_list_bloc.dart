@@ -2,9 +2,8 @@ import 'dart:async';
 
 import 'package:bloc/bloc.dart';
 
-import '../../domain/entities/invoice.dart';
-import '../../domain/repositories/invoices_repository.dart';
-import '../../domain/usecases/apply_invoice_query.dart';
+import '../../data/repositories/invoices_repository.dart';
+import '../../entities/invoice.dart';
 import 'invoice_list_event.dart';
 import 'invoice_list_state.dart';
 

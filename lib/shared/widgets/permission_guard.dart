@@ -2,7 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../core/di/injection.dart';
 import '../../core/router/permissions_snapshot.dart';
-import '../../features/auth/domain/entities/permission.dart';
+import '../../features/auth/entities/permission.dart';
 
 /// Conditionally renders [child] (or invokes [builder]) based on whether
 /// the signed-in user holds the [required] permission.

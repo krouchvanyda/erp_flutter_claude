@@ -1,7 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import '../../domain/entities/account.dart';
-import '../../domain/entities/transaction.dart';
+import '../../entities/account.dart';
+import '../../entities/transaction.dart';
 
 part 'account_detail_event.freezed.dart';
 

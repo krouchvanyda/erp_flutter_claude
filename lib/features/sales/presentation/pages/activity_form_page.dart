@@ -4,8 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/validators/validators.dart';
-import '../../domain/entities/activity_event.dart';
-import '../../domain/repositories/activities_repository.dart';
+import '../../data/repositories/activities_repository.dart';
+import '../../entities/activity_event.dart';
 
 /// Log a new activity against a customer (Slice 6.1.3).
 ///

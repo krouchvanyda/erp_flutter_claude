@@ -10,12 +10,12 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../../domain/entities/activity_event.dart';
-import '../../domain/entities/contact.dart';
-import '../../domain/entities/customer.dart';
-import '../../domain/repositories/activities_repository.dart';
-import '../../domain/repositories/contacts_repository.dart';
-import '../../domain/repositories/customers_repository.dart';
+import '../../data/repositories/activities_repository.dart';
+import '../../data/repositories/contacts_repository.dart';
+import '../../data/repositories/customers_repository.dart';
+import '../../entities/activity_event.dart';
+import '../../entities/contact.dart';
+import '../../entities/customer.dart';
 import 'activity_form_page.dart' show activityTypeIcon, activityTypeLabel;
 import 'customer_list_page.dart'
     show

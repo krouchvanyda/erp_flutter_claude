@@ -1,4 +1,4 @@
-import '../../features/auth/domain/entities/permission.dart';
+import '../../features/auth/entities/permission.dart';
 
 /// Pure-Dart generic permission filter.
 ///

@@ -9,7 +9,7 @@ import 'package:erp_mobile/core/network/auth_interceptor.dart';
 import 'package:erp_mobile/core/utils/logger/log_level.dart';
 import 'package:erp_mobile/features/auth/data/datasources/cached_user_dao.dart';
 import 'package:erp_mobile/features/auth/data/datasources/dio_token_refresher.dart';
-import 'package:erp_mobile/features/auth/domain/entities/user.dart';
+import 'package:erp_mobile/features/auth/entities/user.dart';
 import 'package:test/test.dart';
 
 import '../../../../_support/recording_logger.dart';

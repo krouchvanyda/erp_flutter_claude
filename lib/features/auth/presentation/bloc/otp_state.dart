@@ -1,6 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import '../../domain/entities/otp_verification_result.dart';
+import '../../entities/otp_verification_result.dart';
 
 part 'otp_state.freezed.dart';
 

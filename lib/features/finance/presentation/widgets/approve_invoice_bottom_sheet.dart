@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../l10n/app_localizations.dart';
-import '../../domain/entities/invoice.dart';
+import '../../entities/invoice.dart';
 
 /// Slice 3.2.4 approve-confirmation bottom sheet.
 ///

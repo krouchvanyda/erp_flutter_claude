@@ -1,4 +1,4 @@
-import '../../domain/entities/inventory_item.dart';
+import '../../entities/inventory_item.dart';
 
 /// One-state shape for the items list (Slice 5.1.1).
 class ItemsListState {

@@ -7,7 +7,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../../core/export/csv_writer.dart';
 import '../../../l10n/app_localizations.dart';
-import '../domain/entities/trial_balance_row.dart';
+import '../entities/trial_balance_row.dart';
 
 /// Writes the trial balance to a CSV file in the app's documents
 /// directory (Slice 3.3.3).

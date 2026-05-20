@@ -1,7 +1,6 @@
 import 'package:bloc_test/bloc_test.dart';
-import 'package:erp_mobile/features/auth/domain/entities/otp_verification_result.dart';
-import 'package:erp_mobile/features/auth/domain/repositories/otp_repository.dart';
-import 'package:erp_mobile/features/auth/domain/usecases/verify_otp.dart';
+import 'package:erp_mobile/features/auth/data/repositories/otp_repository.dart';
+import 'package:erp_mobile/features/auth/entities/otp_verification_result.dart';
 import 'package:erp_mobile/features/auth/presentation/bloc/otp_bloc.dart';
 import 'package:erp_mobile/features/auth/presentation/bloc/otp_event.dart';
 import 'package:erp_mobile/features/auth/presentation/bloc/otp_state.dart';
@@ -9,7 +8,7 @@ import 'package:test/test.dart';
 
 /// Scriptable verifier — the test parameterises what the repository
 /// returns without depending on the stub's hardcoded dev code.
-class _ScriptedOtpRepository implements OtpRepository {
+class _ScriptedOtpRepository extends OtpRepository {
   _ScriptedOtpRepository(this._respond);
   final Future<OtpVerificationResult> Function(String code) _respond;
   final received = <String>[];
@@ -21,8 +20,7 @@ class _ScriptedOtpRepository implements OtpRepository {
   }
 }
 
-OtpBloc _buildBloc(OtpRepository repo) =>
-    OtpBloc(verifyOtp: VerifyOtpUseCase(repository: repo));
+OtpBloc _buildBloc(OtpRepository repo) => OtpBloc(otpRepository: repo);
 
 void main() {
   group('OtpBloc — initial state', () {
@@ -40,10 +38,8 @@ void main() {
 
     test('honours a custom length', () {
       final bloc = OtpBloc(
-        verifyOtp: VerifyOtpUseCase(
-          repository: _ScriptedOtpRepository(
-            (_) async => const OtpVerificationResult.accepted(),
-          ),
+        otpRepository: _ScriptedOtpRepository(
+          (_) async => const OtpVerificationResult.accepted(),
         ),
         length: 4,
       );
@@ -192,10 +188,8 @@ void main() {
     blocTest<OtpBloc, OtpState>(
       'resets state to the initial value (preserving length)',
       build: () => OtpBloc(
-        verifyOtp: VerifyOtpUseCase(
-          repository: _ScriptedOtpRepository(
-            (_) async => const OtpVerificationResult.accepted(),
-          ),
+        otpRepository: _ScriptedOtpRepository(
+          (_) async => const OtpVerificationResult.accepted(),
         ),
         length: 8,
       ),

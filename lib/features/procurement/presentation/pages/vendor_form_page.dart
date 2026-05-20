@@ -9,8 +9,8 @@ import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/validators/validators.dart';
-import '../../domain/entities/vendor.dart';
-import '../../domain/repositories/vendors_repository.dart';
+import '../../data/repositories/vendors_repository.dart';
+import '../../entities/vendor.dart';
 
 class VendorFormPage extends StatefulWidget {
   const VendorFormPage({super.key});

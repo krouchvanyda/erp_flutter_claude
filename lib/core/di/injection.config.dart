@@ -26,45 +26,10 @@ import '../../features/auth/data/datasources/oauth_token_data_source.dart'
 import '../../features/auth/data/datasources/pkce_generator.dart' as _i397;
 import '../../features/auth/data/datasources/secret_store.dart' as _i145;
 import '../../features/auth/data/demo_sign_in.dart' as _i391;
-import '../../features/auth/domain/permission_gate.dart' as _i238;
-import '../../features/auth/domain/repositories/auth_repository.dart' as _i787;
-import '../../features/auth/domain/repositories/otp_repository.dart' as _i519;
-import '../../features/auth/domain/repositories/permissions_repository.dart'
-    as _i49;
-import '../../features/auth/domain/usecases/check_permission.dart' as _i530;
-import '../../features/auth/domain/usecases/exchange_authorization_code.dart'
-    as _i58;
-import '../../features/auth/domain/usecases/sign_out.dart' as _i568;
-import '../../features/auth/domain/usecases/unlock_with_biometric.dart' as _i21;
-import '../../features/auth/domain/usecases/verify_otp.dart' as _i975;
-import '../../features/auth/presentation/bloc/otp_bloc.dart' as _i1048;
+import '../../features/auth/data/repositories/permissions_repository.dart'
+    as _i605;
 import '../../features/finance/data/datasources/accounts_dao.dart' as _i1029;
 import '../../features/finance/data/datasources/invoices_dao.dart' as _i1019;
-import '../../features/finance/data/repositories/drift_accounts_repository.dart'
-    as _i579;
-import '../../features/finance/domain/repositories/accounts_repository.dart'
-    as _i730;
-import '../../features/finance/domain/repositories/invoices_repository.dart'
-    as _i951;
-import '../../features/finance/domain/repositories/journal_entries_repository.dart'
-    as _i133;
-import '../../features/finance/domain/repositories/transactions_repository.dart'
-    as _i0;
-import '../../features/finance/domain/repositories/trial_balance_repository.dart'
-    as _i532;
-import '../../features/finance/domain/usecases/approve_invoice.dart' as _i733;
-import '../../features/finance/domain/usecases/reject_invoice.dart' as _i774;
-import '../../features/finance/domain/usecases/reopen_invoice.dart' as _i165;
-import '../../features/finance/domain/usecases/submit_invoice_for_approval.dart'
-    as _i478;
-import '../../features/finance/presentation/bloc/account_detail_bloc.dart'
-    as _i359;
-import '../../features/finance/presentation/bloc/account_tree_bloc.dart'
-    as _i289;
-import '../../features/finance/presentation/bloc/invoice_action_bloc.dart'
-    as _i1015;
-import '../../features/finance/presentation/bloc/invoice_list_bloc.dart'
-    as _i736;
 import '../../features/inventory/data/datasources/items_dao.dart' as _i341;
 import '../../features/notifications/data/datasources/notifications_dao.dart'
     as _i617;
@@ -118,7 +83,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i895.Connectivity>(() => appModule.connectivity);
     gh.lazySingleton<_i145.SecretStore>(() => appModule.secretStore);
-    gh.lazySingleton<_i519.OtpRepository>(() => appModule.otpRepository);
     gh.lazySingleton<_i506.BiometricService>(() => appModule.biometricService);
     gh.lazySingleton<_i397.PkceGenerator>(() => appModule.pkceGenerator);
     gh.lazySingleton<_i196.OAuthFlowSession>(() => appModule.oauthFlowSession);
@@ -152,9 +116,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => appModule.accountsDao(gh<_i982.AppDatabase>()),
     );
     gh.lazySingleton<_i778.AuthSession>(() => _i778.StubAuthSession());
-    gh.lazySingleton<_i133.JournalEntriesRepository>(
-      () => appModule.stubJournalEntriesRepository(),
-    );
     gh.lazySingleton<_i391.DemoSignInService>(
       () => _i391.DemoSignInService(gh<_i1072.CachedUserDao>()),
     );
@@ -173,26 +134,23 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i402.ConnectivityChecker>(
       () => appModule.connectivityChecker(gh<_i895.Connectivity>()),
     );
-    gh.lazySingleton<_i975.VerifyOtpUseCase>(
-      () => appModule.verifyOtpUseCase(gh<_i519.OtpRepository>()),
-    );
     gh.lazySingleton<_i662.ConflictPolicyRegistry>(
       () => appModule.conflictPolicyRegistry(gh<_i83.ConflictPolicy>()),
     );
     gh.lazySingleton<_i854.RealtimeService>(
       () => appModule.realtimeService(gh<_i89.AppEnv>(), gh<_i712.AppLogger>()),
     );
+    gh.lazySingleton<_i407.PermissionsSnapshot>(
+      () => _i407.PermissionsSnapshot(
+        cachedUserDao: gh<_i1072.CachedUserDao>(),
+        permissionsRepository: gh<_i605.PermissionsRepository>(),
+      ),
+    );
     gh.lazySingleton<_i964.TokenStorage>(
       () => appModule.tokenStorage(gh<_i145.SecretStore>()),
     );
     gh.lazySingleton<_i599.PushTokenStorage>(
       () => appModule.pushTokenStorage(gh<_i145.SecretStore>()),
-    );
-    gh.lazySingleton<_i951.InvoicesRepository>(
-      () => appModule.driftInvoicesRepository(
-        gh<_i1019.InvoicesDao>(),
-        gh<_i733.SyncQueueDao>(),
-      ),
     );
     gh.lazySingleton<_i563.NotificationsRepository>(
       () => appModule.notificationsRepository(gh<_i617.NotificationsDao>()),
@@ -209,56 +167,8 @@ extension GetItInjectableX on _i174.GetIt {
       () =>
           appModule.notificationInboxBloc(gh<_i563.NotificationsRepository>()),
     );
-    gh.lazySingleton<_i787.AuthRepository>(
-      () => appModule.authRepository(
-        gh<_i964.TokenStorage>(),
-        gh<_i107.AuthRemoteDataSource>(),
-        gh<_i1072.CachedUserDao>(),
-        gh<_i712.AppLogger>(),
-        gh<_i267.CrashReporter>(),
-      ),
-    );
-    gh.lazySingleton<_i49.PermissionsRepository>(
-      () => appModule.permissionsRepository(gh<_i1072.CachedUserDao>()),
-    );
     gh.lazySingleton<_i940.SessionSignal>(
       () => appModule.sessionSignal(gh<_i778.AuthSession>()),
-    );
-    gh.lazySingleton<_i21.UnlockWithBiometricUseCase>(
-      () => appModule.unlockWithBiometricUseCase(
-        gh<_i1072.CachedUserDao>(),
-        gh<_i18.BiometricSettingsDao>(),
-        gh<_i506.BiometricService>(),
-      ),
-    );
-    gh.lazySingleton<_i579.DriftAccountsRepository>(
-      () => appModule.driftAccountsRepository(gh<_i1029.AccountsDao>()),
-    );
-    gh.lazySingleton<_i530.CheckPermissionUseCase>(
-      () => appModule.checkPermissionUseCase(gh<_i49.PermissionsRepository>()),
-    );
-    gh.lazySingleton<_i478.SubmitInvoiceForApprovalUseCase>(
-      () => appModule.submitInvoiceForApprovalUseCase(
-        gh<_i951.InvoicesRepository>(),
-      ),
-    );
-    gh.lazySingleton<_i165.ReopenInvoiceUseCase>(
-      () => appModule.reopenInvoiceUseCase(gh<_i951.InvoicesRepository>()),
-    );
-    gh.lazySingleton<_i407.PermissionsSnapshot>(
-      () => _i407.PermissionsSnapshot(
-        cachedUserDao: gh<_i1072.CachedUserDao>(),
-        permissionsRepository: gh<_i49.PermissionsRepository>(),
-      ),
-    );
-    gh.lazySingleton<_i0.TransactionsRepository>(
-      () => appModule.driftTransactionsRepository(
-        gh<_i1029.AccountsDao>(),
-        gh<_i579.DriftAccountsRepository>(),
-      ),
-    );
-    gh.factory<_i736.InvoiceListBloc>(
-      () => appModule.invoiceListBloc(gh<_i951.InvoicesRepository>()),
     );
     gh.lazySingleton<_i81.AppRouter>(
       () => _i81.AppRouter(
@@ -273,23 +183,6 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i940.SessionSignal>(),
       ),
     );
-    gh.lazySingleton<_i58.ExchangeAuthorizationCodeUseCase>(
-      () => appModule.exchangeAuthorizationCodeUseCase(
-        gh<_i196.OAuthFlowSession>(),
-        gh<_i828.OAuthTokenDataSource>(),
-        gh<_i964.TokenStorage>(),
-        gh<_i89.AppEnv>(),
-      ),
-    );
-    gh.lazySingleton<_i730.AccountsRepository>(
-      () => appModule.accountsRepository(gh<_i579.DriftAccountsRepository>()),
-    );
-    gh.factory<_i289.AccountTreeBloc>(
-      () => appModule.accountTreeBloc(
-        gh<_i730.AccountsRepository>(),
-        gh<_i712.AppLogger>(),
-      ),
-    );
     gh.lazySingleton<_i170.PushMessageRouter>(
       () => appModule.pushMessageRouter(
         gh<_i992.PushNotificationService>(),
@@ -298,55 +191,11 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i712.AppLogger>(),
       ),
     );
-    gh.factory<_i1048.OtpBloc>(
-      () => appModule.otpBloc(gh<_i975.VerifyOtpUseCase>()),
-    );
-    gh.lazySingleton<_i568.SignOutUseCase>(
-      () => appModule.signOutUseCase(
-        gh<_i787.AuthRepository>(),
-        gh<_i940.SessionSignal>(),
-        gh<_i726.AnalyticsService>(),
-      ),
-    );
-    gh.lazySingleton<_i238.PermissionGate>(
-      () => appModule.permissionGate(gh<_i407.PermissionsSnapshot>()),
-    );
-    gh.lazySingleton<_i733.ApproveInvoiceUseCase>(
-      () => appModule.approveInvoiceUseCase(
-        gh<_i951.InvoicesRepository>(),
-        gh<_i238.PermissionGate>(),
-      ),
-    );
-    gh.lazySingleton<_i774.RejectInvoiceUseCase>(
-      () => appModule.rejectInvoiceUseCase(
-        gh<_i951.InvoicesRepository>(),
-        gh<_i238.PermissionGate>(),
-      ),
-    );
     gh.lazySingleton<_i361.Dio>(
       () => appModule.dio(
         gh<_i89.AppEnv>(),
         gh<_i908.AuthInterceptor>(),
         gh<_i1004.ErrorInterceptor>(),
-      ),
-    );
-    gh.factory<_i359.AccountDetailBloc>(
-      () => appModule.accountDetailBloc(
-        gh<_i730.AccountsRepository>(),
-        gh<_i0.TransactionsRepository>(),
-      ),
-    );
-    gh.lazySingleton<_i532.TrialBalanceRepository>(
-      () =>
-          appModule.stubTrialBalanceRepository(gh<_i730.AccountsRepository>()),
-    );
-    gh.factory<_i1015.InvoiceActionBloc>(
-      () => appModule.invoiceActionBloc(
-        gh<_i733.ApproveInvoiceUseCase>(),
-        gh<_i774.RejectInvoiceUseCase>(),
-        gh<_i478.SubmitInvoiceForApprovalUseCase>(),
-        gh<_i165.ReopenInvoiceUseCase>(),
-        gh<_i238.PermissionGate>(),
       ),
     );
     gh.lazySingleton<_i687.SyncOpExecutor>(

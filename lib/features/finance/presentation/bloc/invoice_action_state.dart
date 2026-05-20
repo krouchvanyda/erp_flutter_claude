@@ -1,5 +1,5 @@
 import '../../../../core/error/failure.dart';
-import '../../domain/entities/invoice.dart';
+import '../../entities/invoice.dart';
 
 /// One-state-per-stage shape (Slice 3.2.4 spec):
 /// `Initial → Loading → Success | Failure`.

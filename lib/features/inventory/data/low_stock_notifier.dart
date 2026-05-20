@@ -2,9 +2,8 @@ import 'dart:async';
 
 import '../../../core/push/local_push_simulator.dart';
 import '../../../core/push/push_notification_service.dart';
-import '../domain/entities/inventory_item.dart';
-import '../domain/repositories/items_repository.dart';
-import '../domain/usecases/check_low_stock.dart';
+import '../entities/inventory_item.dart';
+import 'repositories/items_repository.dart';
 
 /// Watches the items feed and fires *one* local notification per item
 /// that newly drops below its reorder point (Slice 5.1.3).

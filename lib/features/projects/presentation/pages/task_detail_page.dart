@@ -6,8 +6,8 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
-import '../../domain/entities/task.dart';
-import '../../domain/repositories/tasks_repository.dart';
+import '../../data/repositories/tasks_repository.dart';
+import '../../entities/task.dart';
 
 /// Slice 8.1.3 — task detail + comment thread.
 class TaskDetailPage extends StatefulWidget {

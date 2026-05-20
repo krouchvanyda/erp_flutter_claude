@@ -3,10 +3,9 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../../domain/entities/sales_quotation.dart';
-import '../../domain/repositories/quotations_repository.dart';
-import '../../domain/repositories/sales_orders_repository.dart';
-import '../../domain/usecases/convert_quotation_to_order.dart';
+import '../../data/repositories/quotations_repository.dart';
+import '../../data/repositories/sales_orders_repository.dart';
+import '../../entities/sales_quotation.dart';
 import 'quotation_list_page.dart' show QuotationStatusBadge;
 
 /// Quotation detail (Slice 6.2.1 + 6.2.2 convert action).

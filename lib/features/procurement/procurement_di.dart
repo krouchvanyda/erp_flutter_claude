@@ -1,12 +1,8 @@
 import 'package:get_it/get_it.dart';
 
-import 'data/repositories/stub_purchase_orders_repository.dart';
-import 'data/repositories/stub_purchase_requests_repository.dart';
-import 'data/repositories/stub_vendors_repository.dart';
-import 'domain/repositories/purchase_orders_repository.dart';
-import 'domain/repositories/purchase_requests_repository.dart';
-import 'domain/repositories/vendors_repository.dart';
-import 'domain/usecases/pr_approval.dart';
+import 'data/repositories/purchase_orders_repository.dart';
+import 'data/repositories/purchase_requests_repository.dart';
+import 'data/repositories/vendors_repository.dart';
 import 'presentation/bloc/pr_list_bloc.dart';
 
 /// Manual DI registration for Module 4 (Procurement).
@@ -20,22 +16,17 @@ import 'presentation/bloc/pr_list_bloc.dart';
 void registerProcurementModule(GetIt getIt) {
   if (!getIt.isRegistered<PurchaseRequestsRepository>()) {
     getIt.registerLazySingleton<PurchaseRequestsRepository>(
-      StubPurchaseRequestsRepository.new,
+      PurchaseRequestsRepository.new,
     );
   }
   if (!getIt.isRegistered<PurchaseOrdersRepository>()) {
     getIt.registerLazySingleton<PurchaseOrdersRepository>(
-      StubPurchaseOrdersRepository.new,
+      PurchaseOrdersRepository.new,
     );
   }
   if (!getIt.isRegistered<VendorsRepository>()) {
     getIt.registerLazySingleton<VendorsRepository>(
-      StubVendorsRepository.new,
-    );
-  }
-  if (!getIt.isRegistered<PurchaseRequestApprovalUseCase>()) {
-    getIt.registerLazySingleton<PurchaseRequestApprovalUseCase>(
-      PurchaseRequestApprovalUseCase.new,
+      VendorsRepository.new,
     );
   }
   if (!getIt.isRegistered<PurchaseRequestListBloc>()) {

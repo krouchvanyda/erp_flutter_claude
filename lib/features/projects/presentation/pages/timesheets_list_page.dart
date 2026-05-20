@@ -9,10 +9,8 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
-import '../../domain/entities/timesheet_entry.dart';
-import '../../domain/repositories/timesheets_repository.dart';
-import '../../domain/usecases/decide_timesheet.dart';
-import '../../domain/usecases/submit_timesheet.dart';
+import '../../data/repositories/timesheets_repository.dart';
+import '../../entities/timesheet_entry.dart';
 
 /// Slice 8.2.1 + 8.2.2 — combined timesheets surface.
 class TimesheetsListPage extends StatefulWidget {
@@ -390,12 +388,13 @@ class _EntryCard extends StatelessWidget {
 
   Future<void> _approve(BuildContext context) async {
     try {
-      final updated = approveTimesheetEntry(
+      final repo = GetIt.I<TimesheetsRepository>();
+      final updated = repo.approve(
         entry: entry,
         approverId: currentUserId,
         now: DateTime.now(),
       );
-      await GetIt.I<TimesheetsRepository>().update(updated);
+      await repo.update(updated);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Timesheet approved.')),
@@ -439,13 +438,14 @@ class _EntryCard extends StatelessWidget {
     );
     if (reason == null || reason.trim().isEmpty) return;
     try {
-      final updated = rejectTimesheetEntry(
+      final repo = GetIt.I<TimesheetsRepository>();
+      final updated = repo.reject(
         entry: entry,
         approverId: currentUserId,
         now: DateTime.now(),
         reason: reason,
       );
-      await GetIt.I<TimesheetsRepository>().update(updated);
+      await repo.update(updated);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Timesheet rejected.')),
@@ -468,8 +468,9 @@ class _EntryCard extends StatelessWidget {
 
   Future<void> _submit(BuildContext context) async {
     try {
-      final updated = submitTimesheetEntry(entry);
-      await GetIt.I<TimesheetsRepository>().update(updated);
+      final repo = GetIt.I<TimesheetsRepository>();
+      final updated = repo.submit(entry);
+      await repo.update(updated);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Submitted for approval.')),
@@ -486,8 +487,9 @@ class _EntryCard extends StatelessWidget {
 
   Future<void> _reopen(BuildContext context) async {
     try {
-      final updated = reopenRejectedTimesheet(entry);
-      await GetIt.I<TimesheetsRepository>().update(updated);
+      final repo = GetIt.I<TimesheetsRepository>();
+      final updated = repo.reopenRejected(entry);
+      await repo.update(updated);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Reopened as draft.')),

@@ -1,4 +1,4 @@
-import '../../../auth/domain/entities/permission.dart';
+import '../../../auth/entities/permission.dart';
 import '../entities/search_result.dart';
 
 /// Contract every searchable feature module implements (Slice 2.1.3).

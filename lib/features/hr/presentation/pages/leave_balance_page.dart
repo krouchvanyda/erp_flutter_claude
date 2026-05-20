@@ -9,9 +9,8 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
-import '../../domain/entities/leave_request.dart';
-import '../../domain/repositories/leave_requests_repository.dart';
-import '../../domain/usecases/compute_leave_balance.dart';
+import '../../data/repositories/leave_requests_repository.dart';
+import '../../entities/leave_request.dart';
 
 /// Slice 7.2.2 — leave balance widget.
 ///

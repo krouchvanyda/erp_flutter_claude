@@ -11,8 +11,8 @@ import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/validators/validators.dart';
-import '../../domain/entities/purchase_request.dart';
-import '../../domain/repositories/purchase_requests_repository.dart';
+import '../../data/repositories/purchase_requests_repository.dart';
+import '../../entities/purchase_request.dart';
 
 class PurchaseRequestFormPage extends StatefulWidget {
   const PurchaseRequestFormPage({super.key});

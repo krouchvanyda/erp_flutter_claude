@@ -1,7 +1,7 @@
-import '../domain/entities/attendance_entry.dart';
-import '../domain/entities/employee.dart';
-import '../domain/entities/leave_request.dart';
-import '../domain/entities/payslip.dart';
+import '../entities/attendance_entry.dart';
+import '../entities/employee.dart';
+import '../entities/leave_request.dart';
+import '../entities/payslip.dart';
 
 /// Single source of demo data for Module 7 (Human Resources).
 ///

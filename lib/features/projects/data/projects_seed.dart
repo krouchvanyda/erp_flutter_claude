@@ -1,6 +1,6 @@
-import '../domain/entities/project.dart';
-import '../domain/entities/task.dart';
-import '../domain/entities/timesheet_entry.dart';
+import '../entities/project.dart';
+import '../entities/task.dart';
+import '../entities/timesheet_entry.dart';
 
 /// Single source of demo data for Module 8 (Project Management).
 class ProjectsSeed {

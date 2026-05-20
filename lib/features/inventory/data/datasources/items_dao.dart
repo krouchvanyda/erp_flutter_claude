@@ -1,8 +1,8 @@
 import 'package:drift/drift.dart';
 
 import '../../../../core/database/app_database.dart';
-import '../../domain/entities/inventory_item.dart';
-import '../../domain/entities/stock_movement.dart';
+import '../../entities/inventory_item.dart';
+import '../../entities/stock_movement.dart';
 import 'tables/cached_inventory_items.dart';
 import 'tables/cached_stock_movements.dart';
 

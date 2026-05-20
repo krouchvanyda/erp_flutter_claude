@@ -6,9 +6,8 @@ import '../../../../core/error/failure.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
-import '../../domain/entities/device_session.dart';
-import '../../domain/repositories/security_repositories.dart';
-import '../../domain/usecases/manage_sessions.dart';
+import '../../data/repositories/security_repositories.dart';
+import '../../entities/device_session.dart';
 
 /// Slice 9.3.1 — active devices list with revoke actions.
 class SessionsPage extends StatelessWidget {
@@ -229,8 +228,7 @@ class _SessionCard extends StatelessWidget {
 
   Future<void> _revoke(BuildContext context) async {
     try {
-      ensureSessionIsRevocable(session);
-      await GetIt.I<DeviceSessionsRepository>().revoke(session.id);
+      await GetIt.I<DeviceSessionsRepository>().revokeGuarded(session);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

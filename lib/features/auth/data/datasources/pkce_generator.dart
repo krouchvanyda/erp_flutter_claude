@@ -3,7 +3,7 @@ import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 
-import '../../domain/entities/pkce_challenge.dart';
+import '../../entities/pkce_challenge.dart';
 
 /// Pure Dart generator of PKCE proof material (RFC 7636 §4.1 + §4.2).
 ///

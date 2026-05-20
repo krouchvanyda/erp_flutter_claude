@@ -2,9 +2,8 @@ import 'dart:async';
 
 import 'package:bloc/bloc.dart';
 
-import '../../domain/entities/employee.dart';
-import '../../domain/repositories/employees_repository.dart';
-import '../../domain/usecases/apply_employee_query.dart';
+import '../../data/repositories/employees_repository.dart';
+import '../../entities/employee.dart';
 import 'employee_list_event.dart';
 import 'employee_list_state.dart';
 

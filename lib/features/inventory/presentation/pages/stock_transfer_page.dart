@@ -11,9 +11,9 @@ import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/validators/validators.dart';
-import '../../domain/entities/inventory_item.dart';
-import '../../domain/repositories/items_repository.dart';
-import '../../domain/usecases/transfer_stock.dart';
+import '../../data/repositories/items_repository.dart';
+import '../../data/repositories/stock_movements_repository.dart';
+import '../../entities/inventory_item.dart';
 
 class StockTransferPage extends StatefulWidget {
   const StockTransferPage({super.key, required this.sourceItemId});
@@ -89,7 +89,9 @@ class _StockTransferPageState extends State<StockTransferPage> {
       _qtyError = null;
     });
     try {
-      await getIt<TransferStockUseCase>()(
+      await transferStock(
+        itemsRepo: getIt<ItemsRepository>(),
+        movementsRepo: getIt<StockMovementsRepository>(),
         sourceItemId: source.id,
         destinationItemId: _destination!.id,
         quantity: num.parse(_qtyCtrl.text.trim()),

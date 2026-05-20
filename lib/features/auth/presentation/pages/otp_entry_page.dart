@@ -11,8 +11,8 @@ import '../../../../core/router/route_paths.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../data/demo_sign_in.dart';
-import '../../data/repositories/stub_otp_repository.dart';
-import '../../domain/entities/otp_verification_result.dart';
+import '../../data/repositories/otp_repository.dart';
+import '../../entities/otp_verification_result.dart';
 import '../bloc/otp_bloc.dart';
 import '../bloc/otp_event.dart';
 import '../bloc/otp_state.dart';
@@ -223,7 +223,7 @@ class _OtpEntryView extends StatelessWidget {
                                   const SizedBox(height: 40),
                                   
                                   Text(
-                                    l10n.otpDevHint(StubOtpRepository.devCode),
+                                    l10n.otpDevHint(OtpRepository.devCode),
                                     textAlign: TextAlign.center,
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),

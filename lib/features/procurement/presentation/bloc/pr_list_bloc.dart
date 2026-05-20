@@ -2,9 +2,8 @@ import 'dart:async';
 
 import 'package:bloc/bloc.dart';
 
-import '../../domain/entities/purchase_request.dart';
-import '../../domain/repositories/purchase_requests_repository.dart';
-import '../../domain/usecases/apply_pr_query.dart';
+import '../../data/repositories/purchase_requests_repository.dart';
+import '../../entities/purchase_request.dart';
 import 'pr_list_event.dart';
 import 'pr_list_state.dart';
 

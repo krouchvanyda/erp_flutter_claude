@@ -10,7 +10,7 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
-import '../../domain/entities/employee.dart';
+import '../../entities/employee.dart';
 import '../bloc/employee_list_bloc.dart';
 import '../bloc/employee_list_event.dart';
 import '../bloc/employee_list_state.dart';

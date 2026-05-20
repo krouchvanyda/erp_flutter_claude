@@ -1,4 +1,4 @@
-import '../../domain/entities/purchase_request.dart';
+import '../../entities/purchase_request.dart';
 
 /// Inputs to [PurchaseRequestListBloc] (Slice 4.1.1).
 sealed class PurchaseRequestListEvent {

@@ -1,4 +1,4 @@
-import '../../domain/entities/purchase_request.dart';
+import '../../entities/purchase_request.dart';
 
 /// One state shape for the PR list (Slice 4.1.1) — `source` is the raw
 /// repo feed; `visible` is the filtered/sorted slice the UI renders.

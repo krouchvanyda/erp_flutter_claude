@@ -8,9 +8,8 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
-import '../../domain/entities/leave_request.dart';
-import '../../domain/repositories/leave_requests_repository.dart';
-import '../../domain/usecases/submit_leave_request.dart';
+import '../../data/repositories/leave_requests_repository.dart';
+import '../../entities/leave_request.dart';
 
 /// Slice 7.2.1 — leave request form with calendar pickers.
 ///
@@ -120,7 +119,8 @@ class _LeaveRequestFormPageState extends State<LeaveRequestFormPage> {
       _fieldErrors = const {};
     });
     try {
-      final draft = validateLeaveRequest(
+      final repo = GetIt.I<LeaveRequestsRepository>();
+      final draft = repo.submit(
         employeeId: widget.employeeId,
         employeeName: widget.employeeName,
         type: _type,
@@ -129,7 +129,7 @@ class _LeaveRequestFormPageState extends State<LeaveRequestFormPage> {
         reason: _reasonCtrl.text,
         now: DateTime.now(),
       );
-      await GetIt.I<LeaveRequestsRepository>().create(draft);
+      await repo.create(draft);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

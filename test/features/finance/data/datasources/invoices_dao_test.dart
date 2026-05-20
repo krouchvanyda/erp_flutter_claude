@@ -1,9 +1,9 @@
 import 'package:drift/native.dart';
 import 'package:erp_mobile/core/database/app_database.dart';
 import 'package:erp_mobile/features/finance/data/datasources/invoices_dao.dart';
-import 'package:erp_mobile/features/finance/domain/entities/invoice.dart';
-import 'package:erp_mobile/features/finance/domain/entities/invoice_detail.dart';
-import 'package:erp_mobile/features/finance/domain/entities/invoice_line_item.dart';
+import 'package:erp_mobile/features/finance/entities/invoice.dart';
+import 'package:erp_mobile/features/finance/entities/invoice_detail.dart';
+import 'package:erp_mobile/features/finance/entities/invoice_line_item.dart';
 import 'package:test/test.dart';
 
 Invoice _header({

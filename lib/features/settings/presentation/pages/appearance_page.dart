@@ -6,8 +6,8 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
-import '../../domain/entities/user_preferences.dart';
-import '../../domain/repositories/preferences_repository.dart';
+import '../../data/repositories/preferences_repository.dart';
+import '../../entities/user_preferences.dart';
 
 /// Slice 9.1.1 — light / dark / system toggle.
 class AppearancePage extends StatelessWidget {

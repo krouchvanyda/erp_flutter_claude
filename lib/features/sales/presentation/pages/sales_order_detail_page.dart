@@ -9,9 +9,8 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../../domain/entities/sales_order.dart';
-import '../../domain/repositories/sales_orders_repository.dart';
-import '../../domain/usecases/advance_fulfillment.dart';
+import '../../data/repositories/sales_orders_repository.dart';
+import '../../entities/sales_order.dart';
 import 'sales_order_list_page.dart'
     show SalesOrderStatusBadge, salesOrderStatusLabel;
 
@@ -47,13 +46,14 @@ class _SalesOrderDetailPageState extends State<SalesOrderDetailPage> {
     final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final updated = advanceFulfillment(
+      final repo = getIt<SalesOrdersRepository>();
+      final updated = repo.advanceFulfillment(
         order,
         to: next,
         now: DateTime.now().toUtc(),
         trackingReference: tracking,
       );
-      await getIt<SalesOrdersRepository>().setStatus(
+      await repo.setStatus(
         order.id,
         updated.status,
         shippedAt: updated.shippedAt,

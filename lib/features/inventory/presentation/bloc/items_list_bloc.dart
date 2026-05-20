@@ -2,9 +2,8 @@ import 'dart:async';
 
 import 'package:bloc/bloc.dart';
 
-import '../../domain/entities/inventory_item.dart';
-import '../../domain/repositories/items_repository.dart';
-import '../../domain/usecases/apply_item_query.dart';
+import '../../data/repositories/items_repository.dart';
+import '../../entities/inventory_item.dart';
 import 'items_list_event.dart';
 import 'items_list_state.dart';
 

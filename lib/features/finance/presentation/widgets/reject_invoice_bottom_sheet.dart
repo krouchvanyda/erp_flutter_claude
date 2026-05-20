@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../l10n/app_localizations.dart';
-import '../../domain/entities/invoice.dart';
+import '../../entities/invoice.dart';
 import '../bloc/reject_reason_form_bloc.dart';
 
 /// Slice 3.2.4 reject bottom sheet with FormBLoC-driven validation.

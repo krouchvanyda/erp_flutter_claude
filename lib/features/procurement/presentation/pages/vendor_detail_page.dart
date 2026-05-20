@@ -10,8 +10,8 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../../domain/entities/vendor.dart';
-import '../../domain/repositories/vendors_repository.dart';
+import '../../data/repositories/vendors_repository.dart';
+import '../../entities/vendor.dart';
 import 'vendor_list_page.dart' show VendorStatusBadge;
 
 class VendorDetailPage extends StatelessWidget {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../domain/entities/project.dart';
-import '../../domain/usecases/compute_gantt_layout.dart';
+import '../../data/repositories/projects_repository.dart';
+import '../../entities/project.dart';
 
 /// Slice 8.1.1 — custom-painter Gantt timeline.
 ///

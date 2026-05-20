@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../features/auth/domain/entities/permission.dart';
+import '../../features/auth/entities/permission.dart';
 import '../../l10n/app_localizations.dart';
 import '../router/route_paths.dart';
 import 'module_shortcut.dart';

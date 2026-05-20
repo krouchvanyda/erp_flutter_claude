@@ -1,7 +1,7 @@
-import '../domain/entities/api_environment.dart';
-import '../domain/entities/audit_log_entry.dart';
-import '../domain/entities/device_session.dart';
-import '../domain/entities/managed_user.dart';
+import '../entities/api_environment.dart';
+import '../entities/audit_log_entry.dart';
+import '../entities/device_session.dart';
+import '../entities/managed_user.dart';
 
 /// Single source of demo data for Module 9 (Settings & Admin).
 class SettingsSeed {

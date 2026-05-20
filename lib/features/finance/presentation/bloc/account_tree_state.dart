@@ -1,6 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import '../../domain/entities/account_tree_node.dart';
+import '../../entities/account_tree_node.dart';
 
 part 'account_tree_state.freezed.dart';
 

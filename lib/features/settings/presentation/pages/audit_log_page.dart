@@ -5,9 +5,8 @@ import 'package:get_it/get_it.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
-import '../../domain/entities/audit_log_entry.dart';
-import '../../domain/repositories/security_repositories.dart';
-import '../../domain/usecases/query_audit_log.dart';
+import '../../data/repositories/security_repositories.dart';
+import '../../entities/audit_log_entry.dart';
 
 /// Slice 9.3.2 — read-only audit log with filter chips + search.
 class AuditLogPage extends StatefulWidget {

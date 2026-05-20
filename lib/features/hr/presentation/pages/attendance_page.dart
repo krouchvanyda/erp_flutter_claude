@@ -8,9 +8,8 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
-import '../../domain/entities/attendance_entry.dart';
-import '../../domain/repositories/attendance_repository.dart';
-import '../../domain/usecases/toggle_clock.dart';
+import '../../data/repositories/attendance_repository.dart';
+import '../../entities/attendance_entry.dart';
 
 /// Slice 7.3.1 — clock-in / clock-out + recent log.
 ///
@@ -37,7 +36,7 @@ class _AttendancePageState extends State<AttendancePage> {
     });
     try {
       final latest = await repo.latestFor(widget.employeeId);
-      final action = resolveClockAction(
+      final action = repo.toggleClock(
         latest: latest,
         employeeId: widget.employeeId,
         now: DateTime.now(),

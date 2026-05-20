@@ -9,15 +9,12 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../../domain/entities/activity_event.dart';
-import '../../domain/entities/sales_order.dart';
-import '../../domain/entities/sales_rep.dart';
-import '../../domain/repositories/activities_repository.dart';
-import '../../domain/repositories/sales_orders_repository.dart';
-import '../../domain/repositories/sales_reps_repository.dart';
-import '../../domain/usecases/revenue_by_period.dart';
-import '../../domain/usecases/sales_rep_leaderboard.dart';
-import '../../domain/usecases/top_rankings.dart';
+import '../../data/repositories/activities_repository.dart';
+import '../../data/repositories/sales_orders_repository.dart';
+import '../../data/repositories/sales_reps_repository.dart';
+import '../../entities/activity_event.dart';
+import '../../entities/sales_order.dart';
+import '../../entities/sales_rep.dart';
 
 /// Sales analytics page (Slices 6.3.1 + 6.3.2 + 6.3.3).
 class SalesAnalyticsPage extends StatefulWidget {

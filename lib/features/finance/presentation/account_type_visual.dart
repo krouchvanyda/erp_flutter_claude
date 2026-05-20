@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../l10n/app_localizations.dart';
-import '../domain/entities/account.dart';
+import '../entities/account.dart';
 
 /// Maps an [AccountType] to its on-screen icon + localised label
 /// (Slice 3.1.1).

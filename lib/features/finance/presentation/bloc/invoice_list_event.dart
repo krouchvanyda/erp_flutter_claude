@@ -1,7 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import '../../domain/entities/invoice.dart';
-import '../../domain/usecases/apply_invoice_query.dart';
+import '../../data/repositories/invoices_repository.dart';
+import '../../entities/invoice.dart';
 
 part 'invoice_list_event.freezed.dart';
 

@@ -7,9 +7,8 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../../domain/entities/trial_balance_row.dart';
-import '../../domain/repositories/trial_balance_repository.dart';
-import '../../domain/usecases/paginate.dart';
+import '../../data/repositories/trial_balance_repository.dart';
+import '../../entities/trial_balance_row.dart';
 import '../trial_balance_csv_share.dart';
 
 class TrialBalancePage extends StatefulWidget {

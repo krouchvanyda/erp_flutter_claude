@@ -3,8 +3,8 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../../domain/entities/journal_entry.dart';
-import '../../domain/repositories/journal_entries_repository.dart';
+import '../../data/repositories/journal_entries_repository.dart';
+import '../../entities/journal_entry.dart';
 
 /// Journal entry detail (Slice 3.3.1) — header + line table.
 ///

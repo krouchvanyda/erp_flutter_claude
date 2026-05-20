@@ -7,9 +7,8 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
-import '../../domain/entities/employee.dart';
-import '../../domain/repositories/employees_repository.dart';
-import '../../domain/usecases/build_org_chart.dart';
+import '../../data/repositories/employees_repository.dart';
+import '../../entities/employee.dart';
 
 /// Slice 7.1.3 — indented tree view of the manager hierarchy.
 ///

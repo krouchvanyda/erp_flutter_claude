@@ -1,5 +1,5 @@
-import '../domain/entities/account.dart';
-import '../domain/entities/transaction.dart';
+import '../entities/account.dart';
+import '../entities/transaction.dart';
 
 /// Single source of seed data for both the legacy stub repos and the
 /// drift cache bootstrap (Slice 3.1.3). Extracted so adding a new

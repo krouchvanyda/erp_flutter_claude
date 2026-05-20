@@ -1,4 +1,4 @@
-import '../../domain/entities/customer.dart';
+import '../../entities/customer.dart';
 
 class CustomerListState {
   const CustomerListState({

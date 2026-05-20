@@ -10,10 +10,10 @@ import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/validators/validators.dart';
-import '../../domain/entities/customer.dart';
-import '../../domain/entities/sales_quotation.dart';
-import '../../domain/repositories/customers_repository.dart';
-import '../../domain/repositories/quotations_repository.dart';
+import '../../data/repositories/customers_repository.dart';
+import '../../data/repositories/quotations_repository.dart';
+import '../../entities/customer.dart';
+import '../../entities/sales_quotation.dart';
 
 /// Create-quotation form (Slice 6.2.1).
 class QuotationFormPage extends StatefulWidget {

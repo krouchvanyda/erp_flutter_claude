@@ -8,11 +8,10 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
-import '../../domain/entities/project.dart';
-import '../../domain/entities/task.dart';
-import '../../domain/repositories/projects_repository.dart';
-import '../../domain/repositories/tasks_repository.dart';
-import '../../domain/usecases/move_task.dart';
+import '../../data/repositories/projects_repository.dart';
+import '../../data/repositories/tasks_repository.dart';
+import '../../entities/project.dart';
+import '../../entities/task.dart';
 
 class ProjectDetailPage extends StatelessWidget {
   const ProjectDetailPage({super.key, required this.projectId});

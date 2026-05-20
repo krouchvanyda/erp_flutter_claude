@@ -7,7 +7,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../../domain/repositories/items_repository.dart';
+import '../../data/repositories/items_repository.dart';
 
 /// Barcode / QR scanner page (Slice 5.2.1).
 ///

@@ -2,7 +2,7 @@ import 'package:drift/native.dart';
 import 'package:erp_mobile/core/database/app_database.dart';
 import 'package:erp_mobile/features/auth/data/datasources/biometric_settings_dao.dart';
 import 'package:erp_mobile/features/auth/data/datasources/cached_user_dao.dart';
-import 'package:erp_mobile/features/auth/domain/entities/user.dart';
+import 'package:erp_mobile/features/auth/entities/user.dart';
 import 'package:test/test.dart';
 
 const _alice = User(

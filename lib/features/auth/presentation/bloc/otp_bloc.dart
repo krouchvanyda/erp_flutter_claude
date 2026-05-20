@@ -1,7 +1,7 @@
 import 'package:bloc/bloc.dart';
 
-import '../../domain/entities/otp_verification_result.dart';
-import '../../domain/usecases/verify_otp.dart';
+import '../../data/repositories/otp_repository.dart';
+import '../../entities/otp_verification_result.dart';
 import 'otp_event.dart';
 import 'otp_state.dart';
 
@@ -13,16 +13,16 @@ import 'otp_state.dart';
 /// persisted to drift, secure-storage, or `shared_preferences`.
 class OtpBloc extends Bloc<OtpEvent, OtpState> {
   OtpBloc({
-    required VerifyOtpUseCase verifyOtp,
+    required OtpRepository otpRepository,
     int length = 6,
-  })  : _verifyOtp = verifyOtp,
+  })  : _otpRepository = otpRepository,
         super(OtpState(length: length)) {
     on<OtpCodeChanged>(_onCodeChanged);
     on<OtpSubmitted>(_onSubmitted);
     on<OtpCleared>(_onCleared);
   }
 
-  final VerifyOtpUseCase _verifyOtp;
+  final OtpRepository _otpRepository;
 
   void _onCodeChanged(OtpCodeChanged event, Emitter<OtpState> emit) {
     // Clamp to the configured length so paste-overflow doesn't bleed
@@ -49,7 +49,7 @@ class OtpBloc extends Bloc<OtpEvent, OtpState> {
       rejectionReason: null,
     ));
 
-    final result = await _verifyOtp(state.code);
+    final result = await _otpRepository.verify(state.code);
 
     switch (result) {
       case OtpAccepted():

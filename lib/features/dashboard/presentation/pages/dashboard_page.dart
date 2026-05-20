@@ -19,7 +19,7 @@ import '../../../../core/realtime/realtime_status_indicator.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
-import '../../../../features/auth/domain/entities/permission.dart';
+import '../../../../features/auth/entities/permission.dart';
 import '../../../../features/notifications/presentation/widgets/notifications_badge.dart';
 import '../../../../features/search/presentation/widgets/global_search_anchor.dart';
 import '../../../../l10n/app_localizations.dart';

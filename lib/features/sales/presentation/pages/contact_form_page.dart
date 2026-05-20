@@ -4,8 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/validators/validators.dart';
-import '../../domain/entities/contact.dart';
-import '../../domain/repositories/contacts_repository.dart';
+import '../../data/repositories/contacts_repository.dart';
+import '../../entities/contact.dart';
 
 /// Add / edit a contact (Slice 6.1.2).
 ///

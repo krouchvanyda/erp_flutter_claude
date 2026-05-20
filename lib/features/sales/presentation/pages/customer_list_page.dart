@@ -11,7 +11,7 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../../domain/entities/customer.dart';
+import '../../entities/customer.dart';
 import '../bloc/customer_list_bloc.dart';
 import '../bloc/customer_list_event.dart';
 import '../bloc/customer_list_state.dart';

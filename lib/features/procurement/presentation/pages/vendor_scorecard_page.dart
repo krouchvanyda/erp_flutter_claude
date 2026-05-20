@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../../domain/entities/vendor.dart';
-import '../../domain/entities/vendor_scorecard.dart';
-import '../../domain/repositories/vendors_repository.dart';
-import '../../domain/usecases/compute_vendor_scorecard.dart';
+import '../../data/repositories/vendors_repository.dart';
+import '../../entities/vendor.dart';
+import '../../entities/vendor_scorecard.dart';
 
 /// Vendor performance scorecard (Slice 4.3.3) — header + composite
 /// gauge + breakdown rows. Math is delegated to

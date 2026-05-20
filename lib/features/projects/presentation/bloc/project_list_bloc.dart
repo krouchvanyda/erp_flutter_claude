@@ -2,9 +2,8 @@ import 'dart:async';
 
 import 'package:bloc/bloc.dart';
 
-import '../../domain/entities/project.dart';
-import '../../domain/repositories/projects_repository.dart';
-import '../../domain/usecases/apply_project_query.dart';
+import '../../data/repositories/projects_repository.dart';
+import '../../entities/project.dart';
 import 'project_list_event.dart';
 import 'project_list_state.dart';
 

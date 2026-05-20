@@ -1,12 +1,8 @@
 import 'package:erp_mobile/core/error/failure.dart';
-import 'package:erp_mobile/features/auth/domain/entities/permission.dart';
-import 'package:erp_mobile/features/auth/domain/permission_gate.dart';
-import 'package:erp_mobile/features/finance/domain/entities/invoice.dart';
-import 'package:erp_mobile/features/finance/domain/repositories/invoices_repository.dart';
-import 'package:erp_mobile/features/finance/domain/usecases/approve_invoice.dart';
-import 'package:erp_mobile/features/finance/domain/usecases/reject_invoice.dart';
-import 'package:erp_mobile/features/finance/domain/usecases/reopen_invoice.dart';
-import 'package:erp_mobile/features/finance/domain/usecases/submit_invoice_for_approval.dart';
+import 'package:erp_mobile/features/auth/entities/permission.dart';
+import 'package:erp_mobile/features/auth/permission_gate.dart';
+import 'package:erp_mobile/features/finance/data/repositories/invoices_repository.dart';
+import 'package:erp_mobile/features/finance/entities/invoice.dart';
 import 'package:erp_mobile/features/finance/presentation/bloc/invoice_action_bloc.dart';
 import 'package:erp_mobile/features/finance/presentation/bloc/invoice_action_event.dart';
 import 'package:erp_mobile/features/finance/presentation/bloc/invoice_action_state.dart';
@@ -32,24 +28,7 @@ InvoiceActionBloc _makeBloc({
   required _MockPerms perms,
 }) {
   return InvoiceActionBloc(
-    approveInvoice: ApproveInvoiceUseCase(
-      repository: repo,
-      permissions: perms,
-      clock: () => DateTime.utc(2026, 5, 13),
-    ),
-    rejectInvoice: RejectInvoiceUseCase(
-      repository: repo,
-      permissions: perms,
-      clock: () => DateTime.utc(2026, 5, 13),
-    ),
-    submitInvoice: SubmitInvoiceForApprovalUseCase(
-      repository: repo,
-      clock: () => DateTime.utc(2026, 5, 13),
-    ),
-    reopenInvoice: ReopenInvoiceUseCase(
-      repository: repo,
-      clock: () => DateTime.utc(2026, 5, 13),
-    ),
+    invoices: repo,
     permissions: perms,
   );
 }

@@ -6,9 +6,8 @@ import '../../../../core/error/failure.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
-import '../../domain/entities/managed_user.dart';
-import '../../domain/repositories/admin_repositories.dart';
-import '../../domain/usecases/manage_users.dart';
+import '../../data/repositories/admin_repositories.dart';
+import '../../entities/managed_user.dart';
 
 /// Slice 9.2.1 — admin-only user management.
 class UserManagementPage extends StatefulWidget {
@@ -280,13 +279,12 @@ class _UserManagementPageState extends State<UserManagementPage> {
                 child: FilledButton(
                   onPressed: () async {
                     try {
-                      final draft = inviteUser(
+                      await GetIt.I<ManagedUsersRepository>().invite(
                         email: emailCtrl.text,
                         name: nameCtrl.text,
                         roleIds: selectedRoles.toList(),
                         now: DateTime.now(),
                       );
-                      await GetIt.I<ManagedUsersRepository>().create(draft);
                       if (sheetCtx.mounted) {
                         Navigator.pop(sheetCtx);
                       }
@@ -463,14 +461,13 @@ class _UserRow extends StatelessWidget {
   Future<void> _runAction(BuildContext context, String action) async {
     final repo = GetIt.I<ManagedUsersRepository>();
     try {
-      final next = setUserStatus(
+      final next = await repo.changeStatus(
         user: user,
         newStatus: action == 'suspend'
             ? ManagedUserStatus.suspended
             : ManagedUserStatus.active,
         currentUserId: currentUserId,
       );
-      await repo.update(next);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

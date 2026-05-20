@@ -9,9 +9,8 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
-import '../../domain/entities/task.dart';
-import '../../domain/repositories/tasks_repository.dart';
-import '../../domain/usecases/move_task.dart';
+import '../../data/repositories/tasks_repository.dart';
+import '../../entities/task.dart';
 
 /// Slice 8.1.2 — Kanban board with drag-and-drop between columns.
 class ProjectBoardPage extends StatefulWidget {
@@ -107,8 +106,9 @@ class _ProjectBoardPageState extends State<ProjectBoardPage> {
 
   Future<void> _move(ProjectTask task, TaskStatus to) async {
     try {
-      final updated = moveTask(task: task, toStatus: to);
-      await GetIt.I<TasksRepository>().update(updated);
+      final repo = GetIt.I<TasksRepository>();
+      final updated = repo.move(task: task, toStatus: to);
+      await repo.update(updated);
       if (mounted) setState(() => _flashMessage = null);
     } on ConflictFailure catch (f) {
       setState(() => _flashMessage = f.message ?? 'Illegal transition');

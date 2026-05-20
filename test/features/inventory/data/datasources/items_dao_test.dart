@@ -1,8 +1,8 @@
 import 'package:drift/native.dart';
 import 'package:erp_mobile/core/database/app_database.dart';
 import 'package:erp_mobile/features/inventory/data/datasources/items_dao.dart';
-import 'package:erp_mobile/features/inventory/domain/entities/inventory_item.dart';
-import 'package:erp_mobile/features/inventory/domain/entities/stock_movement.dart';
+import 'package:erp_mobile/features/inventory/entities/inventory_item.dart';
+import 'package:erp_mobile/features/inventory/entities/stock_movement.dart';
 import 'package:test/test.dart';
 
 InventoryItem _item({

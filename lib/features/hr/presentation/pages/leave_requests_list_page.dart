@@ -10,9 +10,8 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
-import '../../domain/entities/leave_request.dart';
-import '../../domain/repositories/leave_requests_repository.dart';
-import '../../domain/usecases/decide_leave_request.dart';
+import '../../data/repositories/leave_requests_repository.dart';
+import '../../entities/leave_request.dart';
 
 /// Slice 7.2.3 — manager view of pending leave requests with
 /// approve / reject actions. Mine vs. Pending toggle keeps the same
@@ -325,7 +324,7 @@ class _RequestCard extends StatelessWidget {
   Future<void> _approve(BuildContext context) async {
     final repo = GetIt.I<LeaveRequestsRepository>();
     try {
-      final updated = approveLeaveRequest(
+      final updated = repo.approve(
         request: request,
         approverId: approverId,
         now: DateTime.now(),
@@ -410,13 +409,14 @@ class _RequestCard extends StatelessWidget {
     );
     if (reason == null || reason.trim().isEmpty) return;
     try {
-      final updated = rejectLeaveRequest(
+      final repo = GetIt.I<LeaveRequestsRepository>();
+      final updated = repo.reject(
         request: request,
         approverId: approverId,
         now: DateTime.now(),
         reason: reason,
       );
-      await GetIt.I<LeaveRequestsRepository>().update(updated);
+      await repo.update(updated);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

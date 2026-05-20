@@ -4,8 +4,8 @@ import 'core/di/injection.dart';
 import 'core/i18n/locale_service.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
-import 'features/settings/domain/entities/user_preferences.dart' as pref_entities;
-import 'features/settings/domain/repositories/preferences_repository.dart';
+import 'features/settings/data/repositories/preferences_repository.dart';
+import 'features/settings/entities/user_preferences.dart' as pref_entities;
 import 'l10n/app_localizations.dart';
 
 /// Root application widget.

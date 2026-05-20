@@ -24,3 +24,12 @@ samples, guidance on mobile development, and a full API reference.
 
 
 -> Next Strt +> MODULE 7 — Human Resources
+
+create new customer on module sales
+create approve or reject leave request on module HR
+create profile info on module  seeting 
+create use roles & permisstion
+create project update project,task assign task on module  projects
+add chat module
+
+-> Next Strt => Procurement module — flat-MVVM refactor

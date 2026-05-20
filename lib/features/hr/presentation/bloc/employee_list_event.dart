@@ -1,4 +1,4 @@
-import '../../domain/entities/employee.dart';
+import '../../entities/employee.dart';
 
 /// Inputs to [EmployeeListBloc] (Slice 7.1.1).
 sealed class EmployeeListEvent {

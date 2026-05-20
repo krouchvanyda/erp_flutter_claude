@@ -1,8 +1,8 @@
 import 'package:drift/drift.dart';
 
 import '../../../../core/database/app_database.dart';
-import '../../domain/entities/account.dart';
-import '../../domain/entities/transaction.dart';
+import '../../entities/account.dart';
+import '../../entities/transaction.dart';
 import 'tables/cached_accounts.dart';
 import 'tables/cached_transactions.dart';
 

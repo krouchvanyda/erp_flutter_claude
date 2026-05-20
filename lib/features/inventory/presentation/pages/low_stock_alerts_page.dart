@@ -5,9 +5,8 @@ import '../../../../core/di/injection.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../data/low_stock_notifier.dart';
-import '../../domain/entities/inventory_item.dart';
-import '../../domain/repositories/items_repository.dart';
-import '../../domain/usecases/check_low_stock.dart';
+import '../../data/repositories/items_repository.dart';
+import '../../entities/inventory_item.dart';
 
 /// Slice 5.1.3 — surfaces the current low-stock items as a single
 /// scrollable page. Re-uses the [`LowStockNotifier`]'s cached report
