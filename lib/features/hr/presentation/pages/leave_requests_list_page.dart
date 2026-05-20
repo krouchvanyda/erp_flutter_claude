@@ -11,6 +11,7 @@ import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/leave_requests_repository.dart';
 import '../../entities/leave_request.dart';
+import 'leave_approval_detail_page.dart';
 import 'leave_request_form_page.dart';
 
 /// Slice 7.2.3 — manager view of pending leave requests with
@@ -199,19 +200,31 @@ class _RequestCard extends StatelessWidget {
         ],
       ),
       clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        request.employeeName,
+      child: InkWell(
+        // Slice 7.2.4 — tapping a card opens the full-context approval
+        // detail page. The inline Approve/Reject buttons below still
+        // work for quick decisions (they're hit-tested above this
+        // InkWell, so their taps don't propagate).
+        onTap: () => ConfigRouter.pushPageAnimation(
+          context,
+          LeaveApprovalDetailPage(
+            request: request,
+            approverId: approverId,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          request.employeeName,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -317,6 +330,7 @@ class _RequestCard extends StatelessWidget {
             ],
           ],
         ),
+      ),
       ),
     );
   }
