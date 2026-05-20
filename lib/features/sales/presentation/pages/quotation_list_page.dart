@@ -1,17 +1,18 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
-import '../../../../core/router/route_paths.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../data/repositories/quotations_repository.dart';
 import '../../entities/sales_quotation.dart';
+import 'quotation_detail_page.dart';
+import 'quotation_form_page.dart';
 
 /// Quotation list (Slice 6.2.1).
 class QuotationListPage extends StatefulWidget {
@@ -51,8 +52,10 @@ class _QuotationListPageState extends State<QuotationListPage> {
             tooltip: l10n.salesQuotationNewTooltip,
             icon: const Icon(Icons.add),
             onPressed: () async {
-              await context
-                  .pushNamed(RoutePaths.salesQuotationNewName);
+              await ConfigRouter.pushPageAnimation(
+                context,
+                const QuotationFormPage(),
+              );
               if (mounted) _reload();
             },
           ),
@@ -315,11 +318,9 @@ class _QuotationTile extends StatelessWidget {
               QuotationStatusBadge(status: quotation.status),
             ],
           ),
-          onTap: () => context.pushNamed(
-            RoutePaths.salesQuotationDetailName,
-            pathParameters: {
-              RoutePaths.salesQuotationDetailIdParam: quotation.id,
-            },
+          onTap: () => ConfigRouter.pushPageAnimation(
+            context,
+            QuotationDetailPage(quotationId: quotation.id),
           ),
         ),
       ),

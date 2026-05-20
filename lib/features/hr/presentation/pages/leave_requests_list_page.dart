@@ -2,16 +2,16 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/error/failure.dart';
-import '../../../../core/router/route_paths.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/leave_requests_repository.dart';
 import '../../entities/leave_request.dart';
+import 'leave_request_form_page.dart';
 
 /// Slice 7.2.3 — manager view of pending leave requests with
 /// approve / reject actions. Mine vs. Pending toggle keeps the same
@@ -78,7 +78,7 @@ class _LeaveRequestsListPageState extends State<LeaveRequestsListPage> {
             tooltip: 'New request',
             icon: const Icon(Icons.add_circle_outline_rounded, size: 26),
             onPressed: () =>
-                context.pushNamed(RoutePaths.hrLeaveRequestNewName),
+                ConfigRouter.pushPageAnimation(context, const LeaveRequestFormPage()),
           ),
         ],
       ),

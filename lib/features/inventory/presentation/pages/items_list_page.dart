@@ -2,10 +2,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
-import '../../../../core/router/route_paths.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -14,6 +13,9 @@ import '../../entities/inventory_item.dart';
 import '../bloc/items_list_bloc.dart';
 import '../bloc/items_list_event.dart';
 import '../bloc/items_list_state.dart';
+import 'item_detail_page.dart';
+import 'low_stock_alerts_page.dart';
+import 'scanner_page.dart';
 
 class ItemsListPage extends StatelessWidget {
   const ItemsListPage({super.key});
@@ -43,12 +45,12 @@ class _ListView extends StatelessWidget {
           IconButton(
             tooltip: l10n.inventoryScanTooltip,
             icon: const Icon(Icons.qr_code_scanner_rounded),
-            onPressed: () => context.pushNamed(RoutePaths.inventoryScannerName),
+            onPressed: () => ConfigRouter.pushPageAnimation(context, const ScannerPage()),
           ),
           IconButton(
             tooltip: l10n.inventoryLowStockAlertsTooltip,
             icon: const Icon(Icons.warning_amber_rounded),
-            onPressed: () => context.pushNamed(RoutePaths.inventoryLowStockName),
+            onPressed: () => ConfigRouter.pushPageAnimation(context, const LowStockAlertsPage()),
           ),
           _SortAction(),
         ],
@@ -223,9 +225,9 @@ class _ItemCard extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.pushNamed(
-          RoutePaths.inventoryItemDetailName,
-          pathParameters: {RoutePaths.inventoryItemDetailIdParam: item.id},
+        onTap: () => ConfigRouter.pushPageAnimation(
+          context,
+          ItemDetailPage(itemId: item.id),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),

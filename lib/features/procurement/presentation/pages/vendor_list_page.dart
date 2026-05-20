@@ -1,16 +1,17 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
-import '../../../../core/router/route_paths.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../data/repositories/vendors_repository.dart';
 import '../../entities/vendor.dart';
+import 'vendor_detail_page.dart';
+import 'vendor_form_page.dart';
 
 class VendorListPage extends StatelessWidget {
   const VendorListPage({super.key});
@@ -57,7 +58,7 @@ class VendorListPage extends StatelessWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.pushNamed(RoutePaths.vendorNewName),
+        onPressed: () => ConfigRouter.pushPageAnimation(context, const VendorFormPage()),
         icon: const Icon(Icons.add_business_rounded),
         label: Text(l10n.vendorListNewTooltip),
         elevation: 4,
@@ -85,9 +86,9 @@ class _VendorCard extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.pushNamed(
-          RoutePaths.vendorDetailName,
-          pathParameters: {RoutePaths.vendorDetailIdParam: vendor.id},
+        onTap: () => ConfigRouter.pushPageAnimation(
+          context,
+          VendorDetailPage(vendorId: vendor.id),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),

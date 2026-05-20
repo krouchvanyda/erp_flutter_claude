@@ -5,9 +5,10 @@ import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../../core/di/injection.dart';
-import '../../../../core/router/route_paths.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../data/repositories/items_repository.dart';
+import 'items_list_page.dart';
 
 /// Barcode / QR scanner page (Slice 5.2.1).
 ///
@@ -228,7 +229,8 @@ class _ManualEntryBar extends StatelessWidget {
               // via deep-link (nothing to pop).
               onPressed: () => context.canPop()
                   ? context.pop()
-                  : context.goNamed(RoutePaths.inventoryItemsName),
+                  : ConfigRouter.pushPageAndRemoveUntilAnimation(
+                      context, const ItemsListPage()),
               icon: const Icon(Icons.list_alt_outlined),
               label: Text(l10n.inventoryScannerBrowseFallback),
             ),

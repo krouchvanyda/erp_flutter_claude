@@ -5,7 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
-import '../../../../core/router/route_paths.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -13,6 +13,7 @@ import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/validators/validators.dart';
 import '../../data/repositories/purchase_requests_repository.dart';
 import '../../entities/purchase_request.dart';
+import 'pr_list_page.dart';
 
 class PurchaseRequestFormPage extends StatefulWidget {
   const PurchaseRequestFormPage({super.key});
@@ -100,7 +101,10 @@ class _PurchaseRequestFormPageState extends State<PurchaseRequestFormPage> {
       if (context.canPop()) {
         context.pop();
       } else {
-        context.goNamed(RoutePaths.purchaseRequestListName);
+        ConfigRouter.pushPageAndRemoveUntilAnimation(
+          context,
+          const PurchaseRequestListPage(),
+        );
       }
     } catch (e) {
       messenger

@@ -3,9 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../../core/router/route_paths.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -14,6 +13,8 @@ import '../../entities/employee.dart';
 import '../bloc/employee_list_bloc.dart';
 import '../bloc/employee_list_event.dart';
 import '../bloc/employee_list_state.dart';
+import 'employee_detail_page.dart';
+import 'org_chart_page.dart';
 
 /// Slice 7.1.1 — directory list with search + department filter chips.
 ///
@@ -47,7 +48,7 @@ class _EmployeeListView extends StatelessWidget {
           IconButton(
             tooltip: 'Org chart',
             icon: const Icon(Icons.account_tree_rounded),
-            onPressed: () => context.pushNamed(RoutePaths.hrOrgChartName),
+            onPressed: () => ConfigRouter.pushPageAnimation(context, const OrgChartPage()),
           ),
           PopupMenuButton<EmployeeSort>(
             tooltip: 'Sort',
@@ -279,9 +280,9 @@ class _EmployeeCard extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.pushNamed(
-          RoutePaths.hrEmployeeDetailName,
-          pathParameters: {RoutePaths.hrEmployeeDetailIdParam: employee.id},
+        onTap: () => ConfigRouter.pushPageAnimation(
+          context,
+          EmployeeDetailPage(employeeId: employee.id),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),

@@ -60,8 +60,6 @@ class ModuleShortcutSearchProvider implements SearchProvider {
               id: s.id,
               title: labelOf(s),
               providerId: id,
-              routeName: s.routeName,
-              pathParameters: s.pathParameters,
             ))
         .toList(growable: false);
   }

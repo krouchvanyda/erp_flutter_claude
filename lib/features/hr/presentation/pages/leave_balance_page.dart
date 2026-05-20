@@ -2,15 +2,16 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../../core/router/route_paths.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/leave_requests_repository.dart';
 import '../../entities/leave_request.dart';
+import 'leave_request_form_page.dart';
+import 'leave_requests_list_page.dart';
 
 /// Slice 7.2.2 — leave balance widget.
 ///
@@ -37,12 +38,12 @@ class LeaveBalancePage extends StatelessWidget {
           IconButton(
             tooltip: 'Leave History',
             icon: const Icon(Icons.history_rounded, size: 24),
-            onPressed: () => context.pushNamed(RoutePaths.hrLeaveRequestsName),
+            onPressed: () => ConfigRouter.pushPageAnimation(context, const LeaveRequestsListPage()),
           ),
           IconButton(
             tooltip: 'Request Leave',
             icon: const Icon(Icons.add_circle_outline_rounded, size: 24),
-            onPressed: () => context.pushNamed(RoutePaths.hrLeaveRequestNewName),
+            onPressed: () => ConfigRouter.pushPageAnimation(context, const LeaveRequestFormPage()),
           ),
         ],
       ),

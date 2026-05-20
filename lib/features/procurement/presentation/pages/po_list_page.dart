@@ -1,17 +1,17 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
-import '../../../../core/router/route_paths.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../data/repositories/purchase_orders_repository.dart';
 import '../../entities/purchase_order.dart';
+import 'po_detail_page.dart';
 
 class PurchaseOrderListPage extends StatelessWidget {
   const PurchaseOrderListPage({super.key});
@@ -81,9 +81,9 @@ class _PurchaseOrderCard extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.pushNamed(
-          RoutePaths.purchaseOrderDetailName,
-          pathParameters: {RoutePaths.purchaseOrderDetailIdParam: po.id},
+        onTap: () => ConfigRouter.pushPageAnimation(
+          context,
+          PurchaseOrderDetailPage(poId: po.id),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),

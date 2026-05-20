@@ -31,7 +31,6 @@ class _ScriptedProvider implements SearchProvider {
             id: query,
             title: query,
             providerId: id,
-            routeName: 'fake',
           ),
         ];
   }

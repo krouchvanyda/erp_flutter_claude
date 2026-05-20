@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../../core/router/route_paths.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -12,6 +11,8 @@ import '../../data/repositories/projects_repository.dart';
 import '../../data/repositories/tasks_repository.dart';
 import '../../entities/project.dart';
 import '../../entities/task.dart';
+import 'project_board_page.dart';
+import 'task_detail_page.dart';
 
 class ProjectDetailPage extends StatelessWidget {
   const ProjectDetailPage({super.key, required this.projectId});
@@ -30,9 +31,9 @@ class ProjectDetailPage extends StatelessWidget {
           IconButton(
             tooltip: 'Open Board',
             icon: const Icon(Icons.view_kanban_outlined),
-            onPressed: () => context.pushNamed(
-              RoutePaths.projectBoardName,
-              pathParameters: {RoutePaths.projectDetailIdParam: projectId},
+            onPressed: () => ConfigRouter.pushPageAnimation(
+              context,
+              ProjectBoardPage(projectId: projectId),
             ),
           ),
         ],
@@ -372,12 +373,9 @@ class _StatusGroup extends StatelessWidget {
                       Icons.chevron_right_rounded,
                       color: theme.colorScheme.primary,
                     ),
-                    onTap: () => context.pushNamed(
-                      RoutePaths.taskDetailName,
-                      pathParameters: {
-                        RoutePaths.projectDetailIdParam: projectId,
-                        RoutePaths.taskDetailTaskIdParam: task.id,
-                      },
+                    onTap: () => ConfigRouter.pushPageAnimation(
+                      context,
+                      TaskDetailPage(taskId: task.id),
                     ),
                   ),
                 ),

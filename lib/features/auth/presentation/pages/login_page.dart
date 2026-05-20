@@ -2,12 +2,14 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../../core/router/route_paths.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
+import 'biometric_unlock_page.dart';
+import 'forgot_password_page.dart';
+import 'otp_entry_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key, this.onSimulatedLogin});
@@ -189,7 +191,7 @@ class _LoginPageState extends State<LoginPage> {
                                     Align(
                                       alignment: Alignment.centerRight,
                                       child: TextButton(
-                                        onPressed: () => context.pushNamed(RoutePaths.forgotPasswordName),
+                                        onPressed: () => ConfigRouter.pushPageAnimation(context, const ForgotPasswordPage()),
                                         child: const Text('Forgot Password?'),
                                       ),
                                     ),
@@ -204,7 +206,7 @@ class _LoginPageState extends State<LoginPage> {
                                     const SizedBox(height: 16),
                                     
                                     OutlinedButton.icon(
-                                      onPressed: () => context.pushNamed(RoutePaths.biometricUnlockName),
+                                      onPressed: () => ConfigRouter.pushPageAnimation(context, const BiometricUnlockPage()),
                                       icon: Icon(
                                         Icons.fingerprint_rounded,
                                         color: theme.colorScheme.primary,
@@ -222,7 +224,7 @@ class _LoginPageState extends State<LoginPage> {
                         
                         // Demo Link
                         TextButton(
-                          onPressed: () => context.pushNamed(RoutePaths.otpName),
+                          onPressed: () => ConfigRouter.pushPageAnimation(context, const OtpEntryPage()),
                           child: Text(l10n.loginOtpDemoLink),
                         ).animate().fadeIn(delay: 800.ms),
                       ],

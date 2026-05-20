@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../../core/router/route_paths.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -15,6 +14,8 @@ import '../bloc/project_list_bloc.dart';
 import '../bloc/project_list_event.dart';
 import '../bloc/project_list_state.dart';
 import '../widgets/gantt_chart.dart';
+import 'project_detail_page.dart';
+import 'timesheets_list_page.dart';
 
 /// Slice 8.1.1 — project list with toggleable Gantt timeline.
 class ProjectListPage extends StatelessWidget {
@@ -56,7 +57,7 @@ class _ProjectListViewState extends State<_ProjectListView> {
             tooltip: 'Timesheets',
             icon: const Icon(Icons.schedule),
             onPressed: () =>
-                context.pushNamed(RoutePaths.timesheetsName),
+                ConfigRouter.pushPageAnimation(context, const TimesheetsListPage()),
           ),
           PopupMenuButton<ProjectSort>(
             tooltip: 'Sort',
@@ -250,9 +251,9 @@ class _ProjectListViewState extends State<_ProjectListView> {
       rows: rows,
       windowStart: windowStart,
       windowEnd: windowEnd,
-      onTap: (project) => context.pushNamed(
-        RoutePaths.projectDetailName,
-        pathParameters: {RoutePaths.projectDetailIdParam: project.id},
+      onTap: (project) => ConfigRouter.pushPageAnimation(
+        context,
+        ProjectDetailPage(projectId: project.id),
       ),
     ).animate().fadeIn();
   }
@@ -288,9 +289,9 @@ class _ProjectRow extends StatelessWidget {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () => context.pushNamed(
-              RoutePaths.projectDetailName,
-              pathParameters: {RoutePaths.projectDetailIdParam: project.id},
+            onTap: () => ConfigRouter.pushPageAnimation(
+              context,
+              ProjectDetailPage(projectId: project.id),
             ),
             child: Padding(
               padding: const EdgeInsets.all(16),

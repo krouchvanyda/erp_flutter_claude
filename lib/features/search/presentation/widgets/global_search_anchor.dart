@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../core/router/permissions_snapshot.dart';
-import '../../../../core/router/route_paths.dart';
 import '../../../../core/shortcuts/module_shortcut_catalog.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../data/providers/module_shortcut_search_provider.dart';
@@ -73,10 +72,10 @@ class _GlobalSearchAnchorView extends StatelessWidget {
                 onTapResult: (result) {
                   controller.closeView(result.title);
                   bloc.add(const GlobalSearchEvent.cleared());
-                  context.goNamed(
-                    result.routeName,
-                    pathParameters: result.pathParameters,
-                  );
+                  final page = _pageForResult(result);
+                  if (page != null) {
+                    ConfigRouter.pushPageAnimation(context, page);
+                  }
                 },
               ),
             ),
@@ -85,6 +84,22 @@ class _GlobalSearchAnchorView extends StatelessWidget {
       },
     );
   }
+}
+
+/// Resolves a [SearchResult] to the page widget it should push.
+///
+/// `SearchResult` deliberately carries no `Widget Function()` field
+/// (keeps the entity Flutter-free for pure-Dart tests). Dispatch happens
+/// here on `(providerId, id)`: the modules provider's results map 1:1
+/// to [ModuleShortcutCatalog] entries by `id`. Returns `null` when no
+/// match is found so the caller can no-op.
+Widget? _pageForResult(SearchResult result) {
+  if (result.providerId == 'modules') {
+    for (final s in ModuleShortcutCatalog.all) {
+      if (s.id == result.id) return s.builder();
+    }
+  }
+  return null;
 }
 
 class _SuggestionsBody extends StatelessWidget {

@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/error/failure.dart';
-import '../../../../core/router/route_paths.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/timesheets_repository.dart';
 import '../../entities/timesheet_entry.dart';
+import 'timesheet_form_page.dart';
+import 'utilization_page.dart';
 
 /// Slice 8.2.1 + 8.2.2 — combined timesheets surface.
 class TimesheetsListPage extends StatefulWidget {
@@ -40,7 +41,7 @@ class _TimesheetsListPageState extends State<TimesheetsListPage> {
             tooltip: 'Utilization',
             icon: const Icon(Icons.analytics_outlined),
             onPressed: () =>
-                context.pushNamed(RoutePaths.timesheetUtilizationName),
+                ConfigRouter.pushPageAnimation(context, const UtilizationPage()),
           ),
         ],
         bottom: PreferredSize(
@@ -121,7 +122,7 @@ class _TimesheetsListPageState extends State<TimesheetsListPage> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.pushNamed(RoutePaths.timesheetNewName),
+        onPressed: () => ConfigRouter.pushPageAnimation(context, const TimesheetFormPage()),
         icon: const Icon(Icons.add_rounded),
         label: const Text('Log time'),
       ),

@@ -1,17 +1,17 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
-import '../../../../core/router/route_paths.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../data/repositories/journal_entries_repository.dart';
 import '../../entities/journal_entry.dart';
+import 'journal_entry_detail_page.dart';
 
 class JournalEntryListPage extends StatelessWidget {
   const JournalEntryListPage({super.key});
@@ -91,9 +91,9 @@ class _JournalCard extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.pushNamed(
-          RoutePaths.journalEntryDetailName,
-          pathParameters: {RoutePaths.journalEntryDetailIdParam: entry.id},
+        onTap: () => ConfigRouter.pushPageAnimation(
+          context,
+          JournalEntryDetailPage(entryId: entry.id),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),

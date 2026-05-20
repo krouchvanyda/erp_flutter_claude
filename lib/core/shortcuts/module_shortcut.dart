@@ -15,8 +15,7 @@ class ModuleShortcut {
     required this.id,
     required this.icon,
     required this.labelOf,
-    required this.routeName,
-    this.pathParameters = const {},
+    required this.builder,
     this.requiredPermission,
   });
 
@@ -30,13 +29,11 @@ class ModuleShortcut {
   /// re-localises on `Locale` changes without rebuilding the catalog.
   final String Function(AppLocalizations l10n) labelOf;
 
-  /// `go_router` route name to push when the tile is tapped.
-  final String routeName;
-
-  /// Path parameters passed to `context.goNamed(routeName, pathParameters: ...)`
-  /// — used by tiles that target a parameterised route (e.g. the shared
-  /// `/coming-soon/:label` page).
-  final Map<String, String> pathParameters;
+  /// Builds the page widget that the tile pushes via `ConfigRouter`. A
+  /// callback (rather than a stored Widget) so each tile re-instantiates
+  /// the page on tap and the catalog stays const-friendly via static
+  /// function tear-offs.
+  final Widget Function() builder;
 
   /// Permission required to see + tap this tile. `null` means ungated
   /// (always visible to any signed-in user).

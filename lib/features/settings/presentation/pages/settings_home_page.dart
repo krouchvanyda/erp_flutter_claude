@@ -1,11 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:go_router/go_router.dart';
 
+import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
-import '../../../../core/router/route_paths.dart';
+import 'api_config_page.dart';
+import 'app_lock_page.dart';
+import 'appearance_page.dart';
+import 'audit_log_page.dart';
+import 'language_page.dart';
+import 'notification_preferences_page.dart';
+import 'role_editor_page.dart';
+import 'sessions_page.dart';
+import 'user_management_page.dart';
 
 /// Module 9 settings hub. Groups every sub-page from Phases 9.1–9.3
 /// into three sections so the user can scan the surface at a glance.
@@ -148,7 +156,7 @@ class SettingsHomePage extends StatelessWidget {
                           icon: Icons.brightness_6_outlined,
                           title: 'Appearance',
                           subtitle: 'Light, dark, or follow system',
-                          routeName: RoutePaths.settingsAppearanceName,
+                          page: const AppearancePage(),
                           color: Colors.blue,
                         ),
                         const Divider(height: 1, indent: 56),
@@ -156,7 +164,7 @@ class SettingsHomePage extends StatelessWidget {
                           icon: Icons.language_outlined,
                           title: 'Language',
                           subtitle: 'English / ខ្មែរ',
-                          routeName: RoutePaths.settingsLanguageName,
+                          page: const LanguagePage(),
                           color: Colors.indigo,
                         ),
                         const Divider(height: 1, indent: 56),
@@ -164,7 +172,7 @@ class SettingsHomePage extends StatelessWidget {
                           icon: Icons.notifications_outlined,
                           title: 'Notifications',
                           subtitle: 'Push + email per category',
-                          routeName: RoutePaths.settingsNotificationsName,
+                          page: const NotificationPreferencesPage(),
                           color: Colors.amber.shade800,
                         ),
                       ],
@@ -183,7 +191,7 @@ class SettingsHomePage extends StatelessWidget {
                           icon: Icons.devices_other_outlined,
                           title: 'Active devices',
                           subtitle: 'Sessions you can revoke',
-                          routeName: RoutePaths.settingsSessionsName,
+                          page: const SessionsPage(),
                           color: Colors.teal,
                         ),
                         const Divider(height: 1, indent: 56),
@@ -191,7 +199,7 @@ class SettingsHomePage extends StatelessWidget {
                           icon: Icons.history_edu_outlined,
                           title: 'Audit log',
                           subtitle: 'Who did what, when',
-                          routeName: RoutePaths.settingsAuditLogName,
+                          page: const AuditLogPage(),
                           color: Colors.deepPurple,
                         ),
                         const Divider(height: 1, indent: 56),
@@ -199,7 +207,7 @@ class SettingsHomePage extends StatelessWidget {
                           icon: Icons.lock_outline,
                           title: 'App lock',
                           subtitle: 'PIN + biometric re-auth',
-                          routeName: RoutePaths.settingsAppLockName,
+                          page: const AppLockPage(),
                           color: Colors.pink,
                         ),
                       ],
@@ -218,7 +226,7 @@ class SettingsHomePage extends StatelessWidget {
                           icon: Icons.people_alt_outlined,
                           title: 'User management',
                           subtitle: 'Invite, suspend, assign roles',
-                          routeName: RoutePaths.settingsUsersName,
+                          page: const UserManagementPage(),
                           color: Colors.orange.shade700,
                         ),
                         const Divider(height: 1, indent: 56),
@@ -226,7 +234,7 @@ class SettingsHomePage extends StatelessWidget {
                           icon: Icons.shield_outlined,
                           title: 'Roles & permissions',
                           subtitle: 'Editor for custom roles',
-                          routeName: RoutePaths.settingsRolesName,
+                          page: const RoleEditorPage(),
                           color: Colors.cyan.shade700,
                         ),
                         const Divider(height: 1, indent: 56),
@@ -234,7 +242,7 @@ class SettingsHomePage extends StatelessWidget {
                           icon: Icons.cloud_outlined,
                           title: 'API configuration',
                           subtitle: 'Switch environment / tenant',
-                          routeName: RoutePaths.settingsApiConfigName,
+                          page: const ApiConfigPage(),
                           color: Colors.blueGrey,
                         ),
                       ],
@@ -320,14 +328,14 @@ class _Tile extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.routeName,
+    required this.page,
     required this.color,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
-  final String routeName;
+  final Widget page;
   final Color color;
 
   @override
@@ -361,7 +369,7 @@ class _Tile extends StatelessWidget {
         color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
         size: 16,
       ),
-      onTap: () => context.pushNamed(routeName),
+      onTap: () => ConfigRouter.pushPageAnimation(context, page),
     );
   }
 }

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../core/router/permissions_snapshot.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/shortcuts/module_shortcut_catalog.dart';
@@ -72,7 +72,7 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
               backgroundColor: Colors.transparent,
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                onPressed: () => context.pop(),
+                onPressed: () => Navigator.pop(context),
               ),
               bottom: PreferredSize(
                 preferredSize: const Size.fromHeight(70),
@@ -128,10 +128,14 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
                 state: state,
                 onTapResult: (result) {
                   bloc.add(const GlobalSearchEvent.cleared());
-                  context.goNamed(
-                    result.routeName,
-                    pathParameters: result.pathParameters,
-                  );
+                  if (result.providerId == 'modules') {
+                    for (final s in ModuleShortcutCatalog.all) {
+                      if (s.id == result.id) {
+                        ConfigRouter.pushPageAnimation(context, s.builder());
+                        break;
+                      }
+                    }
+                  }
                 },
               ),
             ),

@@ -2,10 +2,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
-import '../../../../core/router/route_paths.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -16,6 +15,7 @@ import '../bloc/account_tree_bloc.dart';
 import '../bloc/account_tree_event.dart';
 import '../bloc/account_tree_state.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
+import 'account_detail_page.dart';
 class ChartOfAccountsPage extends StatelessWidget {
   const ChartOfAccountsPage({super.key});
 
@@ -228,11 +228,9 @@ class _AccountRow extends StatelessWidget {
                   ),
                 ),
           onTap: isLeaf
-              ? () => context.pushNamed(
-                    RoutePaths.accountDetailName,
-                    pathParameters: {
-                      RoutePaths.accountDetailIdParam: account.id,
-                    },
+              ? () => ConfigRouter.pushPageAnimation(
+                    context,
+                    AccountDetailPage(accountId: account.id),
                   )
               : () => bloc.add(AccountTreeEvent.nodeToggled(account.id)),
         ),

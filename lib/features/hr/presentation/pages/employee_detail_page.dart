@@ -2,15 +2,18 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../../core/router/route_paths.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/employees_repository.dart';
 import '../../entities/employee.dart';
+import 'attendance_page.dart';
+import 'leave_balance_page.dart';
+import 'org_chart_page.dart';
+import 'payslips_list_page.dart';
 
 /// Slice 7.1.2 — employee profile detail.
 class EmployeeDetailPage extends StatelessWidget {
@@ -312,28 +315,28 @@ class _QuickActionsRow extends StatelessWidget {
               label: 'Attendance',
               color: Colors.teal,
               width: width,
-              onTap: () => context.pushNamed(RoutePaths.hrAttendanceName),
+              onTap: () => ConfigRouter.pushPageAnimation(context, const AttendancePage()),
             ),
             _ActionButton(
               icon: Icons.receipt_long_outlined,
               label: 'Payslips',
               color: Colors.indigo,
               width: width,
-              onTap: () => context.pushNamed(RoutePaths.hrPayslipsName),
+              onTap: () => ConfigRouter.pushPageAnimation(context, const PayslipsListPage()),
             ),
             _ActionButton(
               icon: Icons.event_available_outlined,
               label: 'Leaves',
               color: Colors.orange,
               width: width,
-              onTap: () => context.pushNamed(RoutePaths.hrLeaveBalanceName),
+              onTap: () => ConfigRouter.pushPageAnimation(context, const LeaveBalancePage()),
             ),
             _ActionButton(
               icon: Icons.account_tree_outlined,
               label: 'Org Chart',
               color: Colors.blueGrey,
               width: width,
-              onTap: () => context.pushNamed(RoutePaths.hrOrgChartName),
+              onTap: () => ConfigRouter.pushPageAnimation(context, const OrgChartPage()),
             ),
           ],
         );

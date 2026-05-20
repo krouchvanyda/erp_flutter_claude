@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/error/failure.dart';
-import '../../../../core/router/route_paths.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/tasks_repository.dart';
 import '../../entities/task.dart';
+import 'task_detail_page.dart';
 
 /// Slice 8.1.2 — Kanban board with drag-and-drop between columns.
 class ProjectBoardPage extends StatefulWidget {
@@ -116,12 +116,9 @@ class _ProjectBoardPageState extends State<ProjectBoardPage> {
   }
 
   void _openTask(ProjectTask task) {
-    context.pushNamed(
-      RoutePaths.taskDetailName,
-      pathParameters: {
-        RoutePaths.projectDetailIdParam: widget.projectId,
-        RoutePaths.taskDetailTaskIdParam: task.id,
-      },
+    ConfigRouter.pushPageAnimation(
+      context,
+      TaskDetailPage(taskId: task.id),
     );
   }
 }

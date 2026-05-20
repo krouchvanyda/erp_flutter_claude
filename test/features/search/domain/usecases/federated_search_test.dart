@@ -43,7 +43,6 @@ SearchResult _r(String providerId, String id) => SearchResult(
       id: id,
       title: id,
       providerId: providerId,
-      routeName: 'fake',
     );
 
 void main() {

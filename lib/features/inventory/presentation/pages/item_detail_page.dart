@@ -1,11 +1,10 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
-import '../../../../core/router/route_paths.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -15,6 +14,8 @@ import '../../data/repositories/stock_movements_repository.dart';
 import '../../entities/inventory_item.dart';
 import '../../entities/stock_movement.dart';
 import 'items_list_page.dart' show inventoryStatusColor;
+import 'stock_movement_form_page.dart';
+import 'stock_transfer_page.dart';
 
 class ItemDetailPage extends StatefulWidget {
   const ItemDetailPage({super.key, required this.itemId});
@@ -98,9 +99,12 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () async {
-                      await context.pushNamed(
-                        RoutePaths.inventoryGoodsIssueName,
-                        pathParameters: {RoutePaths.inventoryItemDetailIdParam: item.id},
+                      await ConfigRouter.pushPageAnimation(
+                        context,
+                        StockMovementFormPage(
+                          itemId: item.id,
+                          type: StockMovementType.issue,
+                        ),
                       );
                       if (mounted) _reload();
                     },
@@ -116,9 +120,12 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () async {
-                      await context.pushNamed(
-                        RoutePaths.inventoryGoodsReceiptName,
-                        pathParameters: {RoutePaths.inventoryItemDetailIdParam: item.id},
+                      await ConfigRouter.pushPageAnimation(
+                        context,
+                        StockMovementFormPage(
+                          itemId: item.id,
+                          type: StockMovementType.receipt,
+                        ),
                       );
                       if (mounted) _reload();
                     },
@@ -134,9 +141,9 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                 Expanded(
                   child: FilledButton(
                     onPressed: () async {
-                      await context.pushNamed(
-                        RoutePaths.inventoryTransferName,
-                        pathParameters: {RoutePaths.inventoryItemDetailIdParam: item.id},
+                      await ConfigRouter.pushPageAnimation(
+                        context,
+                        StockTransferPage(sourceItemId: item.id),
                       );
                       if (mounted) _reload();
                     },

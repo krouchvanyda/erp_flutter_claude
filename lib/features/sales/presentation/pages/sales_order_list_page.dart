@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
-import '../../../../core/router/route_paths.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../data/repositories/sales_orders_repository.dart';
 import '../../entities/sales_order.dart';
+import 'sales_order_detail_page.dart';
 
 /// Sales order list (Slice 6.2.1 / 6.2.3).
 class SalesOrderListPage extends StatelessWidget {
@@ -96,11 +96,9 @@ class _OrderTile extends StatelessWidget {
           SalesOrderStatusBadge(status: order.status),
         ],
       ),
-      onTap: () => context.pushNamed(
-        RoutePaths.salesOrderDetailName,
-        pathParameters: {
-          RoutePaths.salesOrderDetailIdParam: order.id,
-        },
+      onTap: () => ConfigRouter.pushPageAnimation(
+        context,
+        SalesOrderDetailPage(orderId: order.id),
       ),
     );
   }

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
-import '../../../../core/router/route_paths.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/repositories/notifications_repository.dart';
+import '../pages/notification_inbox_page.dart';
 
 /// AppBar-mounted bell with a Material 3 [Badge] showing the unread
 /// count (Slice 2.3.3).
@@ -38,7 +38,7 @@ class NotificationsBadge extends StatelessWidget {
         return IconButton(
           tooltip: l10n.notificationsBadgeTooltip,
           onPressed: () =>
-              context.pushNamed(RoutePaths.notificationInboxName),
+              ConfigRouter.pushPageAnimation(context, const NotificationInboxPage()),
           icon: Badge(
             isLabelVisible: count > 0,
             label: Text(count > 99 ? '99+' : '$count'),

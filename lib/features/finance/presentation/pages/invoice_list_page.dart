@@ -2,11 +2,10 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
-import '../../../../core/router/route_paths.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -16,6 +15,8 @@ import '../../entities/invoice.dart';
 import '../bloc/invoice_list_bloc.dart';
 import '../bloc/invoice_list_event.dart';
 import '../bloc/invoice_list_state.dart';
+import 'invoice_detail_page.dart';
+import 'invoice_form_page.dart';
 
 class InvoiceListPage extends StatelessWidget {
   const InvoiceListPage({super.key});
@@ -55,7 +56,7 @@ class _ListView extends StatelessWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.pushNamed(RoutePaths.invoiceNewName),
+        onPressed: () => ConfigRouter.pushPageAnimation(context, const InvoiceFormPage()),
         icon: const Icon(Icons.add_rounded),
         label: Text(l10n.invoiceFormCreateTitle),
         elevation: 4,
@@ -230,9 +231,9 @@ class _InvoiceCard extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.pushNamed(
-          RoutePaths.invoiceDetailName,
-          pathParameters: {RoutePaths.invoiceDetailIdParam: invoice.id},
+        onTap: () => ConfigRouter.pushPageAnimation(
+          context,
+          InvoiceDetailPage(invoiceId: invoice.id),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),

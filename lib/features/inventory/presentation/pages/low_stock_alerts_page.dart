@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
-import '../../../../core/router/route_paths.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../data/low_stock_notifier.dart';
 import '../../data/repositories/items_repository.dart';
 import '../../entities/inventory_item.dart';
+import 'item_detail_page.dart';
 
 /// Slice 5.1.3 — surfaces the current low-stock items as a single
 /// scrollable page. Re-uses the [`LowStockNotifier`]'s cached report
@@ -105,9 +105,9 @@ class _AlertRow extends StatelessWidget {
           ),
         ],
       ),
-      onTap: () => context.pushNamed(
-        RoutePaths.inventoryItemDetailName,
-        pathParameters: {RoutePaths.inventoryItemDetailIdParam: item.id},
+      onTap: () => ConfigRouter.pushPageAnimation(
+        context,
+        ItemDetailPage(itemId: item.id),
       ),
     );
   }

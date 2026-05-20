@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/layout/responsive_breakpoint.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../core/router/permissions_snapshot.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/shortcuts/module_shortcut.dart';
@@ -115,9 +115,9 @@ class _ShortcutTile extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.pushNamed(
-          shortcut.routeName,
-          pathParameters: shortcut.pathParameters,
+        onTap: () => ConfigRouter.pushPageAnimation(
+          context,
+          shortcut.builder(),
         ),
         borderRadius: BorderRadius.circular(AppRadii.lg),
         child: Padding(

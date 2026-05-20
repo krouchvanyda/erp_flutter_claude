@@ -1,11 +1,10 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
-import '../../../../core/router/route_paths.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -16,7 +15,9 @@ import '../../data/repositories/customers_repository.dart';
 import '../../entities/activity_event.dart';
 import '../../entities/contact.dart';
 import '../../entities/customer.dart';
-import 'activity_form_page.dart' show activityTypeIcon, activityTypeLabel;
+import 'activity_form_page.dart'
+    show ActivityFormPage, activityTypeIcon, activityTypeLabel;
+import 'contact_form_page.dart';
 import 'customer_list_page.dart'
     show
         CustomerStatusBadge,
@@ -155,32 +156,27 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
                 return _Body(
                   bundle: bundle,
                   onAddContact: () async {
-                    await context.pushNamed(
-                      RoutePaths.salesContactNewName,
-                      pathParameters: {
-                        RoutePaths.salesCustomerDetailIdParam: widget.customerId,
-                      },
+                    await ConfigRouter.pushPageAnimation(
+                      context,
+                      ContactFormPage(customerId: widget.customerId),
                     );
                     if (mounted) _reload();
                   },
                   onEditContact: (c) async {
-                    await context.pushNamed(
-                      RoutePaths.salesContactEditName,
-                      pathParameters: {
-                        RoutePaths.salesCustomerDetailIdParam: widget.customerId,
-                        RoutePaths.salesContactIdParam: c.id,
-                      },
-                      extra: c,
+                    await ConfigRouter.pushPageAnimation(
+                      context,
+                      ContactFormPage(
+                        customerId: widget.customerId,
+                        initial: c,
+                      ),
                     );
                     if (mounted) _reload();
                   },
                   onDeleteContact: _deleteContact,
                   onLogActivity: () async {
-                    await context.pushNamed(
-                      RoutePaths.salesActivityNewName,
-                      pathParameters: {
-                        RoutePaths.salesCustomerDetailIdParam: widget.customerId,
-                      },
+                    await ConfigRouter.pushPageAnimation(
+                      context,
+                      ActivityFormPage(customerId: widget.customerId),
                     );
                     if (mounted) _reload();
                   },

@@ -17,8 +17,10 @@ final _privateConstructorUsedError = UnsupportedError(
 
 /// @nodoc
 mixin _$SearchResult {
-  /// Stable identity within [providerId] — used for keying widgets and
-  /// deduping within a provider's own response.
+  /// Stable identity within [providerId] — used for keying widgets,
+  /// deduping within a provider's own response, AND for the consumer
+  /// to look up the destination page (e.g. by matching against
+  /// [ModuleShortcutCatalog]).
   String get id => throw _privateConstructorUsedError;
 
   /// Primary line shown in the result tile.
@@ -27,14 +29,9 @@ mixin _$SearchResult {
   /// Optional secondary line (record code, customer name, etc.).
   String? get subtitle => throw _privateConstructorUsedError;
 
-  /// Which provider produced this row — drives grouping in the UI.
+  /// Which provider produced this row — drives grouping in the UI
+  /// AND the navigation dispatch.
   String get providerId => throw _privateConstructorUsedError;
-
-  /// `go_router` named route to push when the user taps the result.
-  String get routeName => throw _privateConstructorUsedError;
-
-  /// Path parameters passed alongside [routeName].
-  Map<String, String> get pathParameters => throw _privateConstructorUsedError;
 
   /// Create a copy of SearchResult
   /// with the given fields replaced by the non-null parameter values.
@@ -50,14 +47,7 @@ abstract class $SearchResultCopyWith<$Res> {
     $Res Function(SearchResult) then,
   ) = _$SearchResultCopyWithImpl<$Res, SearchResult>;
   @useResult
-  $Res call({
-    String id,
-    String title,
-    String? subtitle,
-    String providerId,
-    String routeName,
-    Map<String, String> pathParameters,
-  });
+  $Res call({String id, String title, String? subtitle, String providerId});
 }
 
 /// @nodoc
@@ -79,8 +69,6 @@ class _$SearchResultCopyWithImpl<$Res, $Val extends SearchResult>
     Object? title = null,
     Object? subtitle = freezed,
     Object? providerId = null,
-    Object? routeName = null,
-    Object? pathParameters = null,
   }) {
     return _then(
       _value.copyWith(
@@ -100,14 +88,6 @@ class _$SearchResultCopyWithImpl<$Res, $Val extends SearchResult>
                 ? _value.providerId
                 : providerId // ignore: cast_nullable_to_non_nullable
                       as String,
-            routeName: null == routeName
-                ? _value.routeName
-                : routeName // ignore: cast_nullable_to_non_nullable
-                      as String,
-            pathParameters: null == pathParameters
-                ? _value.pathParameters
-                : pathParameters // ignore: cast_nullable_to_non_nullable
-                      as Map<String, String>,
           )
           as $Val,
     );
@@ -123,14 +103,7 @@ abstract class _$$SearchResultImplCopyWith<$Res>
   ) = __$$SearchResultImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({
-    String id,
-    String title,
-    String? subtitle,
-    String providerId,
-    String routeName,
-    Map<String, String> pathParameters,
-  });
+  $Res call({String id, String title, String? subtitle, String providerId});
 }
 
 /// @nodoc
@@ -151,8 +124,6 @@ class __$$SearchResultImplCopyWithImpl<$Res>
     Object? title = null,
     Object? subtitle = freezed,
     Object? providerId = null,
-    Object? routeName = null,
-    Object? pathParameters = null,
   }) {
     return _then(
       _$SearchResultImpl(
@@ -172,14 +143,6 @@ class __$$SearchResultImplCopyWithImpl<$Res>
             ? _value.providerId
             : providerId // ignore: cast_nullable_to_non_nullable
                   as String,
-        routeName: null == routeName
-            ? _value.routeName
-            : routeName // ignore: cast_nullable_to_non_nullable
-                  as String,
-        pathParameters: null == pathParameters
-            ? _value._pathParameters
-            : pathParameters // ignore: cast_nullable_to_non_nullable
-                  as Map<String, String>,
       ),
     );
   }
@@ -193,12 +156,12 @@ class _$SearchResultImpl implements _SearchResult {
     required this.title,
     this.subtitle,
     required this.providerId,
-    required this.routeName,
-    final Map<String, String> pathParameters = const <String, String>{},
-  }) : _pathParameters = pathParameters;
+  });
 
-  /// Stable identity within [providerId] — used for keying widgets and
-  /// deduping within a provider's own response.
+  /// Stable identity within [providerId] — used for keying widgets,
+  /// deduping within a provider's own response, AND for the consumer
+  /// to look up the destination page (e.g. by matching against
+  /// [ModuleShortcutCatalog]).
   @override
   final String id;
 
@@ -210,29 +173,14 @@ class _$SearchResultImpl implements _SearchResult {
   @override
   final String? subtitle;
 
-  /// Which provider produced this row — drives grouping in the UI.
+  /// Which provider produced this row — drives grouping in the UI
+  /// AND the navigation dispatch.
   @override
   final String providerId;
 
-  /// `go_router` named route to push when the user taps the result.
-  @override
-  final String routeName;
-
-  /// Path parameters passed alongside [routeName].
-  final Map<String, String> _pathParameters;
-
-  /// Path parameters passed alongside [routeName].
-  @override
-  @JsonKey()
-  Map<String, String> get pathParameters {
-    if (_pathParameters is EqualUnmodifiableMapView) return _pathParameters;
-    // ignore: implicit_dynamic_type
-    return EqualUnmodifiableMapView(_pathParameters);
-  }
-
   @override
   String toString() {
-    return 'SearchResult(id: $id, title: $title, subtitle: $subtitle, providerId: $providerId, routeName: $routeName, pathParameters: $pathParameters)';
+    return 'SearchResult(id: $id, title: $title, subtitle: $subtitle, providerId: $providerId)';
   }
 
   @override
@@ -245,25 +193,11 @@ class _$SearchResultImpl implements _SearchResult {
             (identical(other.subtitle, subtitle) ||
                 other.subtitle == subtitle) &&
             (identical(other.providerId, providerId) ||
-                other.providerId == providerId) &&
-            (identical(other.routeName, routeName) ||
-                other.routeName == routeName) &&
-            const DeepCollectionEquality().equals(
-              other._pathParameters,
-              _pathParameters,
-            ));
+                other.providerId == providerId));
   }
 
   @override
-  int get hashCode => Object.hash(
-    runtimeType,
-    id,
-    title,
-    subtitle,
-    providerId,
-    routeName,
-    const DeepCollectionEquality().hash(_pathParameters),
-  );
+  int get hashCode => Object.hash(runtimeType, id, title, subtitle, providerId);
 
   /// Create a copy of SearchResult
   /// with the given fields replaced by the non-null parameter values.
@@ -280,12 +214,12 @@ abstract class _SearchResult implements SearchResult {
     required final String title,
     final String? subtitle,
     required final String providerId,
-    required final String routeName,
-    final Map<String, String> pathParameters,
   }) = _$SearchResultImpl;
 
-  /// Stable identity within [providerId] — used for keying widgets and
-  /// deduping within a provider's own response.
+  /// Stable identity within [providerId] — used for keying widgets,
+  /// deduping within a provider's own response, AND for the consumer
+  /// to look up the destination page (e.g. by matching against
+  /// [ModuleShortcutCatalog]).
   @override
   String get id;
 
@@ -297,17 +231,10 @@ abstract class _SearchResult implements SearchResult {
   @override
   String? get subtitle;
 
-  /// Which provider produced this row — drives grouping in the UI.
+  /// Which provider produced this row — drives grouping in the UI
+  /// AND the navigation dispatch.
   @override
   String get providerId;
-
-  /// `go_router` named route to push when the user taps the result.
-  @override
-  String get routeName;
-
-  /// Path parameters passed alongside [routeName].
-  @override
-  Map<String, String> get pathParameters;
 
   /// Create a copy of SearchResult
   /// with the given fields replaced by the non-null parameter values.

@@ -2,11 +2,10 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
-import '../../../../core/router/route_paths.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -15,6 +14,8 @@ import '../../entities/customer.dart';
 import '../bloc/customer_list_bloc.dart';
 import '../bloc/customer_list_event.dart';
 import '../bloc/customer_list_state.dart';
+import 'customer_detail_page.dart';
+import 'sales_analytics_page.dart';
 
 /// Customer list (Slice 6.1.1).
 class CustomerListPage extends StatelessWidget {
@@ -46,7 +47,7 @@ class _ListView extends StatelessWidget {
             tooltip: l10n.salesAnalyticsTooltip,
             icon: const Icon(Icons.analytics_outlined),
             onPressed: () =>
-                context.pushNamed(RoutePaths.salesAnalyticsName),
+                ConfigRouter.pushPageAnimation(context, const SalesAnalyticsPage()),
           ),
         ],
       ),
@@ -315,11 +316,9 @@ class _Tile extends StatelessWidget {
               Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6)),
             ],
           ),
-          onTap: () => context.pushNamed(
-            RoutePaths.salesCustomerDetailName,
-            pathParameters: {
-              RoutePaths.salesCustomerDetailIdParam: customer.id,
-            },
+          onTap: () => ConfigRouter.pushPageAnimation(
+            context,
+            CustomerDetailPage(customerId: customer.id),
           ),
         ),
       ),

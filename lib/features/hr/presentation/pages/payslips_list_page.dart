@@ -2,15 +2,15 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../../core/router/route_paths.dart';
+import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/payslips_repository.dart';
 import '../../entities/payslip.dart';
+import 'payslip_detail_page.dart';
 
 /// Slice 7.3.2 + 7.3.3 — payslip history with a period rollup card on
 /// top so the user sees overtime / deductions at a glance without
@@ -310,9 +310,9 @@ class _PayslipRow extends StatelessWidget {
           Icons.chevron_right_rounded,
           color: theme.colorScheme.outline,
         ),
-        onTap: () => context.pushNamed(
-          RoutePaths.hrPayslipDetailName,
-          pathParameters: {RoutePaths.hrPayslipDetailIdParam: slip.id},
+        onTap: () => ConfigRouter.pushPageAnimation(
+          context,
+          PayslipDetailPage(payslipId: slip.id),
         ),
       ),
     );
