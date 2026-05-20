@@ -25,6 +25,34 @@ class ProjectsRepository {
     }
     return null;
   }
+
+  /// Slice 8.1.4 — append a new project. ID is stamped here when blank.
+  Future<Project> create(Project project) async {
+    final id = project.id.isEmpty
+        ? 'proj-${DateTime.now().microsecondsSinceEpoch}'
+        : project.id;
+    final stamped = project.copyWith(id: id);
+    _seed.insert(0, stamped);
+    _emit();
+    return stamped;
+  }
+
+  /// Slice 8.1.4 — replace the row in place. Insert if not present so
+  /// callers don't have to special-case create vs. update.
+  Future<Project> update(Project project) async {
+    final idx = _seed.indexWhere((p) => p.id == project.id);
+    if (idx == -1) {
+      _seed.insert(0, project);
+    } else {
+      _seed[idx] = project;
+    }
+    _emit();
+    return project;
+  }
+
+  void _emit() {
+    if (!_changes.isClosed) _changes.add(List.unmodifiable(_seed));
+  }
 }
 
 /// One row of the Slice 8.1.1 Gantt timeline.

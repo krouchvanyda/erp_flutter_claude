@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
+import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/tasks_repository.dart';
 import '../../entities/task.dart';
+import 'task_assign_page.dart';
+import 'task_form_page.dart';
 
 /// Slice 8.1.3 — task detail + comment thread.
 class TaskDetailPage extends StatefulWidget {
@@ -63,9 +66,51 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: const DynamicAppBar(
+      appBar: DynamicAppBar(
         title: 'Task Details',
         centerTitle: true,
+        actions: [
+          PopupMenuButton<String>(
+            tooltip: 'More',
+            icon: const Icon(Icons.more_vert_rounded),
+            onSelected: (value) async {
+              // Fetch fresh so the form / assign sheet always opens
+              // with the latest state.
+              final t = await GetIt.I<TasksRepository>().findById(widget.taskId);
+              if (t == null || !context.mounted) return;
+              switch (value) {
+                case 'edit':
+                  await ConfigRouter.pushPageAnimation(
+                    context,
+                    TaskFormPage(projectId: t.projectId, existing: t),
+                  );
+                case 'assign':
+                  await ConfigRouter.pushPageAnimation(
+                    context,
+                    TaskAssignPage(task: t),
+                  );
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'edit',
+                child: ListTile(
+                  leading: Icon(Icons.edit_outlined),
+                  title: Text('Edit task'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem(
+                value: 'assign',
+                child: ListTile(
+                  leading: Icon(Icons.assignment_ind_outlined),
+                  title: Text('Reassign'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       body: DynamicStatusBar(
         child: Stack(

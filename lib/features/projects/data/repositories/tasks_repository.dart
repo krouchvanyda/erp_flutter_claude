@@ -17,6 +17,10 @@ class TasksRepository {
   Future<List<ProjectTask>> getForProject(String projectId) async =>
       List.unmodifiable(_seed.where((t) => t.projectId == projectId));
 
+  /// Slice 8.1.6 — workload-aware picker reads everyone's open tasks
+  /// to render the "X open tasks" badge per candidate assignee.
+  Future<List<ProjectTask>> getAll() async => List.unmodifiable(_seed);
+
   Stream<List<ProjectTask>> watchForProject(String projectId) async* {
     yield await getForProject(projectId);
     yield* _changes.stream

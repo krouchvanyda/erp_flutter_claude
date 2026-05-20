@@ -79,7 +79,7 @@ class _LeaveApprovalDetailPageState extends State<LeaveApprovalDetailPage> {
                 }
                 return ListView(
                   padding: EdgeInsets.only(
-                    top: context.dynamicAppBarPadding + 16,
+                    top: context.dynamicAppBarPadding,
                     left: 16,
                     right: 16,
                     bottom: _canAct ? 120 : 32,

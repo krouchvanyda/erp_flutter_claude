@@ -12,6 +12,7 @@ import '../../data/repositories/tasks_repository.dart';
 import '../../entities/project.dart';
 import '../../entities/task.dart';
 import 'project_board_page.dart';
+import 'project_form_page.dart';
 import 'task_detail_page.dart';
 
 class ProjectDetailPage extends StatelessWidget {
@@ -35,6 +36,20 @@ class ProjectDetailPage extends StatelessWidget {
               context,
               ProjectBoardPage(projectId: projectId),
             ),
+          ),
+          IconButton(
+            tooltip: 'Edit Project',
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () async {
+              // Fetch fresh so the form opens with the latest state if
+              // the user just came back from another edit screen.
+              final p = await GetIt.I<ProjectsRepository>().findById(projectId);
+              if (p == null || !context.mounted) return;
+              await ConfigRouter.pushPageAnimation(
+                context,
+                ProjectFormPage(existing: p),
+              );
+            },
           ),
         ],
       ),

@@ -15,6 +15,7 @@ import '../bloc/project_list_event.dart';
 import '../bloc/project_list_state.dart';
 import '../widgets/gantt_chart.dart';
 import 'project_detail_page.dart';
+import 'project_form_page.dart';
 import 'timesheets_list_page.dart';
 
 /// Slice 8.1.1 — project list with toggleable Gantt timeline.
@@ -223,12 +224,21 @@ class _ProjectListViewState extends State<_ProjectListView> {
           ],
         ),
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => ConfigRouter.pushPageAnimation(
+          context,
+          const ProjectFormPage(),
+        ),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('New Project'),
+      ).animate().scale(delay: 400.ms, curve: Curves.easeOutBack),
     );
   }
 
   Widget _buildList(List<Project> projects) {
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+      // Extra bottom padding so the last tile isn't covered by the FAB.
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
       itemCount: projects.length,
       itemBuilder: (_, idx) => _ProjectRow(project: projects[idx])
           .animate()

@@ -11,6 +11,7 @@ import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/tasks_repository.dart';
 import '../../entities/task.dart';
 import 'task_detail_page.dart';
+import 'task_form_page.dart';
 
 /// Slice 8.1.2 — Kanban board with drag-and-drop between columns.
 class ProjectBoardPage extends StatefulWidget {
@@ -101,6 +102,14 @@ class _ProjectBoardPageState extends State<ProjectBoardPage> {
           ],
         ),
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => ConfigRouter.pushPageAnimation(
+          context,
+          TaskFormPage(projectId: widget.projectId),
+        ),
+        icon: const Icon(Icons.add_task_rounded),
+        label: const Text('New Task'),
+      ).animate().scale(delay: 400.ms, curve: Curves.easeOutBack),
     );
   }
 

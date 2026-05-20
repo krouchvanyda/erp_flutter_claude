@@ -134,7 +134,7 @@ class _LeaveRequestsListPageState extends State<LeaveRequestsListPage> {
 
                 return ListView.builder(
                   padding: EdgeInsets.only(
-                    top: context.dynamicAppBarPadding + 16,
+                    top: context.dynamicAppBarPadding,
                     left: 16,
                     right: 16,
                     bottom: 80,
@@ -377,7 +377,17 @@ class _RequestCard extends StatelessWidget {
           children: [
             Icon(Icons.warning_amber_rounded, color: theme.colorScheme.error),
             const SizedBox(width: 8),
-            const Text('Reject Leave Request'),
+            // Wrapped in Expanded so the title can shrink/ellipsise on
+            // narrow dialog widths instead of overflowing the Row.
+            Expanded(
+              child: Text(
+                'Reject Leave Request',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
           ],
         ),
         content: TextField(
@@ -415,7 +425,15 @@ class _RequestCard extends StatelessWidget {
               backgroundColor: theme.colorScheme.error,
               foregroundColor: theme.colorScheme.onError,
             ),
-            onPressed: () => Navigator.pop(dialogCtx, reasonCtrl.text),
+            onPressed: () {
+              final reason = reasonCtrl.text.trim();
+              if (reason.isEmpty) {
+                // Show inline validation error instead of closing the dialog
+                reasonCtrl.clear();
+              } else {
+                Navigator.pop(dialogCtx, reason);
+              }
+            },
             child: const Text('Reject'),
           ),
         ],
