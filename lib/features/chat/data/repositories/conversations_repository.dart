@@ -89,6 +89,48 @@ class ConversationsRepository {
     return _mutate(id, (c) => c.copyWith(name: name));
   }
 
+  /// Slice 10.3.3 — admin set the group photo from a local file
+  /// (typically the `image_picker` result). Pass `null` to clear.
+  Future<ChatConversation> setAvatarPath(String id, String? path) async {
+    return _mutate(
+      id,
+      (c) => c.copyWith(
+        avatarFilePath: path,
+        clearAvatarFilePath: path == null,
+      ),
+    );
+  }
+
+  /// Slice 10.3.2 — admin adds new members to an existing group.
+  ///
+  /// De-duplicates against current `participantPreviews` so re-adding
+  /// someone is a no-op. Updates `totalMembers` + `onlineCount`
+  /// accordingly so the AppBar subtitle stays in sync.
+  Future<ChatConversation> addMembers({
+    required String id,
+    required List<ChatParticipantPreview> people,
+  }) async {
+    if (people.isEmpty) return (await findById(id))!;
+    return _mutate(id, (c) {
+      final existing = {for (final p in c.participantPreviews) p.employeeId};
+      final additions =
+          people.where((p) => !existing.contains(p.employeeId)).toList();
+      if (additions.isEmpty) return c;
+      final nextPreviews =
+          List<ChatParticipantPreview>.of(c.participantPreviews)
+            ..addAll(additions);
+      final addedOnline = additions
+          .where((p) => p.presence == PresenceStatus.online)
+          .length;
+      return c.copyWith(
+        participantPreviews: nextPreviews,
+        totalMembers: c.totalMembers + additions.length,
+        onlineCount: c.onlineCount + addedOnline,
+        updatedAt: DateTime.now(),
+      );
+    });
+  }
+
   Future<ChatConversation> setPinnedMessage(String id, String? messageId) async {
     return _mutate(
       id,

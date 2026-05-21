@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_radii.dart';
@@ -8,11 +11,13 @@ import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/chat_seed.dart';
+import '../../data/chat_settings.dart';
 import '../../data/repositories/conversations_repository.dart';
 import '../../data/repositories/messages_repository.dart';
 import '../../entities/chat_message.dart';
 import '../../entities/conversation.dart';
 import '../widgets/chat_avatar.dart';
+import 'image_viewer_page.dart';
 import 'message_search_page.dart';
 import 'video_call_page.dart';
 import 'voice_call_page.dart';
@@ -107,31 +112,106 @@ class _Hero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isGroup = conversation.isGroup;
+    final hasPhoto = (conversation.avatarFilePath ?? '').isNotEmpty;
     return Column(
       children: [
-        if (conversation.isGroup)
-          GroupAvatarCluster(
-            previews: conversation.participantPreviews,
-            size: 96,
-          )
-        else
-          ChatAvatar(
-            name: conversation.name,
-            size: 96,
-            presence: conversation.presence,
-          ),
+        // Slice 10.3.3 — group avatar is tappable (admin only).
+        // A custom photo wins over the participant cluster.
+        Stack(
+          alignment: Alignment.bottomRight,
+          children: [
+            Material(
+              color: Colors.transparent,
+              shape: const CircleBorder(),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: isGroup
+                    ? () => _showChangePhotoSheet(context, conversation)
+                    : null,
+                customBorder: const CircleBorder(),
+                child: SizedBox(
+                  width: 96,
+                  height: 96,
+                  child: isGroup
+                      ? (hasPhoto
+                          ? ChatAvatar(
+                              name: conversation.name,
+                              size: 96,
+                              avatarFilePath: conversation.avatarFilePath,
+                              showStatus: false,
+                            )
+                          : GroupAvatarCluster(
+                              previews: conversation.participantPreviews,
+                              size: 96,
+                            ))
+                      : ChatAvatar(
+                          name: conversation.name,
+                          size: 96,
+                          presence: conversation.presence,
+                        ),
+                ),
+              ),
+            ),
+            if (isGroup)
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: theme.colorScheme.surface,
+                    width: 2,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  Icons.camera_alt_rounded,
+                  size: 14,
+                  color: theme.colorScheme.onPrimary,
+                ),
+              ),
+          ],
+        ),
         const SizedBox(height: 14),
-        Text(
-          conversation.name,
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.3,
+        // Slice 10.3.3 — group name is tappable (admin only) → opens
+        // the rename sheet. Pencil icon makes the affordance obvious.
+        InkWell(
+          onTap: isGroup
+              ? () => _showRenameSheet(context, conversation)
+              : null,
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    conversation.name,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.3,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                if (isGroup) ...[
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.edit_outlined,
+                    size: 18,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ],
+              ],
+            ),
           ),
-          textAlign: TextAlign.center,
         ),
         const SizedBox(height: 6),
         Text(
-          conversation.isGroup
+          isGroup
               ? '${conversation.totalMembers} members · ${conversation.onlineCount} online'
               : _presenceLabel(conversation.presence),
           style: theme.textTheme.bodySmall?.copyWith(
@@ -198,14 +278,7 @@ class _QuickActions extends StatelessWidget {
               icon: Icons.person_add_alt_1_rounded,
               iconColor: Colors.orange.shade700,
               label: 'Add members',
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Add-member picker would open here.'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              },
+              onTap: () => _showAddMembersSheet(context, conversation),
             ),
           ],
         ],
@@ -296,39 +369,86 @@ class _MediaTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isImage = message.type == ChatMessageType.image;
+    final url = message.fileUrl ?? '';
+    final isLocalFile = isImage &&
+        url.isNotEmpty &&
+        !url.startsWith('http') &&
+        !url.startsWith('demo://');
+
+    Widget cover;
+    if (isLocalFile) {
+      cover = Image.file(
+        File(url),
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _stubBox(context, message, isImage),
+      );
+    } else if (isImage && (url.startsWith('http://') || url.startsWith('https://'))) {
+      cover = Image.network(
+        url,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _stubBox(context, message, isImage),
+      );
+    } else {
+      cover = _stubBox(context, message, isImage);
+    }
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppRadii.sm),
-      child: Container(
+      child: Material(
         color: theme.colorScheme.surfaceContainerHighest,
-        alignment: Alignment.center,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isImage ? Icons.image_outlined : Icons.insert_drive_file_outlined,
-              color: theme.colorScheme.onSurfaceVariant,
-              size: 28,
-            ),
-            if (!isImage && message.fileName != null) ...[
-              const SizedBox(height: 4),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Text(
-                  message.fileName!,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
+        child: InkWell(
+          // Slice 10.1.5 — tapping an image tile opens the same
+          // viewer as tapping the bubble. File tiles fall through to
+          // the snackbar (downloading is a follow-up slice).
+          onTap: isImage
+              ? () => ConfigRouter.pushPageAnimation(
+                    context,
+                    ImageViewerPage(message: message),
+                  )
+              : () => ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('File download would run here.'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
                   ),
-                ),
-              ),
-            ],
-          ],
+          child: SizedBox.expand(child: cover),
         ),
       ),
     );
+  }
+
+  static Widget _stubBox(BuildContext context, ChatMessage message, bool isImage) {
+    final theme = Theme.of(context);
+    return Container(
+      color: theme.colorScheme.surfaceContainerHighest,
+      alignment: Alignment.center,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            isImage ? Icons.image_outlined : Icons.insert_drive_file_outlined,
+            color: theme.colorScheme.onSurfaceVariant,
+            size: 28,
+          ),
+          if (!isImage && message.fileName != null) ...[
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                message.fileName!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            ],
+          ],
+        ),
+      );
   }
 }
 
@@ -391,7 +511,7 @@ class _Members extends StatelessWidget {
           child: Column(
             children: [
               _MemberRow(
-                name: ChatSeed.currentUserName,
+                name: GetIt.I<ChatSettings>().userName,
                 role: 'You',
                 presence: PresenceStatus.online,
                 isAdmin: true,
@@ -711,6 +831,594 @@ class _SwitchRow extends StatelessWidget {
           ),
           Switch(value: value, onChanged: onChanged),
         ],
+      ),
+    );
+  }
+}
+
+// ── Slice 10.3.2 — Add Members ───────────────────────────────────
+//
+// Top-level helper invoked from the "Add members" action row + (later)
+// from "Add" trailing button on the members section header. Opens a
+// modal sheet whose state is owned by [_AddMembersSheet] so the
+// controller / selection set live with the sheet's State instead of
+// leaking through the outer function (same pattern as _ReAuthSheet).
+
+Future<void> _showAddMembersSheet(
+  BuildContext context,
+  ChatConversation conversation,
+) async {
+  final picks = await showModalBottomSheet<List<ChatParticipantPreview>>(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (_) => _AddMembersSheet(conversation: conversation),
+  );
+  if (picks == null || picks.isEmpty || !context.mounted) return;
+  await GetIt.I<ConversationsRepository>().addMembers(
+    id: conversation.id,
+    people: picks,
+  );
+  if (!context.mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        picks.length == 1
+            ? '${picks.first.name} added to the group.'
+            : '${picks.length} members added.',
+      ),
+      behavior: SnackBarBehavior.floating,
+    ),
+  );
+}
+
+class _AddMembersSheet extends StatefulWidget {
+  const _AddMembersSheet({required this.conversation});
+  final ChatConversation conversation;
+
+  @override
+  State<_AddMembersSheet> createState() => _AddMembersSheetState();
+}
+
+class _AddMembersSheetState extends State<_AddMembersSheet> {
+  final _searchCtrl = TextEditingController();
+  final Set<String> _selected = {};
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  List<ChatParticipantPreview> get _candidates {
+    final me = GetIt.I<ChatSettings>().userId;
+    final inGroup = {
+      me,
+      ...widget.conversation.participantPreviews.map((p) => p.employeeId),
+    };
+    final q = _query.trim().toLowerCase();
+    return ChatSeed.peopleDirectory
+        .where((p) => !inGroup.contains(p.employeeId))
+        .where((p) => q.isEmpty || p.name.toLowerCase().contains(q))
+        .toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final candidates = _candidates;
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 12,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.outlineVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade100,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.person_add_alt_1_rounded,
+                  color: Colors.orange.shade700,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Add members',
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                    Text(
+                      'Pick from your directory — already-in-group folks '
+                      'are filtered out.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _searchCtrl,
+            onChanged: (v) => setState(() => _query = v),
+            decoration: InputDecoration(
+              hintText: 'Search employees…',
+              prefixIcon: const Icon(Icons.search_rounded, size: 20),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadii.md),
+              ),
+              isDense: true,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Flexible(
+            child: candidates.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Text(
+                        _query.isEmpty
+                            ? 'Everyone in the directory is already in this '
+                                'group.'
+                            : 'No employees match "${_query.trim()}".',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  )
+                : ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: candidates.length,
+                    separatorBuilder: (_, __) => Divider(
+                      height: 1,
+                      indent: 64,
+                      color: theme.colorScheme.outlineVariant
+                          .withValues(alpha: 0.4),
+                    ),
+                    itemBuilder: (_, i) {
+                      final p = candidates[i];
+                      final sel = _selected.contains(p.employeeId);
+                      return Material(
+                        color: sel
+                            ? theme.colorScheme.primaryContainer
+                                .withValues(alpha: 0.4)
+                            : Colors.transparent,
+                        child: InkWell(
+                          onTap: () => setState(() {
+                            if (sel) {
+                              _selected.remove(p.employeeId);
+                            } else {
+                              _selected.add(p.employeeId);
+                            }
+                          }),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 8,
+                            ),
+                            child: Row(
+                              children: [
+                                ChatAvatar(
+                                  name: p.name,
+                                  size: 40,
+                                  presence: p.presence,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    p.name,
+                                    style:
+                                        theme.textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                Checkbox(
+                                  value: sel,
+                                  onChanged: (_) => setState(() {
+                                    if (sel) {
+                                      _selected.remove(p.employeeId);
+                                    } else {
+                                      _selected.add(p.employeeId);
+                                    }
+                                  }),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.md),
+                    ),
+                  ),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: FilledButton(
+                  onPressed: _selected.isEmpty
+                      ? null
+                      : () {
+                          final picks = _selected
+                              .map(ChatSeed.personById)
+                              .toList(growable: false);
+                          Navigator.pop(context, picks);
+                        },
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.md),
+                    ),
+                  ),
+                  child: Text(
+                    _selected.isEmpty
+                        ? 'Add'
+                        : 'Add ${_selected.length}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Slice 10.3.3 — Rename group + Change group photo ────────────
+
+Future<void> _showRenameSheet(
+  BuildContext context,
+  ChatConversation conversation,
+) async {
+  final name = await showModalBottomSheet<String>(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (_) => _RenameGroupSheet(initialName: conversation.name),
+  );
+  if (name == null || name.trim().isEmpty || !context.mounted) return;
+  await GetIt.I<ConversationsRepository>().rename(conversation.id, name.trim());
+}
+
+class _RenameGroupSheet extends StatefulWidget {
+  const _RenameGroupSheet({required this.initialName});
+  final String initialName;
+
+  @override
+  State<_RenameGroupSheet> createState() => _RenameGroupSheetState();
+}
+
+class _RenameGroupSheetState extends State<_RenameGroupSheet> {
+  late final TextEditingController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.initialName);
+    _ctrl.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final canSave =
+        _ctrl.text.trim().isNotEmpty && _ctrl.text.trim() != widget.initialName;
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.outlineVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Rename group',
+            style: theme.textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _ctrl,
+            autofocus: true,
+            textCapitalization: TextCapitalization.words,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) {
+              if (canSave) Navigator.pop(context, _ctrl.text);
+            },
+            decoration: InputDecoration(
+              labelText: 'Group name',
+              prefixIcon: const Icon(Icons.edit_outlined, size: 20),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadii.md),
+              ),
+              isDense: true,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.md),
+                    ),
+                  ),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: FilledButton(
+                  onPressed: canSave
+                      ? () => Navigator.pop(context, _ctrl.text)
+                      : null,
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.md),
+                    ),
+                  ),
+                  child: const Text(
+                    'Save',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+Future<void> _showChangePhotoSheet(
+  BuildContext context,
+  ChatConversation conversation,
+) async {
+  final theme = Theme.of(context);
+  final hasPhoto = (conversation.avatarFilePath ?? '').isNotEmpty;
+  await showModalBottomSheet<void>(
+    context: context,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (sheetCtx) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              hasPhoto ? 'Change group photo' : 'Add a group photo',
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 12),
+            _PhotoOptionTile(
+              icon: Icons.camera_alt_outlined,
+              label: 'Take photo',
+              color: theme.colorScheme.primary,
+              onTap: () async {
+                Navigator.pop(sheetCtx);
+                await _pickGroupPhoto(context, conversation, ImageSource.camera);
+              },
+            ),
+            const SizedBox(height: 8),
+            _PhotoOptionTile(
+              icon: Icons.photo_library_outlined,
+              label: 'Choose from gallery',
+              color: Colors.green.shade700,
+              onTap: () async {
+                Navigator.pop(sheetCtx);
+                await _pickGroupPhoto(context, conversation, ImageSource.gallery);
+              },
+            ),
+            if (hasPhoto) ...[
+              const SizedBox(height: 8),
+              _PhotoOptionTile(
+                icon: Icons.delete_outline,
+                label: 'Remove photo',
+                color: theme.colorScheme.error,
+                onTap: () async {
+                  Navigator.pop(sheetCtx);
+                  await GetIt.I<ConversationsRepository>()
+                      .setAvatarPath(conversation.id, null);
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+Future<void> _pickGroupPhoto(
+  BuildContext context,
+  ChatConversation conversation,
+  ImageSource source,
+) async {
+  try {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: source,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 85,
+    );
+    if (picked == null) return;
+    final file = File(picked.path);
+    if (!await file.exists()) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not read the selected image.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    await GetIt.I<ConversationsRepository>()
+        .setAvatarPath(conversation.id, picked.path);
+  } catch (e) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Could not pick image: $e'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+}
+
+class _PhotoOptionTile extends StatelessWidget {
+  const _PhotoOptionTile({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          border: Border.all(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: theme.colorScheme.outline,
+              size: 18,
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -9,6 +9,8 @@ import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/chat_seed.dart';
+import '../../data/chat_settings.dart';
+import '../../data/chat_transport.dart';
 import '../../data/repositories/conversations_repository.dart';
 import '../../entities/conversation.dart';
 import '../widgets/chat_avatar.dart';
@@ -45,6 +47,27 @@ class _ChatInboxPageState extends State<ChatInboxPage>
     _tabs.dispose();
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _showIdentitySheet(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => const _IdentitySheet(),
+    );
+  }
+
+  Future<void> _showRelayUrlSheet(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => const _RelayUrlSheet(),
+    );
   }
 
   List<ChatConversation> _filter(List<ChatConversation> all, int tabIndex) {
@@ -89,6 +112,38 @@ class _ChatInboxPageState extends State<ChatInboxPage>
               const NewConversationPage(),
             ),
           ),
+          PopupMenuButton<String>(
+            tooltip: 'Chat settings',
+            icon: const Icon(Icons.more_vert_rounded),
+            onSelected: (v) {
+              switch (v) {
+                case 'identity':
+                  _showIdentitySheet(context);
+                case 'relay':
+                  _showRelayUrlSheet(context);
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'identity',
+                child: ListTile(
+                  leading: Icon(Icons.switch_account_rounded),
+                  title: Text('Sign in as…'),
+                  subtitle: Text('Switch demo identity'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem(
+                value: 'relay',
+                child: ListTile(
+                  leading: Icon(Icons.cable_rounded),
+                  title: Text('Relay URL…'),
+                  subtitle: Text('Connect 2 devices'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
       body: DynamicStatusBar(
@@ -105,6 +160,7 @@ class _ChatInboxPageState extends State<ChatInboxPage>
                 return Column(
                   children: [
                     SizedBox(height: context.dynamicAppBarPadding),
+                    const _TransportStatusPill(),
                     _SearchField(
                       controller: _searchCtrl,
                       onChanged: (v) => setState(() => _query = v),
@@ -482,8 +538,8 @@ class _Tile extends StatelessWidget {
 
   static String _previewFor(ChatConversation c) {
     if (c.lastMessageBody == null) return 'No messages yet';
-    final ownPrefix =
-        c.lastMessageSenderId == ChatSeed.currentUserId ? 'You: ' : '';
+    final me = GetIt.I<ChatSettings>().userId;
+    final ownPrefix = c.lastMessageSenderId == me ? 'You: ' : '';
     return '$ownPrefix${c.lastMessageBody}';
   }
 
@@ -566,6 +622,402 @@ class _EmptyState extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Transport status pill ───────────────────────────────────────
+//
+// Sits just below the AppBar. Streams from [ChatTransport.status] so
+// the user can tell at a glance whether peer messages will flow.
+// Tappable: opens the Relay URL sheet directly so a misconfigured URL
+// is one tap from being fixed.
+
+class _TransportStatusPill extends StatelessWidget {
+  const _TransportStatusPill();
+
+  @override
+  Widget build(BuildContext context) {
+    final transport = GetIt.I<ChatTransport>();
+    final settings = GetIt.I<ChatSettings>();
+    return StreamBuilder<ChatTransportStatus>(
+      stream: transport.status,
+      initialData: transport.currentStatus,
+      builder: (context, snap) {
+        final status = snap.data ?? ChatTransportStatus.disconnected;
+        // Hide entirely when no relay is configured AND we're idle —
+        // there's nothing useful to show and the row would just
+        // waste vertical space on the single-device demo.
+        if (status == ChatTransportStatus.disconnected &&
+            settings.relayUrl.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        final theme = Theme.of(context);
+        final (label, accent, icon) = switch (status) {
+          ChatTransportStatus.connected => (
+              'Live · ${_shortHost(settings.relayUrl)}',
+              Colors.green.shade600,
+              Icons.bolt_rounded,
+            ),
+          ChatTransportStatus.connecting => (
+              'Connecting…',
+              Colors.amber.shade700,
+              Icons.sync_rounded,
+            ),
+          ChatTransportStatus.error => (
+              'Connection error — tap to fix',
+              theme.colorScheme.error,
+              Icons.error_outline_rounded,
+            ),
+          ChatTransportStatus.disconnected => (
+              'Offline — tap to set a relay',
+              theme.colorScheme.onSurfaceVariant,
+              Icons.cloud_off_rounded,
+            ),
+        };
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Material(
+            color: accent.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(AppRadii.pill),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(AppRadii.pill),
+              onTap: () => showModalBottomSheet<void>(
+                context: context,
+                isScrollControlled: true,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                builder: (_) => const _RelayUrlSheet(),
+              ),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, size: 14, color: accent),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: accent,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 11,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ),
+                    if (settings.userName.isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        width: 3,
+                        height: 3,
+                        decoration: BoxDecoration(
+                          color: accent.withValues(alpha: 0.55),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        settings.userName,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: accent.withValues(alpha: 0.9),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  static String _shortHost(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return url;
+    return '${uri.host}:${uri.port}';
+  }
+}
+
+// ── Identity picker ─────────────────────────────────────────────
+//
+// Bottom sheet that lists everyone in the demo directory plus the
+// seeded "Demo Approver" identity. Tapping a row writes the choice to
+// [ChatSettings] (which persists via shared_preferences) and the
+// transport reconnects with the new identity.
+
+class _IdentitySheet extends StatefulWidget {
+  const _IdentitySheet();
+
+  @override
+  State<_IdentitySheet> createState() => _IdentitySheetState();
+}
+
+class _IdentitySheetState extends State<_IdentitySheet> {
+  late String _selectedId;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedId = GetIt.I<ChatSettings>().userId;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final everyone = [
+      // Always include the seeded default so users can switch back.
+      const ChatParticipantPreview(
+        employeeId: ChatSeed.currentUserId,
+        name: ChatSeed.currentUserName,
+        presence: PresenceStatus.online,
+      ),
+      ...ChatSeed.peopleDirectory
+          .where((p) => p.employeeId != ChatSeed.currentUserId),
+    ];
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Sign in as…',
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Switch identity to test two-way chat. The relay routes '
+              'each message to every other connected client.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Flexible(
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: everyone.length,
+                separatorBuilder: (_, __) => Divider(
+                  height: 1,
+                  indent: 64,
+                  color: theme.colorScheme.outlineVariant
+                      .withValues(alpha: 0.4),
+                ),
+                itemBuilder: (_, i) {
+                  final p = everyone[i];
+                  final isSel = p.employeeId == _selectedId;
+                  return Material(
+                    color: isSel
+                        ? theme.colorScheme.primaryContainer
+                            .withValues(alpha: 0.4)
+                        : Colors.transparent,
+                    child: InkWell(
+                      onTap: () async {
+                        setState(() => _selectedId = p.employeeId);
+                        await GetIt.I<ChatSettings>().setIdentity(
+                          userId: p.employeeId,
+                          userName: p.name,
+                        );
+                        if (context.mounted) Navigator.pop(context);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 8),
+                        child: Row(
+                          children: [
+                            ChatAvatar(
+                              name: p.name,
+                              size: 40,
+                              presence: p.presence,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                p.name,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            if (isSel)
+                              Icon(
+                                Icons.check_circle_rounded,
+                                color: theme.colorScheme.primary,
+                                size: 20,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Relay URL sheet ─────────────────────────────────────────────
+
+class _RelayUrlSheet extends StatefulWidget {
+  const _RelayUrlSheet();
+
+  @override
+  State<_RelayUrlSheet> createState() => _RelayUrlSheetState();
+}
+
+class _RelayUrlSheetState extends State<_RelayUrlSheet> {
+  late final TextEditingController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: GetIt.I<ChatSettings>().relayUrl);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.outlineVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Chat relay URL',
+            style: theme.textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Point both devices at the WebSocket relay running on your PC. '
+            'Leave blank to stay offline.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _ctrl,
+            autofocus: true,
+            keyboardType: TextInputType.url,
+            textInputAction: TextInputAction.done,
+            decoration: InputDecoration(
+              labelText: 'ws:// URL',
+              hintText: 'ws://192.168.1.42:7777',
+              prefixIcon: const Icon(Icons.cable_rounded, size: 20),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadii.md),
+              ),
+              isDense: true,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final preset in const [
+                ('Emulator', 'ws://10.0.2.2:7777'),
+                ('Simulator', 'ws://127.0.0.1:7777'),
+              ])
+                ActionChip(
+                  label: Text(preset.$1),
+                  onPressed: () => _ctrl.text = preset.$2,
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.md),
+                    ),
+                  ),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: FilledButton(
+                  onPressed: () async {
+                    await GetIt.I<ChatSettings>().setRelayUrl(_ctrl.text);
+                    if (context.mounted) Navigator.pop(context);
+                  },
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.md),
+                    ),
+                  ),
+                  child: const Text(
+                    'Save',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

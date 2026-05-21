@@ -1,15 +1,23 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../entities/conversation.dart';
 
 /// Circular avatar with initials fallback. Used for direct chats and
 /// participant rows. Group rows use [GroupAvatarCluster] instead.
+///
+/// When [avatarFilePath] points to a readable local file, the avatar
+/// renders the photo (filled by [DecorationImage.cover]) instead of
+/// the initials gradient. Slice 10.3.3 uses this for group photos
+/// picked via `image_picker`.
 class ChatAvatar extends StatelessWidget {
   const ChatAvatar({
     super.key,
     required this.name,
     required this.size,
     this.avatarUrl,
+    this.avatarFilePath,
     this.presence,
     this.showStatus = true,
   });
@@ -17,6 +25,7 @@ class ChatAvatar extends StatelessWidget {
   final String name;
   final double size;
   final String? avatarUrl;
+  final String? avatarFilePath;
   final PresenceStatus? presence;
   final bool showStatus;
 
@@ -27,6 +36,7 @@ class ChatAvatar extends StatelessWidget {
     final hue = name.codeUnits.fold<int>(0, (a, b) => a + b);
     final colors = _gradientFor(hue);
     final dotSize = (size * 0.28).clamp(8.0, 18.0);
+    final hasPhoto = avatarFilePath != null && avatarFilePath!.isNotEmpty;
     return SizedBox(
       width: size,
       height: size,
@@ -38,22 +48,33 @@ class ChatAvatar extends StatelessWidget {
             height: size,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: colors,
-              ),
+              gradient: hasPhoto
+                  ? null
+                  : LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: colors,
+                    ),
+              color: hasPhoto ? theme.colorScheme.surface : null,
+              image: hasPhoto
+                  ? DecorationImage(
+                      image: FileImage(File(avatarFilePath!)),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
             ),
             alignment: Alignment.center,
-            child: Text(
-              initials,
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w900,
-                fontSize: size * 0.38,
-                letterSpacing: 0.5,
-              ),
-            ),
+            child: hasPhoto
+                ? null
+                : Text(
+                    initials,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: size * 0.38,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
           ),
           if (showStatus && presence != null)
             Positioned(

@@ -482,6 +482,7 @@ TABLE: chat_call_log
 - Slice 10.1.2: Chat Conversation — paginated message list with date separators, reply quotes, reaction row, typing indicator, optimistic-insert sends; supports text + voice (hold-to-record) + image + file attachments; `/ws/chat/:conversationId` for live message/typing/seen events
 - Slice 10.1.3: New Conversation / Group Chat — searchable member picker with Direct vs Group toggle, group name + avatar setup; creates `chat_conversations` + `chat_participants` rows
 - Slice 10.1.4: Message Search — SQLite FTS5 full-text search over `chat_messages.body`, tap result → jump to + highlight in conversation
+- Slice 10.1.5: Image Viewer + real Gallery send — full-screen viewer (`ImageViewerPage`) opened on tap of an image bubble or a Shared-Media tile. Pinch-to-zoom via `InteractiveViewer`, tap-to-toggle chrome, drag-down-to-dismiss with fading scrim, top-right share / save stubs, bottom caption with filename + sender + timestamp. Sources adapt automatically: `http(s)://` → `Image.network`, local file path → `Image.file` (after `File.exists` check), `demo://` seed stub → friendly placeholder. Companion change: the Conversation page's attachment sheet's Camera + Gallery options now run a real `ImagePicker` (max 1920 × 1920, quality 88) and send the result as a `ChatMessageType.image` message whose `fileUrl` is the local absolute path — so the new viewer has real bytes to display, and the wire transport (Slice 10.1.x) syncs the metadata to peers. ← **NEW**
 
 #### Phase 10.2 — Voice & Video Calls
 - Slice 10.2.1: Voice Call — WebRTC via `flutter_webrtc`, signalling over `/ws/voice/:callId`, incoming-call modal sheet (system-overlay), in-call screen with mute / speaker / keypad / end controls; requests `Permission.microphone` first; logs to `chat_call_log`
@@ -489,8 +490,10 @@ TABLE: chat_call_log
 
 #### Phase 10.3 — Chat Admin
 - Slice 10.3.1: Conversation Info / Chat Settings — different layouts for direct vs group conversations, shared-media grid, mute toggle, pinned-message row; group view adds member list with admin badges and admin-only options (add/remove members, promote, rename, edit avatar, leave group); shared "Clear Chat History" (device-local only)
+- Slice 10.3.2: Add Members — admin-gated modal sheet that lists every directory employee NOT already in the group, with a search bar and multi-select checkboxes. Confirm pushes the picks through `ConversationsRepository.addMembers(...)` which de-dups against current `participantPreviews` and bumps `totalMembers` + `onlineCount`. Reachable from the Quick Actions row + the future "Add" trailing button on the Members section header. ← **NEW**
+- Slice 10.3.3: Change Group Profile — admin-gated edits to the group's identity in the Chat Info hero. Tapping the **group avatar** opens a camera/gallery/remove sheet powered by `image_picker`; the picked file path persists on the new `ChatConversation.avatarFilePath` field and is rendered by `ChatAvatar` via `FileImage`, falling back to the participant cluster when null. Tapping the **group name** (or the pencil affordance beside it) opens a rename sheet whose Save button is disabled until the name actually changed. Both flows route through `ConversationsRepository` (`setAvatarPath` / `rename`) so the inbox tile + AppBar update reactively. ← **NEW**
 
-> Note: per the design guide, Module 10 was restructured from 5 → 7 screens (net +2). All 7 are listed above across the 3 phases.
+> Note: per the design guide, Module 10 was restructured from 5 → 7 screens (net +2). All 7 are listed above across the 3 phases. Slices 10.3.2 and 10.3.3 extend the existing Conversation Info screen — no new pages.
 
 ---
 

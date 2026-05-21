@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:injectable/injectable.dart';
@@ -44,6 +46,10 @@ void main() {
       registerProjectsModule(getIt);
       registerSettingsModule(getIt);
       registerChatModule(getIt);
+      // Boot the chat wire stack — loads persisted identity / relay
+      // URL and opens the WebSocket if one is configured. Errors
+      // here must never block app launch (relay may be unreachable).
+      unawaited(bootChatTransport(getIt));
       // Start listening to connectivity transitions so the queue drains
       // automatically when the device comes back online.
       getIt<SyncEngine>().start();

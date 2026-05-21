@@ -8,6 +8,7 @@ import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/chat_seed.dart';
+import '../../data/chat_settings.dart';
 import '../../data/repositories/conversations_repository.dart';
 import '../../entities/conversation.dart';
 import '../widgets/chat_avatar.dart';
@@ -40,8 +41,9 @@ class _NewConversationPageState extends State<NewConversationPage> {
 
   List<ChatParticipantPreview> get _filtered {
     final q = _query.trim().toLowerCase();
+    final me = GetIt.I<ChatSettings>().userId;
     final everyone = ChatSeed.peopleDirectory
-        .where((p) => p.employeeId != ChatSeed.currentUserId)
+        .where((p) => p.employeeId != me)
         .toList();
     if (q.isEmpty) return everyone;
     return everyone.where((p) => p.name.toLowerCase().contains(q)).toList();

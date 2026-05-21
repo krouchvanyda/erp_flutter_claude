@@ -18,6 +18,7 @@ class ChatConversation {
     required this.createdAt,
     required this.updatedAt,
     this.avatarUrl,
+    this.avatarFilePath,
     this.lastMessageBody,
     this.lastMessageSenderId,
     this.lastMessageSenderName,
@@ -39,6 +40,12 @@ class ChatConversation {
   final DateTime updatedAt;
 
   final String? avatarUrl;
+
+  /// Slice 10.3.3 — local absolute path to the group photo picked via
+  /// `image_picker`. Mutually exclusive with [avatarUrl] in practice
+  /// (the demo can't upload to a server). Direct conversations don't
+  /// use it — their hero shows the other person's [ChatAvatar].
+  final String? avatarFilePath;
   final String? lastMessageBody;
   final String? lastMessageSenderId;
   final String? lastMessageSenderName;
@@ -73,6 +80,8 @@ class ChatConversation {
     DateTime? createdAt,
     DateTime? updatedAt,
     String? avatarUrl,
+    String? avatarFilePath,
+    bool clearAvatarFilePath = false,
     String? lastMessageBody,
     String? lastMessageSenderId,
     String? lastMessageSenderName,
@@ -94,6 +103,9 @@ class ChatConversation {
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
         avatarUrl: avatarUrl ?? this.avatarUrl,
+        avatarFilePath: clearAvatarFilePath
+            ? null
+            : (avatarFilePath ?? this.avatarFilePath),
         lastMessageBody: lastMessageBody ?? this.lastMessageBody,
         lastMessageSenderId: lastMessageSenderId ?? this.lastMessageSenderId,
         lastMessageSenderName:

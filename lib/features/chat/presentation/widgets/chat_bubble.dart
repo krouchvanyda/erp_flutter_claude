@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -20,6 +22,7 @@ class ChatBubble extends StatelessWidget {
     this.onLongPress,
     this.onJumpToReply,
     this.onTapVoice,
+    this.onTapImage,
     this.isVoicePlaying = false,
     this.highlight = false,
   });
@@ -32,6 +35,10 @@ class ChatBubble extends StatelessWidget {
   final VoidCallback? onLongPress;
   final void Function(String messageId)? onJumpToReply;
   final VoidCallback? onTapVoice;
+
+  /// Slice 10.1.5 — invoked when the user taps an image bubble.
+  /// The conversation page wires this to push [ImageViewerPage].
+  final VoidCallback? onTapImage;
   final bool isVoicePlaying;
   final bool highlight;
 
@@ -104,6 +111,7 @@ class ChatBubble extends StatelessWidget {
                             isOwn: isOwn,
                             onJumpToReply: onJumpToReply,
                             onTapVoice: onTapVoice,
+                            onTapImage: onTapImage,
                             isVoicePlaying: isVoicePlaying,
                           ),
                         ),
@@ -188,12 +196,14 @@ class _BubbleContent extends StatelessWidget {
     required this.isOwn,
     required this.onJumpToReply,
     required this.onTapVoice,
+    required this.onTapImage,
     required this.isVoicePlaying,
   });
   final ChatMessage message;
   final bool isOwn;
   final void Function(String messageId)? onJumpToReply;
   final VoidCallback? onTapVoice;
+  final VoidCallback? onTapImage;
   final bool isVoicePlaying;
 
   @override
@@ -221,7 +231,8 @@ class _BubbleContent extends StatelessWidget {
               isPlaying: isVoicePlaying,
               onTap: onTapVoice,
             ),
-          ChatMessageType.image => _ImageContent(message: message),
+          ChatMessageType.image =>
+            _ImageContent(message: message, onTap: onTapImage),
           ChatMessageType.file => _FileContent(message: message, isOwn: isOwn),
           ChatMessageType.system => const SizedBox.shrink(),
         },
@@ -411,37 +422,78 @@ class _Waveform extends StatelessWidget {
 }
 
 class _ImageContent extends StatelessWidget {
-  const _ImageContent({required this.message});
+  const _ImageContent({required this.message, this.onTap});
   final ChatMessage message;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      child: Container(
+    final url = message.fileUrl ?? '';
+    final isLocalFile = url.isNotEmpty &&
+        !url.startsWith('http://') &&
+        !url.startsWith('https://') &&
+        !url.startsWith('demo://');
+    final isNetwork = url.startsWith('http://') || url.startsWith('https://');
+
+    Widget surface;
+    if (isLocalFile) {
+      // Slice 10.1.5 — local thumbnail when the user picked the image
+      // via image_picker (`fileUrl` is then the absolute file path).
+      surface = Image.file(
+        File(url),
         width: 220,
         height: 160,
-        color: theme.colorScheme.surfaceContainerHighest,
-        alignment: Alignment.center,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.image_outlined,
-              color: theme.colorScheme.onSurfaceVariant,
-              size: 40,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              message.fileName ?? 'photo',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _stubBox(theme, message),
+      );
+    } else if (isNetwork) {
+      surface = Image.network(
+        url,
+        width: 220,
+        height: 160,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _stubBox(theme, message),
+      );
+    } else {
+      surface = _stubBox(theme, message);
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: surface,
         ),
+      ),
+    );
+  }
+
+  static Widget _stubBox(ThemeData theme, ChatMessage message) {
+    return Container(
+      width: 220,
+      height: 160,
+      color: theme.colorScheme.surfaceContainerHighest,
+      alignment: Alignment.center,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.image_outlined,
+            color: theme.colorScheme.onSurfaceVariant,
+            size: 40,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            message.fileName ?? 'photo',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }

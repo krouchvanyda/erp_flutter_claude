@@ -1,14 +1,18 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
-import '../../data/chat_seed.dart';
+import '../../data/chat_settings.dart';
 import '../../data/repositories/conversations_repository.dart';
 import '../../data/repositories/messages_repository.dart';
 import '../../entities/chat_message.dart';
@@ -17,6 +21,7 @@ import '../widgets/chat_avatar.dart';
 import '../widgets/chat_bubble.dart';
 import '../widgets/typing_indicator.dart';
 import 'chat_info_page.dart';
+import 'image_viewer_page.dart';
 import 'video_call_page.dart';
 import 'voice_call_page.dart';
 
@@ -45,12 +50,30 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
 
   late final ConversationsRepository _convRepo;
   late final MessagesRepository _msgRepo;
+  late final ChatSettings _settings;
+  StreamSubscription<ChatSettings>? _settingsSub;
+
+  // Tracks the last message count we rendered so the page can auto-
+  // scroll to the latest bubble on initial load AND whenever a new
+  // message lands (sent or received). Without this, opening a chat
+  // shows the OLDEST messages at the top and the newest ones below
+  // the fold — the user has to scroll down manually every time.
+  int _lastMessageCount = -1;
+
+  String get _currentUserId => _settings.userId;
+  String get _currentUserName => _settings.userName;
 
   @override
   void initState() {
     super.initState();
     _convRepo = GetIt.I<ConversationsRepository>();
     _msgRepo = GetIt.I<MessagesRepository>();
+    _settings = GetIt.I<ChatSettings>();
+    // Rebuild the page when identity changes so "isOwn" bubbles flip
+    // sides instantly.
+    _settingsSub = _settings.watch().listen((_) {
+      if (mounted) setState(() {});
+    });
     // Demo: flash a typing indicator every 30s.
     Future.delayed(const Duration(seconds: 4), () {
       if (mounted) setState(() => _typingShown = true);
@@ -62,6 +85,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
 
   @override
   void dispose() {
+    _settingsSub?.cancel();
     _inputCtrl.dispose();
     _scrollCtrl.dispose();
     super.dispose();
@@ -83,8 +107,8 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         ChatMessage(
           id: '',
           conversationId: widget.conversationId,
-          senderId: ChatSeed.currentUserId,
-          senderName: ChatSeed.currentUserName,
+          senderId: _currentUserId,
+          senderName: _currentUserName,
           type: ChatMessageType.text,
           body: body,
           sentAt: now,
@@ -96,8 +120,8 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       await _convRepo.updateLastMessage(
         id: widget.conversationId,
         body: 'You: $body',
-        senderId: ChatSeed.currentUserId,
-        senderName: ChatSeed.currentUserName,
+        senderId: _currentUserId,
+        senderName: _currentUserName,
         at: now,
       );
     }
@@ -146,9 +170,38 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                                 child: CircularProgressIndicator());
                           }
                           final messages = msgSnap.data!;
+                          // Auto-scroll to the latest bubble on first
+                          // load and whenever the count grows (sent or
+                          // received). Skip the animation on the very
+                          // first frame — jump straight to the bottom
+                          // so the user never sees a flash of oldest-
+                          // first content.
+                          if (messages.length != _lastMessageCount) {
+                            final firstFrame = _lastMessageCount == -1;
+                            _lastMessageCount = messages.length;
+                            WidgetsBinding.instance
+                                .addPostFrameCallback((_) {
+                              if (!mounted || !_scrollCtrl.hasClients) {
+                                return;
+                              }
+                              final target =
+                                  _scrollCtrl.position.maxScrollExtent;
+                              if (firstFrame) {
+                                _scrollCtrl.jumpTo(target);
+                              } else {
+                                _scrollCtrl.animateTo(
+                                  target,
+                                  duration:
+                                      const Duration(milliseconds: 220),
+                                  curve: Curves.easeOut,
+                                );
+                              }
+                            });
+                          }
                           return _MessageList(
                             messages: messages,
                             conversation: conv,
+                            currentUserId: _currentUserId,
                             scrollController: _scrollCtrl,
                             highlightId: _highlightId,
                             playingVoiceId: _playingVoiceId,
@@ -157,6 +210,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                             onReact: _toggleReaction,
                             onJumpToReply: _jumpTo,
                             onTapVoice: _toggleVoice,
+                            onTapImage: _openImageViewer,
                           );
                         },
                       ),
@@ -301,7 +355,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     await _msgRepo.toggleReaction(
       messageId: messageId,
       emoji: emoji,
-      employeeId: ChatSeed.currentUserId,
+      employeeId: _currentUserId,
     );
   }
 
@@ -310,6 +364,71 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     Future.delayed(const Duration(milliseconds: 1200), () {
       if (mounted) setState(() => _highlightId = null);
     });
+  }
+
+  /// Slice 10.1.5 — open the full-screen image viewer for the tapped
+  /// bubble. Pushed onto the root navigator so the chrome (call buttons,
+  /// input bar, etc.) is hidden, just like a system gallery.
+  void _openImageViewer(ChatMessage m) {
+    ConfigRouter.pushPageAnimation(context, ImageViewerPage(message: m));
+  }
+
+  /// Slice 10.1.5 — pick an image via the OS picker (camera or
+  /// gallery) and send it as a real `ChatMessageType.image` message.
+  /// `fileUrl` is the local absolute path, which the image bubble
+  /// reads via `Image.file()` and the viewer reads via `FileImage`.
+  Future<void> _sendPickedImage(ImageSource source) async {
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 88,
+      );
+      if (picked == null || !mounted) return;
+      final file = File(picked.path);
+      if (!await file.exists()) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not read the picked image.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+      final size = await file.length();
+      final now = DateTime.now();
+      await _msgRepo.send(
+        ChatMessage(
+          id: '',
+          conversationId: widget.conversationId,
+          senderId: _currentUserId,
+          senderName: _currentUserName,
+          type: ChatMessageType.image,
+          fileUrl: picked.path,
+          fileName: picked.name,
+          fileSizeBytes: size,
+          sentAt: now,
+        ),
+      );
+      await _convRepo.updateLastMessage(
+        id: widget.conversationId,
+        body: 'You: 📷 Photo',
+        senderId: _currentUserId,
+        senderName: _currentUserName,
+        type: 'image',
+        at: now,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not send image: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   void _toggleVoice(String messageId) {
@@ -321,7 +440,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   Future<void> _showContextMenu(ChatMessage m) async {
     HapticFeedback.lightImpact();
     final theme = Theme.of(context);
-    final isOwn = m.senderId == ChatSeed.currentUserId;
+    final isOwn = m.senderId == _currentUserId;
     await showModalBottomSheet<void>(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -440,18 +559,18 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                     icon: Icons.camera_alt_rounded,
                     label: 'Camera',
                     color: theme.colorScheme.primary,
-                    onTap: () {
+                    onTap: () async {
                       Navigator.pop(sheetCtx);
-                      _attachStub('Camera capture');
+                      await _sendPickedImage(ImageSource.camera);
                     },
                   ),
                   _AttachTile(
                     icon: Icons.image_rounded,
                     label: 'Gallery',
                     color: Colors.green.shade600,
-                    onTap: () {
+                    onTap: () async {
                       Navigator.pop(sheetCtx);
-                      _attachStub('Gallery picker');
+                      await _sendPickedImage(ImageSource.gallery);
                     },
                   ),
                   _AttachTile(
@@ -560,8 +679,8 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                         ChatMessage(
                           id: '',
                           conversationId: widget.conversationId,
-                          senderId: ChatSeed.currentUserId,
-                          senderName: ChatSeed.currentUserName,
+                          senderId: _currentUserId,
+                          senderName: _currentUserName,
                           type: ChatMessageType.voice,
                           voiceUrl: 'demo://voice/new-clip.m4a',
                           voiceDurationSeconds: 3,
@@ -571,8 +690,8 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                       await _convRepo.updateLastMessage(
                         id: widget.conversationId,
                         body: 'You: 🎤 Voice message · 0:03',
-                        senderId: ChatSeed.currentUserId,
-                        senderName: ChatSeed.currentUserName,
+                        senderId: _currentUserId,
+                        senderName: _currentUserName,
                         type: 'voice',
                         at: now,
                       );
@@ -647,10 +766,12 @@ class _MessageList extends StatelessWidget {
     required this.highlightId,
     required this.playingVoiceId,
     required this.typingShown,
+    required this.currentUserId,
     required this.onLongPressBubble,
     required this.onReact,
     required this.onJumpToReply,
     required this.onTapVoice,
+    required this.onTapImage,
   });
 
   final List<ChatMessage> messages;
@@ -659,10 +780,12 @@ class _MessageList extends StatelessWidget {
   final String? highlightId;
   final String? playingVoiceId;
   final bool typingShown;
+  final String currentUserId;
   final void Function(ChatMessage m) onLongPressBubble;
   final Future<void> Function(String messageId, String emoji) onReact;
   final void Function(String messageId) onJumpToReply;
   final void Function(String messageId) onTapVoice;
+  final void Function(ChatMessage m) onTapImage;
 
   @override
   Widget build(BuildContext context) {
@@ -697,13 +820,14 @@ class _MessageList extends StatelessWidget {
           _ListItemKind.separator => DateSeparatorChip(day: item.day!),
           _ListItemKind.message => ChatBubble(
               message: item.message!,
-              isOwn: item.message!.senderId == ChatSeed.currentUserId,
+              isOwn: item.message!.senderId == currentUserId,
               showSender: item.showSender,
-              currentUserId: ChatSeed.currentUserId,
+              currentUserId: currentUserId,
               onLongPress: () => onLongPressBubble(item.message!),
               onReact: (e) => onReact(item.message!.id, e),
               onJumpToReply: onJumpToReply,
               onTapVoice: () => onTapVoice(item.message!.id),
+              onTapImage: () => onTapImage(item.message!),
               isVoicePlaying: playingVoiceId == item.message!.id,
               highlight: highlightId == item.message!.id,
             ),
