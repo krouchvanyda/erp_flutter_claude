@@ -4,15 +4,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
+import '../../data/call_signaling_service.dart';
 import '../../data/repositories/conversations_repository.dart';
+import '../../entities/call_log.dart';
 import '../../entities/conversation.dart';
 import '../widgets/chat_avatar.dart';
 
-/// Slice 10.2.1 — Voice Call.
+/// Slice 10.2.1 (state machine) + Slice 10.2.3 (wire signalling).
 ///
-/// UI shell only — no real WebRTC. State machine:
-///   calling → ringing → connected → ended
-/// All controls toggle local state and the timer ticks once connected.
+/// Driven by [CallSignalingService] — when the page mounts:
+///   * if [CallSignalingService.current] already has an active call
+///     in `connected` (we accepted an invite), we start in the
+///     connected state and the timer ticks immediately
+///   * otherwise we place a new outgoing invite. The page subscribes
+///     to `activeCall` and reacts to peer accept / reject / hangup.
+///
+/// Still UI-only for media — no actual audio is captured or played.
+/// Replacing the connected branch with real WebRTC (offer/answer +
+/// ICE via the same transport) is the next step.
 class VoiceCallPage extends StatefulWidget {
   const VoiceCallPage({super.key, required this.conversationId});
 
@@ -30,45 +39,106 @@ class _VoiceCallPageState extends State<VoiceCallPage> {
   bool _speaker = false;
   int _elapsedSeconds = 0;
   Timer? _ticker;
-  Timer? _stageTimer;
+  late final CallSignalingService _signaling;
+  bool _placedInvite = false;
 
   @override
   void initState() {
     super.initState();
-    _stageTimer = Timer(const Duration(seconds: 2), () {
-      if (!mounted) return;
-      setState(() => _stage = _CallStage.ringing);
-      _stageTimer = Timer(const Duration(seconds: 3), () {
-        if (!mounted) return;
-        setState(() => _stage = _CallStage.connected);
-        _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-          if (!mounted) return;
-          setState(() => _elapsedSeconds++);
-        });
-      });
-    });
+    _signaling = GetIt.I<CallSignalingService>();
+    _signaling.activeCallListenable.addListener(_onActiveCallChanged);
+    // If we already have an active call for this conversation we're
+    // the callee on an accepted invite — start in connected. Otherwise
+    // place an outgoing invite.
+    final existing = _signaling.current;
+    if (existing != null &&
+        existing.conversationId == widget.conversationId) {
+      if (existing.state == CallSignalState.connected) {
+        _stage = _CallStage.connected;
+        _startTicker();
+      }
+    } else {
+      _placedInvite = true;
+      _signaling.startOutgoing(
+        conversationId: widget.conversationId,
+        callType: ChatCallType.voice,
+      );
+    }
   }
 
   @override
   void dispose() {
     _ticker?.cancel();
-    _stageTimer?.cancel();
+    _signaling.activeCallListenable.removeListener(_onActiveCallChanged);
     super.dispose();
   }
 
-  void _endCall() {
+  void _startTicker() {
     _ticker?.cancel();
-    _stageTimer?.cancel();
-    setState(() => _stage = _CallStage.ended);
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (mounted && Navigator.canPop(context)) Navigator.pop(context);
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() => _elapsedSeconds++);
     });
+  }
+
+  void _onActiveCallChanged() {
+    final call = _signaling.activeCallListenable.value;
+    if (!mounted) return;
+    if (call == null) {
+      // Service cleared the active call (other side hung up + grace
+      // period elapsed). Close ourselves if not already ending.
+      if (_stage != _CallStage.ended) {
+        setState(() => _stage = _CallStage.ended);
+      }
+      Future.delayed(const Duration(milliseconds: 200), () {
+        if (mounted && Navigator.canPop(context)) Navigator.pop(context);
+      });
+      return;
+    }
+    setState(() {
+      _stage = switch (call.state) {
+        CallSignalState.outgoingRinging => _CallStage.calling,
+        CallSignalState.incomingRinging => _CallStage.ringing,
+        CallSignalState.connected => _CallStage.connected,
+        CallSignalState.ended => _CallStage.ended,
+        CallSignalState.idle => _CallStage.ended,
+      };
+    });
+    if (call.state == CallSignalState.connected && _ticker == null) {
+      _startTicker();
+    }
+    // Slice 10.2.4 — show a friendly toast when the peer rejected
+    // with a known reason. The page is about to pop in ~600ms; the
+    // snackbar floats above the next route.
+    if (call.state == CallSignalState.ended && call.endReason != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final reason = switch (call.endReason) {
+          'busy' => '${call.peerName} is on another call.',
+          'declined' => '${call.peerName} declined the call.',
+          _ => null,
+        };
+        if (reason != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(reason),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      });
+    }
+  }
+
+  Future<void> _endCall() async {
+    _ticker?.cancel();
+    await _signaling.hangup();
   }
 
   String get _statusLabel {
     switch (_stage) {
       case _CallStage.calling:
-        return 'Calling…';
+        return _placedInvite ? 'Calling…' : 'Ringing…';
       case _CallStage.ringing:
         return 'Ringing…';
       case _CallStage.connected:

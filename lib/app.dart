@@ -4,6 +4,7 @@ import 'core/di/injection.dart';
 import 'core/i18n/locale_service.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'features/chat/presentation/widgets/incoming_call_overlay.dart';
 import 'features/settings/data/repositories/preferences_repository.dart';
 import 'features/settings/entities/user_preferences.dart' as pref_entities;
 import 'l10n/app_localizations.dart';
@@ -53,6 +54,11 @@ class ErpMobileApp extends StatelessWidget {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           routerConfig: router.config,
+          // Slice 10.2.3 — wrap every route in [IncomingCallOverlay]
+          // so a peer-initiated call invite shows the full-screen
+          // accept/reject sheet regardless of which page is on top.
+          builder: (context, child) =>
+              IncomingCallOverlay(child: child ?? const SizedBox.shrink()),
         );
       },
     );

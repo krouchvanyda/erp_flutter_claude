@@ -6,6 +6,7 @@ import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/status.dart' as ws_status;
 import 'package:web_socket_channel/web_socket_channel.dart';
 
+import '../entities/call_log.dart';
 import '../entities/chat_message.dart';
 
 /// Connection status surfaced to the UI (banner / status dot).
@@ -45,6 +46,65 @@ class ReactionToggledEvent extends ChatTransportEvent {
   final String messageId;
   final String emoji;
   final String employeeId;
+}
+
+/// Slice 10.2.3 — call signalling envelopes. No media flows; these
+/// just drive the call-state machine on both sides so a placed call
+/// rings on the peer, accept transitions both to "connected", and
+/// hangup closes both. "Real" WebRTC would replace the body of the
+/// `connected` state with actual SDP offer/answer + ICE exchange.
+
+/// Caller pressed Call → callee's overlay should show an incoming
+/// call sheet.
+///
+/// [targetIds] is the list of user ids the caller intends to ring —
+/// for direct calls just the other person, for group calls every
+/// member except the caller. The relay still broadcasts the envelope
+/// to every connected socket (it doesn't know identities), so the
+/// callee filters on its own userId before raising the overlay
+/// (Slice 10.2.7). An empty list means "ring everyone" — falls back
+/// to the old pre-slice-10.2.7 behaviour.
+class CallInviteEvent extends ChatTransportEvent {
+  const CallInviteEvent({
+    required this.callId,
+    required this.conversationId,
+    required this.callerId,
+    required this.callerName,
+    required this.callType,
+    required this.startedAt,
+    this.targetIds = const <String>[],
+  });
+  final String callId;
+  final String conversationId;
+  final String callerId;
+  final String callerName;
+  final ChatCallType callType;
+  final DateTime startedAt;
+  final List<String> targetIds;
+}
+
+/// Callee tapped Accept on the incoming sheet — both sides should
+/// transition to the "connected" state.
+class CallAcceptEvent extends ChatTransportEvent {
+  const CallAcceptEvent({required this.callId});
+  final String callId;
+}
+
+/// Callee tapped Reject (or the invite timed out on their device).
+/// Caller should transition to "ended". [reason] is `'busy'` when the
+/// callee was already in another call, `'declined'` when they tapped
+/// Reject explicitly, or `null` when no reason was supplied.
+class CallRejectEvent extends ChatTransportEvent {
+  const CallRejectEvent({required this.callId, this.reason});
+  final String callId;
+  final String? reason;
+}
+
+/// Either side pressed End — both should transition to "ended" and
+/// close the call page.
+class CallHangupEvent extends ChatTransportEvent {
+  const CallHangupEvent({required this.callId});
+  final String callId;
 }
 
 /// Module 10 wire transport — wraps a [WebSocketChannel] connected to
@@ -201,6 +261,30 @@ class ChatTransport {
           emoji: payload['emoji'] as String,
           employeeId: payload['employeeId'] as String,
         );
+      case 'call.invite':
+        return CallInviteEvent(
+          callId: payload['callId'] as String,
+          conversationId: payload['conversationId'] as String,
+          callerId: payload['callerId'] as String,
+          callerName: payload['callerName'] as String,
+          callType: (payload['callType'] as String? ?? 'voice') == 'video'
+              ? ChatCallType.video
+              : ChatCallType.voice,
+          startedAt:
+              DateTime.tryParse(payload['startedAt'] as String? ?? '') ??
+                  DateTime.now(),
+          targetIds: (payload['targetIds'] as List?)?.cast<String>() ??
+              const <String>[],
+        );
+      case 'call.accept':
+        return CallAcceptEvent(callId: payload['callId'] as String);
+      case 'call.reject':
+        return CallRejectEvent(
+          callId: payload['callId'] as String,
+          reason: payload['reason'] as String?,
+        );
+      case 'call.hangup':
+        return CallHangupEvent(callId: payload['callId'] as String);
       default:
         return null;
     }
@@ -262,6 +346,42 @@ class ChatTransport {
       'emoji': emoji,
       'employeeId': employeeId,
     });
+  }
+
+  // ── Slice 10.2.3 — call signalling outbound ──────────────────
+  void sendCallInvite({
+    required String callId,
+    required String conversationId,
+    required String callerId,
+    required String callerName,
+    required ChatCallType callType,
+    required DateTime startedAt,
+    List<String> targetIds = const <String>[],
+  }) {
+    _send('call.invite', {
+      'callId': callId,
+      'conversationId': conversationId,
+      'callerId': callerId,
+      'callerName': callerName,
+      'callType': callType.name,
+      'startedAt': startedAt.toIso8601String(),
+      if (targetIds.isNotEmpty) 'targetIds': targetIds,
+    });
+  }
+
+  void sendCallAccept(String callId) {
+    _send('call.accept', {'callId': callId});
+  }
+
+  void sendCallReject(String callId, {String? reason}) {
+    _send('call.reject', {
+      'callId': callId,
+      if (reason != null) 'reason': reason,
+    });
+  }
+
+  void sendCallHangup(String callId) {
+    _send('call.hangup', {'callId': callId});
   }
 
   void _send(String type, Map<String, dynamic> payload) {

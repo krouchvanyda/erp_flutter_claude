@@ -11,12 +11,16 @@ import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/chat_seed.dart';
 import '../../data/chat_settings.dart';
 import '../../data/chat_transport.dart';
+import '../../data/repositories/call_log_repository.dart';
 import '../../data/repositories/conversations_repository.dart';
+import '../../entities/call_log.dart';
 import '../../entities/conversation.dart';
 import '../widgets/chat_avatar.dart';
 import 'chat_conversation_page.dart';
 import 'message_search_page.dart';
 import 'new_conversation_page.dart';
+import 'video_call_page.dart';
+import 'voice_call_page.dart';
 
 /// Slice 10.1.1 — Chat Inbox.
 ///
@@ -39,7 +43,7 @@ class _ChatInboxPageState extends State<ChatInboxPage>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 3, vsync: this);
+    _tabs = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -173,6 +177,8 @@ class _ChatInboxPageState extends State<ChatInboxPage>
                           _List(items: _filter(all, 0)),
                           _List(items: _filter(all, 1)),
                           _List(items: _filter(all, 2)),
+                          // Slice 10.2.5 — global recent calls.
+                          const _RecentCallsList(),
                         ],
                       ),
                     ),
@@ -306,6 +312,7 @@ class _Tabs extends StatelessWidget {
           Tab(text: 'All'),
           Tab(text: 'Unread'),
           Tab(text: 'Groups'),
+          Tab(text: 'Calls'),
         ],
       ),
     );
@@ -1020,5 +1027,211 @@ class _RelayUrlSheetState extends State<_RelayUrlSheet> {
         ],
       ),
     );
+  }
+}
+
+// ── Slice 10.2.5 — Recent Calls tab ─────────────────────────────
+//
+// 4th tab on the inbox. Lists every entry from `chat_call_log`,
+// newest first, with direction + missed icons and a tap target that
+// re-opens the matching voice/video call page.
+
+class _RecentCallsList extends StatelessWidget {
+  const _RecentCallsList();
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<ChatCallLog>>(
+      stream: GetIt.I<CallLogRepository>().watchAll(),
+      builder: (context, snap) {
+        final logs = snap.data ?? const <ChatCallLog>[];
+        if (logs.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.call_outlined,
+                    size: 36,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'No calls yet',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Place a voice or video call from any conversation.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant,
+                        ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
+          itemCount: logs.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 4),
+          itemBuilder: (_, i) {
+            return _RecentCallTile(log: logs[i])
+                .animate()
+                .fadeIn(delay: (i * 40).clamp(0, 240).ms)
+                .slideY(begin: 0.04, end: 0, duration: 280.ms);
+          },
+        );
+      },
+    );
+  }
+}
+
+class _RecentCallTile extends StatelessWidget {
+  const _RecentCallTile({required this.log});
+  final ChatCallLog log;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final me = GetIt.I<ChatSettings>().userId;
+    final isOutgoing = log.callerId == me;
+    final isMissed = log.status == ChatCallStatus.missed ||
+        log.status == ChatCallStatus.noAnswer ||
+        (log.status == ChatCallStatus.rejected && !isOutgoing);
+    final isVideo = log.callType == ChatCallType.video;
+    final accent = isMissed
+        ? theme.colorScheme.error
+        : (isOutgoing ? Colors.blue.shade700 : Colors.green.shade700);
+    // For now we surface the caller's display name; once participant
+    // metadata is on the log row we'd flip to "the other party".
+    final peerName = isOutgoing ? log.callerName : log.callerName;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        onTap: () => ConfigRouter.pushPageAnimation(
+          context,
+          isVideo
+              ? VideoCallPage(conversationId: log.conversationId)
+              : VoiceCallPage(conversationId: log.conversationId),
+        ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            border: Border.all(
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Row(
+            children: [
+              Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  ChatAvatar(name: peerName, size: 44, showStatus: false),
+                  Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: accent,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: theme.colorScheme.surface,
+                        width: 2,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(
+                      isVideo ? Icons.videocam : Icons.call,
+                      size: 9,
+                      color: theme.colorScheme.onPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      peerName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: isMissed ? theme.colorScheme.error : null,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Icon(
+                          isMissed
+                              ? Icons.call_missed_rounded
+                              : (isOutgoing
+                                  ? Icons.call_made_rounded
+                                  : Icons.call_received_rounded),
+                          size: 13,
+                          color: accent,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            _subtitle(log, isMissed, isOutgoing),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                _formatStamp(log.startedAt),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static String _subtitle(ChatCallLog log, bool isMissed, bool isOutgoing) {
+    if (isMissed) return 'Missed';
+    if (log.durationSeconds > 0) {
+      return '${isOutgoing ? "Outgoing" : "Incoming"} · ${log.formattedDuration()}';
+    }
+    return isOutgoing ? 'Outgoing' : 'Incoming';
+  }
+
+  static String _formatStamp(DateTime when) {
+    final now = DateTime.now();
+    final whenDay = DateTime(when.year, when.month, when.day);
+    final today = DateTime(now.year, now.month, now.day);
+    final diff = today.difference(whenDay).inDays;
+    if (diff == 0) return DateFormat('HH:mm').format(when);
+    if (diff == 1) return 'Yesterday';
+    if (diff < 7) return DateFormat('EEE').format(when);
+    return DateFormat('d MMM').format(when);
   }
 }

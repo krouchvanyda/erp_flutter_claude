@@ -3,15 +3,19 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
+import '../../data/call_signaling_service.dart';
 import '../../data/repositories/conversations_repository.dart';
+import '../../entities/call_log.dart';
 import '../../entities/conversation.dart';
 import '../widgets/chat_avatar.dart';
 
-/// Slice 10.2.2 — Video Call.
+/// Slice 10.2.2 (UI shell) + Slice 10.2.3 (wire signalling).
 ///
-/// UI shell only — no real WebRTC streams. The remote view is a tinted
-/// avatar placeholder; the local PiP is a draggable rounded rect with
-/// a mirrored placeholder. Controls auto-hide after 3s of inactivity.
+/// Same shape as [VoiceCallPage] — page mounts, kicks off either an
+/// outgoing invite or matches a connected accept, listens to
+/// [CallSignalingService.activeCall], and closes when the peer hangs
+/// up. Media streams are still placeholders; replacing them with
+/// `RTCVideoRenderer` is the next step.
 class VideoCallPage extends StatefulWidget {
   const VideoCallPage({super.key, required this.conversationId});
 
@@ -32,22 +36,99 @@ class _VideoCallPageState extends State<VideoCallPage> {
   Offset _pipPosition = const Offset(16, 80);
   Timer? _hideTimer;
   Timer? _ticker;
+  late final CallSignalingService _signaling;
+  bool _connected = false;
+  String _status = 'Connecting…';
 
   @override
   void initState() {
     super.initState();
+    _signaling = GetIt.I<CallSignalingService>();
+    _signaling.activeCallListenable.addListener(_onActiveCallChanged);
+    final existing = _signaling.current;
+    if (existing != null &&
+        existing.conversationId == widget.conversationId &&
+        existing.state == CallSignalState.connected) {
+      _connected = true;
+      _startTicker();
+    } else if (existing == null ||
+        existing.conversationId != widget.conversationId) {
+      // Place a new outgoing video invite.
+      _signaling.startOutgoing(
+        conversationId: widget.conversationId,
+        callType: ChatCallType.video,
+      );
+      _status = 'Calling…';
+    } else {
+      _status = 'Ringing…';
+    }
     _resetHideTimer();
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      setState(() => _elapsedSeconds++);
-    });
   }
 
   @override
   void dispose() {
     _hideTimer?.cancel();
     _ticker?.cancel();
+    _signaling.activeCallListenable.removeListener(_onActiveCallChanged);
     super.dispose();
+  }
+
+  void _startTicker() {
+    _ticker?.cancel();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() => _elapsedSeconds++);
+    });
+  }
+
+  void _onActiveCallChanged() {
+    final call = _signaling.activeCallListenable.value;
+    if (!mounted) return;
+    if (call == null) {
+      Future.delayed(const Duration(milliseconds: 200), () {
+        if (mounted && Navigator.canPop(context)) Navigator.pop(context);
+      });
+      return;
+    }
+    setState(() {
+      switch (call.state) {
+        case CallSignalState.outgoingRinging:
+          _status = 'Calling…';
+        case CallSignalState.incomingRinging:
+          _status = 'Ringing…';
+        case CallSignalState.connected:
+          _connected = true;
+          if (_ticker == null) _startTicker();
+        case CallSignalState.ended:
+          // Slice 10.2.4 — reflect the reason in the top-bar label so
+          // the user sees WHY before the page pops.
+          _status = switch (call.endReason) {
+            'busy' => 'Busy',
+            'declined' => 'Declined',
+            _ => 'Call ended',
+          };
+        case CallSignalState.idle:
+          break;
+      }
+    });
+    if (call.state == CallSignalState.ended && call.endReason != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final reason = switch (call.endReason) {
+          'busy' => '${call.peerName} is on another call.',
+          'declined' => '${call.peerName} declined the call.',
+          _ => null,
+        };
+        if (reason != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(reason),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      });
+    }
   }
 
   void _resetHideTimer() {
@@ -63,10 +144,10 @@ class _VideoCallPageState extends State<VideoCallPage> {
     if (_controlsVisible) _resetHideTimer();
   }
 
-  void _endCall() {
+  Future<void> _endCall() async {
     _hideTimer?.cancel();
     _ticker?.cancel();
-    if (Navigator.canPop(context)) Navigator.pop(context);
+    await _signaling.hangup();
   }
 
   String get _timerLabel {
@@ -117,8 +198,12 @@ class _VideoCallPageState extends State<VideoCallPage> {
                             ),
                           ),
                           const Spacer(),
+                          // Slice 10.2.3 — before the peer accepts we
+                          // show the live status (Calling… / Ringing…);
+                          // once connected the elapsed-time timer
+                          // takes over.
                           Text(
-                            _timerLabel,
+                            _connected ? _timerLabel : _status,
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.85),
                               fontSize: 13,

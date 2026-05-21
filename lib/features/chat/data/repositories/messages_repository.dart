@@ -59,6 +59,13 @@ class MessagesRepository {
           employeeId: final empId
         ):
         await _toggleReactionLocal(id, emoji, empId);
+      // Call signalling envelopes are routed through
+      // CallSignalingService; the messages repo ignores them.
+      case CallInviteEvent():
+      case CallAcceptEvent():
+      case CallRejectEvent():
+      case CallHangupEvent():
+        break;
     }
   }
 

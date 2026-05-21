@@ -12,6 +12,7 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
+import '../../data/active_conversation_tracker.dart';
 import '../../data/chat_settings.dart';
 import '../../data/repositories/conversations_repository.dart';
 import '../../data/repositories/messages_repository.dart';
@@ -69,6 +70,15 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     _convRepo = GetIt.I<ConversationsRepository>();
     _msgRepo = GetIt.I<MessagesRepository>();
     _settings = GetIt.I<ChatSettings>();
+    // Slice 10.1.6 — register as the currently-open conversation so
+    // inbound peer messages skip the unread bump (the user is
+    // reading them in real time). Also clear any stale unread
+    // count on entry, covering the paths that don't go through the
+    // inbox tile (search results, call-page back, deep links).
+    ActiveConversationTracker.instance.enter(widget.conversationId);
+    unawaited(GetIt.I<ConversationsRepository>()
+        .markRead(widget.conversationId)
+        .catchError((_) async => throw StateError('conv missing')));
     // Rebuild the page when identity changes so "isOwn" bubbles flip
     // sides instantly.
     _settingsSub = _settings.watch().listen((_) {
@@ -85,6 +95,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
 
   @override
   void dispose() {
+    ActiveConversationTracker.instance.leave(widget.conversationId);
     _settingsSub?.cancel();
     _inputCtrl.dispose();
     _scrollCtrl.dispose();

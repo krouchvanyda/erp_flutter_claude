@@ -80,6 +80,10 @@ class ChatSeed {
       lastMessageSenderName: 'Channary Pich',
       lastMessageAt: DateTime.utc(2026, 5, 20, 16, 32),
       presence: PresenceStatus.online,
+      // Slice 10.2.7 — direct conversations carry the other person
+      // here so the caller can build a targeted call.invite that
+      // doesn't ring every connected client.
+      participantPreviews: [_peopleDirectory[4]],
     ),
     ChatConversation(
       id: 'conv-002',
@@ -116,6 +120,7 @@ class ChatSeed {
       lastMessageSenderName: 'Demo Approver',
       lastMessageAt: DateTime.utc(2026, 5, 19, 14, 5),
       presence: PresenceStatus.online,
+      participantPreviews: [_peopleDirectory[3]],
     ),
     ChatConversation(
       id: 'conv-004',
@@ -152,6 +157,7 @@ class ChatSeed {
       lastMessageSenderName: 'Pisey Chan',
       lastMessageAt: DateTime.utc(2026, 5, 16, 18, 0),
       presence: PresenceStatus.away,
+      participantPreviews: [_peopleDirectory[2]],
     ),
     ChatConversation(
       id: 'conv-006',
@@ -167,6 +173,7 @@ class ChatSeed {
       lastMessageSenderName: 'Mealea Nuon',
       lastMessageAt: DateTime.utc(2026, 5, 12, 9, 30),
       presence: PresenceStatus.online,
+      participantPreviews: [_peopleDirectory[6]],
     ),
   ];
 

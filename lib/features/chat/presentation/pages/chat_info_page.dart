@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_radii.dart';
@@ -12,8 +13,10 @@ import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/chat_seed.dart';
 import '../../data/chat_settings.dart';
+import '../../data/repositories/call_log_repository.dart';
 import '../../data/repositories/conversations_repository.dart';
 import '../../data/repositories/messages_repository.dart';
+import '../../entities/call_log.dart';
 import '../../entities/chat_message.dart';
 import '../../entities/conversation.dart';
 import '../widgets/chat_avatar.dart';
@@ -82,6 +85,11 @@ class _Body extends StatelessWidget {
         _SharedMedia(conversationId: conversation.id)
             .animate()
             .fadeIn(delay: 120.ms)
+            .slideY(begin: 0.04, end: 0, duration: 320.ms),
+        const SizedBox(height: 20),
+        _CallHistorySection(conversationId: conversation.id)
+            .animate()
+            .fadeIn(delay: 150.ms)
             .slideY(begin: 0.04, end: 0, duration: 320.ms),
         const SizedBox(height: 20),
         _Settings(conversation: conversation)
@@ -449,6 +457,173 @@ class _MediaTile extends StatelessWidget {
           ],
         ),
       );
+  }
+}
+
+// ── Slice 10.2.5 — per-conversation call history ────────────────
+//
+// Reads `chat_call_log` for this conversation and shows the most
+// recent entries. Each row is tappable → opens the matching voice or
+// video call page so the user can re-dial in one tap.
+
+class _CallHistorySection extends StatelessWidget {
+  const _CallHistorySection({required this.conversationId});
+  final String conversationId;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return FutureBuilder<List<ChatCallLog>>(
+      future:
+          GetIt.I<CallLogRepository>().getForConversation(conversationId),
+      builder: (context, snap) {
+        final entries = (snap.data ?? const <ChatCallLog>[]).take(6).toList();
+        if (entries.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+              child: Text(
+                'CALL HISTORY',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            _Card(
+              child: Column(
+                children: [
+                  for (var i = 0; i < entries.length; i++) ...[
+                    if (i > 0) const _Hairline(),
+                    _CallHistoryRow(
+                      log: entries[i],
+                      conversationId: conversationId,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _CallHistoryRow extends StatelessWidget {
+  const _CallHistoryRow({required this.log, required this.conversationId});
+  final ChatCallLog log;
+  final String conversationId;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final me = GetIt.I<ChatSettings>().userId;
+    final isOutgoing = log.callerId == me;
+    final isMissed = log.status == ChatCallStatus.missed ||
+        log.status == ChatCallStatus.noAnswer ||
+        (log.status == ChatCallStatus.rejected && !isOutgoing);
+    final isVideo = log.callType == ChatCallType.video;
+    final accent = isMissed
+        ? theme.colorScheme.error
+        : (isOutgoing ? Colors.blue.shade700 : Colors.green.shade700);
+
+    return InkWell(
+      onTap: () => ConfigRouter.pushPageAnimation(
+        context,
+        isVideo
+            ? VideoCallPage(conversationId: conversationId)
+            : VoiceCallPage(conversationId: conversationId),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                _iconFor(isVideo, isOutgoing, isMissed),
+                color: accent,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _labelFor(isVideo, isOutgoing, isMissed, log.status),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: isMissed ? theme.colorScheme.error : null,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _subtitleFor(log),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              isVideo ? Icons.videocam_outlined : Icons.call_outlined,
+              color: theme.colorScheme.onSurfaceVariant,
+              size: 18,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static IconData _iconFor(bool isVideo, bool isOutgoing, bool isMissed) {
+    if (isMissed) return Icons.call_missed_rounded;
+    if (isOutgoing) return Icons.call_made_rounded;
+    return Icons.call_received_rounded;
+  }
+
+  static String _labelFor(
+      bool isVideo, bool isOutgoing, bool isMissed, ChatCallStatus status) {
+    final kind = isVideo ? 'Video' : 'Voice';
+    if (isMissed) return 'Missed $kind call';
+    if (status == ChatCallStatus.rejected && isOutgoing) {
+      return 'Declined $kind call';
+    }
+    return '${isOutgoing ? "Outgoing" : "Incoming"} $kind call';
+  }
+
+  static String _subtitleFor(ChatCallLog log) {
+    final stamp = _formatStamp(log.startedAt);
+    if (log.durationSeconds > 0) {
+      return '$stamp · ${log.formattedDuration()}';
+    }
+    return stamp;
+  }
+
+  static String _formatStamp(DateTime when) {
+    final now = DateTime.now();
+    final whenDay = DateTime(when.year, when.month, when.day);
+    final today = DateTime(now.year, now.month, now.day);
+    final diff = today.difference(whenDay).inDays;
+    if (diff == 0) return 'Today ${DateFormat.Hm().format(when)}';
+    if (diff == 1) return 'Yesterday ${DateFormat.Hm().format(when)}';
+    if (diff < 7) return DateFormat('EEE HH:mm').format(when);
+    return DateFormat('d MMM HH:mm').format(when);
   }
 }
 
