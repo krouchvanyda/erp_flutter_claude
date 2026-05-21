@@ -9,6 +9,7 @@ import 'core/error/logging_crash_reporter.dart';
 import 'core/sync/sync_engine.dart';
 import 'core/utils/logger/console_logger.dart';
 import 'features/auth/auth_di.dart';
+import 'features/chat/chat_di.dart';
 import 'features/finance/finance_di.dart';
 import 'features/hr/hr_di.dart';
 import 'features/inventory/inventory_di.dart';
@@ -42,6 +43,7 @@ void main() {
       registerHrModule(getIt);
       registerProjectsModule(getIt);
       registerSettingsModule(getIt);
+      registerChatModule(getIt);
       // Start listening to connectivity transitions so the queue drains
       // automatically when the device comes back online.
       getIt<SyncEngine>().start();

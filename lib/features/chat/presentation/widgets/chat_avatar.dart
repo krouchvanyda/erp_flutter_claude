@@ -1,0 +1,209 @@
+import 'package:flutter/material.dart';
+
+import '../../entities/conversation.dart';
+
+/// Circular avatar with initials fallback. Used for direct chats and
+/// participant rows. Group rows use [GroupAvatarCluster] instead.
+class ChatAvatar extends StatelessWidget {
+  const ChatAvatar({
+    super.key,
+    required this.name,
+    required this.size,
+    this.avatarUrl,
+    this.presence,
+    this.showStatus = true,
+  });
+
+  final String name;
+  final double size;
+  final String? avatarUrl;
+  final PresenceStatus? presence;
+  final bool showStatus;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final initials = _initialsFor(name);
+    final hue = name.codeUnits.fold<int>(0, (a, b) => a + b);
+    final colors = _gradientFor(hue);
+    final dotSize = (size * 0.28).clamp(8.0, 18.0);
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: colors,
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              initials,
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: size * 0.38,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+          if (showStatus && presence != null)
+            Positioned(
+              right: -1,
+              bottom: -1,
+              child: OnlineStatusDot(
+                presence: presence!,
+                size: dotSize,
+                borderColor: theme.colorScheme.surface,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  static String _initialsFor(String raw) {
+    final parts = raw.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) return '?';
+    if (parts.length == 1) return parts.first[0].toUpperCase();
+    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+  }
+
+  static List<Color> _gradientFor(int hue) {
+    final palettes = [
+      [const Color(0xFF6366F1), const Color(0xFF8B5CF6)], // indigo→violet
+      [const Color(0xFF06B6D4), const Color(0xFF3B82F6)], // cyan→blue
+      [const Color(0xFF10B981), const Color(0xFF059669)], // emerald
+      [const Color(0xFFF59E0B), const Color(0xFFEF4444)], // amber→red
+      [const Color(0xFFEC4899), const Color(0xFF8B5CF6)], // pink→violet
+      [const Color(0xFF14B8A6), const Color(0xFF22D3EE)], // teal→sky
+    ];
+    return palettes[hue.abs() % palettes.length];
+  }
+}
+
+/// Small dot used on the bottom-right of avatars to indicate presence.
+class OnlineStatusDot extends StatelessWidget {
+  const OnlineStatusDot({
+    super.key,
+    required this.presence,
+    required this.size,
+    required this.borderColor,
+  });
+
+  final PresenceStatus presence;
+  final double size;
+  final Color borderColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = switch (presence) {
+      PresenceStatus.online => Colors.green.shade500,
+      PresenceStatus.away => Colors.orange.shade500,
+      PresenceStatus.offline => Colors.grey.shade400,
+    };
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: Border.all(color: borderColor, width: 2),
+      ),
+    );
+  }
+}
+
+/// 3-avatar cluster used by group conversations in the inbox.
+class GroupAvatarCluster extends StatelessWidget {
+  const GroupAvatarCluster({
+    super.key,
+    required this.previews,
+    this.size = 52,
+  });
+
+  final List<ChatParticipantPreview> previews;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    if (previews.isEmpty) {
+      return ChatAvatar(name: 'Group', size: size, showStatus: false);
+    }
+    final theme = Theme.of(context);
+    final frontSize = size * 0.78;
+    final backSize = size * 0.55;
+    final visible = previews.take(3).toList();
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        children: [
+          if (visible.length >= 3)
+            Positioned(
+              right: 0,
+              top: 0,
+              child: _Ringed(
+                color: theme.colorScheme.surface,
+                child: ChatAvatar(
+                  name: visible[2].name,
+                  size: backSize,
+                  showStatus: false,
+                ),
+              ),
+            ),
+          if (visible.length >= 2)
+            Positioned(
+              right: size * 0.32,
+              top: 0,
+              child: _Ringed(
+                color: theme.colorScheme.surface,
+                child: ChatAvatar(
+                  name: visible[1].name,
+                  size: backSize,
+                  showStatus: false,
+                ),
+              ),
+            ),
+          Positioned(
+            left: 0,
+            bottom: 0,
+            child: _Ringed(
+              color: theme.colorScheme.surface,
+              child: ChatAvatar(
+                name: visible.first.name,
+                size: frontSize,
+                showStatus: false,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Ringed extends StatelessWidget {
+  const _Ringed({required this.child, required this.color});
+  final Widget child;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: color, width: 2),
+      ),
+      child: child,
+    );
+  }
+}

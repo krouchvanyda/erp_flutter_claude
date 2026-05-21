@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../features/auth/entities/permission.dart';
+import '../../features/chat/presentation/pages/chat_inbox_page.dart';
 import '../../features/dashboard/presentation/pages/admin_demo_page.dart';
 import '../../features/finance/presentation/pages/chart_of_accounts_page.dart';
 import '../../features/hr/presentation/pages/employee_list_page.dart';
@@ -68,6 +69,14 @@ abstract final class ModuleShortcutCatalog {
       builder: _projectsPage,
       requiredPermission: Permission(token: 'projects.*'),
     ),
+    // Module 10 — Chat is ungated; every signed-in user can message.
+    // Label is hardcoded until the chat ARB keys land.
+    ModuleShortcut(
+      id: 'chat',
+      icon: Icons.chat_bubble_outline_rounded,
+      labelOf: _chatLabel,
+      builder: _chatPage,
+    ),
   ];
 }
 
@@ -78,6 +87,8 @@ String _inventoryLabel(AppLocalizations l) => l.shortcutInventory;
 String _salesLabel(AppLocalizations l) => l.shortcutSales;
 String _hrLabel(AppLocalizations l) => l.shortcutHr;
 String _projectsLabel(AppLocalizations l) => l.shortcutProjects;
+// Module 10 — hardcoded until the chat ARB key lands.
+String _chatLabel(AppLocalizations l) => 'Chat';
 
 Widget _adminDemoPage() => const AdminDemoPage();
 Widget _financePage() => const ChartOfAccountsPage();
@@ -86,3 +97,4 @@ Widget _inventoryPage() => const ItemsListPage();
 Widget _salesPage() => const CustomerListPage();
 Widget _hrPage() => const EmployeeListPage();
 Widget _projectsPage() => const ProjectListPage();
+Widget _chatPage() => const ChatInboxPage();

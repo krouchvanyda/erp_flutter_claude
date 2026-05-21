@@ -65,7 +65,7 @@ class ModulesPage extends StatelessWidget {
                     top: context.dynamicAppBarPadding,
                     left: 16,
                     right: 16,
-                    bottom: 100,
+                    bottom: 120,
                   ),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: columns,
