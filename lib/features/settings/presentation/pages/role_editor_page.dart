@@ -95,21 +95,28 @@ class RoleEditorPage extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (sheetCtx) => StatefulBuilder(
-        builder: (sheetCtx, setSheet) => Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 20,
-            bottom: MediaQuery.of(sheetCtx).viewInsets.bottom + 20,
-          ),
-          // Wrap in SingleChildScrollView so the sheet grows/scrolls
-          // when its content (title + 2 inputs + 10 scope chips + button)
-          // exceeds the bottom-sheet's available height — the previous
-          // bare Column overflowed by ~27px once the AppTextField fill
-          // bumped the inputs a touch taller.
-          child: SingleChildScrollView(
-            child: Column(
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (sheetCtx, setSheet) {
+            // Only pin the sheet up to the AppBar WHEN the keyboard is
+            // open — otherwise let the sheet hug its content's natural
+            // height. We use a Builder to read MediaQuery fresh on every
+            // rebuild (StatefulBuilder doesn't refresh MediaQuery via
+            // setSheet, but the keyboard open/close triggers a global
+            // rebuild that flows through).
+            final media = MediaQuery.of(sheetCtx);
+            final keyboardOpen = media.viewInsets.bottom > 0;
+            final sheetHeight =
+                media.size.height - media.padding.top - kToolbarHeight;
+            final padded = Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(sheetCtx).viewInsets.bottom + 20,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -213,11 +220,26 @@ class RoleEditorPage extends StatelessWidget {
                     child: const Text('Create Role', style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ),
-              ],
-            ),
-          ),
-        ),
-      ),
+                    ],
+                  ),
+                ),
+              );
+            // Pin the sheet up to just below the AppBar ONLY when the
+            // keyboard is open — otherwise (height: null) the SizedBox
+            // sizes to its child's natural height. The SizedBox wrapper
+            // MUST stay in the tree both ways: if we switched between
+            // `SizedBox(child: padded)` and bare `padded`, the widget
+            // tree shape would change as the keyboard tried to open,
+            // destroying the focused TextField's element identity and
+            // killing the focus before the keyboard finished animating
+            // in. That's why tapping a field looked like "no keyboard".
+            return SizedBox(
+              height: keyboardOpen ? sheetHeight : null,
+              child: padded,
+            );
+          },
+        );
+      },
     );
   }
 }
