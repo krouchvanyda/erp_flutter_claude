@@ -12,6 +12,7 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
+import '../../../../shared/widgets/avatar_picker_sheet.dart';
 import '../../data/repositories/my_profile_repository.dart';
 import '../../data/repositories/security_repositories.dart';
 import '../../entities/app_lock_settings.dart';
@@ -317,70 +318,36 @@ class _MyProfilePageState extends State<MyProfilePage> {
   }
 
   Future<void> _showAvatarSheet() async {
-    final theme = Theme.of(context);
-    await showModalBottomSheet<void>(
+    // Sheet UI lives in the shared `AvatarPickerSheet` widget — every
+    // surface that needs a "Take photo / Choose from gallery" picker
+    // routes through it so the look is identical to the Chat Info
+    // change-photo sheet. Title/subtitle adapt to whether a photo is
+    // already set, and the destructive "Remove photo" tile is shown
+    // only when there's something to remove — same contextual pattern
+    // as the chat sheet (Slice 10.3.5).
+    //
+    // Read the avatar status from the repo directly, NOT from
+    // `_baseline`/`_draft` — those fields are only populated inside
+    // Edit mode, and the avatar sheet opens without entering Edit, so
+    // checking the local copies would always report "no photo".
+    final current = await _profileRepo.get();
+    if (!mounted) return;
+    final hasPhoto = (current.avatarFilePath ?? '').isNotEmpty;
+    final choice = await AvatarPickerSheet.show(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (sheetCtx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.outlineVariant,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Update photo',
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Tap an option to change the avatar.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 16),
-              _AvatarSheetTile(
-                icon: Icons.camera_alt_outlined,
-                label: 'Take photo',
-                subtitle: 'Open the camera',
-                tone: 1,
-                onTap: () async {
-                  Navigator.pop(sheetCtx);
-                  await _pickImage(ImageSource.camera);
-                },
-              ),
-              const SizedBox(height: 8),
-              _AvatarSheetTile(
-                icon: Icons.photo_library_outlined,
-                label: 'Choose from gallery',
-                subtitle: 'Pick an existing image',
-                tone: 2,
-                onTap: () async {
-                  Navigator.pop(sheetCtx);
-                  await _pickImage(ImageSource.gallery);
-                },
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        ),
-      ),
+      title: hasPhoto ? 'Change profile photo' : 'Add a profile photo',
+      subtitle: 'Photo only changes on this device.',
+      allowRemove: hasPhoto,
     );
+    if (!mounted || choice == null) return;
+    switch (choice) {
+      case AvatarPickChoice.camera:
+        await _pickImage(ImageSource.camera);
+      case AvatarPickChoice.gallery:
+        await _pickImage(ImageSource.gallery);
+      case AvatarPickChoice.remove:
+        await _profileRepo.clearAvatar();
+    }
   }
 
   Future<void> _pickImage(ImageSource source) async {
@@ -1479,87 +1446,6 @@ class _SaveBar extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-// ── Avatar sheet tile ───────────────────────────────────────────
-
-class _AvatarSheetTile extends StatelessWidget {
-  const _AvatarSheetTile({
-    required this.icon,
-    required this.label,
-    required this.subtitle,
-    required this.onTap,
-    required this.tone,
-  });
-
-  final IconData icon;
-  final String label;
-  final String subtitle;
-  final VoidCallback onTap;
-  final int tone;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final accent = _toneColor(tone);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppRadii.md),
-          border: Border.all(
-            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: accent, size: 20),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    subtitle,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  static Color _toneColor(int tone) {
-    switch (tone % 4) {
-      case 1:
-        return Colors.pink;
-      case 2:
-        return Colors.green.shade700;
-      case 3:
-        return Colors.indigo;
-      default:
-        return Colors.blueGrey;
-    }
   }
 }
 

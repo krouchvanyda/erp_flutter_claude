@@ -14,8 +14,10 @@ import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/active_conversation_tracker.dart';
 import '../../data/chat_settings.dart';
+import '../../data/repositories/call_log_repository.dart';
 import '../../data/repositories/conversations_repository.dart';
 import '../../data/repositories/messages_repository.dart';
+import '../../entities/call_log.dart';
 import '../../entities/chat_message.dart';
 import '../../entities/conversation.dart';
 import '../widgets/chat_avatar.dart';
@@ -202,47 +204,66 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                                 child: CircularProgressIndicator());
                           }
                           final messages = msgSnap.data!;
-                          // Auto-scroll to the latest bubble on first
-                          // load and whenever the count grows (sent or
-                          // received). Skip the animation on the very
-                          // first frame — jump straight to the bottom
-                          // so the user never sees a flash of oldest-
-                          // first content.
-                          if (messages.length != _lastMessageCount) {
-                            final firstFrame = _lastMessageCount == -1;
-                            _lastMessageCount = messages.length;
-                            WidgetsBinding.instance
-                                .addPostFrameCallback((_) {
-                              if (!mounted || !_scrollCtrl.hasClients) {
-                                return;
+                          // Slice 10.1.9 — interleave the call log into
+                          // the message timeline so call history shows
+                          // inline (Telegram-style). Calls live in a
+                          // separate table (`chat_call_log`), so we
+                          // watch them on the side and merge by time.
+                          return StreamBuilder<List<ChatCallLog>>(
+                            stream: GetIt.I<CallLogRepository>()
+                                .watchAll(),
+                            builder: (context, callSnap) {
+                              final allCalls = callSnap.data;
+                              final calls = (allCalls ?? const <ChatCallLog>[])
+                                  .where((c) =>
+                                      c.conversationId ==
+                                      widget.conversationId)
+                                  .toList(growable: false);
+                              // Re-scroll whenever the combined item
+                              // count grows so a new call entry pushes
+                              // the view to the bottom the same way a
+                              // new message does.
+                              final combinedCount =
+                                  messages.length + calls.length;
+                              if (combinedCount != _lastMessageCount) {
+                                final firstFrame = _lastMessageCount == -1;
+                                _lastMessageCount = combinedCount;
+                                WidgetsBinding.instance
+                                    .addPostFrameCallback((_) {
+                                  if (!mounted || !_scrollCtrl.hasClients) {
+                                    return;
+                                  }
+                                  final target =
+                                      _scrollCtrl.position.maxScrollExtent;
+                                  if (firstFrame) {
+                                    _scrollCtrl.jumpTo(target);
+                                  } else {
+                                    _scrollCtrl.animateTo(
+                                      target,
+                                      duration: const Duration(
+                                          milliseconds: 220),
+                                      curve: Curves.easeOut,
+                                    );
+                                  }
+                                });
                               }
-                              final target =
-                                  _scrollCtrl.position.maxScrollExtent;
-                              if (firstFrame) {
-                                _scrollCtrl.jumpTo(target);
-                              } else {
-                                _scrollCtrl.animateTo(
-                                  target,
-                                  duration:
-                                      const Duration(milliseconds: 220),
-                                  curve: Curves.easeOut,
-                                );
-                              }
-                            });
-                          }
-                          return _MessageList(
-                            messages: messages,
-                            conversation: conv,
-                            currentUserId: _currentUserId,
-                            scrollController: _scrollCtrl,
-                            highlightId: _highlightId,
-                            playingVoiceId: _playingVoiceId,
-                            typingShown: _typingShown,
-                            onLongPressBubble: _showContextMenu,
-                            onReact: _toggleReaction,
-                            onJumpToReply: _jumpTo,
-                            onTapVoice: _toggleVoice,
-                            onTapImage: _openImageViewer,
+                              return _MessageList(
+                                messages: messages,
+                                callLogs: calls,
+                                conversation: conv,
+                                currentUserId: _currentUserId,
+                                scrollController: _scrollCtrl,
+                                highlightId: _highlightId,
+                                playingVoiceId: _playingVoiceId,
+                                typingShown: _typingShown,
+                                onLongPressBubble: _showContextMenu,
+                                onReact: _toggleReaction,
+                                onJumpToReply: _jumpTo,
+                                onTapVoice: _toggleVoice,
+                                onTapImage: _openImageViewer,
+                                onTapCall: _redialCall,
+                              );
+                            },
                           );
                         },
                       ),
@@ -299,7 +320,14 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (conv.isGroup)
+                  // Slice 10.1.9 — user-set photo wins for both groups
+                  // and direct convs, matching the inbox tile (Slice
+                  // 10.3.5) and call hero (Slice 10.2.11). Without
+                  // this the AppBar kept rendering the participant
+                  // cluster for groups even after the admin uploaded
+                  // a photo (Slice 10.3.6 sync).
+                  if (conv.isGroup &&
+                      (conv.avatarFilePath ?? '').isEmpty)
                     GroupAvatarCluster(
                       previews: conv.participantPreviews,
                       size: 36,
@@ -308,7 +336,10 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                     ChatAvatar(
                       name: conv.name,
                       size: 36,
-                      presence: conv.presence,
+                      avatarFilePath: conv.avatarFilePath,
+                      presence:
+                          conv.isGroup ? null : conv.presence,
+                      showStatus: !conv.isGroup,
                     ),
                   const SizedBox(width: 10),
                   Flexible(
@@ -471,6 +502,23 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     setState(() {
       _playingVoiceId = _playingVoiceId == messageId ? null : messageId;
     });
+  }
+
+  /// Slice 10.1.9 — tap on an inline call entry re-opens the matching
+  /// voice/video call page, same as the Calls tab / Chat Info call
+  /// history shortcut.
+  void _redialCall(ChatCallLog log) {
+    if (log.callType == ChatCallType.video) {
+      ConfigRouter.pushPageAnimation(
+        context,
+        VideoCallPage(conversationId: widget.conversationId),
+      );
+    } else {
+      ConfigRouter.pushPageAnimation(
+        context,
+        VoiceCallPage(conversationId: widget.conversationId),
+      );
+    }
   }
 
   Future<void> _showContextMenu(ChatMessage m) async {
@@ -800,6 +848,7 @@ class _PinnedBanner extends StatelessWidget {
 class _MessageList extends StatelessWidget {
   const _MessageList({
     required this.messages,
+    required this.callLogs,
     required this.conversation,
     required this.scrollController,
     required this.highlightId,
@@ -811,9 +860,11 @@ class _MessageList extends StatelessWidget {
     required this.onJumpToReply,
     required this.onTapVoice,
     required this.onTapImage,
+    required this.onTapCall,
   });
 
   final List<ChatMessage> messages;
+  final List<ChatCallLog> callLogs;
   final ChatConversation conversation;
   final ScrollController scrollController;
   final String? highlightId;
@@ -825,26 +876,50 @@ class _MessageList extends StatelessWidget {
   final void Function(String messageId) onJumpToReply;
   final void Function(String messageId) onTapVoice;
   final void Function(ChatMessage m) onTapImage;
+  final void Function(ChatCallLog log) onTapCall;
 
   @override
   Widget build(BuildContext context) {
-    // Build the linear list with date separators woven in.
+    // Slice 10.1.9 — merge messages + call log entries into a single
+    // chronological stream, then weave in date separators. Call entries
+    // use `startedAt` as their timeline timestamp.
+    final entries = <_TimelineEntry>[];
+    for (final m in messages) {
+      entries.add(_TimelineEntry.message(m, m.sentAt));
+    }
+    for (final c in callLogs) {
+      entries.add(_TimelineEntry.call(c, c.startedAt));
+    }
+    entries.sort((a, b) => a.at.compareTo(b.at));
+
     final items = <_ListItem>[];
     DateTime? lastDay;
     String? lastSenderId;
     DateTime? lastSentAt;
-    for (var i = 0; i < messages.length; i++) {
-      final m = messages[i];
-      final day = DateTime(m.sentAt.year, m.sentAt.month, m.sentAt.day);
+    for (final e in entries) {
+      final day = DateTime(e.at.year, e.at.month, e.at.day);
       if (lastDay == null || !_isSameDay(lastDay, day)) {
         items.add(_ListItem.separator(day));
+        // Force the next message's "showSender" so the header re-prints
+        // after a day break, matching Telegram.
+        lastSenderId = null;
       }
-      final groupBreak = lastSenderId != m.senderId ||
-          (lastSentAt != null && m.sentAt.difference(lastSentAt).inMinutes > 5);
-      items.add(_ListItem.message(m, showSender: groupBreak));
+      if (e.message != null) {
+        final m = e.message!;
+        final groupBreak = lastSenderId != m.senderId ||
+            (lastSentAt != null &&
+                m.sentAt.difference(lastSentAt).inMinutes > 5);
+        items.add(_ListItem.message(m, showSender: groupBreak));
+        lastSenderId = m.senderId;
+        lastSentAt = m.sentAt;
+      } else {
+        items.add(_ListItem.call(e.callLog!));
+        // Call entries break the message-grouping streak so the next
+        // bubble re-shows its sender header.
+        lastSenderId = null;
+        lastSentAt = null;
+      }
       lastDay = day;
-      lastSenderId = m.senderId;
-      lastSentAt = m.sentAt;
     }
     if (typingShown) {
       items.add(_ListItem.typing(conversation));
@@ -870,6 +945,11 @@ class _MessageList extends StatelessWidget {
               isVoicePlaying: playingVoiceId == item.message!.id,
               highlight: highlightId == item.message!.id,
             ),
+          _ListItemKind.call => _CallEntryBubble(
+              log: item.callLog!,
+              isOwn: item.callLog!.callerId == currentUserId,
+              onTap: () => onTapCall(item.callLog!),
+            ),
           _ListItemKind.typing => TypingIndicator(
               label:
                   '${item.conversation!.isGroup ? item.conversation!.participantPreviews.first.name : item.conversation!.name} is typing…',
@@ -883,14 +963,19 @@ class _MessageList extends StatelessWidget {
       a.year == b.year && a.month == b.month && a.day == b.day;
 }
 
-enum _ListItemKind { separator, message, typing }
+enum _ListItemKind { separator, message, call, typing }
 
 class _ListItem {
   _ListItem._(this.kind,
-      {this.day, this.message, this.showSender = false, this.conversation});
+      {this.day,
+      this.message,
+      this.callLog,
+      this.showSender = false,
+      this.conversation});
   final _ListItemKind kind;
   final DateTime? day;
   final ChatMessage? message;
+  final ChatCallLog? callLog;
   final bool showSender;
   final ChatConversation? conversation;
 
@@ -898,8 +983,146 @@ class _ListItem {
       _ListItem._(_ListItemKind.separator, day: day);
   factory _ListItem.message(ChatMessage m, {required bool showSender}) =>
       _ListItem._(_ListItemKind.message, message: m, showSender: showSender);
+  factory _ListItem.call(ChatCallLog c) =>
+      _ListItem._(_ListItemKind.call, callLog: c);
   factory _ListItem.typing(ChatConversation c) =>
       _ListItem._(_ListItemKind.typing, conversation: c);
+}
+
+/// Slice 10.1.9 — chronological entry shared by messages and call
+/// log rows so the timeline merge stays a simple sort.
+class _TimelineEntry {
+  _TimelineEntry._(this.at, {this.message, this.callLog});
+  final DateTime at;
+  final ChatMessage? message;
+  final ChatCallLog? callLog;
+
+  factory _TimelineEntry.message(ChatMessage m, DateTime at) =>
+      _TimelineEntry._(at, message: m);
+  factory _TimelineEntry.call(ChatCallLog c, DateTime at) =>
+      _TimelineEntry._(at, callLog: c);
+}
+
+/// Slice 10.1.9 — Telegram-style inline call-history row. Sits in the
+/// message timeline at the call's `startedAt` and lets the user tap to
+/// redial. Direction icon mirrors the per-conversation history shown
+/// in Chat Info (Slice 10.2.5):
+///   - missed / noAnswer → red `call_missed`
+///   - own outgoing      → primary `call_made`
+///   - incoming answered → success `call_received`
+class _CallEntryBubble extends StatelessWidget {
+  const _CallEntryBubble({
+    required this.log,
+    required this.isOwn,
+    required this.onTap,
+  });
+
+  final ChatCallLog log;
+  final bool isOwn;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final missed = log.status == ChatCallStatus.missed ||
+        log.status == ChatCallStatus.noAnswer;
+    final declined = log.status == ChatCallStatus.rejected;
+    final accent = missed
+        ? theme.colorScheme.error
+        : (declined
+            ? theme.colorScheme.error
+            : (isOwn
+                ? theme.colorScheme.primary
+                : Colors.green.shade600));
+    final iconData = missed
+        ? Icons.call_missed_rounded
+        : (isOwn
+            ? Icons.call_made_rounded
+            : Icons.call_received_rounded);
+    final isVideo = log.callType == ChatCallType.video;
+    String title;
+    if (missed) {
+      title = isVideo ? 'Missed video call' : 'Missed voice call';
+    } else if (declined) {
+      title = isVideo ? 'Declined video call' : 'Declined voice call';
+    } else {
+      title = isVideo ? 'Video call' : 'Voice call';
+    }
+    final subtitle = log.durationSeconds > 0
+        ? log.formattedDuration()
+        : _stamp(log.startedAt);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: Align(
+        alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
+        child: Material(
+          color: theme.colorScheme.surface.withValues(alpha: 0.92),
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 12, vertical: 10),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(iconData, color: accent, size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: missed || declined
+                              ? theme.colorScheme.error
+                              : theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 14),
+                  Icon(
+                    isVideo
+                        ? Icons.videocam_rounded
+                        : Icons.call_rounded,
+                    color: theme.colorScheme.primary,
+                    size: 20,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  static String _stamp(DateTime when) {
+    final hh = when.hour.toString().padLeft(2, '0');
+    final mm = when.minute.toString().padLeft(2, '0');
+    return '$hh:$mm';
+  }
 }
 
 class _ReplyPreviewBar extends StatelessWidget {

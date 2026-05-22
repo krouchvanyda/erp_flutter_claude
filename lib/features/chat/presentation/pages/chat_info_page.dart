@@ -12,6 +12,7 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
+import '../../../../shared/widgets/avatar_picker_sheet.dart';
 import '../../data/chat_seed.dart';
 import '../../data/chat_settings.dart';
 import '../../data/chat_transport.dart';
@@ -1467,85 +1468,36 @@ Future<void> _showChangePhotoSheet(
   BuildContext context,
   ChatConversation conversation,
 ) async {
-  final theme = Theme.of(context);
   final hasPhoto = (conversation.avatarFilePath ?? '').isNotEmpty;
-  await showModalBottomSheet<void>(
+  // Shared sheet UI (Slice 9.1.4 + 10.3.3 / 10.3.5 / 10.3.6 used to
+  // duplicate this — now everything routes through `AvatarPickerSheet`).
+  final choice = await AvatarPickerSheet.show(
     context: context,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (sheetCtx) => SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.outlineVariant,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              // Slice 10.3.5 — wording adapts to direct vs group so
-              // the sheet reads naturally in both contexts.
-              _photoSheetTitle(conversation, hasPhoto),
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 12),
-            _PhotoOptionTile(
-              icon: Icons.camera_alt_outlined,
-              label: 'Take photo',
-              color: theme.colorScheme.primary,
-              onTap: () async {
-                Navigator.pop(sheetCtx);
-                await _pickGroupPhoto(context, conversation, ImageSource.camera);
-              },
-            ),
-            const SizedBox(height: 8),
-            _PhotoOptionTile(
-              icon: Icons.photo_library_outlined,
-              label: 'Choose from gallery',
-              color: Colors.green.shade700,
-              onTap: () async {
-                Navigator.pop(sheetCtx);
-                await _pickGroupPhoto(context, conversation, ImageSource.gallery);
-              },
-            ),
-            if (hasPhoto) ...[
-              const SizedBox(height: 8),
-              _PhotoOptionTile(
-                icon: Icons.delete_outline,
-                label: 'Remove photo',
-                color: theme.colorScheme.error,
-                onTap: () async {
-                  Navigator.pop(sheetCtx);
-                  await GetIt.I<ConversationsRepository>()
-                      .setAvatarPath(conversation.id, null);
-                  // Slice 10.3.6 — propagate the clear to peers so
-                  // every group member's tile drops the photo too.
-                  if (conversation.isGroup) {
-                    _broadcastAvatar(
-                      conversation: conversation,
-                      avatarBase64: null,
-                      fileExtension: null,
-                    );
-                  }
-                },
-              ),
-            ],
-          ],
-        ),
-      ),
-    ),
+    title: _photoSheetTitle(conversation, hasPhoto),
+    subtitle: conversation.isGroup
+        ? 'Photo will sync to every group member.'
+        : 'Photo only changes on this device.',
+    allowRemove: hasPhoto,
   );
+  if (!context.mounted || choice == null) return;
+  switch (choice) {
+    case AvatarPickChoice.camera:
+      await _pickGroupPhoto(context, conversation, ImageSource.camera);
+    case AvatarPickChoice.gallery:
+      await _pickGroupPhoto(context, conversation, ImageSource.gallery);
+    case AvatarPickChoice.remove:
+      await GetIt.I<ConversationsRepository>()
+          .setAvatarPath(conversation.id, null);
+      // Slice 10.3.6 — propagate the clear to peers so every group
+      // member's tile drops the photo too.
+      if (conversation.isGroup) {
+        _broadcastAvatar(
+          conversation: conversation,
+          avatarBase64: null,
+          fileExtension: null,
+        );
+      }
+  }
 }
 
 Future<void> _pickGroupPhoto(
@@ -1620,60 +1572,3 @@ void _broadcastAvatar({
   );
 }
 
-class _PhotoOptionTile extends StatelessWidget {
-  const _PhotoOptionTile({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppRadii.md),
-          border: Border.all(
-            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 20),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
-              ),
-            ),
-            Icon(
-              Icons.chevron_right_rounded,
-              color: theme.colorScheme.outline,
-              size: 18,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
