@@ -11,6 +11,7 @@ import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/validators/validators.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 import '../../data/repositories/items_repository.dart';
 import '../../data/repositories/stock_movements_repository.dart';
 import '../../entities/inventory_item.dart';
@@ -314,11 +315,14 @@ class _Body extends StatelessWidget {
                   onChanged: submitting || destinations.isEmpty ? null : onDestinationChanged,
                 ),
               const SizedBox(height: 16),
-              TextFormField(
+              AppTextField(
                 controller: qtyCtrl,
+                label: l10n.inventoryFormQuantityLabel,
+                icon: Icons.numbers_rounded,
+                errorText: qtyError,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                textCapitalization: TextCapitalization.none,
                 inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-                decoration: _inputDecoration(context, l10n.inventoryFormQuantityLabel, Icons.numbers_rounded, errorText: qtyError),
                 validator: (v) {
                   final code = Validators.positiveNumber(v);
                   if (code == null) return null;
@@ -327,17 +331,18 @@ class _Body extends StatelessWidget {
                 },
               ),
               const SizedBox(height: 16),
-              TextFormField(
+              AppTextField(
                 controller: refCtrl,
-                decoration: _inputDecoration(context, l10n.inventoryFormReferenceLabel, Icons.receipt_long_rounded).copyWith(
-                  hintText: l10n.inventoryTransferReferenceHint,
-                ),
+                label: l10n.inventoryFormReferenceLabel,
+                icon: Icons.receipt_long_rounded,
+                hintText: l10n.inventoryTransferReferenceHint,
               ),
               const SizedBox(height: 16),
-              TextFormField(
+              AppTextField(
                 controller: noteCtrl,
+                label: l10n.inventoryFormNoteLabel,
+                icon: Icons.notes_rounded,
                 maxLines: 2,
-                decoration: _inputDecoration(context, l10n.inventoryFormNoteLabel, Icons.notes_rounded),
               ),
             ],
           ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.05, end: 0),

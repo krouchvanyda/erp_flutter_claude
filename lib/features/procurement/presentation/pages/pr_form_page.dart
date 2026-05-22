@@ -11,6 +11,7 @@ import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/validators/validators.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 import '../../data/repositories/purchase_requests_repository.dart';
 import '../../entities/purchase_request.dart';
 import 'pr_list_page.dart';
@@ -161,36 +162,40 @@ class _PurchaseRequestFormPageState extends State<PurchaseRequestFormPage> {
               _Section(
                 title: 'GENERAL INFORMATION',
                 children: [
-                  TextFormField(
+                  AppTextField(
                     controller: _requester,
-                    decoration: _inputDecoration(l10n.prFormRequesterLabel, Icons.person_outline_rounded),
+                    label: l10n.prFormRequesterLabel,
+                    icon: Icons.person_outline_rounded,
                     validator: (v) => _resolveError(l10n, Validators.required(v)).ifEmptyToNull(),
                   ),
                   const SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(
-                        child: TextFormField(
+                        child: AppTextField(
                           controller: _costCenter,
-                          decoration: _inputDecoration(l10n.prFormCostCenterLabel, Icons.account_balance_outlined),
+                          label: l10n.prFormCostCenterLabel,
+                          icon: Icons.account_balance_outlined,
                           validator: (v) => _resolveError(l10n, Validators.required(v)).ifEmptyToNull(),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: TextFormField(
+                        child: AppTextField(
                           controller: _approver,
-                          decoration: _inputDecoration(l10n.prFormApproverLabel, Icons.how_to_reg_outlined),
+                          label: l10n.prFormApproverLabel,
+                          icon: Icons.how_to_reg_outlined,
                           validator: (v) => _resolveError(l10n, Validators.required(v)).ifEmptyToNull(),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  TextFormField(
+                  AppTextField(
                     controller: _justification,
+                    label: l10n.prFormJustificationLabel,
+                    icon: Icons.subject_rounded,
                     maxLines: 3,
-                    decoration: _inputDecoration(l10n.prFormJustificationLabel, Icons.subject_rounded),
                   ),
                 ],
               ).animate().fadeIn().slideY(begin: 0.1, end: 0),
@@ -241,18 +246,6 @@ class _PurchaseRequestFormPageState extends State<PurchaseRequestFormPage> {
     );
   }
 
-  InputDecoration _inputDecoration(String label, IconData icon) {
-    final theme = Theme.of(context);
-    return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, size: 20),
-      filled: true,
-      fillColor: theme.colorScheme.surface,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.outlineVariant)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5))),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.primary, width: 2)),
-    );
-  }
 }
 
 class _Section extends StatelessWidget {
@@ -350,30 +343,35 @@ class _LineEditor extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          TextFormField(
+          AppTextField(
             controller: draft.description,
-            decoration: _inputDecoration(l10n.prFormLineDescriptionLabel, Icons.description_outlined),
+            label: l10n.prFormLineDescriptionLabel,
+            icon: Icons.description_outlined,
             validator: (v) => resolveError(Validators.required(v)).ifEmptyToNull(),
           ),
           const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
-                child: TextFormField(
+                child: AppTextField(
                   controller: draft.quantity,
+                  label: l10n.prFormLineQuantityLabel,
+                  icon: Icons.format_list_numbered_rounded,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  textCapitalization: TextCapitalization.none,
                   inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-                  decoration: _inputDecoration(l10n.prFormLineQuantityLabel, Icons.format_list_numbered_rounded),
                   validator: (v) => resolveError(Validators.positiveNumber(v)).ifEmptyToNull(),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: TextFormField(
+                child: AppTextField(
                   controller: draft.unitPrice,
+                  label: l10n.prFormLineUnitPriceLabel,
+                  icon: Icons.payments_outlined,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  textCapitalization: TextCapitalization.none,
                   inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-                  decoration: _inputDecoration(l10n.prFormLineUnitPriceLabel, Icons.payments_outlined),
                   validator: (v) => resolveError(Validators.positiveNumber(v)).ifEmptyToNull(),
                 ),
               ),
@@ -384,14 +382,6 @@ class _LineEditor extends StatelessWidget {
     );
   }
 
-  InputDecoration _inputDecoration(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, size: 18),
-      isDense: true,
-      border: const OutlineInputBorder(),
-    );
-  }
 }
 
 extension on String {

@@ -7,6 +7,7 @@ import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 import 'biometric_unlock_page.dart';
 import 'forgot_password_page.dart';
 import 'otp_entry_page.dart';
@@ -139,14 +140,13 @@ class _LoginPageState extends State<LoginPage> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.stretch,
                                   children: [
-                                    TextFormField(
+                                    AppTextField(
                                       controller: _emailController,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Email',
-                                        prefixIcon: Icon(Icons.email_outlined, size: 20),
-                                        hintText: 'name@company.com',
-                                      ),
+                                      label: 'Email',
+                                      icon: Icons.email_outlined,
+                                      hintText: 'name@company.com',
                                       keyboardType: TextInputType.emailAddress,
+                                      textCapitalization: TextCapitalization.none,
                                       validator: (value) {
                                         if (value == null || value.isEmpty) {
                                           return 'Please enter your email';
@@ -158,24 +158,23 @@ class _LoginPageState extends State<LoginPage> {
                                         return null;
                                       },
                                     ),
-                                    
+
                                     const SizedBox(height: 20),
-                                    
-                                    TextFormField(
+
+                                    AppTextField(
                                       controller: _passwordController,
+                                      label: 'Password',
+                                      icon: Icons.lock_outline_rounded,
                                       obscureText: _obscurePassword,
-                                      decoration: InputDecoration(
-                                        labelText: 'Password',
-                                        prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
-                                        suffixIcon: IconButton(
-                                          icon: Icon(
-                                            _obscurePassword 
-                                              ? Icons.visibility_outlined 
+                                      textCapitalization: TextCapitalization.none,
+                                      suffixIcon: IconButton(
+                                        icon: Icon(
+                                          _obscurePassword
+                                              ? Icons.visibility_outlined
                                               : Icons.visibility_off_outlined,
-                                            size: 20,
-                                          ),
-                                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                                          size: 20,
                                         ),
+                                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                                       ),
                                       validator: (value) {
                                         if (value == null || value.isEmpty) {

@@ -7,6 +7,7 @@ import '../../../../core/error/failure.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 import '../../data/repositories/admin_repositories.dart';
 import '../../entities/managed_user.dart';
 
@@ -102,115 +103,118 @@ class RoleEditorPage extends StatelessWidget {
             top: 20,
             bottom: MediaQuery.of(sheetCtx).viewInsets.bottom + 20,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.outlineVariant,
-                    borderRadius: BorderRadius.circular(2),
+          // Wrap in SingleChildScrollView so the sheet grows/scrolls
+          // when its content (title + 2 inputs + 10 scope chips + button)
+          // exceeds the bottom-sheet's available height — the previous
+          // bare Column overflowed by ~27px once the AppTextField fill
+          // bumped the inputs a touch taller.
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Create Custom Role',
-                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: nameCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Role Name (e.g. Finance Admin)',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: descCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Description',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Assign Permission Scopes',
-                style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final scope in _knownScopes)
-                    FilterChip(
-                      label: Text(scope),
-                      selected: selectedScopes.contains(scope),
-                      checkmarkColor: theme.colorScheme.primary,
-                      selectedColor: theme.colorScheme.primaryContainer,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadii.pill),
-                        side: BorderSide(
-                          color: selectedScopes.contains(scope)
-                              ? theme.colorScheme.primary
-                              : theme.colorScheme.outlineVariant,
-                        ),
-                      ),
-                      onSelected: (sel) => setSheet(() {
-                        if (sel) {
-                          selectedScopes.add(scope);
-                        } else {
-                          selectedScopes.remove(scope);
-                        }
-                      }),
-                    ),
-                ],
-              ),
-              if (errorMsg != null) ...[
                 const SizedBox(height: 16),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.errorContainer,
-                    borderRadius: BorderRadius.circular(AppRadii.md),
-                  ),
-                  child: Text(
-                    errorMsg!,
-                    style: TextStyle(
-                      color: theme.colorScheme.onErrorContainer,
-                      fontWeight: FontWeight.w600,
+                Text(
+                  'Create Custom Role',
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                AppTextField(
+                  controller: nameCtrl,
+                  label: 'Role Name (e.g. Finance Admin)',
+                  icon: Icons.badge_outlined,
+                ),
+                const SizedBox(height: 12),
+                AppTextField(
+                  controller: descCtrl,
+                  label: 'Description',
+                  icon: Icons.notes_outlined,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Assign Permission Scopes',
+                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final scope in _knownScopes)
+                      FilterChip(
+                        label: Text(scope),
+                        selected: selectedScopes.contains(scope),
+                        checkmarkColor: theme.colorScheme.primary,
+                        selectedColor: theme.colorScheme.primaryContainer,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadii.pill),
+                          side: BorderSide(
+                            color: selectedScopes.contains(scope)
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.outlineVariant,
+                          ),
+                        ),
+                        onSelected: (sel) => setSheet(() {
+                          if (sel) {
+                            selectedScopes.add(scope);
+                          } else {
+                            selectedScopes.remove(scope);
+                          }
+                        }),
+                      ),
+                  ],
+                ),
+                if (errorMsg != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.errorContainer,
+                      borderRadius: BorderRadius.circular(AppRadii.md),
                     ),
+                    child: Text(
+                      errorMsg!,
+                      style: TextStyle(
+                        color: theme.colorScheme.onErrorContainer,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () async {
+                      try {
+                        await GetIt.I<RolesRepository>().createFromInput(
+                          name: nameCtrl.text,
+                          description: descCtrl.text,
+                          permissionTokens: selectedScopes.toList(),
+                        );
+                        if (sheetCtx.mounted) Navigator.pop(sheetCtx);
+                      } on ValidationFailure catch (f) {
+                        setSheet(() => errorMsg = f.fieldErrors.entries
+                            .map((e) => '${e.key}: ${e.value.join(', ')}')
+                            .join('\n'));
+                      }
+                    },
+                    child: const Text('Create Role', style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () async {
-                    try {
-                      await GetIt.I<RolesRepository>().createFromInput(
-                        name: nameCtrl.text,
-                        description: descCtrl.text,
-                        permissionTokens: selectedScopes.toList(),
-                      );
-                      if (sheetCtx.mounted) Navigator.pop(sheetCtx);
-                    } on ValidationFailure catch (f) {
-                      setSheet(() => errorMsg = f.fieldErrors.entries
-                          .map((e) => '${e.key}: ${e.value.join(', ')}')
-                          .join('\n'));
-                    }
-                  },
-                  child: const Text('Create Role', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

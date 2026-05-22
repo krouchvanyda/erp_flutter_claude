@@ -9,6 +9,7 @@ import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/validators/validators.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 import '../../data/repositories/vendors_repository.dart';
 import '../../entities/vendor.dart';
 
@@ -138,10 +139,11 @@ class _VendorFormPageState extends State<VendorFormPage> {
               _Section(
                 title: 'ADDITIONAL NOTES',
                 children: [
-                  TextFormField(
+                  AppTextField(
                     controller: _notes,
+                    label: l10n.vendorFormNotesLabel,
+                    icon: Icons.note_rounded,
                     maxLines: 3,
-                    decoration: _inputDecoration(l10n.vendorFormNotesLabel, Icons.note_rounded),
                   ),
                 ],
               ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1, end: 0),
@@ -162,19 +164,6 @@ class _VendorFormPageState extends State<VendorFormPage> {
     );
   }
 
-  InputDecoration _inputDecoration(String label, IconData icon) {
-    final theme = Theme.of(context);
-    return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, size: 20),
-      filled: true,
-      fillColor: theme.colorScheme.surface,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.outlineVariant)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5))),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.primary, width: 2)),
-    );
-  }
-
   Widget _field(
     TextEditingController controller,
     String label,
@@ -184,11 +173,12 @@ class _VendorFormPageState extends State<VendorFormPage> {
     TextInputType? keyboardType,
     int maxLines = 1,
   }) {
-    return TextFormField(
+    return AppTextField(
       controller: controller,
+      label: label,
+      icon: icon,
       keyboardType: keyboardType,
       maxLines: maxLines,
-      decoration: _inputDecoration(label, icon),
       validator: (v) {
         final code = rule(v);
         if (code == null) return null;

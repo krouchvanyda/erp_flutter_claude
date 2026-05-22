@@ -8,6 +8,7 @@ import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/validators/validators.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 import '../../data/repositories/customers_repository.dart';
 import '../../entities/customer.dart';
 import 'customer_list_page.dart' show customerStatusLabel, customerSegmentLabel;
@@ -204,50 +205,20 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
                                 ),
                               ),
                               const SizedBox(height: 16),
-                              TextFormField(
+                              AppTextField(
                                 controller: _name,
-                                decoration: InputDecoration(
-                                  labelText: 'Company or Person Name',
-                                  prefixIcon: Icon(
-                                    Icons.person_outline,
-                                    color: theme.colorScheme.primary,
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      AppRadii.md,
-                                    ),
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 12,
-                                  ),
-                                ),
+                                label: 'Company or Person Name',
+                                icon: Icons.person_outline,
                                 validator: (v) => _resolve(
                                   l10n,
                                   Validators.required(v),
                                 ).ifEmptyToNull(),
                               ),
                               const SizedBox(height: 16),
-                              TextFormField(
+                              AppTextField(
                                 controller: _industry,
-                                decoration: InputDecoration(
-                                  labelText: 'Industry (Optional)',
-                                  prefixIcon: Icon(
-                                    Icons.domain_outlined,
-                                    color: theme.colorScheme.primary.withValues(
-                                      alpha: 0.6,
-                                    ),
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      AppRadii.md,
-                                    ),
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 12,
-                                  ),
-                                ),
+                                label: 'Industry (Optional)',
+                                icon: Icons.domain_outlined,
                               ),
                             ],
                           ),
@@ -286,78 +257,34 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         children: [
-                          TextFormField(
+                          AppTextField(
                             controller: _email,
+                            label: 'Email Address',
+                            icon: Icons.email_outlined,
                             keyboardType: TextInputType.emailAddress,
-                            decoration: InputDecoration(
-                              labelText: 'Email Address',
-                              prefixIcon: Icon(
-                                Icons.email_outlined,
-                                color: theme.colorScheme.primary,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(
-                                  AppRadii.md,
-                                ),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                            ),
+                            textCapitalization: TextCapitalization.none,
                             validator: (v) => _resolve(
                               l10n,
                               Validators.email(v),
                             ).ifEmptyToNull(),
                           ),
                           const SizedBox(height: 16),
-                          TextFormField(
+                          AppTextField(
                             controller: _phone,
+                            label: 'Phone Number',
+                            icon: Icons.phone_outlined,
                             keyboardType: TextInputType.phone,
-                            decoration: InputDecoration(
-                              labelText: 'Phone Number',
-                              prefixIcon: Icon(
-                                Icons.phone_outlined,
-                                color: theme.colorScheme.primary,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(
-                                  AppRadii.md,
-                                ),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                            ),
                             validator: (v) => _resolve(
                               l10n,
                               Validators.required(v),
                             ).ifEmptyToNull(),
                           ),
                           const SizedBox(height: 16),
-                          TextFormField(
+                          AppTextField(
                             controller: _billingAddress,
+                            label: 'Billing Address',
+                            icon: Icons.place_outlined,
                             maxLines: 3,
-                            decoration: InputDecoration(
-                              labelText: 'Billing Address',
-                              prefixIcon: Padding(
-                                padding: const EdgeInsets.only(bottom: 24),
-                                child: Icon(
-                                  Icons.place_outlined,
-                                  color: theme.colorScheme.primary,
-                                ),
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(
-                                  AppRadii.md,
-                                ),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                            ),
                             validator: (v) => _resolve(
                               l10n,
                               Validators.required(v),
@@ -450,30 +377,11 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
                             onChanged: (val) => setState(() => _status = val!),
                           ),
                           const SizedBox(height: 16),
-                          TextFormField(
+                          AppTextField(
                             controller: _notes,
+                            label: 'Notes / Remarks (Optional)',
+                            icon: Icons.notes_outlined,
                             maxLines: 3,
-                            decoration: InputDecoration(
-                              labelText: 'Notes / Remarks (Optional)',
-                              prefixIcon: Padding(
-                                padding: const EdgeInsets.only(bottom: 24),
-                                child: Icon(
-                                  Icons.notes_outlined,
-                                  color: theme.colorScheme.primary.withValues(
-                                    alpha: 0.6,
-                                  ),
-                                ),
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(
-                                  AppRadii.md,
-                                ),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                            ),
                           ),
                         ],
                       ),

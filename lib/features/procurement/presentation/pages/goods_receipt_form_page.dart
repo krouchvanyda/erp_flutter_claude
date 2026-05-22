@@ -9,6 +9,7 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 import '../../data/repositories/purchase_orders_repository.dart';
 import '../../entities/goods_receipt.dart';
 import '../../entities/purchase_order.dart';
@@ -205,16 +206,18 @@ class _Body extends StatelessWidget {
                 style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
-              TextFormField(
+              AppTextField(
                 controller: receivedBy,
-                decoration: _inputDecoration(context, l10n.goodsReceiptReceivedByLabel, Icons.person_rounded),
+                label: l10n.goodsReceiptReceivedByLabel,
+                icon: Icons.person_rounded,
                 validator: (v) => (v == null || v.trim().isEmpty) ? l10n.validatorRequired : null,
               ),
               const SizedBox(height: 16),
-              TextFormField(
+              AppTextField(
                 controller: note,
+                label: l10n.goodsReceiptNoteLabel,
+                icon: Icons.note_rounded,
                 maxLines: 2,
-                decoration: _inputDecoration(context, l10n.goodsReceiptNoteLabel, Icons.note_rounded),
               ),
             ],
           ).animate().fadeIn().slideY(begin: 0.1, end: 0),
@@ -269,18 +272,6 @@ class _Body extends StatelessWidget {
     );
   }
 
-  InputDecoration _inputDecoration(BuildContext context, String label, IconData icon) {
-    final theme = Theme.of(context);
-    return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, size: 20),
-      filled: true,
-      fillColor: theme.colorScheme.surface,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.outlineVariant)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5))),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.primary, width: 2)),
-    );
-  }
 }
 
 class _Section extends StatelessWidget {
@@ -373,19 +364,14 @@ class _LineRow extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          TextFormField(
+          AppTextField(
             controller: controller,
+            label: l10n.goodsReceiptQuantityLabel,
+            icon: Icons.add_shopping_cart_rounded,
             enabled: !isDisabled,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            textCapitalization: TextCapitalization.none,
             inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-            decoration: InputDecoration(
-              labelText: l10n.goodsReceiptQuantityLabel,
-              prefixIcon: const Icon(Icons.add_shopping_cart_rounded, size: 18),
-              isDense: true,
-              filled: true,
-              fillColor: isDisabled ? theme.colorScheme.surfaceContainerLow : theme.colorScheme.surface,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
-            ),
           ),
         ],
       ),

@@ -11,6 +11,7 @@ import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/validators/validators.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 import '../../data/repositories/items_repository.dart';
 import '../../data/repositories/stock_movements_repository.dart';
 import '../../entities/inventory_item.dart';
@@ -265,11 +266,14 @@ class _Body extends StatelessWidget {
           _Section(
             title: 'MOVEMENT DETAILS',
             children: [
-              TextFormField(
+              AppTextField(
                 controller: qtyCtrl,
+                label: l10n.inventoryFormQuantityLabel,
+                icon: Icons.numbers_rounded,
+                errorText: qtyError,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                textCapitalization: TextCapitalization.none,
                 inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-                decoration: _inputDecoration(context, l10n.inventoryFormQuantityLabel, Icons.numbers_rounded, errorText: qtyError),
                 validator: (v) {
                   final code = Validators.positiveNumber(v);
                   if (code == null) return null;
@@ -278,21 +282,20 @@ class _Body extends StatelessWidget {
                 },
               ),
               const SizedBox(height: 16),
-              TextFormField(
+              AppTextField(
                 controller: refCtrl,
-                decoration: _inputDecoration(
-                  context,
-                  l10n.inventoryFormReferenceLabel,
-                  Icons.receipt_long_rounded,
-                ).copyWith(
-                  hintText: isReceipt ? l10n.inventoryFormReferenceReceiptHint : l10n.inventoryFormReferenceIssueHint,
-                ),
+                label: l10n.inventoryFormReferenceLabel,
+                icon: Icons.receipt_long_rounded,
+                hintText: isReceipt
+                    ? l10n.inventoryFormReferenceReceiptHint
+                    : l10n.inventoryFormReferenceIssueHint,
               ),
               const SizedBox(height: 16),
-              TextFormField(
+              AppTextField(
                 controller: noteCtrl,
+                label: l10n.inventoryFormNoteLabel,
+                icon: Icons.notes_rounded,
                 maxLines: 2,
-                decoration: _inputDecoration(context, l10n.inventoryFormNoteLabel, Icons.notes_rounded),
               ),
             ],
           ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.05, end: 0),
@@ -315,21 +318,6 @@ class _Body extends StatelessWidget {
     );
   }
 
-  InputDecoration _inputDecoration(BuildContext context, String label, IconData icon, {String? errorText}) {
-    final theme = Theme.of(context);
-    return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, size: 20),
-      filled: true,
-      fillColor: theme.colorScheme.surface,
-      errorText: errorText,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.outlineVariant)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5))),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.primary, width: 2)),
-      errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.error, width: 1)),
-      focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.error, width: 2)),
-    );
-  }
 }
 
 class _Section extends StatelessWidget {

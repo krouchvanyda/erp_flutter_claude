@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -170,13 +171,13 @@ class _FormView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    TextFormField(
+                    AppTextField(
                       controller: emailController,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        prefixIcon: Icon(Icons.email_outlined),
-                        hintText: 'name@company.com',
-                      ),
+                      label: 'Email',
+                      icon: Icons.email_outlined,
+                      hintText: 'name@company.com',
+                      keyboardType: TextInputType.emailAddress,
+                      textCapitalization: TextCapitalization.none,
                       validator: (value) {
                         if (value == null || value.isEmpty) return 'Enter email';
                         return null;

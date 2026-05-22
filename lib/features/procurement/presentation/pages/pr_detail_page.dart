@@ -9,6 +9,7 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 import '../../data/repositories/purchase_orders_repository.dart';
 import '../../data/repositories/purchase_requests_repository.dart';
 import '../../data/repositories/vendors_repository.dart';
@@ -667,15 +668,13 @@ class _RejectReasonDialogState extends State<_RejectReasonDialog> {
       title: Text(l10n.prRejectDialogTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
       content: Form(
         key: _formKey,
-        child: TextFormField(
+        child: AppTextField(
           controller: _controller,
+          label: l10n.prRejectReasonLabel,
+          hintText: l10n.prRejectReasonHint,
+          icon: Icons.subject_rounded,
           autofocus: true,
           maxLines: 3,
-          decoration: InputDecoration(
-            labelText: l10n.prRejectReasonLabel,
-            hintText: l10n.prRejectReasonHint,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
-          ),
           validator: (v) => (v == null || v.trim().isEmpty) ? l10n.prRejectReasonRequired : null,
         ),
       ),

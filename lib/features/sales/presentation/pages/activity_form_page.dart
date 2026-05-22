@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/validators/validators.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 import '../../data/repositories/activities_repository.dart';
 import '../../entities/activity_event.dart';
 
@@ -97,25 +98,21 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
               onChanged: (t) => setState(() => _type = t ?? _type),
             ),
             const SizedBox(height: 12),
-            TextFormField(
+            AppTextField(
               controller: _summary,
+              label: l10n.salesActivitySummaryLabel,
+              icon: Icons.notes_outlined,
               maxLines: 3,
-              decoration: InputDecoration(
-                labelText: l10n.salesActivitySummaryLabel,
-                border: const OutlineInputBorder(),
-              ),
               validator: (v) =>
                   (v == null || v.trim().isEmpty)
                       ? l10n.validatorRequired
                       : null,
             ),
             const SizedBox(height: 12),
-            TextFormField(
+            AppTextField(
               controller: _actor,
-              decoration: InputDecoration(
-                labelText: l10n.salesActivityActorLabel,
-                border: const OutlineInputBorder(),
-              ),
+              label: l10n.salesActivityActorLabel,
+              icon: Icons.person_outline,
               validator: (v) {
                 final code = Validators.required(v);
                 return code == null ? null : l10n.validatorRequired;

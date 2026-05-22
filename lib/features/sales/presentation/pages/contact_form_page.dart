@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/validators/validators.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 import '../../data/repositories/contacts_repository.dart';
 import '../../entities/contact.dart';
 
@@ -117,44 +118,37 @@ class _ContactFormPageState extends State<ContactFormPage> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            TextFormField(
+            AppTextField(
               controller: _name,
-              decoration: InputDecoration(
-                labelText: l10n.salesContactNameLabel,
-                border: const OutlineInputBorder(),
-              ),
+              label: l10n.salesContactNameLabel,
+              icon: Icons.person_outline,
               validator: (v) =>
                   _resolve(l10n, Validators.required(v)).ifEmptyToNull(),
             ),
             const SizedBox(height: 12),
-            TextFormField(
+            AppTextField(
               controller: _role,
-              decoration: InputDecoration(
-                labelText: l10n.salesContactRoleLabel,
-                border: const OutlineInputBorder(),
-              ),
+              label: l10n.salesContactRoleLabel,
+              icon: Icons.badge_outlined,
               validator: (v) =>
                   _resolve(l10n, Validators.required(v)).ifEmptyToNull(),
             ),
             const SizedBox(height: 12),
-            TextFormField(
+            AppTextField(
               controller: _email,
+              label: l10n.salesContactEmailLabel,
+              icon: Icons.email_outlined,
               keyboardType: TextInputType.emailAddress,
-              decoration: InputDecoration(
-                labelText: l10n.salesContactEmailLabel,
-                border: const OutlineInputBorder(),
-              ),
+              textCapitalization: TextCapitalization.none,
               validator: (v) =>
                   _resolve(l10n, Validators.email(v)).ifEmptyToNull(),
             ),
             const SizedBox(height: 12),
-            TextFormField(
+            AppTextField(
               controller: _phone,
+              label: l10n.salesContactPhoneLabel,
+              icon: Icons.phone_outlined,
               keyboardType: TextInputType.phone,
-              decoration: InputDecoration(
-                labelText: l10n.salesContactPhoneLabel,
-                border: const OutlineInputBorder(),
-              ),
               validator: (v) =>
                   _resolve(l10n, Validators.required(v)).ifEmptyToNull(),
             ),

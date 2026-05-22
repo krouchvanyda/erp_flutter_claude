@@ -10,6 +10,7 @@ import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/validators/validators.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 
 class InvoiceFormPage extends StatefulWidget {
   const InvoiceFormPage({super.key, this.invoiceId});
@@ -140,9 +141,10 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
               _Section(
                 title: 'GENERAL INFORMATION',
                 children: [
-                  TextFormField(
+                  AppTextField(
                     controller: _customer,
-                    decoration: _inputDecoration(l10n.invoiceFormCustomerLabel, Icons.person_outline_rounded),
+                    label: l10n.invoiceFormCustomerLabel,
+                    icon: Icons.person_outline_rounded,
                     validator: (v) => _resolveError(l10n, Validators.required(v)).ifEmptyToNull(),
                   ),
                   const SizedBox(height: 16),
@@ -180,30 +182,35 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
               _Section(
                 title: 'LINE ITEM',
                 children: [
-                  TextFormField(
+                  AppTextField(
                     controller: _description,
-                    decoration: _inputDecoration(l10n.invoiceFormLineDescriptionLabel, Icons.description_outlined),
+                    label: l10n.invoiceFormLineDescriptionLabel,
+                    icon: Icons.description_outlined,
                     validator: (v) => _resolveError(l10n, Validators.required(v)).ifEmptyToNull(),
                   ),
                   const SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(
-                        child: TextFormField(
+                        child: AppTextField(
                           controller: _quantity,
+                          label: l10n.invoiceFormLineQuantityLabel,
+                          icon: Icons.format_list_numbered_rounded,
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          textCapitalization: TextCapitalization.none,
                           inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-                          decoration: _inputDecoration(l10n.invoiceFormLineQuantityLabel, Icons.format_list_numbered_rounded),
                           validator: (v) => _resolveError(l10n, Validators.positiveNumber(v)).ifEmptyToNull(),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: TextFormField(
+                        child: AppTextField(
                           controller: _unitPrice,
+                          label: l10n.invoiceFormLineUnitPriceLabel,
+                          icon: Icons.payments_outlined,
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          textCapitalization: TextCapitalization.none,
                           inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-                          decoration: _inputDecoration(l10n.invoiceFormLineUnitPriceLabel, Icons.payments_outlined),
                           validator: (v) => _resolveError(l10n, Validators.positiveNumber(v)).ifEmptyToNull(),
                         ),
                       ),
@@ -228,18 +235,6 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
     );
   }
 
-  InputDecoration _inputDecoration(String label, IconData icon) {
-    final theme = Theme.of(context);
-    return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, size: 20),
-      filled: true,
-      fillColor: theme.colorScheme.surface,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.outlineVariant)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5))),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md), borderSide: BorderSide(color: theme.colorScheme.primary, width: 2)),
-    );
-  }
 }
 
 class _Section extends StatelessWidget {

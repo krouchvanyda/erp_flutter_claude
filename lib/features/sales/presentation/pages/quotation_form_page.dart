@@ -11,6 +11,7 @@ import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/validators/validators.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 import '../../data/repositories/customers_repository.dart';
 import '../../data/repositories/quotations_repository.dart';
 import '../../entities/customer.dart';
@@ -386,14 +387,10 @@ class _LineEditor extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            TextFormField(
+            AppTextField(
               controller: draft.description,
-              decoration: InputDecoration(
-                labelText: l10n.salesQuotationLineDescriptionLabel,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
-                isDense: true,
-                prefixIcon: Icon(Icons.description_outlined, color: theme.colorScheme.primary.withValues(alpha: 0.6)),
-              ),
+              label: l10n.salesQuotationLineDescriptionLabel,
+              icon: Icons.description_outlined,
               validator: (v) {
                 final code = Validators.required(v);
                 if (code == null) return null;
@@ -405,20 +402,17 @@ class _LineEditor extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: TextFormField(
+                  child: AppTextField(
                     controller: draft.quantity,
+                    label: l10n.salesQuotationLineQuantityLabel,
+                    icon: Icons.shopping_basket_outlined,
                     keyboardType: const TextInputType.numberWithOptions(
                         decimal: true),
+                    textCapitalization: TextCapitalization.none,
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(
                           RegExp(r'[0-9.]')),
                     ],
-                    decoration: InputDecoration(
-                      labelText: l10n.salesQuotationLineQuantityLabel,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
-                      isDense: true,
-                      prefixIcon: Icon(Icons.shopping_basket_outlined, color: theme.colorScheme.primary.withValues(alpha: 0.6)),
-                    ),
                     validator: (v) {
                       final code = Validators.positiveNumber(v);
                       if (code == null) return null;
@@ -429,20 +423,17 @@ class _LineEditor extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: TextFormField(
+                  child: AppTextField(
                     controller: draft.unitPrice,
+                    label: l10n.salesQuotationLineUnitPriceLabel,
+                    icon: Icons.attach_money_outlined,
                     keyboardType: const TextInputType.numberWithOptions(
                         decimal: true),
+                    textCapitalization: TextCapitalization.none,
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(
                           RegExp(r'[0-9.]')),
                     ],
-                    decoration: InputDecoration(
-                      labelText: l10n.salesQuotationLineUnitPriceLabel,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
-                      isDense: true,
-                      prefixIcon: Icon(Icons.attach_money_outlined, color: theme.colorScheme.primary.withValues(alpha: 0.6)),
-                    ),
                     validator: (v) {
                       final code = Validators.positiveNumber(v);
                       if (code == null) return null;

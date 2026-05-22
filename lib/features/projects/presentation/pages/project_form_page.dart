@@ -9,9 +9,9 @@ import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../features/hr/data/repositories/employees_repository.dart';
 import '../../../../features/hr/entities/employee.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 import '../../data/repositories/projects_repository.dart';
 import '../../entities/project.dart';
-import 'package:flutter/services.dart';
 
 /// Slice 8.1.4 — Create / Edit Project charter form.
 ///
@@ -332,22 +332,25 @@ class _BasicInfoCard extends StatelessWidget {
     return _Card(
       child: Column(
         children: [
-          TextFormField(
+          AppTextField(
             controller: nameCtrl,
-            decoration: _dec(context, 'Project name', Icons.folder_special_rounded),
+            label: 'Project name',
+            icon: Icons.folder_special_rounded,
             validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
           ),
           const SizedBox(height: 12),
-          TextFormField(
+          AppTextField(
             controller: codeCtrl,
-            decoration: _dec(context, 'Project code', Icons.qr_code_2_rounded),
+            label: 'Project code',
+            icon: Icons.qr_code_2_rounded,
             textCapitalization: TextCapitalization.characters,
             validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
           ),
           const SizedBox(height: 12),
-          TextFormField(
+          AppTextField(
             controller: descCtrl,
-            decoration: _dec(context, 'Description', Icons.notes_rounded),
+            label: 'Description',
+            icon: Icons.notes_rounded,
             maxLines: 3,
           ),
         ],
@@ -477,11 +480,13 @@ class _BudgetCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _Card(
-      child: TextFormField(
+      child: AppTextField(
         controller: controller,
+        label: 'Budget (formatted)',
+        icon: Icons.attach_money_rounded,
         keyboardType: TextInputType.number,
-        decoration: _dec(context, 'Budget (formatted)', Icons.attach_money_rounded)
-            .copyWith(hintText: r'$120,000.00'),
+        textCapitalization: TextCapitalization.none,
+        hintText: r'$120,000.00',
       ),
     );
   }
@@ -641,32 +646,6 @@ class _SaveBar extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 //  helpers
 // ─────────────────────────────────────────────────────────────────────────────
-
-InputDecoration _dec(BuildContext context, String label, IconData icon) {
-  final theme = Theme.of(context);
-  return InputDecoration(
-    labelText: label,
-    prefixIcon: Icon(icon, size: 18, color: theme.colorScheme.primary),
-    filled: true,
-    fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      borderSide: BorderSide(
-        color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
-      ),
-    ),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      borderSide: BorderSide(
-        color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
-      ),
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.5),
-    ),
-  );
-}
 
 String _label(ProjectStatus s) {
   switch (s) {
