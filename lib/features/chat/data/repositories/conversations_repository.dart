@@ -35,6 +35,26 @@ class ConversationsRepository {
     return null;
   }
 
+  /// Slice 10.1.8 — return the local direct conversation whose other
+  /// participant is [employeeId], or null if no such conv exists.
+  ///
+  /// Used by `bootChatTransport` to redirect inbound direct messages
+  /// to the right local conv on the receiver's device. Without this,
+  /// a message Vibol sends in HIS conv-005 ("Pisey direct" on Vibol's
+  /// seed) would land in Pisey's conv-005 — which is *her* own
+  /// self-direct seed slot, not her chat with Vibol. By looking up
+  /// "my direct conv whose other participant is `senderId`" we land
+  /// the message in Pisey's conv-003 ("Vibol Sok") instead.
+  Future<ChatConversation?> findDirectWith(String employeeId) async {
+    for (final c in _seed) {
+      if (c.isGroup) continue;
+      for (final p in c.participantPreviews) {
+        if (p.employeeId == employeeId) return c;
+      }
+    }
+    return null;
+  }
+
   Stream<ChatConversation?> watchById(String id) async* {
     yield await findById(id);
     yield* _changes.stream.map((all) {

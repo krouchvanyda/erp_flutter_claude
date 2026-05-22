@@ -102,6 +102,22 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     super.dispose();
   }
 
+  /// Slice 10.1.8 — compute the recipient list for a message in the
+  /// current conversation. Direct: the other person; group: every member
+  /// except us. The transport tags the wire envelope with this list and
+  /// every peer's `bootChatTransport` drops messages whose targetIds
+  /// don't include them. Empty list (e.g. no participants loaded yet)
+  /// falls back to broadcast for back-compat.
+  Future<List<String>> _resolveTargetIds() async {
+    final conv = await _convRepo.findById(widget.conversationId);
+    if (conv == null) return const <String>[];
+    final me = _currentUserId;
+    return conv.participantPreviews
+        .where((p) => p.employeeId != me)
+        .map((p) => p.employeeId)
+        .toList(growable: false);
+  }
+
   Future<void> _send() async {
     final body = _inputCtrl.text.trim();
     if (body.isEmpty) return;
@@ -114,6 +130,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         replyTo = await _msgRepo.findById(_replyingToId!);
       }
       final now = DateTime.now();
+      final targetIds = await _resolveTargetIds();
       await _msgRepo.send(
         ChatMessage(
           id: '',
@@ -127,10 +144,14 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
           replyToSenderName: replyTo?.senderName,
           replyToPreview: replyTo?.body,
         ),
+        targetIds: targetIds,
       );
+      // The inbox tile renders its own "You: " prefix from
+      // `senderId == me`, so the body must NOT carry one too —
+      // otherwise the inbox would show "You: You: hi" (Slice 10.1.8).
       await _convRepo.updateLastMessage(
         id: widget.conversationId,
-        body: 'You: $body',
+        body: body,
         senderId: _currentUserId,
         senderName: _currentUserName,
         at: now,
@@ -410,6 +431,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       }
       final size = await file.length();
       final now = DateTime.now();
+      final targetIds = await _resolveTargetIds();
       await _msgRepo.send(
         ChatMessage(
           id: '',
@@ -422,10 +444,13 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
           fileSizeBytes: size,
           sentAt: now,
         ),
+        targetIds: targetIds,
       );
+      // Body is the raw preview ("📷 Photo") — the inbox tile prepends
+      // "You: " on its own when sender matches the current user.
       await _convRepo.updateLastMessage(
         id: widget.conversationId,
-        body: 'You: 📷 Photo',
+        body: '📷 Photo',
         senderId: _currentUserId,
         senderName: _currentUserName,
         type: 'image',
@@ -686,6 +711,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                     onPressed: () async {
                       Navigator.pop(sheetCtx);
                       final now = DateTime.now();
+                      final targetIds = await _resolveTargetIds();
                       await _msgRepo.send(
                         ChatMessage(
                           id: '',
@@ -697,10 +723,12 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                           voiceDurationSeconds: 3,
                           sentAt: now,
                         ),
+                        targetIds: targetIds,
                       );
+                      // Body is raw preview — inbox prefixes "You: ".
                       await _convRepo.updateLastMessage(
                         id: widget.conversationId,
-                        body: 'You: 🎤 Voice message · 0:03',
+                        body: '🎤 Voice message · 0:03',
                         senderId: _currentUserId,
                         senderName: _currentUserName,
                         type: 'voice',

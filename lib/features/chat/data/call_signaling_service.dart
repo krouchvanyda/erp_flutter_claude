@@ -35,8 +35,12 @@ class ActiveCall {
     required this.callType,
     required this.state,
     required this.startedAt,
+    required this.callerId,
     this.connectedAt,
     this.endReason,
+    this.conversationName,
+    this.isGroup = false,
+    this.conversationAvatarFilePath,
   });
 
   final String callId;
@@ -53,12 +57,38 @@ class ActiveCall {
   final DateTime startedAt;
   final DateTime? connectedAt;
 
+  /// Slice 10.2.10 — userId of whoever ORIGINATED the call (the
+  /// outgoing-invite sender). For outgoing this equals `settings.userId`;
+  /// for incoming this equals `event.callerId`. Used on hangup events
+  /// for group calls: only the caller's hangup ends the call for
+  /// everyone — a callee tapping End in a group just leaves their own
+  /// client (multi-party semantics, mirrors Telegram group calls).
+  final String callerId;
+
   /// Why the call ended — populated only when [state] is
   /// [CallSignalState.ended]. Drives the snackbar / label on the
   /// caller's screen ("X is on another call" vs generic "Call ended").
   /// Values: `'busy'`, `'declined'`, `'hangup'`, or `null` when not
   /// applicable yet.
   final String? endReason;
+
+  /// Slice 10.2.9 — name of the conversation the call belongs to.
+  /// For direct calls this equals [peerName] (so the sheet behaves the
+  /// same as before); for group calls this is the GROUP name so the
+  /// incoming sheet on Pisey / Channary's phone shows "TEST01" with
+  /// "Vibol is calling" as a subtitle, instead of just "Vibol".
+  final String? conversationName;
+
+  /// Slice 10.2.9 — true if the underlying conversation is a group.
+  /// Drives the incoming-sheet header layout (group avatar cluster +
+  /// "Group call" label).
+  final bool isGroup;
+
+  /// Slice 10.2.11 — local file path of the conversation's photo (set
+  /// via Slice 10.3.3 / 10.3.5). Surfaced on the incoming-call sheet
+  /// + call page hero so a group call to TEST01 with a custom photo
+  /// shows that photo instead of just an icon.
+  final String? conversationAvatarFilePath;
 
   ActiveCall copyWith({
     CallSignalState? state,
@@ -73,8 +103,12 @@ class ActiveCall {
         callType: callType,
         state: state ?? this.state,
         startedAt: startedAt,
+        callerId: callerId,
         connectedAt: connectedAt ?? this.connectedAt,
         endReason: endReason ?? this.endReason,
+        conversationName: conversationName,
+        isGroup: isGroup,
+        conversationAvatarFilePath: conversationAvatarFilePath,
       );
 }
 
@@ -107,6 +141,17 @@ class CallSignalingService {
   // Maps callId → callLog entry id so we can update on accept / end.
   final Map<String, String> _logIdByCallId = {};
 
+  /// Slice 10.2.11 — caller-only set of group callees currently joined
+  /// to the active call. Populated when we (the caller) receive a
+  /// CallAcceptEvent with an accepterId, drained as those callees
+  /// later send CallHangupEvent. When the set drains to empty in a
+  /// group call we auto-hangup so the caller isn't left alone with a
+  /// running timer after everyone else has bowed out (Telegram model:
+  /// last-person-out closes the call). Direct 1:1 calls ignore this
+  /// — there are only two parties and either side ending is already
+  /// canonical (Slice 10.2.10).
+  final Set<String> _activeCallees = {};
+
   /// Reactive view of the active call. Null = no call in flight.
   ///
   /// Backed by a [ValueNotifier] instead of a Stream so the overlay
@@ -127,6 +172,64 @@ class CallSignalingService {
     await _sub?.cancel();
     _ringTimeout?.cancel();
     activeCallListenable.dispose();
+  }
+
+  /// Slice 10.2.10 — Telegram-style call summary written to the conv's
+  /// `lastMessage` so the inbox tile shows recent call history inline
+  /// (no separate Calls tab required to know "Vibol called you 5 min
+  /// ago"). Hooked into every end path: local hangup, peer hangup, and
+  /// reject (both directions).
+  Future<void> _writeCallSummary(
+    ActiveCall active, {
+    required ChatCallStatus finalStatus,
+    required int durationSeconds,
+  }) async {
+    final isVideo = active.callType == ChatCallType.video;
+    final emoji = isVideo ? '📹' : '📞';
+    final kind = isVideo ? 'video' : 'voice';
+    String body;
+    switch (finalStatus) {
+      case ChatCallStatus.answered:
+        final m = (durationSeconds ~/ 60).toString().padLeft(1, '0');
+        final s = (durationSeconds % 60).toString().padLeft(2, '0');
+        body = '$emoji ${isVideo ? "Video" : "Voice"} call · $m:$s';
+      case ChatCallStatus.missed:
+      case ChatCallStatus.noAnswer:
+        body = '$emoji Missed $kind call';
+      case ChatCallStatus.rejected:
+        body = '$emoji Declined $kind call';
+    }
+    // Slice 10.2.11 — for DIRECT calls, redirect the summary to our
+    // own local direct conv with the peer (mirrors Slice 10.1.8 for
+    // messages). The seed reuses ids like conv-005 across devices, so
+    // writing the summary to active.conversationId on the callee
+    // would land it in the WRONG local tile. For groups the conv id
+    // is shared (via Slice 10.1.7 broadcast) and works as-is.
+    String targetConvId = active.conversationId;
+    if (!active.isGroup) {
+      final me = settings.userId;
+      // Find the OTHER party in this 1:1 call.
+      final otherId =
+          active.callerId == me ? active.peerId : active.callerId;
+      final localConv = await conversations.findDirectWith(otherId);
+      if (localConv != null) {
+        targetConvId = localConv.id;
+      }
+    }
+    try {
+      // Use `callerId` as senderId so the inbox renders "You: 📞 …"
+      // for the caller and the bare preview for the callee.
+      await conversations.updateLastMessage(
+        id: targetConvId,
+        body: body,
+        senderId: active.callerId,
+        senderName: active.peerName,
+        type: 'system',
+        at: DateTime.now(),
+      );
+    } catch (_) {
+      // Conv may not exist locally (e.g. seeded mismatch); swallow.
+    }
   }
 
   // ── Outbound (this device is the caller) ─────────────────────
@@ -193,7 +296,14 @@ class CallSignalingService {
       callType: callType,
       state: CallSignalState.outgoingRinging,
       startedAt: now,
+      callerId: me,
+      conversationName: conv?.name,
+      isGroup: conv?.isGroup ?? false,
+      conversationAvatarFilePath: conv?.avatarFilePath,
     );
+    // Slice 10.2.11 — fresh outgoing call, reset the joined-callees
+    // set so leftovers from a prior call can't confuse the auto-end.
+    _activeCallees.clear();
     _setActive(active);
 
     transport.sendCallInvite(
@@ -218,18 +328,33 @@ class CallSignalingService {
     final active = _active;
     if (active == null) return;
     final endedAt = DateTime.now();
-    transport.sendCallHangup(active.callId);
+    // Slice 10.2.10 — tag the hangup with our own id so group-call
+    // peers can tell whether to end the call for everyone (caller
+    // bowed out) or just ignore (one of N callees left, group call
+    // continues).
+    transport.sendCallHangup(
+      active.callId,
+      hangerUpperId: settings.userId,
+    );
     final duration = active.connectedAt == null
         ? 0
         : endedAt.difference(active.connectedAt!).inSeconds;
     final logId = _logIdByCallId.remove(active.callId);
+    final resolvedStatus =
+        duration > 0 ? ChatCallStatus.answered : finalStatus;
     if (logId != null) {
       await callLog.logEnded(
         id: logId,
         durationSeconds: duration,
-        finalStatus: duration > 0 ? ChatCallStatus.answered : finalStatus,
+        finalStatus: resolvedStatus,
       );
     }
+    // Slice 10.2.10 — surface the call summary on the inbox tile.
+    unawaited(_writeCallSummary(
+      active,
+      finalStatus: resolvedStatus,
+      durationSeconds: duration,
+    ));
     _setActive(active.copyWith(state: CallSignalState.ended));
     // Drop the active reference after a brief delay so the call page
     // can render the "ended" state before it pops itself.
@@ -249,7 +374,10 @@ class CallSignalingService {
     if (active == null || active.state != CallSignalState.incomingRinging) {
       return;
     }
-    transport.sendCallAccept(active.callId);
+    // Slice 10.2.11 — tag with our id so the caller can track which
+    // callees are currently joined and auto-end when the last one
+    // leaves a group call.
+    transport.sendCallAccept(active.callId, accepterId: settings.userId);
     final connectedAt = DateTime.now();
     final logId = _logIdByCallId[active.callId];
     if (logId != null) await callLog.logAnswered(logId);
@@ -274,6 +402,12 @@ class CallSignalingService {
         finalStatus: ChatCallStatus.rejected,
       );
     }
+    // Slice 10.2.10 — leave a "📞 Missed/Declined call" tile preview.
+    unawaited(_writeCallSummary(
+      active,
+      finalStatus: ChatCallStatus.rejected,
+      durationSeconds: 0,
+    ));
     _setActive(null);
   }
 
@@ -317,6 +451,11 @@ class CallSignalingService {
           at: startedAt,
         );
         _logIdByCallId[callId] = logged.id;
+        // Slice 10.2.9 — look up the local conv so the incoming sheet
+        // can show the GROUP name (e.g. "TEST01") with "Vibol is
+        // calling" as a subtitle, instead of just "Vibol". Direct
+        // calls keep showing the caller's name as the header.
+        final conv = await conversations.findById(conversationId);
         _setActive(ActiveCall(
           callId: callId,
           conversationId: conversationId,
@@ -325,11 +464,35 @@ class CallSignalingService {
           callType: callType,
           state: CallSignalState.incomingRinging,
           startedAt: startedAt,
+          callerId: callerId,
+          conversationName: conv?.name,
+          isGroup: conv?.isGroup ?? false,
+          conversationAvatarFilePath: conv?.avatarFilePath,
         ));
-      case CallAcceptEvent(:final callId):
+      case CallAcceptEvent(:final callId, :final accepterId):
         // Peer accepted our outgoing invite — transition to connected.
         final active = _active;
         if (active == null || active.callId != callId) return;
+        // Slice 10.2.8 — only the original caller should react to an
+        // accept event. In a group call every callee shares the same
+        // callId, so without this guard one callee tapping Accept
+        // would yank every OTHER callee straight from incomingRinging
+        // into connected, closing their incoming sheet without them
+        // ever choosing. Each callee gets to accept independently.
+        // Slice 10.2.11 extends this: once we (the caller) are in
+        // `connected`, subsequent group accepts still need to count
+        // toward the active-callee set so we know when the last
+        // callee leaves and can auto-end.
+        if (active.state != CallSignalState.outgoingRinging &&
+            active.state != CallSignalState.connected) {
+          return;
+        }
+        if (accepterId != null) _activeCallees.add(accepterId);
+        if (active.state == CallSignalState.connected) {
+          // Already connected (another callee joined first). Nothing
+          // to transition — the joiner is now tracked.
+          return;
+        }
         final connectedAt = DateTime.now();
         final logId = _logIdByCallId[callId];
         if (logId != null) await callLog.logAnswered(logId);
@@ -348,6 +511,12 @@ class CallSignalingService {
             finalStatus: ChatCallStatus.rejected,
           );
         }
+        // Slice 10.2.10 — caller-side summary on the inbox tile.
+        unawaited(_writeCallSummary(
+          active,
+          finalStatus: ChatCallStatus.rejected,
+          durationSeconds: 0,
+        ));
         _setActive(active.copyWith(
           state: CallSignalState.ended,
           endReason: reason ?? 'declined',
@@ -358,23 +527,58 @@ class CallSignalingService {
             _setActive(null);
           }
         });
-      case CallHangupEvent(:final callId):
+      case CallHangupEvent(:final callId, :final hangerUpperId):
         final active = _active;
         if (active == null || active.callId != callId) return;
+        // Slice 10.2.10 — multi-party group call semantics. When the
+        // hangup is from one of the OTHER callees in a group call
+        // (not the caller, not us), it means that one peer just left.
+        // The rest of us stay connected — the call continues, our
+        // timer keeps ticking. Only the caller's hangup ends the call
+        // for everyone. Direct calls (1:1) keep the old "either side
+        // ends it" behaviour because there's nobody else to stay
+        // connected with. Pre-10.2.10 clients on the wire don't send
+        // hangerUpperId, so null falls back to the old behaviour.
+        if (active.isGroup &&
+            hangerUpperId != null &&
+            hangerUpperId != active.callerId &&
+            hangerUpperId != settings.userId) {
+          // Slice 10.2.11 — if WE are the caller, the callee that
+          // just left was tracked in `_activeCallees`; drain them.
+          // When the set hits empty the call has no remaining
+          // participants and we auto-hangup so the caller isn't left
+          // alone with a running timer (mirrors Telegram's
+          // last-person-out behaviour for group calls).
+          final iAmCaller = active.callerId == settings.userId;
+          if (iAmCaller) {
+            _activeCallees.remove(hangerUpperId);
+            if (_activeCallees.isEmpty) {
+              unawaited(hangup(finalStatus: ChatCallStatus.answered));
+            }
+          }
+          return;
+        }
         final endedAt = DateTime.now();
         final duration = active.connectedAt == null
             ? 0
             : endedAt.difference(active.connectedAt!).inSeconds;
         final logId = _logIdByCallId.remove(callId);
+        final resolvedStatus = duration > 0
+            ? ChatCallStatus.answered
+            : ChatCallStatus.noAnswer;
         if (logId != null) {
           await callLog.logEnded(
             id: logId,
             durationSeconds: duration,
-            finalStatus: duration > 0
-                ? ChatCallStatus.answered
-                : ChatCallStatus.noAnswer,
+            finalStatus: resolvedStatus,
           );
         }
+        // Slice 10.2.10 — surface the call summary on the inbox tile.
+        unawaited(_writeCallSummary(
+          active,
+          finalStatus: resolvedStatus,
+          durationSeconds: duration,
+        ));
         _setActive(active.copyWith(state: CallSignalState.ended));
         Future.delayed(const Duration(milliseconds: 600), () {
           if (_active?.callId == active.callId &&
@@ -383,7 +587,7 @@ class CallSignalingService {
           }
         });
       default:
-        // Chat-message events handled elsewhere.
+        // Chat-message + conversation-create events handled elsewhere.
         break;
     }
   }

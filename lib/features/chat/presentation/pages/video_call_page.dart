@@ -343,6 +343,8 @@ class _RemoteVideoPlaceholder extends StatelessWidget {
               ChatAvatar(
                 name: conversation!.name,
                 size: 132,
+                // Slice 10.2.10 — show the group photo if one is set.
+                avatarFilePath: conversation!.avatarFilePath,
                 showStatus: false,
               ),
               const SizedBox(height: 16),
@@ -380,7 +382,12 @@ class _RemoteOffPlaceholder extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (conversation != null)
-            ChatAvatar(name: conversation!.name, size: 96, showStatus: false),
+            ChatAvatar(
+              name: conversation!.name,
+              size: 96,
+              avatarFilePath: conversation!.avatarFilePath,
+              showStatus: false,
+            ),
           const SizedBox(height: 16),
           const Icon(Icons.videocam_off_rounded, color: Colors.white54, size: 28),
           const SizedBox(height: 8),

@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 
+import '../../../../core/router/app_router.dart';
 import '../../data/call_signaling_service.dart';
 import '../../entities/call_log.dart';
 import '../pages/video_call_page.dart';
@@ -77,9 +80,10 @@ class _IncomingCallSheet extends StatelessWidget {
             children: [
               const SizedBox(height: 24),
               Text(
-                call.callType == ChatCallType.video
-                    ? 'Incoming video call'
-                    : 'Incoming voice call',
+                // Slice 10.2.9 — surface "Incoming group voice/video
+                // call" for group calls so the recipient knows it's not
+                // a 1:1 invite.
+                _typeLabel(call),
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.75),
                   fontWeight: FontWeight.w800,
@@ -88,31 +92,15 @@ class _IncomingCallSheet extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              Container(
-                width: 132,
-                height: 132,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.08),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    width: 2,
-                  ),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  _initialsFor(call.peerName),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 40,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
+              _IncomingAvatar(call: call),
               const SizedBox(height: 20),
               Text(
-                call.peerName,
+                // For groups the title is the GROUP name (e.g.
+                // "TEST01"). For direct calls it stays the caller's
+                // name.
+                call.isGroup
+                    ? (call.conversationName ?? 'Group call')
+                    : call.peerName,
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w900,
@@ -123,7 +111,11 @@ class _IncomingCallSheet extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Ringing…',
+                // Group calls add the caller as a subtitle so the
+                // recipient knows WHO started the call.
+                call.isGroup
+                    ? '${call.peerName} is calling…'
+                    : 'Ringing…',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.7),
                   fontSize: 16,
@@ -147,14 +139,25 @@ class _IncomingCallSheet extends StatelessWidget {
                         : Icons.call_rounded,
                     label: 'Accept',
                     color: Colors.green.shade600,
-                    onTap: () async {
+                    onTap: () {
                       final signaling = GetIt.I<CallSignalingService>();
-                      await signaling.acceptIncoming();
-                      if (!context.mounted) return;
-                      final navigator = Navigator.of(
-                        context,
-                        rootNavigator: true,
-                      );
+                      // Slice 10.2.9 — push via the root navigator's
+                      // GlobalKey, NOT `Navigator.of(context)`. The
+                      // overlay is mounted via `MaterialApp.builder` so
+                      // the GoRouter's Navigator is a SIBLING (inside
+                      // `child` in the Stack), not an ancestor of this
+                      // sheet — `Navigator.of(context)` would walk up
+                      // and find no Navigator at all, silently dropping
+                      // the push. That was the "accept just closes" bug
+                      // that survived Slice 10.2.8.
+                      final navigator = AppRouter.rootNavigatorKey.currentState;
+                      if (navigator == null) {
+                        // Should never happen in practice — the router
+                        // owns the key for the whole app lifetime — but
+                        // bail rather than crash if the gate's somehow
+                        // not yet mounted.
+                        return;
+                      }
                       navigator.push(
                         MaterialPageRoute(
                           builder: (_) => call.callType == ChatCallType.video
@@ -165,6 +168,10 @@ class _IncomingCallSheet extends StatelessWidget {
                           fullscreenDialog: true,
                         ),
                       );
+                      // Fire-and-forget — the call page subscribes to
+                      // the service and reacts to the connected state
+                      // transition on its own.
+                      signaling.acceptIncoming();
                     },
                   ),
                 ],
@@ -174,6 +181,67 @@ class _IncomingCallSheet extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  /// Slice 10.2.9 — top-bar label distinguishing group from direct
+  /// incoming calls.
+  static String _typeLabel(ActiveCall call) {
+    final isVideo = call.callType == ChatCallType.video;
+    if (call.isGroup) {
+      return isVideo ? 'Incoming group video call' : 'Incoming group voice call';
+    }
+    return isVideo ? 'Incoming video call' : 'Incoming voice call';
+  }
+}
+
+/// Slice 10.2.11 — incoming-sheet hero avatar. Prefers a user-set photo
+/// (groups: Slice 10.3.3 / direct: Slice 10.3.5) when present; falls
+/// back to a group icon for groups, or caller initials for direct
+/// calls.
+class _IncomingAvatar extends StatelessWidget {
+  const _IncomingAvatar({required this.call});
+  final ActiveCall call;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasPhoto =
+        (call.conversationAvatarFilePath ?? '').isNotEmpty;
+    return Container(
+      width: 132,
+      height: 132,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withValues(alpha: 0.08),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.18),
+          width: 2,
+        ),
+        image: hasPhoto
+            ? DecorationImage(
+                image: FileImage(File(call.conversationAvatarFilePath!)),
+                fit: BoxFit.cover,
+              )
+            : null,
+      ),
+      alignment: Alignment.center,
+      child: hasPhoto
+          ? null
+          : (call.isGroup
+              ? const Icon(
+                  Icons.groups_rounded,
+                  color: Colors.white,
+                  size: 56,
+                )
+              : Text(
+                  _initialsFor(call.peerName),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 40,
+                    letterSpacing: 0.5,
+                  ),
+                )),
     );
   }
 

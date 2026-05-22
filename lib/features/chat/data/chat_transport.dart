@@ -18,9 +18,19 @@ sealed class ChatTransportEvent {
 }
 
 /// Peer sent a new message — add to local seed without re-broadcasting.
+///
+/// [targetIds] is the list of user ids the message is addressed to.
+/// For direct conversations that's the single other person, for groups
+/// it's every member except the sender. The relay is broadcast-only
+/// (no identity awareness on the server), so each receiver filters on
+/// [targetIds.contains(settings.userId)] in `bootChatTransport` —
+/// without this, a Vibol → Pisey direct message would land in
+/// Channary's inbox as well (Slice 10.1.8). Empty list = pre-10.1.8
+/// "broadcast to everyone" for backwards compatibility.
 class MessageReceivedEvent extends ChatTransportEvent {
-  const MessageReceivedEvent(this.message);
+  const MessageReceivedEvent(this.message, {this.targetIds = const <String>[]});
   final ChatMessage message;
+  final List<String> targetIds;
 }
 
 /// Peer edited a message they previously sent.
@@ -84,10 +94,15 @@ class CallInviteEvent extends ChatTransportEvent {
 }
 
 /// Callee tapped Accept on the incoming sheet — both sides should
-/// transition to the "connected" state.
+/// transition to the "connected" state. For group calls, [accepterId]
+/// tells the caller WHICH callee joined so the caller can track the
+/// set of "in-call" peers and auto-end the call when the last one
+/// leaves (Slice 10.2.11). Optional for back-compat with pre-10.2.11
+/// clients on the wire.
 class CallAcceptEvent extends ChatTransportEvent {
-  const CallAcceptEvent({required this.callId});
+  const CallAcceptEvent({required this.callId, this.accepterId});
   final String callId;
+  final String? accepterId;
 }
 
 /// Callee tapped Reject (or the invite timed out on their device).
@@ -100,11 +115,104 @@ class CallRejectEvent extends ChatTransportEvent {
   final String? reason;
 }
 
-/// Either side pressed End — both should transition to "ended" and
-/// close the call page.
+/// Either side pressed End — for direct calls both sides transition to
+/// "ended". For group calls the receiver checks [hangerUpperId] against
+/// the original caller's id: only the caller's hangup ends the call
+/// for everyone (Slice 10.2.10). A callee tapping End just leaves
+/// their own client; the other group members stay connected.
 class CallHangupEvent extends ChatTransportEvent {
-  const CallHangupEvent({required this.callId});
+  const CallHangupEvent({required this.callId, this.hangerUpperId});
   final String callId;
+
+  /// User id of whoever pressed End. Optional for back-compat with
+  /// pre-10.2.10 clients on the wire — if null, falls back to the old
+  /// "everyone ends" behaviour.
+  final String? hangerUpperId;
+}
+
+/// Slice 10.1.7 — peer just created a group conversation that lists us
+/// as a member. The receiving device materialises the conversation in
+/// its local repo so it shows up in the inbox without needing a server
+/// round-trip. Direct conversations don't fan out (they're created
+/// implicitly the first time anyone sends a message).
+///
+/// [participantIds] includes the creator AND every invited member. Each
+/// callee filters on its own [participantIds.contains(settings.userId)]
+/// before applying — the relay still broadcasts to every socket.
+class ConversationCreatedEvent extends ChatTransportEvent {
+  const ConversationCreatedEvent({
+    required this.conversationId,
+    required this.name,
+    required this.isGroup,
+    required this.creatorId,
+    required this.creatorName,
+    required this.participantIds,
+    required this.createdAt,
+  });
+  final String conversationId;
+  final String name;
+  final bool isGroup;
+  final String creatorId;
+  final String creatorName;
+  final List<String> participantIds;
+  final DateTime createdAt;
+}
+
+/// Slice 10.3.4 — admin renamed a group on their device. Every other
+/// member's local conv gets updated so their inbox tile + AppBar
+/// reflect the new name. [participantIds] is used the same way as
+/// [ConversationCreatedEvent.participantIds] — receivers filter on
+/// their own id to ignore renames they're not part of.
+///
+/// Group avatar is NOT broadcast — it's a local `image_picker` file
+/// path, which is meaningless on a peer device. That stays per-device.
+class ConversationUpdatedEvent extends ChatTransportEvent {
+  const ConversationUpdatedEvent({
+    required this.conversationId,
+    required this.name,
+    required this.participantIds,
+  });
+  final String conversationId;
+  final String name;
+  final List<String> participantIds;
+}
+
+/// Slice 10.3.4 — the user changed their display name (currently via
+/// the chat identity switcher, eventually via the My Profile screen).
+/// Every other connected device updates its local direct conversation
+/// with this user so the AppBar title + inbox tile rename live.
+///
+/// [userId] is the chat identity that changed; [newName] is the value
+/// we want every peer to render going forward. Avatar would ride here
+/// too if we had a server to host it.
+class ProfileUpdatedEvent extends ChatTransportEvent {
+  const ProfileUpdatedEvent({required this.userId, required this.newName});
+  final String userId;
+  final String newName;
+}
+
+/// Slice 10.3.6 — admin set or cleared a group's avatar. Carries the
+/// raw image bytes (base64-encoded JPEG, sized down by image_picker to
+/// 1024×1024 / quality 85 ≈ 50–200 KB) so receivers can write them to
+/// their own local cache and use that path — local file paths from
+/// the sender are meaningless on a peer device. Set [avatarBase64] to
+/// null to clear the photo on every member.
+class ConversationAvatarUpdatedEvent extends ChatTransportEvent {
+  const ConversationAvatarUpdatedEvent({
+    required this.conversationId,
+    required this.participantIds,
+    required this.avatarBase64,
+    required this.fileExtension,
+  });
+  final String conversationId;
+  final List<String> participantIds;
+
+  /// Base64-encoded image bytes; null = "remove the photo".
+  final String? avatarBase64;
+
+  /// File extension (`.jpg` / `.png` / etc.) so the receiver can
+  /// reconstruct a sensible file name. Empty / null = default to `.jpg`.
+  final String? fileExtension;
 }
 
 /// Module 10 wire transport — wraps a [WebSocketChannel] connected to
@@ -247,7 +355,11 @@ class ChatTransport {
   ChatTransportEvent? _decode(String type, Map<String, dynamic> payload) {
     switch (type) {
       case 'message.send':
-        return MessageReceivedEvent(_decodeMessage(payload));
+        return MessageReceivedEvent(
+          _decodeMessage(payload),
+          targetIds:
+              (payload['targetIds'] as List?)?.cast<String>() ?? const <String>[],
+        );
       case 'message.edit':
         return MessageEditedEvent(
           messageId: payload['messageId'] as String,
@@ -277,14 +389,56 @@ class ChatTransport {
               const <String>[],
         );
       case 'call.accept':
-        return CallAcceptEvent(callId: payload['callId'] as String);
+        return CallAcceptEvent(
+          callId: payload['callId'] as String,
+          accepterId: payload['accepterId'] as String?,
+        );
       case 'call.reject':
         return CallRejectEvent(
           callId: payload['callId'] as String,
           reason: payload['reason'] as String?,
         );
       case 'call.hangup':
-        return CallHangupEvent(callId: payload['callId'] as String);
+        return CallHangupEvent(
+          callId: payload['callId'] as String,
+          hangerUpperId: payload['hangerUpperId'] as String?,
+        );
+      case 'conversation.create':
+        return ConversationCreatedEvent(
+          conversationId: payload['conversationId'] as String,
+          name: payload['name'] as String,
+          isGroup: payload['isGroup'] as bool? ?? true,
+          creatorId: payload['creatorId'] as String,
+          creatorName: payload['creatorName'] as String,
+          participantIds: (payload['participantIds'] as List?)
+                  ?.cast<String>() ??
+              const <String>[],
+          createdAt:
+              DateTime.tryParse(payload['createdAt'] as String? ?? '') ??
+                  DateTime.now(),
+        );
+      case 'conversation.update':
+        return ConversationUpdatedEvent(
+          conversationId: payload['conversationId'] as String,
+          name: payload['name'] as String,
+          participantIds: (payload['participantIds'] as List?)
+                  ?.cast<String>() ??
+              const <String>[],
+        );
+      case 'profile.update':
+        return ProfileUpdatedEvent(
+          userId: payload['userId'] as String,
+          newName: payload['newName'] as String,
+        );
+      case 'conversation.avatar.update':
+        return ConversationAvatarUpdatedEvent(
+          conversationId: payload['conversationId'] as String,
+          participantIds: (payload['participantIds'] as List?)
+                  ?.cast<String>() ??
+              const <String>[],
+          avatarBase64: payload['avatarBase64'] as String?,
+          fileExtension: payload['fileExtension'] as String?,
+        );
       default:
         return null;
     }
@@ -324,8 +478,14 @@ class ChatTransport {
   }
 
   // ── outbound ─────────────────────────────────────────────────
-  void sendMessage(ChatMessage message) {
-    _send('message.send', _encodeMessage(message));
+  void sendMessage(
+    ChatMessage message, {
+    List<String> targetIds = const <String>[],
+  }) {
+    _send('message.send', {
+      ..._encodeMessage(message),
+      if (targetIds.isNotEmpty) 'targetIds': targetIds,
+    });
   }
 
   void sendEdit(String messageId, String newBody) {
@@ -369,8 +529,11 @@ class ChatTransport {
     });
   }
 
-  void sendCallAccept(String callId) {
-    _send('call.accept', {'callId': callId});
+  void sendCallAccept(String callId, {String? accepterId}) {
+    _send('call.accept', {
+      'callId': callId,
+      if (accepterId != null) 'accepterId': accepterId,
+    });
   }
 
   void sendCallReject(String callId, {String? reason}) {
@@ -380,8 +543,80 @@ class ChatTransport {
     });
   }
 
-  void sendCallHangup(String callId) {
-    _send('call.hangup', {'callId': callId});
+  void sendCallHangup(String callId, {String? hangerUpperId}) {
+    _send('call.hangup', {
+      'callId': callId,
+      if (hangerUpperId != null) 'hangerUpperId': hangerUpperId,
+    });
+  }
+
+  /// Slice 10.1.7 — broadcast a freshly-created group so every member
+  /// device hydrates it locally. [participantIds] must include the
+  /// creator and every invited member; receivers filter on their own
+  /// id before applying.
+  void sendConversationCreate({
+    required String conversationId,
+    required String name,
+    required bool isGroup,
+    required String creatorId,
+    required String creatorName,
+    required List<String> participantIds,
+    required DateTime createdAt,
+  }) {
+    _send('conversation.create', {
+      'conversationId': conversationId,
+      'name': name,
+      'isGroup': isGroup,
+      'creatorId': creatorId,
+      'creatorName': creatorName,
+      'participantIds': participantIds,
+      'createdAt': createdAt.toIso8601String(),
+    });
+  }
+
+  /// Slice 10.3.4 — broadcast a group rename so every other member's
+  /// inbox tile + AppBar shows the new name without needing them to
+  /// re-open the chat.
+  void sendConversationUpdate({
+    required String conversationId,
+    required String name,
+    required List<String> participantIds,
+  }) {
+    _send('conversation.update', {
+      'conversationId': conversationId,
+      'name': name,
+      'participantIds': participantIds,
+    });
+  }
+
+  /// Slice 10.3.4 — broadcast a user-profile rename so every other
+  /// device renames the matching local direct conversation.
+  void sendProfileUpdate({
+    required String userId,
+    required String newName,
+  }) {
+    _send('profile.update', {
+      'userId': userId,
+      'newName': newName,
+    });
+  }
+
+  /// Slice 10.3.6 — broadcast a group avatar change. [avatarBase64] is
+  /// null to clear the photo; otherwise it's the raw image bytes
+  /// base64-encoded so every peer can write them locally and use that
+  /// path going forward.
+  void sendConversationAvatar({
+    required String conversationId,
+    required List<String> participantIds,
+    required String? avatarBase64,
+    required String? fileExtension,
+  }) {
+    _send('conversation.avatar.update', {
+      'conversationId': conversationId,
+      'participantIds': participantIds,
+      if (avatarBase64 != null) 'avatarBase64': avatarBase64,
+      if (fileExtension != null) 'fileExtension': fileExtension,
+    });
   }
 
   void _send(String type, Map<String, dynamic> payload) {

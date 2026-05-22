@@ -259,14 +259,27 @@ class _PulsingAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Slice 10.2.10 — render the group's photo when one has been set
+    // (Slice 10.3.3 stored it on `avatarFilePath`). Falls back to the
+    // 3-avatar cluster when no photo exists. Direct calls always use
+    // ChatAvatar — same as before.
+    final hasPhoto = (conversation.avatarFilePath ?? '').isNotEmpty;
     final avatar = conversation.isGroup
-        ? GroupAvatarCluster(
-            previews: conversation.participantPreviews,
-            size: 112,
-          )
+        ? (hasPhoto
+            ? ChatAvatar(
+                name: conversation.name,
+                size: 112,
+                avatarFilePath: conversation.avatarFilePath,
+                showStatus: false,
+              )
+            : GroupAvatarCluster(
+                previews: conversation.participantPreviews,
+                size: 112,
+              ))
         : ChatAvatar(
             name: conversation.name,
             size: 112,
+            avatarFilePath: conversation.avatarFilePath,
             showStatus: false,
           );
 

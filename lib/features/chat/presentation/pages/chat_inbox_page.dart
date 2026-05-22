@@ -453,7 +453,12 @@ class _Tile extends StatelessWidget {
             ),
             child: Row(
               children: [
-                if (conversation.isGroup)
+                // Slice 10.3.5 — user-set photo wins for both groups
+                // and direct convs. Groups fall back to the 3-avatar
+                // cluster; direct convs fall back to the initials
+                // gradient (handled inside ChatAvatar).
+                if (conversation.isGroup &&
+                    (conversation.avatarFilePath ?? '').isEmpty)
                   GroupAvatarCluster(
                     previews: conversation.participantPreviews,
                     size: 52,
@@ -462,7 +467,11 @@ class _Tile extends StatelessWidget {
                   ChatAvatar(
                     name: conversation.name,
                     size: 52,
-                    presence: conversation.presence,
+                    avatarFilePath: conversation.avatarFilePath,
+                    presence: conversation.isGroup
+                        ? null
+                        : conversation.presence,
+                    showStatus: !conversation.isGroup,
                   ),
                 const SizedBox(width: 12),
                 Expanded(

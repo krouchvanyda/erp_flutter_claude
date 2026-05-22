@@ -65,6 +65,13 @@ class MessagesRepository {
       case CallAcceptEvent():
       case CallRejectEvent():
       case CallHangupEvent():
+      // Group-creation + rename + user-profile + avatar envelopes are
+      // routed through bootChatTransport into ConversationsRepository;
+      // nothing for the messages repo.
+      case ConversationCreatedEvent():
+      case ConversationUpdatedEvent():
+      case ProfileUpdatedEvent():
+      case ConversationAvatarUpdatedEvent():
         break;
     }
   }
@@ -113,7 +120,10 @@ class MessagesRepository {
     return null;
   }
 
-  Future<ChatMessage> send(ChatMessage draft) async {
+  Future<ChatMessage> send(
+    ChatMessage draft, {
+    List<String> targetIds = const <String>[],
+  }) async {
     // Embed the sender id in the message id so two peers can't collide
     // on `msg-<microsec>` even if their clocks land in the same tick.
     final id = draft.id.isEmpty
@@ -125,7 +135,10 @@ class MessagesRepository {
     );
     _seed.add(stamped);
     _emit();
-    _transport?.sendMessage(stamped);
+    // Slice 10.1.8 — pass targetIds so the relay only delivers to the
+    // intended recipient(s). Empty list (legacy callers) keeps the old
+    // broadcast-to-everyone behaviour for back-compat.
+    _transport?.sendMessage(stamped, targetIds: targetIds);
     return stamped;
   }
 

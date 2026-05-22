@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:injectable/injectable.dart';
 
@@ -112,11 +113,22 @@ class AppRouter {
 
   final GoRouter config;
 
+  /// Slice 10.2.9 — handle on the root navigator GoRouter creates, so
+  /// widgets that live OUTSIDE the router subtree (e.g. the
+  /// [IncomingCallOverlay] mounted via `MaterialApp.builder`) can push
+  /// full-screen routes without depending on `Navigator.of(context)`.
+  /// Without this the accept-call button silently failed because the
+  /// overlay's context had no Navigator ancestor — the router's
+  /// Navigator was a sibling in the Stack, not above the overlay sheet.
+  static final GlobalKey<NavigatorState> rootNavigatorKey =
+      GlobalKey<NavigatorState>(debugLabel: 'rootNavigator');
+
   static GoRouter _build(
     AuthSession session,
     PermissionsSnapshot permissions,
   ) =>
       GoRouter(
+        navigatorKey: rootNavigatorKey,
         initialLocation: RoutePaths.splash,
         debugLogDiagnostics: kDebugMode,
         // Either signal triggers a redirect re-evaluation. Listenable.merge

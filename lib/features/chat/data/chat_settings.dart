@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'chat_seed.dart';
+import 'chat_transport.dart';
 
 /// Persistent demo settings for the chat module — current user identity
 /// and the WebSocket relay URL the [ChatTransport] connects to.
@@ -51,12 +53,25 @@ class ChatSettings {
 
   Future<void> setIdentity({required String userId, required String userName}) async {
     if (userId == _userId && userName == _userName) return;
+    final nameChanged = userId == _userId && userName != _userName;
     _userId = userId;
     _userName = userName;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kUserId, userId);
     await prefs.setString(_kUserName, userName);
     _emit();
+    // Slice 10.3.4 — when the same user keeps their id but updates
+    // their display name, broadcast so every peer renames its local
+    // direct conv with us. Identity SWITCHES (different userId)
+    // don't fire this — the transport reconnects with the new
+    // identity anyway, and we don't want to clobber the original
+    // user's name on peers.
+    if (nameChanged && GetIt.I.isRegistered<ChatTransport>()) {
+      GetIt.I<ChatTransport>().sendProfileUpdate(
+        userId: userId,
+        newName: userName,
+      );
+    }
   }
 
   Future<void> setRelayUrl(String url) async {

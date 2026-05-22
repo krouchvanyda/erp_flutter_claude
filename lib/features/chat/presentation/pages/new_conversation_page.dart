@@ -9,6 +9,7 @@ import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/chat_seed.dart';
 import '../../data/chat_settings.dart';
+import '../../data/chat_transport.dart';
 import '../../data/repositories/conversations_repository.dart';
 import '../../entities/conversation.dart';
 import '../widgets/chat_avatar.dart';
@@ -110,6 +111,27 @@ class _NewConversationPageState extends State<NewConversationPage> {
         );
       }
       final created = await repo.create(draft);
+      // Slice 10.1.7 — broadcast group creation so every invited member
+      // hydrates the conversation locally. Direct convs don't broadcast
+      // (they materialise implicitly on the first message exchange).
+      if (_mode == _Mode.group) {
+        final settings = GetIt.I<ChatSettings>();
+        // Wire payload includes the creator AND every invited member so
+        // each callee can verify it's actually addressed to them.
+        final participantIds = <String>[
+          settings.userId,
+          ..._selected,
+        ];
+        GetIt.I<ChatTransport>().sendConversationCreate(
+          conversationId: created.id,
+          name: created.name,
+          isGroup: true,
+          creatorId: settings.userId,
+          creatorName: settings.userName,
+          participantIds: participantIds,
+          createdAt: now,
+        );
+      }
       if (!mounted) return;
       Navigator.pop(context);
       await ConfigRouter.pushPageAnimation(

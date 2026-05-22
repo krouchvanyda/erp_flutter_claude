@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -13,6 +14,7 @@ import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/chat_seed.dart';
 import '../../data/chat_settings.dart';
+import '../../data/chat_transport.dart';
 import '../../data/repositories/call_log_repository.dart';
 import '../../data/repositories/conversations_repository.dart';
 import '../../data/repositories/messages_repository.dart';
@@ -134,9 +136,11 @@ class _Hero extends StatelessWidget {
               shape: const CircleBorder(),
               clipBehavior: Clip.antiAlias,
               child: InkWell(
-                onTap: isGroup
-                    ? () => _showChangePhotoSheet(context, conversation)
-                    : null,
+                // Slice 10.3.5 — direct chats are now tappable too, so
+                // the user can set a per-device photo for that contact
+                // (Telegram "Set contact photo" pattern). Groups keep
+                // the existing 10.3.3 behaviour.
+                onTap: () => _showChangePhotoSheet(context, conversation),
                 customBorder: const CircleBorder(),
                 child: SizedBox(
                   width: 96,
@@ -156,30 +160,35 @@ class _Hero extends StatelessWidget {
                       : ChatAvatar(
                           name: conversation.name,
                           size: 96,
+                          // Slice 10.3.5 — direct hero now honours the
+                          // user-set photo (drives the inbox tile too
+                          // via the same `ChatAvatar(avatarFilePath:)`).
+                          avatarFilePath: conversation.avatarFilePath,
                           presence: conversation.presence,
                         ),
                 ),
               ),
             ),
-            if (isGroup)
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: theme.colorScheme.surface,
-                    width: 2,
-                  ),
-                ),
-                alignment: Alignment.center,
-                child: Icon(
-                  Icons.camera_alt_rounded,
-                  size: 14,
-                  color: theme.colorScheme.onPrimary,
+            // Camera badge — always shown now that both groups AND
+            // direct convs are editable.
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: theme.colorScheme.surface,
+                  width: 2,
                 ),
               ),
+              alignment: Alignment.center,
+              child: Icon(
+                Icons.camera_alt_rounded,
+                size: 14,
+                color: theme.colorScheme.onPrimary,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 14),
@@ -1307,7 +1316,24 @@ Future<void> _showRenameSheet(
     builder: (_) => _RenameGroupSheet(initialName: conversation.name),
   );
   if (name == null || name.trim().isEmpty || !context.mounted) return;
-  await GetIt.I<ConversationsRepository>().rename(conversation.id, name.trim());
+  final trimmed = name.trim();
+  await GetIt.I<ConversationsRepository>().rename(conversation.id, trimmed);
+  // Slice 10.3.4 — fan the rename out to every other member so their
+  // inbox tile + AppBar pick up "TEST01" without needing them to
+  // re-open the group. participantIds includes self so each peer can
+  // filter on "am I in this group?" before applying.
+  if (conversation.isGroup) {
+    final me = GetIt.I<ChatSettings>().userId;
+    final participantIds = <String>[
+      me,
+      ...conversation.participantPreviews.map((p) => p.employeeId),
+    ];
+    GetIt.I<ChatTransport>().sendConversationUpdate(
+      conversationId: conversation.id,
+      name: trimmed,
+      participantIds: participantIds,
+    );
+  }
 }
 
 class _RenameGroupSheet extends StatefulWidget {
@@ -1429,6 +1455,14 @@ class _RenameGroupSheetState extends State<_RenameGroupSheet> {
   }
 }
 
+/// Slice 10.3.5 — wording for the change-photo sheet header. Direct
+/// chats read "Change/Add contact photo", groups read "Change/Add
+/// group photo" — same sheet, two contexts.
+String _photoSheetTitle(ChatConversation conversation, bool hasPhoto) {
+  final what = conversation.isGroup ? 'group photo' : 'contact photo';
+  return hasPhoto ? 'Change $what' : 'Add a $what';
+}
+
 Future<void> _showChangePhotoSheet(
   BuildContext context,
   ChatConversation conversation,
@@ -1459,7 +1493,9 @@ Future<void> _showChangePhotoSheet(
             ),
             const SizedBox(height: 16),
             Text(
-              hasPhoto ? 'Change group photo' : 'Add a group photo',
+              // Slice 10.3.5 — wording adapts to direct vs group so
+              // the sheet reads naturally in both contexts.
+              _photoSheetTitle(conversation, hasPhoto),
               style: theme.textTheme.titleMedium
                   ?.copyWith(fontWeight: FontWeight.w800),
             ),
@@ -1493,6 +1529,15 @@ Future<void> _showChangePhotoSheet(
                   Navigator.pop(sheetCtx);
                   await GetIt.I<ConversationsRepository>()
                       .setAvatarPath(conversation.id, null);
+                  // Slice 10.3.6 — propagate the clear to peers so
+                  // every group member's tile drops the photo too.
+                  if (conversation.isGroup) {
+                    _broadcastAvatar(
+                      conversation: conversation,
+                      avatarBase64: null,
+                      fileExtension: null,
+                    );
+                  }
                 },
               ),
             ],
@@ -1530,6 +1575,20 @@ Future<void> _pickGroupPhoto(
     }
     await GetIt.I<ConversationsRepository>()
         .setAvatarPath(conversation.id, picked.path);
+    // Slice 10.3.6 — for groups, fan the image bytes out to every
+    // member so their inbox tile + AppBar + call hero all pick up
+    // the new photo. Per-device-only for direct convs (Slice 10.3.5).
+    if (conversation.isGroup) {
+      final bytes = await file.readAsBytes();
+      final ext = picked.name.contains('.')
+          ? '.${picked.name.split('.').last.toLowerCase()}'
+          : '.jpg';
+      _broadcastAvatar(
+        conversation: conversation,
+        avatarBase64: base64Encode(bytes),
+        fileExtension: ext,
+      );
+    }
   } catch (e) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1539,6 +1598,26 @@ Future<void> _pickGroupPhoto(
       ),
     );
   }
+}
+
+/// Slice 10.3.6 — fire-and-forget broadcast helper. participantIds
+/// includes self so every peer can run the same membership filter.
+void _broadcastAvatar({
+  required ChatConversation conversation,
+  required String? avatarBase64,
+  required String? fileExtension,
+}) {
+  final me = GetIt.I<ChatSettings>().userId;
+  final participantIds = <String>[
+    me,
+    ...conversation.participantPreviews.map((p) => p.employeeId),
+  ];
+  GetIt.I<ChatTransport>().sendConversationAvatar(
+    conversationId: conversation.id,
+    participantIds: participantIds,
+    avatarBase64: avatarBase64,
+    fileExtension: fileExtension,
+  );
 }
 
 class _PhotoOptionTile extends StatelessWidget {
