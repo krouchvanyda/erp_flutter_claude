@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/validators/validators.dart';
 import '../../../../shared/widgets/app_text_field.dart';
@@ -75,7 +77,13 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.salesActivityFormTitle)),
+      appBar: AppBar(
+        title: AppLabel(
+          text: l10n.salesActivityFormTitle,
+          fontSize: AppFontSize.value20,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
       body: Form(
         key: _formKey,
         autovalidateMode: AutovalidateMode.onUserInteraction,
@@ -92,7 +100,10 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
                 for (final t in _manualTypes)
                   DropdownMenuItem(
                     value: t,
-                    child: Text(activityTypeLabel(l10n, t)),
+                    child: AppLabel(
+                      text: activityTypeLabel(l10n, t),
+                      fontSize: AppFontSize.value14,
+                    ),
                   ),
               ],
               onChanged: (t) => setState(() => _type = t ?? _type),
@@ -122,7 +133,11 @@ class _ActivityFormPageState extends State<ActivityFormPage> {
             FilledButton.icon(
               onPressed: _submit,
               icon: const Icon(Icons.check),
-              label: Text(l10n.salesActivitySaveAction),
+              label: AppLabel(
+                text: l10n.salesActivitySaveAction,
+                fontSize: AppFontSize.value14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),

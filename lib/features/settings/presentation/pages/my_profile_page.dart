@@ -8,6 +8,8 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/error/failure.dart';
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -164,14 +166,13 @@ class _MyProfilePageState extends State<MyProfilePage> {
                 final enabled = snap.hasData;
                 return TextButton(
                   onPressed: enabled ? () => _enterEdit(snap.data!) : null,
-                  child: Text(
-                    'Edit',
-                    style: TextStyle(
-                      color: enabled
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.outline,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: AppLabel(
+                    text: 'Edit',
+                    fontSize: AppFontSize.value14,
+                    color: enabled
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.outline,
+                    fontWeight: FontWeight.bold,
                   ),
                 );
               },
@@ -179,12 +180,11 @@ class _MyProfilePageState extends State<MyProfilePage> {
           if (_editing)
             TextButton(
               onPressed: _saving ? null : _cancelEdit,
-              child: Text(
-                'Cancel',
-                style: TextStyle(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.bold,
-                ),
+              child: AppLabel(
+                text: 'Cancel',
+                fontSize: AppFontSize.value14,
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.bold,
               ),
             ),
         ],
@@ -289,12 +289,11 @@ class _MyProfilePageState extends State<MyProfilePage> {
                                 borderRadius:
                                     BorderRadius.circular(AppRadii.md),
                               ),
-                              child: Text(
-                                _errorMessage!,
-                                style: TextStyle(
-                                  color: theme.colorScheme.onErrorContainer,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                              child: AppLabel(
+                                text: _errorMessage!,
+                                fontSize: AppFontSize.value14,
+                                color: theme.colorScheme.onErrorContainer,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ],
@@ -479,13 +478,12 @@ class _HeroCard extends StatelessWidget {
                     onTap: onPickAvatar,
                   ),
                   const SizedBox(height: 14),
-                  Text(
-                    profile.name,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      color: theme.colorScheme.onPrimary,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.3,
-                    ),
+                  AppLabel(
+                    text: profile.name,
+                    fontSize: AppFontSize.value24,
+                    color: theme.colorScheme.onPrimary,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.3,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 6),
@@ -494,12 +492,11 @@ class _HeroCard extends StatelessWidget {
                     crossAxisAlignment: WrapCrossAlignment.center,
                     alignment: WrapAlignment.center,
                     children: [
-                      Text(
-                        profile.role,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onPrimary,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      AppLabel(
+                        text: profile.role,
+                        fontSize: AppFontSize.value14,
+                        color: theme.colorScheme.onPrimary,
+                        fontWeight: FontWeight.w700,
                       ),
                       Padding(
                         padding:
@@ -514,13 +511,12 @@ class _HeroCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      Text(
-                        profile.department,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onPrimary
-                              .withValues(alpha: 0.85),
-                          fontWeight: FontWeight.w600,
-                        ),
+                      AppLabel(
+                        text: profile.department,
+                        fontSize: AppFontSize.value14,
+                        color: theme.colorScheme.onPrimary
+                            .withValues(alpha: 0.85),
+                        fontWeight: FontWeight.w600,
                       ),
                     ],
                   ),
@@ -690,13 +686,12 @@ class _Avatar extends StatelessWidget {
             alignment: Alignment.center,
             child: hasPhoto
                 ? null
-                : Text(
-                    profile.displayInitials,
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      color: theme.colorScheme.onPrimary,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.5,
-                    ),
+                : AppLabel(
+                    text: profile.displayInitials,
+                    fontSize: AppFontSize.value32,
+                    color: theme.colorScheme.onPrimary,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.5,
                   ),
           ),
           // Online status dot (bottom-right).
@@ -805,26 +800,23 @@ class _MiniStat extends StatelessWidget {
           color: theme.colorScheme.onPrimary.withValues(alpha: 0.85),
         ),
         const SizedBox(height: 4),
-        Text(
-          value,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onPrimary,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.2,
-          ),
+        AppLabel(
+          text: value,
+          fontSize: AppFontSize.value14,
+          color: theme.colorScheme.onPrimary,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.2,
           textAlign: TextAlign.center,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: 2),
-        Text(
-          label.toUpperCase(),
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.onPrimary.withValues(alpha: 0.7),
-            fontWeight: FontWeight.w800,
-            fontSize: 8.5,
-            letterSpacing: 0.6,
-          ),
+        AppLabel(
+          text: label.toUpperCase(),
+          fontSize: AppFontSize.value9,
+          color: theme.colorScheme.onPrimary.withValues(alpha: 0.7),
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.6,
           textAlign: TextAlign.center,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -845,13 +837,12 @@ class _SectionLabel extends StatelessWidget {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(left: 8),
-      child: Text(
-        text.toUpperCase(),
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: theme.colorScheme.primary,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 0.5,
-        ),
+      child: AppLabel(
+        text: text.toUpperCase(),
+        fontSize: AppFontSize.value11,
+        color: theme.colorScheme.primary,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 0.5,
       ),
     );
   }
@@ -923,18 +914,17 @@ class _InfoRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w500,
-                  ),
+                AppLabel(
+                  text: label,
+                  fontSize: AppFontSize.value12,
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  value.isEmpty ? '—' : value,
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(fontWeight: FontWeight.w700),
+                AppLabel(
+                  text: value.isEmpty ? '—' : value,
+                  fontSize: AppFontSize.value14,
+                  fontWeight: FontWeight.w700,
                 ),
               ],
             ),
@@ -1092,14 +1082,13 @@ class _EditField extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Expanded(
-                child: Text(
-                  helper!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: helperTone == _HelperTone.warning
-                        ? Colors.orange.shade800
-                        : theme.colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                  ),
+                child: AppLabel(
+                  text: helper!,
+                  fontSize: AppFontSize.value12,
+                  color: helperTone == _HelperTone.warning
+                      ? Colors.orange.shade800
+                      : theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
@@ -1241,17 +1230,16 @@ class _PersonalEditCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Birthdate',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                              fontWeight: FontWeight.w600,
-                            ),
+                          AppLabel(
+                            text: 'Birthdate',
+                            fontSize: AppFontSize.value12,
+                            color: theme.colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
                           ),
-                          Text(
-                            df.format(birthdate),
-                            style: theme.textTheme.bodyMedium
-                                ?.copyWith(fontWeight: FontWeight.w700),
+                          AppLabel(
+                            text: df.format(birthdate),
+                            fontSize: AppFontSize.value14,
+                            fontWeight: FontWeight.w700,
                           ),
                         ],
                       ),
@@ -1325,17 +1313,16 @@ class _ReadOnlyField extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                  ),
+                AppLabel(
+                  text: label,
+                  fontSize: AppFontSize.value12,
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
                 ),
-                Text(
-                  value,
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(fontWeight: FontWeight.w700),
+                AppLabel(
+                  text: value,
+                  fontSize: AppFontSize.value14,
+                  fontWeight: FontWeight.w700,
                 ),
               ],
             ),
@@ -1349,13 +1336,11 @@ class _ReadOnlyField extends StatelessWidget {
                 color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
               ),
             ),
-            child: Text(
-              hint,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-                fontSize: 9,
-              ),
+            child: AppLabel(
+              text: hint,
+              fontSize: AppFontSize.value9,
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
@@ -1410,9 +1395,10 @@ class _SaveBar extends StatelessWidget {
                     borderRadius: BorderRadius.circular(AppRadii.md),
                   ),
                 ),
-                child: const Text(
-                  'Cancel',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                child: const AppLabel(
+                  text: 'Cancel',
+                  fontSize: AppFontSize.value14,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
@@ -1436,9 +1422,10 @@ class _SaveBar extends StatelessWidget {
                           color: Colors.white,
                         ),
                       )
-                    : const Text(
-                        'Save changes',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                    : const AppLabel(
+                        text: 'Save changes',
+                        fontSize: AppFontSize.value14,
+                        fontWeight: FontWeight.bold,
                       ),
               ),
             ),
@@ -1544,21 +1531,19 @@ class _SecurityCardState extends State<_SecurityCard> {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    'Last login: ${df.format(widget.profile.lastLoginAt)}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  child: AppLabel(
+                    text: 'Last login: ${df.format(widget.profile.lastLoginAt)}',
+                    fontSize: AppFontSize.value12,
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 Flexible(
-                  child: Text(
-                    widget.profile.lastLoginDevice,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  child: AppLabel(
+                    text: widget.profile.lastLoginDevice,
+                    fontSize: AppFontSize.value12,
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.end,
                   ),
@@ -1619,17 +1604,15 @@ class _SecurityRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                  AppLabel(
+                    text: title,
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.w700,
                   ),
-                  Text(
-                    subtitle,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
+                  AppLabel(
+                    text: subtitle,
+                    fontSize: AppFontSize.value12,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ],
               ),
@@ -1641,13 +1624,11 @@ class _SecurityRow extends StatelessWidget {
                     .withValues(alpha: 0.45),
                 borderRadius: BorderRadius.circular(AppRadii.pill),
               ),
-              child: Text(
-                'RE-AUTH',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onTertiaryContainer,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 9,
-                ),
+              child: AppLabel(
+                text: 'RE-AUTH',
+                fontSize: AppFontSize.value9,
+                color: theme.colorScheme.onTertiaryContainer,
+                fontWeight: FontWeight.w900,
               ),
             ),
             const SizedBox(width: 6),
@@ -1695,19 +1676,17 @@ class _BiometricSwitchRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Biometric unlock',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                AppLabel(
+                  text: 'Biometric unlock',
+                  fontSize: AppFontSize.value14,
+                  fontWeight: FontWeight.w700,
                 ),
-                Text(
-                  enabled
+                AppLabel(
+                  text: enabled
                       ? 'Tap to disable — re-auth not required'
                       : 'Re-auth required to enable',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+                  fontSize: AppFontSize.value12,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ],
             ),
@@ -1806,20 +1785,19 @@ class _ReAuthSheetState extends State<_ReAuthSheet> {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  widget.title,
-                  style: theme.textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.bold),
+                child: AppLabel(
+                  text: widget.title,
+                  fontSize: AppFontSize.value16,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            widget.message,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+          AppLabel(
+            text: widget.message,
+            fontSize: AppFontSize.value12,
+            color: theme.colorScheme.onSurfaceVariant,
           ),
           const SizedBox(height: 16),
           TextField(
@@ -1847,9 +1825,10 @@ class _ReAuthSheetState extends State<_ReAuthSheet> {
                       borderRadius: BorderRadius.circular(AppRadii.md),
                     ),
                   ),
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                  child: const AppLabel(
+                    text: 'Cancel',
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -1867,9 +1846,10 @@ class _ReAuthSheetState extends State<_ReAuthSheet> {
                       borderRadius: BorderRadius.circular(AppRadii.md),
                     ),
                   ),
-                  child: const Text(
-                    'Confirm',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                  child: const AppLabel(
+                    text: 'Confirm',
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),

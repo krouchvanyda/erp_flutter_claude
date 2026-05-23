@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
@@ -193,12 +195,11 @@ class _NotificationTile extends StatelessWidget {
                       Row(
                         children: [
                           Expanded(
-                            child: Text(
-                              notification.title,
-                              style: theme.textTheme.bodyLarge?.copyWith(
-                                fontWeight: isUnread ? FontWeight.bold : FontWeight.w600,
-                                color: isUnread ? theme.colorScheme.primary : theme.colorScheme.onSurface,
-                              ),
+                            child: AppLabel(
+                              text: notification.title,
+                              fontSize: AppFontSize.value16,
+                              fontWeight: isUnread ? FontWeight.bold : FontWeight.w600,
+                              color: isUnread ? theme.colorScheme.primary : theme.colorScheme.onSurface,
                             ),
                           ),
                           if (isUnread)
@@ -213,20 +214,18 @@ class _NotificationTile extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        notification.body,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+                      AppLabel(
+                        text: notification.body,
+                        fontSize: AppFontSize.value14,
+                        color: theme.colorScheme.onSurfaceVariant,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        'Recently', // TODO: Use real timestamp formatter
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.outline,
-                        ),
+                      AppLabel(
+                        text: 'Recently',
+                        fontSize: AppFontSize.value11,
+                        color: theme.colorScheme.outline,
                       ),
                     ],
                   ),
@@ -288,13 +287,12 @@ class _CenteredMessage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            Text(
-              text, 
+            AppLabel(
+              text: text,
+              fontSize: AppFontSize.value16,
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
-              ),
             ),
           ],
         ),

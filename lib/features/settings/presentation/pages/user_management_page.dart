@@ -4,6 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../core/error/failure.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -80,9 +82,10 @@ class _UserManagementPageState extends State<UserManagementPage> {
                           .toList();
                       if (users.isEmpty) {
                         return const Center(
-                          child: Text(
-                            'No users match the selected status.',
-                            style: TextStyle(fontWeight: FontWeight.w500),
+                          child: AppLabel(
+                            text: 'No users match the selected status.',
+                            fontSize: AppFontSize.value14,
+                            fontWeight: FontWeight.w500,
                           ),
                         );
                       }
@@ -111,7 +114,11 @@ class _UserManagementPageState extends State<UserManagementPage> {
         onPressed: _showInviteSheet,
         elevation: 4,
         icon: const Icon(Icons.person_add),
-        label: const Text('Invite User', style: TextStyle(fontWeight: FontWeight.bold)),
+        label: const AppLabel(
+          text: 'Invite User',
+          fontSize: AppFontSize.value14,
+          fontWeight: FontWeight.bold,
+        ),
       ).animate().scale(delay: 200.ms, duration: 250.ms),
     );
   }
@@ -137,13 +144,13 @@ class _UserManagementPageState extends State<UserManagementPage> {
                 ]
               : [],
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
-            fontSize: 13,
-          ),
+        child: AppLabel(
+          text: label,
+          fontSize: AppFontSize.value13,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+          color: isSelected
+              ? theme.colorScheme.primary
+              : theme.colorScheme.onSurfaceVariant,
         ),
       ),
     );
@@ -188,9 +195,10 @@ class _UserManagementPageState extends State<UserManagementPage> {
                 ),
               ),
               const SizedBox(height: 16),
-              Text(
-                'Invite a new user',
-                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              const AppLabel(
+                text: 'Invite a new user',
+                fontSize: AppFontSize.value16,
+                fontWeight: FontWeight.bold,
               ),
               const SizedBox(height: 16),
               TextField(
@@ -211,9 +219,10 @@ class _UserManagementPageState extends State<UserManagementPage> {
                 ),
               ),
               const SizedBox(height: 16),
-              Text(
-                'Assign Roles',
-                style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+              const AppLabel(
+                text: 'Assign Roles',
+                fontSize: AppFontSize.value14,
+                fontWeight: FontWeight.bold,
               ),
               const SizedBox(height: 8),
               Wrap(
@@ -222,7 +231,10 @@ class _UserManagementPageState extends State<UserManagementPage> {
                 children: [
                   for (final r in allRoles)
                     FilterChip(
-                      label: Text(r.name),
+                      label: AppLabel(
+                        text: r.name,
+                        fontSize: AppFontSize.value13,
+                      ),
                       selected: selectedRoles.contains(r.id),
                       checkmarkColor: theme.colorScheme.primary,
                       selectedColor: theme.colorScheme.primaryContainer,
@@ -253,12 +265,11 @@ class _UserManagementPageState extends State<UserManagementPage> {
                     color: theme.colorScheme.errorContainer,
                     borderRadius: BorderRadius.circular(AppRadii.md),
                   ),
-                  child: Text(
-                    errorMsg!,
-                    style: TextStyle(
-                      color: theme.colorScheme.onErrorContainer,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  child: AppLabel(
+                    text: errorMsg!,
+                    fontSize: AppFontSize.value14,
+                    color: theme.colorScheme.onErrorContainer,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
@@ -291,7 +302,11 @@ class _UserManagementPageState extends State<UserManagementPage> {
                           .join('\n'));
                     }
                   },
-                  child: const Text('Send Invitation', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: const AppLabel(
+                    text: 'Send Invitation',
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -334,12 +349,11 @@ class _UserRow extends StatelessWidget {
           CircleAvatar(
             radius: 22,
             backgroundColor: _avatarColor(user.status, theme),
-            child: Text(
-              user.name.isEmpty ? '?' : user.name[0].toUpperCase(),
-              style: TextStyle(
-                color: _textColor(user.status, theme),
-                fontWeight: FontWeight.bold,
-              ),
+            child: AppLabel(
+              text: user.name.isEmpty ? '?' : user.name[0].toUpperCase(),
+              fontSize: AppFontSize.value16,
+              color: _textColor(user.status, theme),
+              fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(width: 14),
@@ -350,11 +364,10 @@ class _UserRow extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        user.name.isEmpty ? 'New User' : user.name,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      child: AppLabel(
+                        text: user.name.isEmpty ? 'New User' : user.name,
+                        fontSize: AppFontSize.value14,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -365,13 +378,11 @@ class _UserRow extends StatelessWidget {
                           color: theme.colorScheme.primaryContainer,
                           borderRadius: BorderRadius.circular(AppRadii.pill),
                         ),
-                        child: Text(
-                          'You',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            fontSize: 9,
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        child: AppLabel(
+                          text: 'You',
+                          fontSize: AppFontSize.value9,
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.bold,
                         ),
                       )
                     else
@@ -379,11 +390,10 @@ class _UserRow extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  user.email,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+                AppLabel(
+                  text: user.email,
+                  fontSize: AppFontSize.value12,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(height: 4),
                 Wrap(
@@ -396,13 +406,11 @@ class _UserRow extends StatelessWidget {
                           color: theme.colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(AppRadii.xs),
                         ),
-                        child: Text(
-                          role.replaceAll('role-', '').toUpperCase(),
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
+                        child: AppLabel(
+                          text: role.replaceAll('role-', '').toUpperCase(),
+                          fontSize: AppFontSize.value9,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                   ],
@@ -509,13 +517,11 @@ class _UserRow extends StatelessWidget {
         color: bg,
         borderRadius: BorderRadius.circular(AppRadii.pill),
       ),
-      child: Text(
-        s.name.toUpperCase(),
-        style: theme.textTheme.labelSmall?.copyWith(
-          fontSize: 9,
-          color: text,
-          fontWeight: FontWeight.bold,
-        ),
+      child: AppLabel(
+        text: s.name.toUpperCase(),
+        fontSize: AppFontSize.value9,
+        color: text,
+        fontWeight: FontWeight.bold,
       ),
     );
   }

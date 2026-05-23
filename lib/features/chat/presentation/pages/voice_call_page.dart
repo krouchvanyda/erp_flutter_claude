@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../data/call_signaling_service.dart';
 import '../../data/repositories/conversations_repository.dart';
 import '../../entities/call_log.dart';
@@ -181,14 +183,12 @@ class _VoiceCallPageState extends State<VoiceCallPage> {
                   children: [
                     const SizedBox(height: 8),
                     Center(
-                      child: Text(
-                        'Voice Call',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.6),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.2,
-                        ),
+                      child: AppLabel(
+                        text: 'Voice Call',
+                        fontSize: AppFontSize.value12,
+                        color: Colors.white.withValues(alpha: 0.6),
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.2,
                       ),
                     ),
                     const Spacer(),
@@ -199,24 +199,20 @@ class _VoiceCallPageState extends State<VoiceCallPage> {
                             _stage == _CallStage.ringing,
                       ),
                       const SizedBox(height: 24),
-                      Text(
-                        conv.name,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.5,
-                        ),
+                      AppLabel(
+                        text: conv.name,
+                        fontSize: AppFontSize.value25,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
                       ),
                       const SizedBox(height: 10),
-                      Text(
-                        _statusLabel,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.7),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        ),
+                      AppLabel(
+                        text: _statusLabel,
+                        fontSize: AppFontSize.value16,
+                        color: Colors.white.withValues(alpha: 0.7),
+                        fontWeight: FontWeight.w600,
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ],
                     if (_stage == _CallStage.connected) ...[
@@ -455,13 +451,11 @@ class _CircleButton extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.8),
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-          ),
+        AppLabel(
+          text: label,
+          fontSize: AppFontSize.value12,
+          color: Colors.white.withValues(alpha: 0.8),
+          fontWeight: FontWeight.w700,
         ),
       ],
     );
@@ -496,13 +490,11 @@ class _EndButton extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        Text(
-          'End',
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.8),
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-          ),
+        AppLabel(
+          text: 'End',
+          fontSize: AppFontSize.value12,
+          color: Colors.white.withValues(alpha: 0.8),
+          fontWeight: FontWeight.w700,
         ),
       ],
     );

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_label.dart';
 import '../../entities/conversation.dart';
 
 /// Circular avatar with initials fallback. Used for direct chats and
@@ -66,14 +67,12 @@ class ChatAvatar extends StatelessWidget {
             alignment: Alignment.center,
             child: hasPhoto
                 ? null
-                : Text(
-                    initials,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: size * 0.38,
-                      letterSpacing: 0.5,
-                    ),
+                : AppLabel(
+                    text: initials,
+                    fontSize: size * 0.38,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.5,
                   ),
           ),
           if (showStatus && presence != null)

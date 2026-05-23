@@ -7,6 +7,8 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -38,7 +40,6 @@ class _ListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
@@ -59,7 +60,11 @@ class _ListView extends StatelessWidget {
           const CustomerFormPage(),
         ),
         icon: const Icon(Icons.add),
-        label: const Text('New Customer', style: TextStyle(fontWeight: FontWeight.bold)),
+        label: const AppLabel(
+          text: 'New Customer',
+          fontSize: AppFontSize.value14,
+          fontWeight: FontWeight.bold,
+        ),
       ),
       body: DynamicStatusBar(
         child: Stack(
@@ -133,7 +138,10 @@ class _Toolbar extends StatelessWidget {
                       children: [
                         for (final s in CustomerStatus.values) ...[
                           FilterChip(
-                            label: Text(customerStatusLabel(l10n, s)),
+                            label: AppLabel(
+                              text: customerStatusLabel(l10n, s),
+                              fontSize: AppFontSize.value13,
+                            ),
                             selected: state.statusFilter.contains(s),
                             onSelected: (_) =>
                                 bloc.add(CustomerListStatusToggled(s)),
@@ -147,7 +155,10 @@ class _Toolbar extends StatelessWidget {
                         ],
                         for (final s in CustomerSegment.values) ...[
                           FilterChip(
-                            label: Text(customerSegmentLabel(l10n, s)),
+                            label: AppLabel(
+                              text: customerSegmentLabel(l10n, s),
+                              fontSize: AppFontSize.value13,
+                            ),
                             selected: state.segmentFilter.contains(s),
                             onSelected: (_) =>
                                 bloc.add(CustomerListSegmentToggled(s)),
@@ -197,7 +208,13 @@ class _SortMenu extends StatelessWidget {
           context.read<CustomerListBloc>().add(CustomerListSortChanged(s)),
       itemBuilder: (_) => [
         for (final s in CustomerSort.values)
-          PopupMenuItem(value: s, child: Text(_sortLabel(l10n, s))),
+          PopupMenuItem(
+            value: s,
+            child: AppLabel(
+              text: _sortLabel(l10n, s),
+              fontSize: AppFontSize.value14,
+            ),
+          ),
       ],
     );
   }
@@ -271,9 +288,10 @@ class _Tile extends StatelessWidget {
           title: Row(
             children: [
               Expanded(
-                child: Text(
-                  customer.name,
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                child: AppLabel(
+                  text: customer.name,
+                  fontSize: AppFontSize.value16,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
               CustomerStatusBadge(status: customer.status),
@@ -281,22 +299,22 @@ class _Tile extends StatelessWidget {
           ),
           subtitle: Padding(
             padding: const EdgeInsets.only(top: 4.0),
-            child: Text(
-              '${customerSegmentLabel(l10n, customer.segment)} • '
-              '${l10n.salesCustomersOnboardedLabel(_date.format(customer.onboardedAt.toLocal()))}',
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            child: AppLabel(
+              text:
+                  '${customerSegmentLabel(l10n, customer.segment)} • ${l10n.salesCustomersOnboardedLabel(_date.format(customer.onboardedAt.toLocal()))}',
+              fontSize: AppFontSize.value12,
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                customer.lifetimeValue,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.primary,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
+              AppLabel(
+                text: customer.lifetimeValue,
+                fontSize: AppFontSize.value14,
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
               const SizedBox(width: 4),
               Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6)),
@@ -326,9 +344,11 @@ class CustomerStatusBadge extends StatelessWidget {
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(AppRadii.sm),
       ),
-      child: Text(
-        customerStatusLabel(l10n, status),
-        style: theme.textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.bold),
+      child: AppLabel(
+        text: customerStatusLabel(l10n, status),
+        fontSize: AppFontSize.value11,
+        color: color,
+        fontWeight: FontWeight.bold,
       ),
     );
   }
@@ -356,13 +376,12 @@ class _CenteredMessage extends StatelessWidget {
                   size: 48, color: theme.colorScheme.primary),
             ),
             const SizedBox(height: 16),
-            Text(
-              text,
+            AppLabel(
+              text: text,
+              fontSize: AppFontSize.value14,
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
-              ),
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
             ),
           ],
         ),

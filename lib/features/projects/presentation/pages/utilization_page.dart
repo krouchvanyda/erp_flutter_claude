@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -81,11 +83,17 @@ class _UtilizationPageState extends State<UtilizationPage> {
                       segments: const [
                         ButtonSegment(
                           value: _Window.week,
-                          label: Text('This week'),
+                          label: AppLabel(
+                            text: 'This week',
+                            fontSize: AppFontSize.value13,
+                          ),
                         ),
                         ButtonSegment(
                           value: _Window.month,
-                          label: Text('This month'),
+                          label: AppLabel(
+                            text: 'This month',
+                            fontSize: AppFontSize.value13,
+                          ),
                         ),
                       ],
                       selected: {_window},
@@ -112,34 +120,31 @@ class _UtilizationPageState extends State<UtilizationPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'APPROVED HOURS VS TARGET',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.primary,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.5,
-                            ),
+                          AppLabel(
+                            text: 'APPROVED HOURS VS TARGET',
+                            fontSize: AppFontSize.value11,
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.5,
                           ),
                           const SizedBox(height: 4),
-                          Text(
-                            '${r.from.toIso8601String().split('T').first}  →  '
-                            '${r.to.toIso8601String().split('T').first}',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.outline,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          AppLabel(
+                            text:
+                                '${r.from.toIso8601String().split('T').first}  →  ${r.to.toIso8601String().split('T').first}',
+                            fontSize: AppFontSize.value12,
+                            color: theme.colorScheme.outline,
+                            fontWeight: FontWeight.bold,
                           ),
                           const SizedBox(height: 24),
                           if (buckets.isEmpty)
                             Padding(
                               padding: const EdgeInsets.symmetric(vertical: 40),
                               child: Center(
-                                child: Text(
-                                  'No approved hours in this window.',
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: theme.colorScheme.outline,
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                child: AppLabel(
+                                  text: 'No approved hours in this window.',
+                                  fontSize: AppFontSize.value14,
+                                  color: theme.colorScheme.outline,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                             )
@@ -233,13 +238,11 @@ class _UtilizationBarChart extends StatelessWidget {
               showTitles: true,
               reservedSize: 32,
               interval: yMax / 4,
-              getTitlesWidget: (v, _) => Text(
-                v.toInt().toString(),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.outline,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 10,
-                ),
+              getTitlesWidget: (v, _) => AppLabel(
+                text: v.toInt().toString(),
+                fontSize: AppFontSize.value10,
+                color: theme.colorScheme.outline,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ),
@@ -256,13 +259,11 @@ class _UtilizationBarChart extends StatelessWidget {
                 final short = name.split(' ').first;
                 return Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    short,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 10,
-                    ),
+                  child: AppLabel(
+                    text: short,
+                    fontSize: AppFontSize.value10,
+                    color: theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.bold,
                   ),
                 );
               },
@@ -316,19 +317,18 @@ class _LeaderRow extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text(
-                  bucket.employeeName,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                child: AppLabel(
+                  text: bucket.employeeName,
+                  fontSize: AppFontSize.value14,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-              Text(
-                '${bucket.loggedHours.toStringAsFixed(1)}h / ${bucket.targetHours.toStringAsFixed(0)}h',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+              AppLabel(
+                text:
+                    '${bucket.loggedHours.toStringAsFixed(1)}h / ${bucket.targetHours.toStringAsFixed(0)}h',
+                fontSize: AppFontSize.value12,
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
               const SizedBox(width: 8),
               Container(
@@ -337,13 +337,11 @@ class _LeaderRow extends StatelessWidget {
                   color: indicatorColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: Text(
-                  '${pct.toStringAsFixed(0)}%',
-                  style: TextStyle(
-                    color: indicatorColor,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                  ),
+                child: AppLabel(
+                  text: '${pct.toStringAsFixed(0)}%',
+                  fontSize: AppFontSize.value10,
+                  color: indicatorColor,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
             ],

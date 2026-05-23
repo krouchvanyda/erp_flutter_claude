@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/error/failure.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -126,7 +128,6 @@ class _StockMovementFormPageState extends State<StockMovementFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
 
     return Scaffold(
@@ -233,9 +234,19 @@ class _Body extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(item.name, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                          AppLabel(
+                            text: item.name,
+                            fontSize: AppFontSize.value16,
+                            fontWeight: FontWeight.bold,
+                          ),
                           const SizedBox(height: 2),
-                          Text('SKU: ${item.sku}', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.bold, fontFeatures: const [FontFeature.tabularFigures()])),
+                          AppLabel(
+                            text: 'SKU: ${item.sku}',
+                            fontSize: AppFontSize.value11,
+                            color: theme.colorScheme.outline,
+                            fontWeight: FontWeight.bold,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
                         ],
                       ),
                     ),
@@ -249,11 +260,19 @@ class _Body extends StatelessWidget {
                     children: [
                       Icon(Icons.stacked_bar_chart_rounded, size: 20, color: theme.colorScheme.onSurfaceVariant),
                       const SizedBox(width: 12),
-                      Text('CURRENT STOCK', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                      AppLabel(
+                        text: 'CURRENT STOCK',
+                        fontSize: AppFontSize.value11,
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                      ),
                       const Spacer(),
-                      Text(
-                        item.onHandQty.toString(),
-                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900, fontFeatures: const [FontFeature.tabularFigures()]),
+                      AppLabel(
+                        text: item.onHandQty.toString(),
+                        fontSize: AppFontSize.value16,
+                        fontWeight: FontWeight.w900,
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ],
                   ),
@@ -306,7 +325,12 @@ class _Body extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: submitting ? null : onSubmit,
               icon: submitting ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Icon(primaryIcon),
-              label: Text((isReceipt ? l10n.inventoryReceiptAction : l10n.inventoryIssueAction).toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+              label: AppLabel(
+                text: (isReceipt ? l10n.inventoryReceiptAction : l10n.inventoryIssueAction).toUpperCase(),
+                fontSize: AppFontSize.value14,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.2,
+              ),
               style: FilledButton.styleFrom(
                 backgroundColor: primaryColor,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
@@ -333,9 +357,12 @@ class _Section extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: 12),
-          child: Text(
-            title,
-            style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+          child: AppLabel(
+            text: title,
+            fontSize: AppFontSize.value11,
+            color: theme.colorScheme.primary,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.5,
           ),
         ),
         Container(
@@ -371,7 +398,13 @@ class _CenteredMessage extends StatelessWidget {
               child: Icon(icon ?? Icons.inventory_2_rounded, size: 64, color: theme.colorScheme.outline.withValues(alpha: 0.5)),
             ),
             const SizedBox(height: 24),
-            Text(text, textAlign: TextAlign.center, style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500)),
+            AppLabel(
+              text: text,
+              fontSize: AppFontSize.value16,
+              textAlign: TextAlign.center,
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
           ],
         ),
       ),

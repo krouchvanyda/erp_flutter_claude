@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../entities/chat_message.dart';
 
 /// Slice 10.1.5 — Full-screen image viewer.
@@ -226,23 +228,20 @@ class _Placeholder extends StatelessWidget {
             color: Colors.white.withValues(alpha: 0.7),
           ),
           const SizedBox(height: 12),
-          Text(
-            message,
+          AppLabel(
+            text: message,
+            fontSize: AppFontSize.value14,
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-            ),
           ),
           if (subtitle != null) ...[
             const SizedBox(height: 4),
-            Text(
-              subtitle!,
+            AppLabel(
+              text: subtitle!,
+              fontSize: AppFontSize.value12,
+              color: Colors.white.withValues(alpha: 0.7),
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.7),
-                fontSize: 12,
-              ),
             ),
           ],
         ],
@@ -315,24 +314,20 @@ class _Caption extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            message.fileName ?? 'Photo',
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-              fontSize: 15,
-            ),
+          AppLabel(
+            text: message.fileName ?? 'Photo',
+            fontSize: AppFontSize.value15,
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 4),
-          Text(
-            'Sent by ${message.senderName} · ${_formatStamp(message.sentAt)}',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.75),
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
+          AppLabel(
+            text: 'Sent by ${message.senderName} · ${_formatStamp(message.sentAt)}',
+            fontSize: AppFontSize.value12,
+            color: Colors.white.withValues(alpha: 0.75),
+            fontWeight: FontWeight.w500,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

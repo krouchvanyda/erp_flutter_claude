@@ -3,6 +3,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -286,13 +288,12 @@ class _SectionLabel extends StatelessWidget {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(left: 4),
-      child: Text(
-        text.toUpperCase(),
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: theme.colorScheme.primary,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 1.2,
-        ),
+      child: AppLabel(
+        text: text.toUpperCase(),
+        fontSize: AppFontSize.value11,
+        color: theme.colorScheme.primary,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 1.2,
       ),
     );
   }
@@ -412,12 +413,11 @@ class _TimelineCard extends StatelessWidget {
               children: [
                 Icon(Icons.timelapse_rounded, color: theme.colorScheme.primary, size: 18),
                 const SizedBox(width: 8),
-                Text(
-                  'Duration: $durationLabel',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.w800,
-                  ),
+                AppLabel(
+                  text: 'Duration: $durationLabel',
+                  fontSize: AppFontSize.value14,
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w800,
                 ),
               ],
             ),
@@ -448,22 +448,22 @@ class _DateBox extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              label.toUpperCase(),
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.outline,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.6,
-              ),
+            AppLabel(
+              text: label.toUpperCase(),
+              fontSize: AppFontSize.value11,
+              color: theme.colorScheme.outline,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.6,
             ),
             const SizedBox(height: 4),
             Row(
               children: [
                 Icon(Icons.calendar_today_rounded, size: 14, color: theme.colorScheme.primary),
                 const SizedBox(width: 6),
-                Text(
-                  value,
-                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                AppLabel(
+                  text: value,
+                  fontSize: AppFontSize.value14,
+                  fontWeight: FontWeight.w700,
                 ),
               ],
             ),
@@ -527,12 +527,11 @@ class _OwnerPickerCard extends StatelessWidget {
                   color: theme.colorScheme.primary,
                   shape: BoxShape.circle,
                 ),
-                child: Text(
-                  current == null ? '?' : _initials(current!.name),
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: theme.colorScheme.onPrimary,
-                    fontWeight: FontWeight.w800,
-                  ),
+                child: AppLabel(
+                  text: current == null ? '?' : _initials(current!.name),
+                  fontSize: AppFontSize.value14,
+                  color: theme.colorScheme.onPrimary,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
               const SizedBox(width: 12),
@@ -540,18 +539,17 @@ class _OwnerPickerCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      current?.name ?? (loading ? 'Loading…' : 'Pick a project owner'),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                    AppLabel(
+                      text: current?.name ??
+                          (loading ? 'Loading…' : 'Pick a project owner'),
+                      fontSize: AppFontSize.value16,
+                      fontWeight: FontWeight.w700,
                     ),
                     if (current != null)
-                      Text(
-                        current!.position,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+                      AppLabel(
+                        text: current!.position,
+                        fontSize: AppFontSize.value12,
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                   ],
                 ),
@@ -578,7 +576,10 @@ class _StatusPickerCard extends StatelessWidget {
         children: [
           for (final s in ProjectStatus.values)
             ChoiceChip(
-              label: Text(_label(s)),
+              label: AppLabel(
+                text: _label(s),
+                fontSize: AppFontSize.value13,
+              ),
               selected: current == s,
               onSelected: (_) => onChanged(s),
               shape: const StadiumBorder(),
@@ -630,7 +631,11 @@ class _SaveBar extends StatelessWidget {
                   ),
                 )
               : const Icon(Icons.check_rounded),
-          label: Text(saving ? 'Saving…' : label),
+          label: AppLabel(
+            text: saving ? 'Saving…' : label,
+            fontSize: AppFontSize.value14,
+            fontWeight: FontWeight.w600,
+          ),
           style: FilledButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 14),
             shape: RoundedRectangleBorder(
@@ -701,9 +706,11 @@ Future<Employee?> _showEmployeeSheet(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: Text('Pick an employee',
-                      style: theme.textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.w700)),
+                  child: AppLabel(
+                    text: 'Pick an employee',
+                    fontSize: AppFontSize.value22,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
@@ -717,13 +724,22 @@ Future<Employee?> _showEmployeeSheet(
                     return ListTile(
                       leading: CircleAvatar(
                         backgroundColor: theme.colorScheme.primary,
-                        child: Text(
-                          _initials(e.name),
-                          style: TextStyle(color: theme.colorScheme.onPrimary),
+                        child: AppLabel(
+                          text: _initials(e.name),
+                          fontSize: AppFontSize.value14,
+                          color: theme.colorScheme.onPrimary,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      title: Text(e.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                      subtitle: Text('${e.position} • ${e.department}'),
+                      title: AppLabel(
+                        text: e.name,
+                        fontSize: AppFontSize.value16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      subtitle: AppLabel(
+                        text: '${e.position} • ${e.department}',
+                        fontSize: AppFontSize.value12,
+                      ),
                       trailing: selected
                           ? Icon(Icons.check_circle_rounded, color: theme.colorScheme.primary)
                           : null,

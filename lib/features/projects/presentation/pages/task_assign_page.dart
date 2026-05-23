@@ -3,6 +3,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -100,7 +102,12 @@ class _TaskAssignPageState extends State<TaskAssignPage> {
                 }
                 final ctx = snap.data;
                 if (ctx == null) {
-                  return const Center(child: Text('Could not load employees'));
+                  return const Center(
+                    child: AppLabel(
+                      text: 'Could not load employees',
+                      fontSize: AppFontSize.value14,
+                    ),
+                  );
                 }
                 final filtered = _filterEmployees(ctx.employees, _query);
                 return ListView(
@@ -260,13 +267,12 @@ class _SectionLabel extends StatelessWidget {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(left: 4),
-      child: Text(
-        text.toUpperCase(),
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: theme.colorScheme.primary,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 1.2,
-        ),
+      child: AppLabel(
+        text: text.toUpperCase(),
+        fontSize: AppFontSize.value11,
+        color: theme.colorScheme.primary,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 1.2,
       ),
     );
   }
@@ -292,9 +298,10 @@ class _TaskContextCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            task.title,
-            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          AppLabel(
+            text: task.title,
+            fontSize: AppFontSize.value16,
+            fontWeight: FontWeight.w700,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -308,12 +315,14 @@ class _TaskContextCard extends StatelessWidget {
                   color: overdue ? theme.colorScheme.error : theme.colorScheme.outline,
                 ),
                 const SizedBox(width: 4),
-                Text(
-                  '${overdue ? 'Overdue: ' : 'Due '}${DateFormat('MMM d, yyyy').format(task.dueDate!)}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: overdue ? theme.colorScheme.error : theme.colorScheme.onSurfaceVariant,
-                    fontWeight: overdue ? FontWeight.w700 : FontWeight.w500,
-                  ),
+                AppLabel(
+                  text:
+                      '${overdue ? 'Overdue: ' : 'Due '}${DateFormat('MMM d, yyyy').format(task.dueDate!)}',
+                  fontSize: AppFontSize.value12,
+                  color: overdue
+                      ? theme.colorScheme.error
+                      : theme.colorScheme.onSurfaceVariant,
+                  fontWeight: overdue ? FontWeight.w700 : FontWeight.w500,
                 ),
               ],
             ),
@@ -322,17 +331,15 @@ class _TaskContextCard extends StatelessWidget {
             children: [
               Icon(Icons.person_pin_rounded, size: 14, color: theme.colorScheme.outline),
               const SizedBox(width: 4),
-              Text(
-                'Currently: ',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+              AppLabel(
+                text: 'Currently: ',
+                fontSize: AppFontSize.value12,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
-              Text(
-                currentAssignee?.name ?? 'Unassigned',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+              AppLabel(
+                text: currentAssignee?.name ?? 'Unassigned',
+                fontSize: AppFontSize.value12,
+                fontWeight: FontWeight.w700,
               ),
             ],
           ),
@@ -438,12 +445,11 @@ class _MemberTile extends StatelessWidget {
                     color: theme.colorScheme.primary,
                     shape: BoxShape.circle,
                   ),
-                  child: Text(
-                    _initials(employee.name),
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      color: theme.colorScheme.onPrimary,
-                      fontWeight: FontWeight.w800,
-                    ),
+                  child: AppLabel(
+                    text: _initials(employee.name),
+                    fontSize: AppFontSize.value14,
+                    color: theme.colorScheme.onPrimary,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
                 Positioned(
@@ -466,18 +472,16 @@ class _MemberTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    employee.name,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                  AppLabel(
+                    text: employee.name,
+                    fontSize: AppFontSize.value16,
+                    fontWeight: FontWeight.w700,
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    '${employee.position} • ${employee.department}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
+                  AppLabel(
+                    text: '${employee.position} • ${employee.department}',
+                    fontSize: AppFontSize.value12,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ],
               ),
@@ -488,12 +492,11 @@ class _MemberTile extends StatelessWidget {
                 color: _badgeBg(context),
                 borderRadius: BorderRadius.circular(AppRadii.pill),
               ),
-              child: Text(
-                '$openCount open',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: _badgeFg(context),
-                  fontWeight: FontWeight.w800,
-                ),
+              child: AppLabel(
+                text: '$openCount open',
+                fontSize: AppFontSize.value11,
+                color: _badgeFg(context),
+                fontWeight: FontWeight.w800,
               ),
             ),
             if (selected)
@@ -534,12 +537,11 @@ class _DueDateCard extends StatelessWidget {
           Icon(Icons.calendar_today_rounded, size: 18, color: theme.colorScheme.primary),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              dueDate == null ? 'No due date' : dateFormat.format(dueDate!),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: dueDate == null ? theme.colorScheme.onSurfaceVariant : null,
-              ),
+            child: AppLabel(
+              text: dueDate == null ? 'No due date' : dateFormat.format(dueDate!),
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.w600,
+              color: dueDate == null ? theme.colorScheme.onSurfaceVariant : null,
             ),
           ),
           if (dueDate != null)
@@ -550,7 +552,11 @@ class _DueDateCard extends StatelessWidget {
             ),
           TextButton(
             onPressed: onPick,
-            child: Text(dueDate == null ? 'Pick date' : 'Change'),
+            child: AppLabel(
+              text: dueDate == null ? 'Pick date' : 'Change',
+              fontSize: AppFontSize.value13,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -629,7 +635,11 @@ class _AssignBar extends StatelessWidget {
                   ),
                 )
               : const Icon(Icons.assignment_ind_rounded),
-          label: Text(saving ? 'Assigning…' : 'Assign Task'),
+          label: AppLabel(
+            text: saving ? 'Assigning…' : 'Assign Task',
+            fontSize: AppFontSize.value14,
+            fontWeight: FontWeight.w600,
+          ),
           style: FilledButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 14),
             shape: RoundedRectangleBorder(
@@ -652,11 +662,10 @@ class _Empty extends StatelessWidget {
         children: [
           Icon(Icons.search_off_rounded, size: 48, color: theme.colorScheme.outline),
           const SizedBox(height: 8),
-          Text(
-            'No employees match that search.',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+          AppLabel(
+            text: 'No employees match that search.',
+            fontSize: AppFontSize.value14,
+            color: theme.colorScheme.onSurfaceVariant,
           ),
         ],
       ),

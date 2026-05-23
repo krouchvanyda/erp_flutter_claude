@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/error/failure.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -240,11 +242,27 @@ class _Body extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(l10n.inventoryTransferSourceHeading.toUpperCase(), style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                          AppLabel(
+                            text: l10n.inventoryTransferSourceHeading.toUpperCase(),
+                            fontSize: AppFontSize.value11,
+                            color: theme.colorScheme.outline,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.5,
+                          ),
                           const SizedBox(height: 4),
-                          Text('${source.warehouseCode} / ${source.locationCode}', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                          AppLabel(
+                            text: '${source.warehouseCode} / ${source.locationCode}',
+                            fontSize: AppFontSize.value16,
+                            fontWeight: FontWeight.bold,
+                          ),
                           const SizedBox(height: 2),
-                          Text('SKU: ${source.sku}', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.bold, fontFeatures: const [FontFeature.tabularFigures()])),
+                          AppLabel(
+                            text: 'SKU: ${source.sku}',
+                            fontSize: AppFontSize.value11,
+                            color: theme.colorScheme.outline,
+                            fontWeight: FontWeight.bold,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
                         ],
                       ),
                     ),
@@ -258,11 +276,19 @@ class _Body extends StatelessWidget {
                     children: [
                       Icon(Icons.stacked_bar_chart_rounded, size: 20, color: theme.colorScheme.onSurfaceVariant),
                       const SizedBox(width: 12),
-                      Text('AVAILABLE TO TRANSFER', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                      AppLabel(
+                        text: 'AVAILABLE TO TRANSFER',
+                        fontSize: AppFontSize.value11,
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                      ),
                       const Spacer(),
-                      Text(
-                        source.onHandQty.toString(),
-                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900, fontFeatures: const [FontFeature.tabularFigures()]),
+                      AppLabel(
+                        text: source.onHandQty.toString(),
+                        fontSize: AppFontSize.value16,
+                        fontWeight: FontWeight.w900,
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ],
                   ),
@@ -287,7 +313,14 @@ class _Body extends StatelessWidget {
                     children: [
                       Icon(Icons.error_outline_rounded, color: theme.colorScheme.error),
                       const SizedBox(width: 12),
-                      Expanded(child: Text(l10n.inventoryTransferNoDestinations, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error, fontWeight: FontWeight.w500))),
+                      Expanded(
+                        child: AppLabel(
+                          text: l10n.inventoryTransferNoDestinations,
+                          fontSize: AppFontSize.value14,
+                          color: theme.colorScheme.error,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ],
                   ),
                 )
@@ -304,8 +337,9 @@ class _Body extends StatelessWidget {
                     for (final d in destinations)
                       DropdownMenuItem(
                         value: d,
-                        child: Text(
-                          '${d.warehouseCode}/${d.locationCode} (${l10n.inventoryItemsOnHand(d.onHandQty.toString())})',
+                        child: AppLabel(
+                          text: '${d.warehouseCode}/${d.locationCode} (${l10n.inventoryItemsOnHand(d.onHandQty.toString())})',
+                          fontSize: AppFontSize.value14,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           softWrap: false,
@@ -353,7 +387,12 @@ class _Body extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: submitting || destinations.isEmpty ? null : onSubmit,
               icon: submitting ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.swap_horiz_rounded),
-              label: Text(l10n.inventoryTransferAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+              label: AppLabel(
+                text: l10n.inventoryTransferAction.toUpperCase(),
+                fontSize: AppFontSize.value14,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.2,
+              ),
               style: FilledButton.styleFrom(
                 backgroundColor: theme.colorScheme.secondary,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
@@ -395,9 +434,12 @@ class _Section extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: 12),
-          child: Text(
-            title,
-            style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+          child: AppLabel(
+            text: title,
+            fontSize: AppFontSize.value11,
+            color: theme.colorScheme.primary,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.5,
           ),
         ),
         Container(
@@ -433,7 +475,13 @@ class _CenteredMessage extends StatelessWidget {
               child: Icon(icon ?? Icons.inventory_2_rounded, size: 64, color: theme.colorScheme.outline.withValues(alpha: 0.5)),
             ),
             const SizedBox(height: 24),
-            Text(text, textAlign: TextAlign.center, style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500)),
+            AppLabel(
+              text: text,
+              fontSize: AppFontSize.value16,
+              textAlign: TextAlign.center,
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
           ],
         ),
       ),

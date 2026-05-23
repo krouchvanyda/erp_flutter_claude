@@ -6,6 +6,8 @@ import '../../../../core/di/injection.dart';
 import '../../../../core/router/config_router.dart';
 import '../../../../core/router/permissions_snapshot.dart';
 import '../../../../core/shortcuts/module_shortcut_catalog.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../data/providers/module_shortcut_search_provider.dart';
 import '../../domain/entities/search_result.dart';
@@ -151,13 +153,12 @@ class _GroupedResultsList extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
             child: Row(
               children: [
-                Text(
-                  _providerHeader(context, groups[gIdx].providerId).toUpperCase(),
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                  ),
+                AppLabel(
+                  text: _providerHeader(context, groups[gIdx].providerId).toUpperCase(),
+                  fontSize: AppFontSize.value11,
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
                 ),
                 const SizedBox(width: 8),
                 Expanded(child: Divider(color: theme.colorScheme.outlineVariant)),
@@ -221,14 +222,16 @@ class _ResultTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      result.title,
-                      style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                    AppLabel(
+                      text: result.title,
+                      fontSize: AppFontSize.value16,
+                      fontWeight: FontWeight.w600,
                     ),
                     if (result.subtitle != null)
-                      Text(
-                        result.subtitle!,
-                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                      AppLabel(
+                        text: result.subtitle!,
+                        fontSize: AppFontSize.value12,
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                   ],
                 ),

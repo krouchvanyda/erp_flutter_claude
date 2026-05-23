@@ -3,6 +3,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -268,12 +270,11 @@ class _Pill extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadii.pill),
         ),
         alignment: Alignment.center,
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? theme.colorScheme.onPrimary : theme.colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.w800,
-          ),
+        child: AppLabel(
+          text: label,
+          fontSize: AppFontSize.value14,
+          color: selected ? theme.colorScheme.onPrimary : theme.colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );
@@ -358,17 +359,16 @@ class _GroupNameSheetState extends State<_GroupNameSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      'Name your group',
-                      style: theme.textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w800),
+                    AppLabel(
+                      text: 'Name your group',
+                      fontSize: AppFontSize.value16,
+                      fontWeight: FontWeight.w800,
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      '${widget.memberCount} member${widget.memberCount == 1 ? '' : 's'} selected',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                    AppLabel(
+                      text: '${widget.memberCount} member${widget.memberCount == 1 ? '' : 's'} selected',
+                      fontSize: AppFontSize.value12,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ],
                 ),
@@ -406,9 +406,10 @@ class _GroupNameSheetState extends State<_GroupNameSheet> {
                       borderRadius: BorderRadius.circular(AppRadii.md),
                     ),
                   ),
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                  child: AppLabel(
+                    text: 'Cancel',
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -425,9 +426,10 @@ class _GroupNameSheetState extends State<_GroupNameSheet> {
                       borderRadius: BorderRadius.circular(AppRadii.md),
                     ),
                   ),
-                  child: const Text(
-                    'Create Group',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                  child: AppLabel(
+                    text: 'Create Group',
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -544,9 +546,10 @@ class _SelectedChips extends StatelessWidget {
                   size: 24,
                   showStatus: false,
                 ),
-                label: Text(
-                  ChatSeed.personById(id).name,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+                label: AppLabel(
+                  text: ChatSeed.personById(id).name,
+                  fontSize: AppFontSize.value14,
+                  fontWeight: FontWeight.w700,
                 ),
                 deleteIcon: const Icon(Icons.close_rounded, size: 16),
                 onDeleted: () => onRemove(id),
@@ -577,7 +580,12 @@ class _MemberList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (people.isEmpty) {
-      return const Center(child: Text('No employees match.'));
+      return const Center(
+        child: AppLabel(
+          text: 'No employees match.',
+          fontSize: AppFontSize.value14,
+        ),
+      );
     }
     return ListView.separated(
       padding: const EdgeInsets.only(top: 4, bottom: 96),
@@ -604,11 +612,10 @@ class _MemberList extends StatelessWidget {
                   ChatAvatar(name: p.name, size: 44, presence: p.presence),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      p.name,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                    child: AppLabel(
+                      text: p.name,
+                      fontSize: AppFontSize.value16,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   if (isMulti)
@@ -672,9 +679,10 @@ class _BottomBar extends StatelessWidget {
                       color: Colors.white,
                     ),
                   )
-                : Text(
-                    label,
-                    style: const TextStyle(fontWeight: FontWeight.w800),
+                : AppLabel(
+                    text: label,
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.w800,
                   ),
           ),
         ),

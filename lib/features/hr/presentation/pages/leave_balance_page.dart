@@ -4,6 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -69,11 +71,10 @@ class LeaveBalancePage extends StatelessWidget {
                           color: theme.colorScheme.outline,
                         ),
                         const SizedBox(height: 16),
-                        Text(
-                          'No entitlements on file',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        const AppLabel(
+                          text: 'No entitlements on file',
+                          fontSize: AppFontSize.value16,
+                          fontWeight: FontWeight.bold,
                         ),
                       ],
                     ),
@@ -161,14 +162,12 @@ class LeaveBalancePage extends StatelessWidget {
                         const SizedBox(height: 28),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Text(
-                            'ENTITLEMENT BREAKDOWN',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w900,
-                              color: theme.colorScheme.primary,
-                              letterSpacing: 0.5,
-                            ),
+                          child: AppLabel(
+                            text: 'ENTITLEMENT BREAKDOWN',
+                            fontSize: AppFontSize.value12,
+                            fontWeight: FontWeight.w900,
+                            color: theme.colorScheme.primary,
+                            letterSpacing: 0.5,
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -206,24 +205,21 @@ class _SummaryStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Column(
       children: [
-        Text(
-          count,
-          style: theme.textTheme.headlineLarge?.copyWith(
-            fontWeight: FontWeight.w900,
-            color: color,
-          ),
+        AppLabel(
+          text: count,
+          fontSize: AppFontSize.value32,
+          fontWeight: FontWeight.w900,
+          color: color,
         ),
         const SizedBox(height: 4),
-        Text(
-          label.toUpperCase(),
-          style: theme.textTheme.labelSmall?.copyWith(
-            fontWeight: FontWeight.w900,
-            color: color,
-            letterSpacing: 0.5,
-          ),
+        AppLabel(
+          text: label.toUpperCase(),
+          fontSize: AppFontSize.value11,
+          fontWeight: FontWeight.w900,
+          color: color,
+          letterSpacing: 0.5,
         ),
       ],
     );
@@ -272,21 +268,19 @@ class _BalanceCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    balance.type.name.toUpperCase(),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: theme.colorScheme.onSurface,
-                      letterSpacing: 0.5,
-                    ),
+                  child: AppLabel(
+                    text: balance.type.name.toUpperCase(),
+                    fontSize: AppFontSize.value16,
+                    fontWeight: FontWeight.w900,
+                    color: theme.colorScheme.onSurface,
+                    letterSpacing: 0.5,
                   ),
                 ),
-                Text(
-                  '$remaining Remaining',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: accentColor,
-                  ),
+                AppLabel(
+                  text: '$remaining Remaining',
+                  fontSize: AppFontSize.value16,
+                  fontWeight: FontWeight.w900,
+                  color: accentColor,
                 ),
               ],
             ),
@@ -304,18 +298,16 @@ class _BalanceCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  '${balance.usedDays} used days',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w500,
-                  ),
+                AppLabel(
+                  text: '${balance.usedDays} used days',
+                  fontSize: AppFontSize.value14,
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
                 ),
-                Text(
-                  'out of ${balance.totalDays} days',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.outline,
-                  ),
+                AppLabel(
+                  text: 'out of ${balance.totalDays} days',
+                  fontSize: AppFontSize.value14,
+                  color: theme.colorScheme.outline,
                 ),
               ],
             ),

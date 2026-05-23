@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../theme/app_font_size.dart';
+import '../theme/app_label.dart';
 import 'route_paths.dart';
 
 /// Landing page for an authenticated user who lacks the permission
@@ -22,7 +24,13 @@ class ForbiddenPage extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.forbiddenTitle)),
+      appBar: AppBar(
+        title: AppLabel(
+          text: l10n.forbiddenTitle,
+          fontSize: AppFontSize.value20,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -30,8 +38,9 @@ class ForbiddenPage extends StatelessWidget {
             Icon(Icons.lock_outline,
                 size: 64, color: theme.colorScheme.error),
             const SizedBox(height: 12),
-            Text(
-              l10n.forbiddenBody(attemptedLocation ?? '?'),
+            AppLabel(
+              text: l10n.forbiddenBody(attemptedLocation ?? '?'),
+              fontSize: AppFontSize.value14,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),

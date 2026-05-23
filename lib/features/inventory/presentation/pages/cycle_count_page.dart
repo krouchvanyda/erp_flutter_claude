@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/error/failure.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -182,7 +184,12 @@ class _CycleCountPageState extends State<CycleCountPage> {
               child: FilledButton.icon(
                 onPressed: _submitting ? null : () => _submit(items),
                 icon: _submitting ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.fact_check_rounded),
-                label: Text(l10n.inventoryCycleSubmitAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+                label: AppLabel(
+                  text: l10n.inventoryCycleSubmitAction.toUpperCase(),
+                  fontSize: AppFontSize.value14,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.2,
+                ),
                 style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md))),
               ),
             ),
@@ -218,7 +225,10 @@ class _WarehouseChips extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: FilterChip(
-                label: Text(l10n.inventoryCycleAllWarehouses),
+                label: AppLabel(
+                  text: l10n.inventoryCycleAllWarehouses,
+                  fontSize: AppFontSize.value13,
+                ),
                 selected: selected == null,
                 onSelected: (_) => onChanged(null),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.pill)),
@@ -234,7 +244,10 @@ class _WarehouseChips extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: FilterChip(
-                  label: Text(wh),
+                  label: AppLabel(
+                    text: wh,
+                    fontSize: AppFontSize.value13,
+                  ),
                   selected: selected == wh,
                   onSelected: (_) => onChanged(wh),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.pill)),
@@ -281,16 +294,20 @@ class _CycleLine extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  item.name,
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                AppLabel(
+                  text: item.name,
+                  fontSize: AppFontSize.value16,
+                  fontWeight: FontWeight.bold,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  'SKU: ${item.sku} · LOC: ${item.locationCode}',
-                  style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.bold, fontFeatures: const [FontFeature.tabularFigures()]),
+                AppLabel(
+                  text: 'SKU: ${item.sku} · LOC: ${item.locationCode}',
+                  fontSize: AppFontSize.value11,
+                  color: theme.colorScheme.outline,
+                  fontWeight: FontWeight.bold,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
                 const SizedBox(height: 8),
                 Container(
@@ -299,15 +316,13 @@ class _CycleLine extends StatelessWidget {
                     color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(AppRadii.pill),
                   ),
-                  child: Text(
-                    l10n.inventoryCycleExpectedLabel(item.onHandQty.toString()).toUpperCase(),
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 9,
-                      letterSpacing: 0.5,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
+                  child: AppLabel(
+                    text: l10n.inventoryCycleExpectedLabel(item.onHandQty.toString()).toUpperCase(),
+                    fontSize: AppFontSize.value9,
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.5,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
               ],
@@ -359,7 +374,13 @@ class _CenteredMessage extends StatelessWidget {
               child: Icon(icon ?? Icons.fact_check_rounded, size: 64, color: theme.colorScheme.outline.withValues(alpha: 0.5)),
             ),
             const SizedBox(height: 24),
-            Text(text, textAlign: TextAlign.center, style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500)),
+            AppLabel(
+              text: text,
+              fontSize: AppFontSize.value16,
+              textAlign: TextAlign.center,
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
           ],
         ),
       ),

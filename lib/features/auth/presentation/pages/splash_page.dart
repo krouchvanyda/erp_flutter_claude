@@ -5,6 +5,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/route_paths.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 
@@ -110,28 +112,26 @@ class _SplashPageState extends State<SplashPage> {
                   const SizedBox(height: 32),
                   
                   // Animated App Name
-                  Text(
-                    l10n.appName,
-                    style: theme.textTheme.displaySmall?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 4,
-                      color: theme.colorScheme.primary,
-                    ),
+                  AppLabel(
+                    text: l10n.appName,
+                    fontSize: AppFontSize.value32,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 4,
+                    color: theme.colorScheme.primary,
                   )
                       .animate()
                       .fadeIn(delay: 800.ms, duration: 1000.ms)
                       .slideY(begin: 0.3, end: 0, curve: Curves.easeOutCubic),
-                  
+
                   const SizedBox(height: 12),
-                  
+
                   // Subtle Tagline
-                  Text(
-                    'Enterprise Excellence',
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
-                      letterSpacing: 2,
-                      fontWeight: FontWeight.w300,
-                    ),
+                  AppLabel(
+                    text: 'Enterprise Excellence',
+                    fontSize: AppFontSize.value14,
+                    color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                    letterSpacing: 2,
+                    fontWeight: FontWeight.w300,
                   )
                       .animate()
                       .fadeIn(delay: 1200.ms, duration: 800.ms),
@@ -186,13 +186,12 @@ class _SplashFooter extends StatelessWidget {
           ),
         ).animate().fadeIn(delay: 1500.ms),
         const SizedBox(height: 32),
-        Text(
-          'v1.0.0',
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4),
-            letterSpacing: 3,
-            fontWeight: FontWeight.bold,
-          ),
+        AppLabel(
+          text: 'v1.0.0',
+          fontSize: AppFontSize.value12,
+          color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4),
+          letterSpacing: 3,
+          fontWeight: FontWeight.bold,
         ).animate().fadeIn(delay: 1800.ms),
       ],
     );

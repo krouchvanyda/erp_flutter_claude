@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -83,13 +85,24 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
       // walks up from page-context to the router's navigator, not the
       // overlay's modal navigator.
       builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.salesContactDeleteTitle),
-        content: Text(l10n.salesContactDeleteBody),
+        title: AppLabel(
+          text: l10n.salesContactDeleteTitle,
+          fontSize: AppFontSize.value18,
+          fontWeight: FontWeight.bold,
+        ),
+        content: AppLabel(
+          text: l10n.salesContactDeleteBody,
+          fontSize: AppFontSize.value14,
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.lg)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(l10n.invoiceActionCancel),
+            child: AppLabel(
+              text: l10n.invoiceActionCancel,
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
@@ -97,7 +110,11 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
             ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(l10n.salesContactDeleteConfirm),
+            child: AppLabel(
+              text: l10n.salesContactDeleteConfirm,
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
@@ -141,7 +158,10 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
               centerTitle: true,
             ),
             body: Center(
-              child: Text(l10n.salesCustomerNotFound(widget.customerId)),
+              child: AppLabel(
+                text: l10n.salesCustomerNotFound(widget.customerId),
+                fontSize: AppFontSize.value14,
+              ),
             ),
           );
         }
@@ -298,19 +318,17 @@ class _Body extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            c.name,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                          AppLabel(
+                            text: c.name,
+                            fontSize: AppFontSize.value16,
+                            fontWeight: FontWeight.bold,
                           ),
                           const SizedBox(height: 4),
-                          Text(
-                            '${customerSegmentLabel(l10n, c.segment)}'
-                            '${c.industry == null ? '' : ' · ${c.industry}'}',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
+                          AppLabel(
+                            text:
+                                '${customerSegmentLabel(l10n, c.segment)}${c.industry == null ? '' : ' · ${c.industry}'}',
+                            fontSize: AppFontSize.value12,
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ],
                       ),
@@ -389,21 +407,19 @@ class _Body extends StatelessWidget {
                     children: [
                       Icon(Icons.notes_outlined, color: theme.colorScheme.primary, size: 20),
                       const SizedBox(width: 8),
-                      Text(
-                        l10n.salesCustomerDetailNotesHeading,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      AppLabel(
+                        text: l10n.salesCustomerDetailNotesHeading,
+                        fontSize: AppFontSize.value14,
+                        fontWeight: FontWeight.bold,
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    c.notes!,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      height: 1.4,
-                    ),
+                  AppLabel(
+                    text: c.notes!,
+                    fontSize: AppFontSize.value14,
+                    color: theme.colorScheme.onSurfaceVariant,
+                    lineHeight: 1.4,
                   ),
                 ],
               ),
@@ -437,19 +453,19 @@ class _Body extends StatelessWidget {
                     Icon(Icons.people_outline, color: theme.colorScheme.primary, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        l10n.salesCustomerDetailContactsHeading,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      child: AppLabel(
+                        text: l10n.salesCustomerDetailContactsHeading,
+                        fontSize: AppFontSize.value14,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                     TextButton.icon(
                       onPressed: onAddContact,
                       icon: const Icon(Icons.person_add_alt_1_outlined, size: 18),
-                      label: Text(
-                        l10n.salesContactAddAction,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      label: AppLabel(
+                        text: l10n.salesContactAddAction,
+                        fontSize: AppFontSize.value14,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
@@ -460,11 +476,10 @@ class _Body extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
                   child: Center(
-                    child: Text(
-                      l10n.salesCustomerDetailContactsEmpty,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                    child: AppLabel(
+                      text: l10n.salesCustomerDetailContactsEmpty,
+                      fontSize: AppFontSize.value12,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                 )
@@ -511,19 +526,19 @@ class _Body extends StatelessWidget {
                     Icon(Icons.history_toggle_off_outlined, color: theme.colorScheme.primary, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        l10n.salesCustomerDetailTimelineHeading,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      child: AppLabel(
+                        text: l10n.salesCustomerDetailTimelineHeading,
+                        fontSize: AppFontSize.value14,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                     TextButton.icon(
                       onPressed: onLogActivity,
                       icon: const Icon(Icons.add_comment_outlined, size: 18),
-                      label: Text(
-                        l10n.salesActivityLogAction,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      label: AppLabel(
+                        text: l10n.salesActivityLogAction,
+                        fontSize: AppFontSize.value14,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
@@ -534,11 +549,10 @@ class _Body extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
                   child: Center(
-                    child: Text(
-                      l10n.salesCustomerDetailTimelineEmpty,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                    child: AppLabel(
+                      text: l10n.salesCustomerDetailTimelineEmpty,
+                      fontSize: AppFontSize.value12,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                 )
@@ -570,21 +584,19 @@ class _Body extends StatelessWidget {
             const SizedBox(width: 10),
             SizedBox(
               width: 84,
-              child: Text(
-                label,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w500,
-                ),
+              child: AppLabel(
+                text: label,
+                fontSize: AppFontSize.value14,
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
               ),
             ),
             Expanded(
-              child: Text(
-                value,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface,
-                ),
+              child: AppLabel(
+                text: value,
+                fontSize: AppFontSize.value14,
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onSurface,
               ),
             ),
           ],
@@ -610,21 +622,21 @@ class _MetaChip extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          label,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.w500,
-          ),
+        AppLabel(
+          text: label,
+          fontSize: AppFontSize.value11,
+          color: theme.colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w500,
         ),
         const SizedBox(height: 2),
-        Text(
-          value,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: isHighlight ? theme.colorScheme.primary : theme.colorScheme.onSurface,
-            fontFeatures: const [FontFeature.tabularFigures()],
-          ),
+        AppLabel(
+          text: value,
+          fontSize: AppFontSize.value14,
+          fontWeight: FontWeight.bold,
+          color: isHighlight
+              ? theme.colorScheme.primary
+              : theme.colorScheme.onSurface,
+          fontFeatures: const [FontFeature.tabularFigures()],
         ),
       ],
     );
@@ -660,9 +672,10 @@ class _ContactTile extends StatelessWidget {
       title: Row(
         children: [
           Expanded(
-            child: Text(
-              contact.name,
-              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+            child: AppLabel(
+              text: contact.name,
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.bold,
             ),
           ),
           if (contact.isPrimary)
@@ -672,25 +685,23 @@ class _ContactTile extends StatelessWidget {
                 color: theme.colorScheme.primary.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(AppRadii.sm),
               ),
-              child: Text(
-                l10n.salesContactPrimaryBadge,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.bold,
-                ),
+              child: AppLabel(
+                text: l10n.salesContactPrimaryBadge,
+                fontSize: AppFontSize.value11,
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.bold,
               ),
             ),
         ],
       ),
       subtitle: Padding(
         padding: const EdgeInsets.only(top: 2.0),
-        child: Text(
-          '${contact.role} · ${contact.email}',
+        child: AppLabel(
+          text: '${contact.role} · ${contact.email}',
+          fontSize: AppFontSize.value12,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+          color: theme.colorScheme.onSurfaceVariant,
         ),
       ),
       trailing: PopupMenuButton<String>(
@@ -699,13 +710,21 @@ class _ContactTile extends StatelessWidget {
           if (v == 'delete') onDelete();
         },
         itemBuilder: (_) => [
-          PopupMenuItem(value: 'edit', child: Text(l10n.salesContactEditAction)),
           PopupMenuItem(
-              value: 'delete',
-              child: Text(
-                l10n.salesContactDeleteAction,
-                style: const TextStyle(color: Colors.red),
-              )),
+            value: 'edit',
+            child: AppLabel(
+              text: l10n.salesContactEditAction,
+              fontSize: AppFontSize.value14,
+            ),
+          ),
+          PopupMenuItem(
+            value: 'delete',
+            child: AppLabel(
+              text: l10n.salesContactDeleteAction,
+              fontSize: AppFontSize.value14,
+              color: Colors.red,
+            ),
+          ),
         ],
       ),
     );
@@ -729,30 +748,28 @@ class _ActivityTile extends StatelessWidget {
         foregroundColor: color,
         child: Icon(activityTypeIcon(activity.type), size: 18),
       ),
-      title: Text(
-        activity.summary,
-        style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+      title: AppLabel(
+        text: activity.summary,
+        fontSize: AppFontSize.value14,
+        fontWeight: FontWeight.bold,
       ),
       subtitle: Padding(
         padding: const EdgeInsets.only(top: 2.0),
-        child: Text(
-          '${activityTypeLabel(l10n, activity.type)} · '
-          '${stamp.format(activity.occurredAt.toLocal())} · ${activity.actor}'
-          '${activity.reference == null ? '' : ' · ${activity.reference}'}',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+        child: AppLabel(
+          text:
+              '${activityTypeLabel(l10n, activity.type)} · ${stamp.format(activity.occurredAt.toLocal())} · ${activity.actor}${activity.reference == null ? '' : ' · ${activity.reference}'}',
+          fontSize: AppFontSize.value12,
+          color: theme.colorScheme.onSurfaceVariant,
         ),
       ),
       trailing: activity.amount == null
           ? null
-          : Text(
-              activity.amount!,
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.primary,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
+          : AppLabel(
+              text: activity.amount!,
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.primary,
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
     );
   }

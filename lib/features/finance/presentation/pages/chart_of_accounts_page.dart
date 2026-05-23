@@ -5,6 +5,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -182,22 +184,20 @@ class _AccountRow extends StatelessWidget {
           ),
           title: Row(
             children: [
-              Text(
-                account.code,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.bold,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
+              AppLabel(
+                text: account.code,
+                fontSize: AppFontSize.value12,
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.bold,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  account.name,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.onSurface,
-                  ),
+                child: AppLabel(
+                  text: account.name,
+                  fontSize: AppFontSize.value16,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -208,12 +208,11 @@ class _AccountRow extends StatelessWidget {
               ? null
               : Padding(
                   padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    account.formattedBalance!,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  child: AppLabel(
+                    text: account.formattedBalance!,
+                    fontSize: AppFontSize.value14,
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
           trailing: isLeaf
@@ -265,13 +264,12 @@ class _CenteredMessage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            Text(
-              text, 
+            AppLabel(
+              text: text,
+              fontSize: AppFontSize.value16,
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
-              ),
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
             ),
           ],
         ),

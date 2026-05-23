@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
+
 /// Animated 3-dot typing indicator. Each dot pulses with a staggered
 /// 150ms offset — design-guide rule for the chat conversation page.
 class TypingIndicator extends StatefulWidget {
@@ -59,12 +62,11 @@ class _TypingIndicatorState extends State<TypingIndicator>
             },
           ),
           const SizedBox(width: 8),
-          Text(
-            widget.label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: color,
-              fontStyle: FontStyle.italic,
-            ),
+          AppLabel(
+            text: widget.label,
+            fontSize: AppFontSize.value12,
+            color: color,
+            fontStyle: FontStyle.italic,
           ),
         ],
       ),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_font_size.dart';
+import '../../core/theme/app_label.dart';
 import '../../core/theme/app_radii.dart';
 
 /// What the user chose on the [AvatarPickerSheet]. Returned by
@@ -112,17 +114,19 @@ class _AvatarPickerSheetBody extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            Text(
-              title,
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.bold),
+            AppLabel(
+              text: title,
+              fontSize: AppFontSize.value16,
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.onSurface,
             ),
             const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+            AppLabel(
+              text: subtitle,
+              fontSize: AppFontSize.value12,
+              color: theme.colorScheme.onSurfaceVariant,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 16),
             _AvatarSheetTile(
@@ -202,16 +206,15 @@ class _AvatarSheetTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    label,
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(fontWeight: FontWeight.bold),
+                  AppLabel(
+                    text: label,
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.bold,
                   ),
-                  Text(
-                    subtitle,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
+                  AppLabel(
+                    text: subtitle,
+                    fontSize: AppFontSize.value12,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ],
               ),

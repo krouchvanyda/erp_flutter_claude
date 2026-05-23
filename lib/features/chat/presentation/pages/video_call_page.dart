@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../data/call_signaling_service.dart';
 import '../../data/repositories/conversations_repository.dart';
 import '../../entities/call_log.dart';
@@ -188,28 +190,24 @@ class _VideoCallPageState extends State<VideoCallPage> {
                           horizontal: 16, vertical: 8),
                       child: Row(
                         children: [
-                          Text(
-                            'Video Call',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.85),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.0,
-                            ),
+                          AppLabel(
+                            text: 'Video Call',
+                            fontSize: AppFontSize.value12,
+                            color: Colors.white.withValues(alpha: 0.85),
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.0,
                           ),
                           const Spacer(),
                           // Slice 10.2.3 — before the peer accepts we
                           // show the live status (Calling… / Ringing…);
                           // once connected the elapsed-time timer
                           // takes over.
-                          Text(
-                            _connected ? _timerLabel : _status,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.85),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              fontFeatures: const [FontFeature.tabularFigures()],
-                            ),
+                          AppLabel(
+                            text: _connected ? _timerLabel : _status,
+                            fontSize: AppFontSize.value13,
+                            color: Colors.white.withValues(alpha: 0.85),
+                            fontWeight: FontWeight.w700,
+                            fontFeatures: const [FontFeature.tabularFigures()],
                           ),
                         ],
                       ),
@@ -348,18 +346,17 @@ class _RemoteVideoPlaceholder extends StatelessWidget {
                 showStatus: false,
               ),
               const SizedBox(height: 16),
-              Text(
-                conversation!.name,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 24,
-                ),
+              AppLabel(
+                text: conversation!.name,
+                fontSize: AppFontSize.value24,
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
               ),
               const SizedBox(height: 6),
-              const Text(
-                'Video preview',
-                style: TextStyle(color: Colors.white60, fontSize: 13),
+              AppLabel(
+                text: 'Video preview',
+                fontSize: AppFontSize.value13,
+                color: Colors.white60,
               ),
             ],
           ],
@@ -391,12 +388,11 @@ class _RemoteOffPlaceholder extends StatelessWidget {
           const SizedBox(height: 16),
           const Icon(Icons.videocam_off_rounded, color: Colors.white54, size: 28),
           const SizedBox(height: 8),
-          Text(
-            'Camera off',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.65),
-              fontWeight: FontWeight.w700,
-            ),
+          AppLabel(
+            text: 'Camera off',
+            fontSize: AppFontSize.value14,
+            color: Colors.white.withValues(alpha: 0.65),
+            fontWeight: FontWeight.w700,
           ),
         ],
       ),
@@ -440,12 +436,11 @@ class _LocalPip extends StatelessWidget {
               children: const [
                 Icon(Icons.person_rounded, color: Colors.white70, size: 40),
                 SizedBox(height: 6),
-                Text(
-                  'You',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontWeight: FontWeight.w800,
-                  ),
+                AppLabel(
+                  text: 'You',
+                  fontSize: AppFontSize.value14,
+                  color: Colors.white70,
+                  fontWeight: FontWeight.w800,
                 ),
               ],
             )
@@ -505,13 +500,11 @@ class _CtrlButton extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.85),
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-          ),
+        AppLabel(
+          text: label,
+          fontSize: AppFontSize.value11,
+          color: Colors.white.withValues(alpha: 0.85),
+          fontWeight: FontWeight.w700,
         ),
       ],
     );
@@ -542,13 +535,11 @@ class _EndCtrl extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        Text(
-          'End',
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.85),
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-          ),
+        AppLabel(
+          text: 'End',
+          fontSize: AppFontSize.value11,
+          color: Colors.white.withValues(alpha: 0.85),
+          fontWeight: FontWeight.w700,
         ),
       ],
     );

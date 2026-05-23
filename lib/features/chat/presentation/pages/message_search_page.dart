@@ -4,6 +4,8 @@ import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
@@ -153,19 +155,16 @@ class _ResultTile extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(
-                            message.senderName,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w800,
-                            ),
+                          child: AppLabel(
+                            text: message.senderName,
+                            fontSize: AppFontSize.value14,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
-                        Text(
-                          DateFormat('d MMM HH:mm').format(message.sentAt),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontSize: 11,
-                          ),
+                        AppLabel(
+                          text: DateFormat('d MMM HH:mm').format(message.sentAt),
+                          fontSize: AppFontSize.value11,
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ],
                     ),
@@ -188,13 +187,11 @@ class _ResultTile extends StatelessWidget {
                                 color: theme.colorScheme.primary,
                               ),
                               const SizedBox(width: 4),
-                              Text(
-                                conv.name,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.primary,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 11,
-                                ),
+                              AppLabel(
+                                text: conv.name,
+                                fontSize: AppFontSize.value11,
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.w700,
                               ),
                             ],
                           ),
@@ -226,11 +223,11 @@ class _HighlightedPreview extends StatelessWidget {
     final theme = Theme.of(context);
     final q = query.trim();
     if (q.isEmpty) {
-      return Text(
-        body,
+      return AppLabel(
+        text: body,
+        fontSize: AppFontSize.value14,
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
-        style: theme.textTheme.bodyMedium,
       );
     }
     final lower = body.toLowerCase();
@@ -285,12 +282,11 @@ class _Hint extends StatelessWidget {
           const Spacer(),
           Icon(icon, size: 48, color: theme.colorScheme.onSurfaceVariant),
           const SizedBox(height: 12),
-          Text(
-            text,
+          AppLabel(
+            text: text,
+            fontSize: AppFontSize.value14,
+            color: theme.colorScheme.onSurfaceVariant,
             textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
           ),
           const Spacer(flex: 2),
         ],

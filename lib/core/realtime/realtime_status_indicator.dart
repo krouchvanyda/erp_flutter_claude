@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../di/injection.dart';
+import '../theme/app_font_size.dart';
+import '../theme/app_label.dart';
 import 'realtime_connection_state.dart';
 import 'realtime_service.dart';
 
@@ -58,7 +60,7 @@ class _Pill extends StatelessWidget {
               decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
             const SizedBox(width: 6),
-            Text(label, style: theme.textTheme.labelSmall),
+            AppLabel(text: label, fontSize: AppFontSize.value11),
           ],
         ),
       ),

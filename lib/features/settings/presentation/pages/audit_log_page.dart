@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -96,11 +98,12 @@ class _AuditLogPageState extends State<AuditLogPage> {
                           final action = AuditAction.values[idx];
                           final isSelected = _actionFilter.contains(action);
                           return FilterChip(
-                            label: Text(
-                              action.name,
-                              style: TextStyle(
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                              ),
+                            label: AppLabel(
+                              text: action.name,
+                              fontSize: AppFontSize.value13,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.w500,
                             ),
                             selected: isSelected,
                             selectedColor: theme.colorScheme.primaryContainer,
@@ -129,9 +132,10 @@ class _AuditLogPageState extends State<AuditLogPage> {
                     if (visible.isEmpty)
                       const Expanded(
                         child: Center(
-                          child: Text(
-                            'No log entries match your filters.',
-                            style: TextStyle(fontWeight: FontWeight.w500),
+                          child: AppLabel(
+                            text: 'No log entries match your filters.',
+                            fontSize: AppFontSize.value14,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       )
@@ -237,22 +241,18 @@ class _LogEntryTile extends StatelessWidget {
                           color: theme.colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(AppRadii.pill),
                         ),
-                        child: Text(
-                          entry.targetType.toUpperCase(),
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
+                        child: AppLabel(
+                          text: entry.targetType.toUpperCase(),
+                          fontSize: AppFontSize.value9,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        _fmt(entry.occurredAt),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          fontSize: 11,
-                        ),
+                      AppLabel(
+                        text: _fmt(entry.occurredAt),
+                        fontSize: AppFontSize.value11,
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ],
                   ),
@@ -265,12 +265,11 @@ class _LogEntryTile extends StatelessWidget {
                         color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(AppRadii.xs),
                       ),
-                      child: Text(
-                        entry.detail!,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontStyle: FontStyle.italic,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+                      child: AppLabel(
+                        text: entry.detail!,
+                        fontSize: AppFontSize.value12,
+                        fontStyle: FontStyle.italic,
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -314,9 +313,10 @@ class _LogEntryTile extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            Text(
-              'Audit Entry Details',
-              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            const AppLabel(
+              text: 'Audit Entry Details',
+              fontSize: AppFontSize.value16,
+              fontWeight: FontWeight.bold,
             ),
             const SizedBox(height: 16),
             _metaRow(context, 'Actor ID', entry.actorId),
@@ -328,9 +328,10 @@ class _LogEntryTile extends StatelessWidget {
             _metaRow(context, 'Timestamp', entry.occurredAt.toIso8601String()),
             if (entry.detail != null) ...[
               const SizedBox(height: 8),
-              Text(
-                'Additional Metadata:',
-                style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
+              const AppLabel(
+                text: 'Additional Metadata:',
+                fontSize: AppFontSize.value12,
+                fontWeight: FontWeight.bold,
               ),
               const SizedBox(height: 4),
               Container(
@@ -341,11 +342,10 @@ class _LogEntryTile extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppRadii.md),
                   border: Border.all(color: theme.colorScheme.outlineVariant),
                 ),
-                child: Text(
-                  entry.detail!,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontStyle: FontStyle.italic,
-                  ),
+                child: AppLabel(
+                  text: entry.detail!,
+                  fontSize: AppFontSize.value14,
+                  fontStyle: FontStyle.italic,
                 ),
               ),
             ],
@@ -354,7 +354,11 @@ class _LogEntryTile extends StatelessWidget {
               width: double.infinity,
               child: FilledButton(
                 onPressed: () => Navigator.pop(sheetCtx),
-                child: const Text('Close'),
+                child: const AppLabel(
+                  text: 'Close',
+                  fontSize: AppFontSize.value14,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
@@ -372,21 +376,19 @@ class _LogEntryTile extends StatelessWidget {
         children: [
           SizedBox(
             width: 110,
-            child: Text(
-              label,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.bold,
-              ),
+            child: AppLabel(
+              text: label,
+              fontSize: AppFontSize.value12,
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.bold,
             ),
           ),
           Expanded(
-            child: Text(
-              value,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface,
-                fontWeight: FontWeight.w600,
-              ),
+            child: AppLabel(
+              text: value,
+              fontSize: AppFontSize.value12,
+              color: theme.colorScheme.onSurface,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

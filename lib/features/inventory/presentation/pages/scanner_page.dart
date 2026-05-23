@@ -6,6 +6,8 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../data/repositories/items_repository.dart';
 import 'items_list_page.dart';
@@ -121,7 +123,13 @@ class _ScannerPageState extends State<ScannerPage> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.inventoryScannerTitle)),
+      appBar: AppBar(
+        title: AppLabel(
+          text: l10n.inventoryScannerTitle,
+          fontSize: AppFontSize.value20,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
       body: Column(
         children: [
           if (_liveScanSupported)
@@ -162,7 +170,11 @@ class _UnsupportedPlatform extends StatelessWidget {
             Icon(Icons.no_photography_outlined,
                 size: 64, color: theme.colorScheme.outline),
             const SizedBox(height: 12),
-            Text(text, textAlign: TextAlign.center),
+            AppLabel(
+              text: text,
+              fontSize: AppFontSize.value14,
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
@@ -193,9 +205,9 @@ class _ManualEntryBar extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              l10n.inventoryScannerManualHeading,
-              style: Theme.of(context).textTheme.labelMedium,
+            AppLabel(
+              text: l10n.inventoryScannerManualHeading,
+              fontSize: AppFontSize.value12,
             ),
             const SizedBox(height: 6),
             Row(
@@ -217,7 +229,11 @@ class _ManualEntryBar extends StatelessWidget {
                 FilledButton.icon(
                   onPressed: disabled ? null : onSubmit,
                   icon: const Icon(Icons.check),
-                  label: Text(l10n.inventoryScannerManualUseAction),
+                  label: AppLabel(
+                    text: l10n.inventoryScannerManualUseAction,
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -232,7 +248,11 @@ class _ManualEntryBar extends StatelessWidget {
                   : ConfigRouter.pushPageAndRemoveUntilAnimation(
                       context, const ItemsListPage()),
               icon: const Icon(Icons.list_alt_outlined),
-              label: Text(l10n.inventoryScannerBrowseFallback),
+              label: AppLabel(
+                text: l10n.inventoryScannerBrowseFallback,
+                fontSize: AppFontSize.value14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),

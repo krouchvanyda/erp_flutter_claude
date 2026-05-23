@@ -4,6 +4,8 @@ import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/error/failure.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -247,18 +249,17 @@ class _LeaveApprovalDetailPageState extends State<LeaveApprovalDetailPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Text(
-                    'Reason for rejection',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                  const AppLabel(
+                    text: 'Reason for rejection',
+                    fontSize: AppFontSize.value22,
+                    fontWeight: FontWeight.w700,
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    'Explain briefly so ${_request.employeeName.split(' ').first} understands the decision.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
+                  AppLabel(
+                    text:
+                        'Explain briefly so ${_request.employeeName.split(' ').first} understands the decision.',
+                    fontSize: AppFontSize.value12,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(height: 16),
                   TextField(
@@ -299,7 +300,11 @@ class _LeaveApprovalDetailPageState extends State<LeaveApprovalDetailPage> {
                               borderRadius: BorderRadius.circular(AppRadii.md),
                             ),
                           ),
-                          child: const Text('Cancel'),
+                          child: const AppLabel(
+                            text: 'Cancel',
+                            fontSize: AppFontSize.value14,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -310,7 +315,11 @@ class _LeaveApprovalDetailPageState extends State<LeaveApprovalDetailPage> {
                               ? null
                               : () => Navigator.pop(sheetCtx, ctrl.text.trim()),
                           icon: const Icon(Icons.close_rounded, size: 18),
-                          label: const Text('Confirm Rejection'),
+                          label: const AppLabel(
+                            text: 'Confirm Rejection',
+                            fontSize: AppFontSize.value14,
+                            fontWeight: FontWeight.w600,
+                          ),
                           style: FilledButton.styleFrom(
                             backgroundColor: theme.colorScheme.error,
                             foregroundColor: theme.colorScheme.onError,
@@ -375,12 +384,11 @@ class _LeaveApprovalDetailPageState extends State<LeaveApprovalDetailPage> {
                         color: Colors.green, size: 24),
                   ),
                   const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Approve this leave request?',
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                  const Expanded(
+                    child: AppLabel(
+                      text: 'Approve this leave request?',
+                      fontSize: AppFontSize.value22,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
@@ -399,18 +407,18 @@ class _LeaveApprovalDetailPageState extends State<LeaveApprovalDetailPage> {
                         size: 18, color: theme.colorScheme.onSurfaceVariant),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        '${_leaveTypeLabel(_request.type)} • ${_request.days} day${_request.days == 1 ? '' : 's'}',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                      child: AppLabel(
+                        text:
+                            '${_leaveTypeLabel(_request.type)} • ${_request.days} day${_request.days == 1 ? '' : 's'}',
+                        fontSize: AppFontSize.value14,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    Text(
-                      '${_date.format(_request.fromDate)}  →  ${_date.format(_request.toDate)}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                    AppLabel(
+                      text:
+                          '${_date.format(_request.fromDate)}  →  ${_date.format(_request.toDate)}',
+                      fontSize: AppFontSize.value12,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ],
                 ),
@@ -452,7 +460,11 @@ class _LeaveApprovalDetailPageState extends State<LeaveApprovalDetailPage> {
                           borderRadius: BorderRadius.circular(AppRadii.md),
                         ),
                       ),
-                      child: const Text('Cancel'),
+                      child: const AppLabel(
+                        text: 'Cancel',
+                        fontSize: AppFontSize.value14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -461,7 +473,11 @@ class _LeaveApprovalDetailPageState extends State<LeaveApprovalDetailPage> {
                     child: FilledButton.icon(
                       onPressed: () => Navigator.pop(sheetCtx, ctrl.text.trim()),
                       icon: const Icon(Icons.check_rounded, size: 18),
-                      label: const Text('Approve'),
+                      label: const AppLabel(
+                        text: 'Approve',
+                        fontSize: AppFontSize.value14,
+                        fontWeight: FontWeight.w600,
+                      ),
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
@@ -494,13 +510,12 @@ class _SectionLabel extends StatelessWidget {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(left: 4),
-      child: Text(
-        text.toUpperCase(),
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: theme.colorScheme.primary,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 1.2,
-        ),
+      child: AppLabel(
+        text: text.toUpperCase(),
+        fontSize: AppFontSize.value11,
+        color: theme.colorScheme.primary,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 1.2,
       ),
     );
   }
@@ -551,12 +566,11 @@ class _EmployeeContextCard extends StatelessWidget {
                 ),
               ],
             ),
-            child: Text(
-              initials,
-              style: theme.textTheme.titleLarge?.copyWith(
-                color: theme.colorScheme.onPrimary,
-                fontWeight: FontWeight.w700,
-              ),
+            child: AppLabel(
+              text: initials,
+              fontSize: AppFontSize.value22,
+              color: theme.colorScheme.onPrimary,
+              fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(width: 16),
@@ -564,11 +578,10 @@ class _EmployeeContextCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  request.employeeName,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+                AppLabel(
+                  text: request.employeeName,
+                  fontSize: AppFontSize.value22,
+                  fontWeight: FontWeight.w800,
                 ),
                 const SizedBox(height: 4),
                 Row(
@@ -576,12 +589,11 @@ class _EmployeeContextCard extends StatelessWidget {
                     Icon(_leaveIcon(request.type),
                         size: 14, color: theme.colorScheme.onSurfaceVariant),
                     const SizedBox(width: 4),
-                    Text(
-                      _leaveTypeLabel(request.type),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    AppLabel(
+                      text: _leaveTypeLabel(request.type),
+                      fontSize: AppFontSize.value12,
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
                     ),
                   ],
                 ),
@@ -598,20 +610,19 @@ class _EmployeeContextCard extends StatelessWidget {
                     ),
                   )
                 else if (typedBalance != null)
-                  Text(
-                    '${typedBalance!.remainingDays} of ${typedBalance!.totalDays} days remaining',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  AppLabel(
+                    text:
+                        '${typedBalance!.remainingDays} of ${typedBalance!.totalDays} days remaining',
+                    fontSize: AppFontSize.value12,
+                    color: theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.w600,
                   )
                 else
-                  Text(
-                    'No yearly balance configured',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontStyle: FontStyle.italic,
-                    ),
+                  AppLabel(
+                    text: 'No yearly balance configured',
+                    fontSize: AppFontSize.value12,
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontStyle: FontStyle.italic,
                   ),
               ],
             ),
@@ -692,12 +703,12 @@ class _RequestDetailCard extends StatelessWidget {
                 Icon(Icons.timelapse_rounded,
                     color: theme.colorScheme.primary),
                 const SizedBox(width: 8),
-                Text(
-                  '${request.days} day${request.days == 1 ? '' : 's'} requested',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.w800,
-                  ),
+                AppLabel(
+                  text:
+                      '${request.days} day${request.days == 1 ? '' : 's'} requested',
+                  fontSize: AppFontSize.value16,
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w800,
                 ),
               ],
             ),
@@ -708,11 +719,10 @@ class _RequestDetailCard extends StatelessWidget {
               Icon(Icons.schedule_rounded,
                   size: 14, color: theme.colorScheme.onSurfaceVariant),
               const SizedBox(width: 6),
-              Text(
-                'Submitted ${stampFormat.format(request.requestedAt)}',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+              AppLabel(
+                text: 'Submitted ${stampFormat.format(request.requestedAt)}',
+                fontSize: AppFontSize.value12,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ],
           ),
@@ -742,22 +752,20 @@ class _InfoCell extends StatelessWidget {
             children: [
               Icon(icon, size: 14, color: theme.colorScheme.outline),
               const SizedBox(width: 4),
-              Text(
-                label.toUpperCase(),
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.outline,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.6,
-                ),
+              AppLabel(
+                text: label.toUpperCase(),
+                fontSize: AppFontSize.value11,
+                color: theme.colorScheme.outline,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.6,
               ),
             ],
           ),
           const SizedBox(height: 6),
-          Text(
-            value,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+          AppLabel(
+            text: value,
+            fontSize: AppFontSize.value16,
+            fontWeight: FontWeight.w700,
           ),
         ],
       ),
@@ -827,11 +835,11 @@ class _BalancePreviewCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Text(
-            '${balance.usedDays} of ${balance.totalDays} days used this year',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+          AppLabel(
+            text:
+                '${balance.usedDays} of ${balance.totalDays} days used this year',
+            fontSize: AppFontSize.value12,
+            color: theme.colorScheme.onSurfaceVariant,
           ),
           const SizedBox(height: 16),
           Row(
@@ -874,7 +882,6 @@ class _BalanceCell extends StatelessWidget {
   final IconData icon;
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       decoration: BoxDecoration(
@@ -890,20 +897,18 @@ class _BalanceCell extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w700,
-                  ),
+                AppLabel(
+                  text: label,
+                  fontSize: AppFontSize.value11,
+                  color: color,
+                  fontWeight: FontWeight.w700,
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w800,
-                  ),
+                AppLabel(
+                  text: value,
+                  fontSize: AppFontSize.value14,
+                  color: color,
+                  fontWeight: FontWeight.w800,
                 ),
               ],
             ),
@@ -970,27 +975,25 @@ class _ApprovalTimelineCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w800,
-                  ),
+                AppLabel(
+                  text: label,
+                  fontSize: AppFontSize.value16,
+                  color: color,
+                  fontWeight: FontWeight.w800,
                 ),
                 if (request.actionedAt != null) ...[
                   const SizedBox(height: 2),
-                  Text(
-                    stampFormat.format(request.actionedAt!),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
+                  AppLabel(
+                    text: stampFormat.format(request.actionedAt!),
+                    fontSize: AppFontSize.value12,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ],
                 if ((request.decisionNote ?? '').isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  Text(
-                    request.decisionNote!,
-                    style: theme.textTheme.bodyMedium,
+                  AppLabel(
+                    text: request.decisionNote!,
+                    fontSize: AppFontSize.value14,
                   ),
                 ],
               ],
@@ -1040,7 +1043,11 @@ class _ActionBar extends StatelessWidget {
               child: OutlinedButton.icon(
                 onPressed: onReject,
                 icon: const Icon(Icons.close_rounded, size: 18),
-                label: const Text('Reject'),
+                label: const AppLabel(
+                  text: 'Reject',
+                  fontSize: AppFontSize.value14,
+                  fontWeight: FontWeight.w600,
+                ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: theme.colorScheme.error,
                   side: BorderSide(
@@ -1058,7 +1065,11 @@ class _ActionBar extends StatelessWidget {
               child: FilledButton.icon(
                 onPressed: onApprove,
                 icon: const Icon(Icons.check_rounded, size: 18),
-                label: const Text('Approve'),
+                label: const AppLabel(
+                  text: 'Approve',
+                  fontSize: AppFontSize.value14,
+                  fontWeight: FontWeight.w600,
+                ),
                 style: FilledButton.styleFrom(
                   backgroundColor: Colors.green,
                   foregroundColor: Colors.white,
@@ -1095,13 +1106,12 @@ class _StatusChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.pill),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
-      child: Text(
-        label.toUpperCase(),
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 0.6,
-        ),
+      child: AppLabel(
+        text: label.toUpperCase(),
+        fontSize: AppFontSize.value11,
+        color: color,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 0.6,
       ),
     );
   }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../entities/invoice.dart';
 
@@ -40,21 +42,23 @@ class ApproveInvoiceBottomSheet extends StatelessWidget {
                 Icon(Icons.check_circle_outline,
                     color: theme.colorScheme.tertiary),
                 const SizedBox(width: 8),
-                Text(l10n.invoiceApproveSheetTitle,
-                    style: theme.textTheme.titleMedium),
+                AppLabel(
+                  text: l10n.invoiceApproveSheetTitle,
+                  fontSize: AppFontSize.value16,
+                  fontWeight: FontWeight.w600,
+                ),
               ],
             ),
             const SizedBox(height: 12),
-            Text(
-              l10n.invoiceApproveSheetBody(invoice.invoiceNumber),
-              style: theme.textTheme.bodyMedium,
+            AppLabel(
+              text: l10n.invoiceApproveSheetBody(invoice.invoiceNumber),
+              fontSize: AppFontSize.value14,
             ),
             const SizedBox(height: 4),
-            Text(
-              '${invoice.customerName} · ${invoice.totalAmount}',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+            AppLabel(
+              text: '${invoice.customerName} · ${invoice.totalAmount}',
+              fontSize: AppFontSize.value11,
+              color: theme.colorScheme.onSurfaceVariant,
             ),
             const SizedBox(height: 20),
             Row(
@@ -62,7 +66,11 @@ class ApproveInvoiceBottomSheet extends StatelessWidget {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => Navigator.of(context).pop(false),
-                    child: Text(l10n.invoiceActionCancel),
+                    child: AppLabel(
+                      text: l10n.invoiceActionCancel,
+                      fontSize: AppFontSize.value14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -70,7 +78,11 @@ class ApproveInvoiceBottomSheet extends StatelessWidget {
                   child: FilledButton.icon(
                     onPressed: () => Navigator.of(context).pop(true),
                     icon: const Icon(Icons.check),
-                    label: Text(l10n.invoiceApproveAction),
+                    label: AppLabel(
+                      text: l10n.invoiceApproveAction,
+                      fontSize: AppFontSize.value14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],

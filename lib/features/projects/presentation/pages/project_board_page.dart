@@ -4,6 +4,8 @@ import 'package:get_it/get_it.dart';
 
 import '../../../../core/error/failure.dart';
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -66,12 +68,11 @@ class _ProjectBoardPageState extends State<ProjectBoardPage> {
                             Icon(Icons.error_outline_rounded, color: theme.colorScheme.error),
                             const SizedBox(width: 8),
                             Expanded(
-                              child: Text(
-                                _flashMessage!,
-                                style: TextStyle(
-                                  color: theme.colorScheme.onErrorContainer,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                              child: AppLabel(
+                                text: _flashMessage!,
+                                fontSize: AppFontSize.value14,
+                                color: theme.colorScheme.onErrorContainer,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ],
@@ -108,7 +109,11 @@ class _ProjectBoardPageState extends State<ProjectBoardPage> {
           TaskFormPage(projectId: widget.projectId),
         ),
         icon: const Icon(Icons.add_task_rounded),
-        label: const Text('New Task'),
+        label: const AppLabel(
+          text: 'New Task',
+          fontSize: AppFontSize.value14,
+          fontWeight: FontWeight.w600,
+        ),
       ).animate().scale(delay: 400.ms, curve: Curves.easeOutBack),
     );
   }
@@ -193,12 +198,11 @@ class _Column extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      _columnTitle(status).toUpperCase(),
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.5,
-                      ),
+                    child: AppLabel(
+                      text: _columnTitle(status).toUpperCase(),
+                      fontSize: AppFontSize.value12,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
                     ),
                   ),
                   Container(
@@ -207,13 +211,11 @@ class _Column extends StatelessWidget {
                       color: headerColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: Text(
-                      '${tasks.length}',
-                      style: TextStyle(
-                        color: headerColor,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    child: AppLabel(
+                      text: '${tasks.length}',
+                      fontSize: AppFontSize.value10,
+                      color: headerColor,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
@@ -227,13 +229,11 @@ class _Column extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 32),
                         child: Center(
-                          child: Text(
-                            'Drop tasks here',
-                            style: TextStyle(
-                              color: theme.colorScheme.outline,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
+                          child: AppLabel(
+                            text: 'Drop tasks here',
+                            fontSize: AppFontSize.value12,
+                            color: theme.colorScheme.outline,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       )
@@ -317,12 +317,11 @@ class _TaskCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    task.title,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: -0.2,
-                    ),
+                  AppLabel(
+                    text: task.title,
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.2,
                   ),
                   const SizedBox(height: 8),
                   Wrap(
@@ -337,23 +336,20 @@ class _TaskCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(color: priorityCol.withValues(alpha: 0.2)),
                         ),
-                        child: Text(
-                          task.priority.name.toUpperCase(),
-                          style: TextStyle(
-                            color: priorityCol,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.3,
-                          ),
+                        child: AppLabel(
+                          text: task.priority.name.toUpperCase(),
+                          fontSize: AppFontSize.value9,
+                          color: priorityCol,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.3,
                         ),
                       ),
                       if (task.assigneeName != null)
-                        Text(
-                          task.assigneeName!,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        AppLabel(
+                          text: task.assigneeName!,
+                          fontSize: AppFontSize.value12,
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
                         ),
                       if (task.dueDate != null)
                         Row(
@@ -365,17 +361,15 @@ class _TaskCard extends StatelessWidget {
                               color: task.isOverdue ? theme.colorScheme.error : theme.colorScheme.outline,
                             ),
                             const SizedBox(width: 3),
-                            Text(
-                              task.isOverdue
+                            AppLabel(
+                              text: task.isOverdue
                                   ? 'OVERDUE: ${_fmt(task.dueDate!)}'
                                   : 'Due: ${_fmt(task.dueDate!)}',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: task.isOverdue
-                                    ? theme.colorScheme.error
-                                    : theme.colorScheme.outline,
-                              ),
+                              fontSize: AppFontSize.value10,
+                              fontWeight: FontWeight.bold,
+                              color: task.isOverdue
+                                  ? theme.colorScheme.error
+                                  : theme.colorScheme.outline,
                             ),
                           ],
                         ),

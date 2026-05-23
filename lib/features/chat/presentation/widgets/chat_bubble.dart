@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../entities/chat_message.dart';
 import 'chat_avatar.dart';
@@ -60,13 +62,11 @@ class ChatBubble extends StatelessWidget {
             if (showSender && !isOwn)
               Padding(
                 padding: const EdgeInsets.only(left: 44, bottom: 4),
-                child: Text(
-                  message.senderName,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 11.5,
-                  ),
+                child: AppLabel(
+                  text: message.senderName,
+                  fontSize: 11.5,
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             Row(
@@ -210,12 +210,11 @@ class _BubbleContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     if (message.isDeleted) {
-      return Text(
-        'Message deleted',
-        style: theme.textTheme.bodyMedium?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-          fontStyle: FontStyle.italic,
-        ),
+      return AppLabel(
+        text: 'Message deleted',
+        fontSize: AppFontSize.value14,
+        color: theme.colorScheme.onSurfaceVariant,
+        fontStyle: FontStyle.italic,
       );
     }
     return Column(
@@ -280,24 +279,21 @@ class _ReplyQuote extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                message.replyToSenderName ?? '',
-                style: TextStyle(
-                  color: fg,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 11,
-                ),
+              AppLabel(
+                text: message.replyToSenderName ?? '',
+                fontSize: AppFontSize.value11,
+                color: fg,
+                fontWeight: FontWeight.w800,
               ),
               const SizedBox(height: 2),
-              Text(
-                message.replyToPreview ?? '',
+              AppLabel(
+                text: message.replyToPreview ?? '',
+                fontSize: AppFontSize.value12,
+                color: isOwn
+                    ? theme.colorScheme.onPrimary.withValues(alpha: 0.8)
+                    : theme.colorScheme.onSurfaceVariant,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: isOwn
-                      ? theme.colorScheme.onPrimary.withValues(alpha: 0.8)
-                      : theme.colorScheme.onSurfaceVariant,
-                ),
               ),
             ],
           ),
@@ -315,12 +311,11 @@ class _TextContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Text(
-      message.body ?? '',
-      style: theme.textTheme.bodyMedium?.copyWith(
-        color: isOwn ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface,
-        height: 1.35,
-      ),
+    return AppLabel(
+      text: message.body ?? '',
+      fontSize: AppFontSize.value14,
+      color: isOwn ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface,
+      lineHeight: 1.35,
     );
   }
 }
@@ -370,14 +365,14 @@ class _VoiceContent extends StatelessWidget {
             color: fg,
           ),
           const SizedBox(width: 10),
-          Text(
-            '$minutes:$seconds',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: isOwn
-                  ? theme.colorScheme.onPrimary.withValues(alpha: 0.9)
-                  : theme.colorScheme.onSurface,
-              fontWeight: FontWeight.w700,
-            ),
+          AppLabel(
+            text: '$minutes:$seconds',
+            fontSize: AppFontSize.value12,
+            color: isOwn
+                ? theme.colorScheme.onPrimary.withValues(alpha: 0.9)
+                : theme.colorScheme.onSurface,
+            fontWeight: FontWeight.w700,
+            fontFeatures: const [FontFeature.tabularFigures()],
           ),
         ],
       ),
@@ -486,12 +481,11 @@ class _ImageContent extends StatelessWidget {
             size: 40,
           ),
           const SizedBox(height: 6),
-          Text(
-            message.fileName ?? 'photo',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-            ),
+          AppLabel(
+            text: message.fileName ?? 'photo',
+            fontSize: AppFontSize.value12,
+            color: theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w700,
           ),
         ],
       ),
@@ -534,19 +528,19 @@ class _FileContent extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                message.fileName ?? 'file',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: fg,
-                  fontWeight: FontWeight.w700,
-                ),
+              AppLabel(
+                text: message.fileName ?? 'file',
+                fontSize: AppFontSize.value14,
+                color: fg,
+                fontWeight: FontWeight.w700,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 2),
-              Text(
-                _fileSize(message.fileSizeBytes),
-                style: theme.textTheme.bodySmall?.copyWith(color: muted),
+              AppLabel(
+                text: _fileSize(message.fileSizeBytes),
+                fontSize: AppFontSize.value12,
+                color: muted,
               ),
             ],
           ),
@@ -584,22 +578,19 @@ class _BubbleFooter extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (message.editedAt != null) ...[
-          Text(
-            'edited · ',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: color,
-              fontSize: 10,
-              fontStyle: FontStyle.italic,
-            ),
+          AppLabel(
+            text: 'edited · ',
+            fontSize: AppFontSize.value10,
+            color: color,
+            fontStyle: FontStyle.italic,
           ),
         ],
-        Text(
-          df.format(message.sentAt),
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: color,
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-          ),
+        AppLabel(
+          text: df.format(message.sentAt),
+          fontSize: AppFontSize.value10,
+          color: color,
+          fontWeight: FontWeight.w600,
+          fontFeatures: const [FontFeature.tabularFigures()],
         ),
         if (isOwn) ...[
           const SizedBox(width: 4),
@@ -664,17 +655,18 @@ class _ReactionRow extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(r.emoji, style: const TextStyle(fontSize: 13)),
+                  AppLabel(
+                    text: r.emoji,
+                    fontSize: AppFontSize.value13,
+                  ),
                   const SizedBox(width: 4),
-                  Text(
-                    '${r.count}',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: r.employeeIds.contains(currentUserId)
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 11,
-                    ),
+                  AppLabel(
+                    text: '${r.count}',
+                    fontSize: AppFontSize.value11,
+                    color: r.employeeIds.contains(currentUserId)
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w800,
                   ),
                 ],
               ),
@@ -695,13 +687,12 @@ class _SystemCaption extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       child: Center(
-        child: Text(
-          message.body ?? '',
+        child: AppLabel(
+          text: message.body ?? '',
+          fontSize: AppFontSize.value12,
+          color: theme.colorScheme.onSurfaceVariant,
+          fontStyle: FontStyle.italic,
           textAlign: TextAlign.center,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-            fontStyle: FontStyle.italic,
-          ),
         ),
       ),
     );
@@ -725,14 +716,12 @@ class DateSeparatorChip extends StatelessWidget {
             color: theme.colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(AppRadii.pill),
           ),
-          child: Text(
-            _label(day),
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w800,
-              fontSize: 11,
-              letterSpacing: 0.3,
-            ),
+          child: AppLabel(
+            text: _label(day),
+            fontSize: AppFontSize.value11,
+            color: theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.3,
           ),
         ),
       ),

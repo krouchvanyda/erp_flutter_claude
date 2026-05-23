@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_text_field.dart';
@@ -133,22 +135,20 @@ class _FormView extends StatelessWidget {
         
         const SizedBox(height: 32),
         
-        Text(
-          'Forgot Password?',
+        AppLabel(
+          text: 'Forgot Password?',
+          fontSize: AppFontSize.value22,
+          fontWeight: FontWeight.bold,
           textAlign: TextAlign.center,
-          style: theme.textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
         ),
-        
+
         const SizedBox(height: 16),
-        
-        Text(
-          'Enter your email address and we will send you a link to reset your password.',
+
+        AppLabel(
+          text: 'Enter your email address and we will send you a link to reset your password.',
+          fontSize: AppFontSize.value16,
+          color: theme.colorScheme.onSurfaceVariant,
           textAlign: TextAlign.center,
-          style: theme.textTheme.bodyLarge?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
         ),
         
         const SizedBox(height: 48),
@@ -225,21 +225,19 @@ class _SuccessView extends StatelessWidget {
         
         const SizedBox(height: 32),
         
-        Text(
-          'Email Sent!',
-          style: theme.textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+        AppLabel(
+          text: 'Email Sent!',
+          fontSize: AppFontSize.value22,
+          fontWeight: FontWeight.bold,
         ),
-        
+
         const SizedBox(height: 16),
-        
-        Text(
-          'Please check your inbox for instructions to reset your password.',
+
+        AppLabel(
+          text: 'Please check your inbox for instructions to reset your password.',
+          fontSize: AppFontSize.value16,
+          color: theme.colorScheme.onSurfaceVariant,
           textAlign: TextAlign.center,
-          style: theme.textTheme.bodyLarge?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
         ),
         
         const SizedBox(height: 48),

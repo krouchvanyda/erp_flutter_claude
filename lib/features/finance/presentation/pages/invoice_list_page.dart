@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -37,8 +39,7 @@ class _ListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
-    
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
@@ -58,7 +59,11 @@ class _ListView extends StatelessWidget {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => ConfigRouter.pushPageAnimation(context, const InvoiceFormPage()),
         icon: const Icon(Icons.add_rounded),
-        label: Text(l10n.invoiceFormCreateTitle),
+        label: AppLabel(
+          text: l10n.invoiceFormCreateTitle,
+          fontSize: AppFontSize.value14,
+          fontWeight: FontWeight.w600,
+        ),
         elevation: 4,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.lg)),
       ).animate().scale(delay: 400.ms, curve: Curves.easeOutBack),
@@ -80,7 +85,13 @@ class _SortAction extends StatelessWidget {
             context.read<InvoiceListBloc>().add(InvoiceListEvent.sortChanged(s)),
         itemBuilder: (_) => [
           for (final s in InvoiceSort.values)
-            PopupMenuItem(value: s, child: Text(_sortLabel(l10n, s))),
+            PopupMenuItem(
+              value: s,
+              child: AppLabel(
+                text: _sortLabel(l10n, s),
+                fontSize: AppFontSize.value14,
+              ),
+            ),
         ],
       ),
     );
@@ -139,7 +150,10 @@ class _Toolbar extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: FilterChip(
-                        label: Text(invoiceStatusLabel(l10n, s)),
+                        label: AppLabel(
+                          text: invoiceStatusLabel(l10n, s),
+                          fontSize: AppFontSize.value13,
+                        ),
                         selected: state.statusFilter.contains(s),
                         onSelected: (_) => bloc.add(
                           InvoiceListEvent.statusToggled(s),
@@ -255,20 +269,18 @@ class _InvoiceCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          invoice.invoiceNumber,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                          ),
+                        AppLabel(
+                          text: invoice.invoiceNumber,
+                          fontSize: AppFontSize.value16,
+                          fontWeight: FontWeight.bold,
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                         const SizedBox(height: 2),
-                        Text(
-                          invoice.customerName,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        AppLabel(
+                          text: invoice.customerName,
+                          fontSize: AppFontSize.value14,
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -288,28 +300,25 @@ class _InvoiceCard extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'ISSUED: ${_date.format(invoice.issuedAt)}',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.outline,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      AppLabel(
+                        text: 'ISSUED: ${_date.format(invoice.issuedAt)}',
+                        fontSize: AppFontSize.value11,
+                        color: theme.colorScheme.outline,
+                        fontWeight: FontWeight.bold,
                       ),
-                      Text(
-                        l10n.invoiceListDueLabel(_date.format(invoice.dueAt)).toUpperCase(),
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.outline,
-                        ),
+                      AppLabel(
+                        text: l10n.invoiceListDueLabel(_date.format(invoice.dueAt)).toUpperCase(),
+                        fontSize: AppFontSize.value11,
+                        color: theme.colorScheme.outline,
                       ),
                     ],
                   ),
-                  Text(
-                    invoice.totalAmount,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: theme.colorScheme.primary,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
+                  AppLabel(
+                    text: invoice.totalAmount,
+                    fontSize: AppFontSize.value24,
+                    fontWeight: FontWeight.w900,
+                    color: theme.colorScheme.primary,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ],
               ),
@@ -337,14 +346,12 @@ class _StatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.pill),
         border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
-      child: Text(
-        invoiceStatusLabel(l10n, status).toUpperCase(),
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w900,
-          fontSize: 9,
-          letterSpacing: 0.5,
-        ),
+      child: AppLabel(
+        text: invoiceStatusLabel(l10n, status).toUpperCase(),
+        fontSize: AppFontSize.value9,
+        color: color,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 0.5,
       ),
     );
   }
@@ -377,13 +384,12 @@ class _CenteredMessage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            Text(
-              text, 
+            AppLabel(
+              text: text,
+              fontSize: AppFontSize.value16,
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
-              ),
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
             ),
           ],
         ),

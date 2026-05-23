@@ -3,6 +3,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -66,7 +68,10 @@ class ProjectDetailPage extends StatelessWidget {
                 final project = snap.data;
                 if (project == null) {
                   return Center(
-                    child: Text('No project with id "$projectId".'),
+                    child: AppLabel(
+                      text: 'No project with id "$projectId".',
+                      fontSize: AppFontSize.value14,
+                    ),
                   );
                 }
                 return ListView(
@@ -110,14 +115,12 @@ class ProjectDetailPage extends StatelessWidget {
                                   ),
                                 ),
                                 alignment: Alignment.center,
-                                child: Text(
-                                  project.code.split('-').first.substring(
+                                child: AppLabel(
+                                  text: project.code.split('-').first.substring(
                                       0, project.code.split('-').first.length.clamp(0, 3)),
-                                  style: TextStyle(
-                                    color: _projectColor(project.color),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w900,
-                                  ),
+                                  fontSize: AppFontSize.value13,
+                                  color: _projectColor(project.color),
+                                  fontWeight: FontWeight.w900,
                                 ),
                               ),
                               const SizedBox(width: 14),
@@ -125,19 +128,17 @@ class ProjectDetailPage extends StatelessWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      project.name,
-                                      style: theme.textTheme.titleMedium?.copyWith(
-                                        fontWeight: FontWeight.w800,
-                                      ),
+                                    AppLabel(
+                                      text: project.name,
+                                      fontSize: AppFontSize.value16,
+                                      fontWeight: FontWeight.w800,
                                     ),
                                     const SizedBox(height: 2),
-                                    Text(
-                                      'Project ID: ${project.code}',
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        color: theme.colorScheme.onSurfaceVariant,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                    AppLabel(
+                                      text: 'Project ID: ${project.code}',
+                                      fontSize: AppFontSize.value12,
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ],
                                 ),
@@ -149,14 +150,12 @@ class ProjectDetailPage extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(AppRadii.pill),
                                   border: Border.all(color: _statusColor(project.status).withValues(alpha: 0.15)),
                                 ),
-                                child: Text(
-                                  project.status.name.toUpperCase(),
-                                  style: TextStyle(
-                                    color: _statusColor(project.status),
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 0.5,
-                                  ),
+                                child: AppLabel(
+                                  text: project.status.name.toUpperCase(),
+                                  fontSize: AppFontSize.value10,
+                                  color: _statusColor(project.status),
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
                                 ),
                               ),
                             ],
@@ -168,33 +167,30 @@ class ProjectDetailPage extends StatelessWidget {
                           _row(theme, 'Duration', '${project.totalDays} Days', Icons.timelapse_rounded),
                           _row(theme, 'Budget', project.budget, Icons.monetization_on_outlined),
                           const SizedBox(height: 16),
-                          Text(
-                            'DESCRIPTION',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.primary,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.5,
-                            ),
+                          AppLabel(
+                            text: 'DESCRIPTION',
+                            fontSize: AppFontSize.value11,
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.5,
                           ),
                           const SizedBox(height: 6),
-                          Text(
-                            project.description,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                              height: 1.4,
-                            ),
+                          AppLabel(
+                            text: project.description,
+                            fontSize: AppFontSize.value14,
+                            color: theme.colorScheme.onSurfaceVariant,
+                            lineHeight: 1.4,
                           ),
                         ],
                       ),
                     ).animate().fadeIn().slideY(begin: 0.05, end: 0, duration: 300.ms),
                     const SizedBox(height: 24),
-                    Text(
-                      'PROJECT TASKS',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: theme.colorScheme.onSurface,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
-                      ),
+                    AppLabel(
+                      text: 'PROJECT TASKS',
+                      fontSize: AppFontSize.value12,
+                      color: theme.colorScheme.onSurface,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
                     ),
                     const SizedBox(height: 8),
                     StreamBuilder<List<ProjectTask>>(
@@ -206,12 +202,11 @@ class ProjectDetailPage extends StatelessWidget {
                           return Padding(
                             padding: const EdgeInsets.all(24),
                             child: Center(
-                              child: Text(
-                                'No tasks assigned yet.',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.outline,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                              child: AppLabel(
+                                text: 'No tasks assigned yet.',
+                                fontSize: AppFontSize.value14,
+                                color: theme.colorScheme.outline,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           );
@@ -247,21 +242,19 @@ class ProjectDetailPage extends StatelessWidget {
             const SizedBox(width: 8),
             SizedBox(
               width: 100,
-              child: Text(
-                label,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+              child: AppLabel(
+                text: label,
+                fontSize: AppFontSize.value14,
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
             Expanded(
-              child: Text(
-                value,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                  color: theme.colorScheme.onSurface,
-                ),
+              child: AppLabel(
+                text: value,
+                fontSize: AppFontSize.value14,
+                fontWeight: FontWeight.w500,
+                color: theme.colorScheme.onSurface,
               ),
             ),
           ],
@@ -322,12 +315,11 @@ class _StatusGroup extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  _statusText(status),
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.5,
-                  ),
+                AppLabel(
+                  text: _statusText(status),
+                  fontSize: AppFontSize.value12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.5,
                 ),
                 const SizedBox(width: 8),
                 Container(
@@ -336,13 +328,11 @@ class _StatusGroup extends StatelessWidget {
                     color: _statusColor(status).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: Text(
-                    '${tasks.length}',
-                    style: TextStyle(
-                      color: _statusColor(status),
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: AppLabel(
+                    text: '${tasks.length}',
+                    fontSize: AppFontSize.value10,
+                    color: _statusColor(status),
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
@@ -371,18 +361,16 @@ class _StatusGroup extends StatelessWidget {
                   color: Colors.transparent,
                   child: ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    title: Text(
-                      task.title,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    title: AppLabel(
+                      text: task.title,
+                      fontSize: AppFontSize.value14,
+                      fontWeight: FontWeight.bold,
                     ),
-                    subtitle: Text(
-                      task.assigneeName ?? 'Unassigned',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    subtitle: AppLabel(
+                      text: task.assigneeName ?? 'Unassigned',
+                      fontSize: AppFontSize.value12,
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
                     ),
                     trailing: Icon(
                       Icons.chevron_right_rounded,

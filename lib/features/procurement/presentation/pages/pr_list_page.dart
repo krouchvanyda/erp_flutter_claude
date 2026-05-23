@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -36,8 +38,7 @@ class _ListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
-    
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
@@ -57,7 +58,11 @@ class _ListView extends StatelessWidget {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => ConfigRouter.pushPageAnimation(context, const PurchaseRequestFormPage()),
         icon: const Icon(Icons.add_rounded),
-        label: Text(l10n.prListNewTooltip),
+        label: AppLabel(
+          text: l10n.prListNewTooltip,
+          fontSize: AppFontSize.value14,
+          fontWeight: FontWeight.w600,
+        ),
         elevation: 4,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.lg)),
       ).animate().scale(delay: 400.ms, curve: Curves.easeOutBack),
@@ -80,7 +85,13 @@ class _SortAction extends StatelessWidget {
             .add(PurchaseRequestListSortChanged(s)),
         itemBuilder: (_) => [
           for (final s in PurchaseRequestSort.values)
-            PopupMenuItem(value: s, child: Text(_sortLabel(l10n, s))),
+            PopupMenuItem(
+              value: s,
+              child: AppLabel(
+                text: _sortLabel(l10n, s),
+                fontSize: AppFontSize.value14,
+              ),
+            ),
         ],
       ),
     );
@@ -139,7 +150,10 @@ class _Toolbar extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: FilterChip(
-                        label: Text(prStatusLabel(l10n, s)),
+                        label: AppLabel(
+                          text: prStatusLabel(l10n, s),
+                          fontSize: AppFontSize.value13,
+                        ),
                         selected: state.statusFilter.contains(s),
                         onSelected: (_) => bloc.add(
                           PurchaseRequestListStatusToggled(s),
@@ -254,20 +268,18 @@ class _PurchaseRequestCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          pr.number,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                          ),
+                        AppLabel(
+                          text: pr.number,
+                          fontSize: AppFontSize.value16,
+                          fontWeight: FontWeight.bold,
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                         const SizedBox(height: 2),
-                        Text(
-                          pr.requesterName,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        AppLabel(
+                          text: pr.requesterName,
+                          fontSize: AppFontSize.value14,
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -287,28 +299,25 @@ class _PurchaseRequestCard extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'CREATED: ${_date.format(pr.createdAt)}',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.outline,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      AppLabel(
+                        text: 'CREATED: ${_date.format(pr.createdAt)}',
+                        fontSize: AppFontSize.value11,
+                        color: theme.colorScheme.outline,
+                        fontWeight: FontWeight.bold,
                       ),
-                      Text(
-                        'DEPT: ${pr.costCenter.toUpperCase()}',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.outline,
-                        ),
+                      AppLabel(
+                        text: 'DEPT: ${pr.costCenter.toUpperCase()}',
+                        fontSize: AppFontSize.value11,
+                        color: theme.colorScheme.outline,
                       ),
                     ],
                   ),
-                  Text(
-                    pr.totalAmount,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: theme.colorScheme.primary,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
+                  AppLabel(
+                    text: pr.totalAmount,
+                    fontSize: AppFontSize.value24,
+                    fontWeight: FontWeight.w900,
+                    color: theme.colorScheme.primary,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ],
               ),
@@ -336,14 +345,12 @@ class PurchaseRequestStatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.pill),
         border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
-      child: Text(
-        prStatusLabel(l10n, status).toUpperCase(),
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w900,
-          fontSize: 9,
-          letterSpacing: 0.5,
-        ),
+      child: AppLabel(
+        text: prStatusLabel(l10n, status).toUpperCase(),
+        fontSize: AppFontSize.value9,
+        color: color,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 0.5,
       ),
     );
   }
@@ -376,13 +383,12 @@ class _CenteredMessage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            Text(
-              text, 
+            AppLabel(
+              text: text,
+              fontSize: AppFontSize.value16,
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
-              ),
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
             ),
           ],
         ),

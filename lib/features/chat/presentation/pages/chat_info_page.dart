@@ -8,6 +8,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -206,12 +208,11 @@ class _Hero extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Flexible(
-                  child: Text(
-                    conversation.name,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.3,
-                    ),
+                  child: AppLabel(
+                    text: conversation.name,
+                    fontSize: AppFontSize.value24,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -228,13 +229,12 @@ class _Hero extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        Text(
-          isGroup
+        AppLabel(
+          text: isGroup
               ? '${conversation.totalMembers} members · ${conversation.onlineCount} online'
               : _presenceLabel(conversation.presence),
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+          fontSize: AppFontSize.value12,
+          color: theme.colorScheme.onSurfaceVariant,
         ),
       ],
     );
@@ -328,19 +328,22 @@ class _SharedMedia extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
               child: Row(
                 children: [
-                  Text(
-                    'SHARED MEDIA',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.5,
-                    ),
+                  AppLabel(
+                    text: 'SHARED MEDIA',
+                    fontSize: AppFontSize.value10,
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.5,
                   ),
                   const Spacer(),
                   if (media.isNotEmpty)
                     TextButton(
                       onPressed: () {},
-                      child: const Text('See all'),
+                      child: AppLabel(
+                        text: 'See all',
+                        fontSize: AppFontSize.value13,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                 ],
               ),
@@ -350,11 +353,10 @@ class _SharedMedia extends StatelessWidget {
                   ? Padding(
                       padding: const EdgeInsets.all(16),
                       child: Center(
-                        child: Text(
-                          'No shared media yet.',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
+                        child: AppLabel(
+                          text: 'No shared media yet.',
+                          fontSize: AppFontSize.value14,
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                     )
@@ -452,15 +454,14 @@ class _MediaTile extends StatelessWidget {
             const SizedBox(height: 4),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Text(
-                message.fileName!,
+              child: AppLabel(
+                text: message.fileName!,
+                fontSize: AppFontSize.value10,
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w700,
-                ),
               ),
             ),
             ],
@@ -496,13 +497,12 @@ class _CallHistorySection extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-              child: Text(
-                'CALL HISTORY',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0.5,
-                ),
+              child: AppLabel(
+                text: 'CALL HISTORY',
+                fontSize: AppFontSize.value10,
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.5,
               ),
             ),
             _Card(
@@ -573,19 +573,17 @@ class _CallHistoryRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    _labelFor(isVideo, isOutgoing, isMissed, log.status),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: isMissed ? theme.colorScheme.error : null,
-                    ),
+                  AppLabel(
+                    text: _labelFor(isVideo, isOutgoing, isMissed, log.status),
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.w700,
+                    color: isMissed ? theme.colorScheme.error : null,
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    _subtitleFor(log),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
+                  AppLabel(
+                    text: _subtitleFor(log),
+                    fontSize: AppFontSize.value12,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ],
               ),
@@ -683,13 +681,12 @@ class _Members extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-          child: Text(
-            'MEMBERS · ${conversation.totalMembers}',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0.5,
-            ),
+          child: AppLabel(
+            text: 'MEMBERS · ${conversation.totalMembers}',
+            fontSize: AppFontSize.value10,
+            color: theme.colorScheme.primary,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.5,
           ),
         ),
         _Card(
@@ -716,7 +713,11 @@ class _Members extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: TextButton(
                     onPressed: () {},
-                    child: Text('+ $extra more'),
+                    child: AppLabel(
+                      text: '+ $extra more',
+                      fontSize: AppFontSize.value13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
@@ -753,18 +754,16 @@ class _MemberRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  name,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                AppLabel(
+                  text: name,
+                  fontSize: AppFontSize.value14,
+                  fontWeight: FontWeight.w700,
                 ),
                 if (role != null)
-                  Text(
-                    role!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
+                  AppLabel(
+                    text: role!,
+                    fontSize: AppFontSize.value12,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
               ],
             ),
@@ -776,13 +775,11 @@ class _MemberRow extends StatelessWidget {
                 color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(AppRadii.pill),
               ),
-              child: Text(
-                'ADMIN',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 9,
-                ),
+              child: AppLabel(
+                text: 'ADMIN',
+                fontSize: 9,
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w900,
               ),
             ),
         ],
@@ -827,19 +824,34 @@ class _DangerZone extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (dCtx) => AlertDialog(
-        title: Text('Leave "${conversation.name}"?'),
-        content: const Text(
-            'You will stop receiving messages from this group. An admin can re-add you.'),
+        title: AppLabel(
+          text: 'Leave "${conversation.name}"?',
+          fontSize: AppFontSize.value18,
+          fontWeight: FontWeight.w800,
+        ),
+        content: AppLabel(
+          text: 'You will stop receiving messages from this group. An admin can re-add you.',
+          fontSize: AppFontSize.value14,
+          maxLines: 4,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dCtx, false),
-            child: const Text('Cancel'),
+            child: AppLabel(
+              text: 'Cancel',
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.error),
             onPressed: () => Navigator.pop(dCtx, true),
-            child: const Text('Leave'),
+            child: AppLabel(
+              text: 'Leave',
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -855,19 +867,34 @@ class _DangerZone extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (dCtx) => AlertDialog(
-        title: const Text('Clear chat history?'),
-        content: const Text(
-            'This clears the history on your device only. Other members keep their copy.'),
+        title: AppLabel(
+          text: 'Clear chat history?',
+          fontSize: AppFontSize.value18,
+          fontWeight: FontWeight.w800,
+        ),
+        content: AppLabel(
+          text: 'This clears the history on your device only. Other members keep their copy.',
+          fontSize: AppFontSize.value14,
+          maxLines: 4,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dCtx, false),
-            child: const Text('Cancel'),
+            child: AppLabel(
+              text: 'Cancel',
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.error),
             onPressed: () => Navigator.pop(dCtx, true),
-            child: const Text('Clear'),
+            child: AppLabel(
+              text: 'Clear',
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -956,12 +983,11 @@ class _ActionRow extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                label,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: destructive ? theme.colorScheme.error : null,
-                ),
+              child: AppLabel(
+                text: label,
+                fontSize: AppFontSize.value14,
+                fontWeight: FontWeight.w700,
+                color: destructive ? theme.colorScheme.error : null,
               ),
             ),
             Icon(
@@ -992,7 +1018,6 @@ class _SwitchRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       child: Row(
@@ -1007,11 +1032,10 @@ class _SwitchRow extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              label,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+            child: AppLabel(
+              text: label,
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.w700,
             ),
           ),
           Switch(value: value, onChanged: onChanged),
@@ -1137,17 +1161,17 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      'Add members',
-                      style: theme.textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w800),
+                    AppLabel(
+                      text: 'Add members',
+                      fontSize: AppFontSize.value16,
+                      fontWeight: FontWeight.w800,
                     ),
-                    Text(
-                      'Pick from your directory — already-in-group folks '
-                      'are filtered out.',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                    AppLabel(
+                      text: 'Pick from your directory — already-in-group folks '
+                          'are filtered out.',
+                      fontSize: AppFontSize.value12,
+                      color: theme.colorScheme.onSurfaceVariant,
+                      maxLines: 2,
                     ),
                   ],
                 ),
@@ -1173,15 +1197,15 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
                 ? Padding(
                     padding: const EdgeInsets.symmetric(vertical: 24),
                     child: Center(
-                      child: Text(
-                        _query.isEmpty
+                      child: AppLabel(
+                        text: _query.isEmpty
                             ? 'Everyone in the directory is already in this '
                                 'group.'
                             : 'No employees match "${_query.trim()}".',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+                        fontSize: AppFontSize.value14,
+                        color: theme.colorScheme.onSurfaceVariant,
                         textAlign: TextAlign.center,
+                        maxLines: 3,
                       ),
                     ),
                   )
@@ -1224,12 +1248,10 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
-                                  child: Text(
-                                    p.name,
-                                    style:
-                                        theme.textTheme.bodyMedium?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                                  child: AppLabel(
+                                    text: p.name,
+                                    fontSize: AppFontSize.value14,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                                 Checkbox(
@@ -1262,9 +1284,10 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
                       borderRadius: BorderRadius.circular(AppRadii.md),
                     ),
                   ),
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                  child: AppLabel(
+                    text: 'Cancel',
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -1286,11 +1309,12 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
                       borderRadius: BorderRadius.circular(AppRadii.md),
                     ),
                   ),
-                  child: Text(
-                    _selected.isEmpty
+                  child: AppLabel(
+                    text: _selected.isEmpty
                         ? 'Add'
                         : 'Add ${_selected.length}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -1388,10 +1412,10 @@ class _RenameGroupSheetState extends State<_RenameGroupSheet> {
             ),
           ),
           const SizedBox(height: 16),
-          Text(
-            'Rename group',
-            style: theme.textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.w800),
+          AppLabel(
+            text: 'Rename group',
+            fontSize: AppFontSize.value16,
+            fontWeight: FontWeight.w800,
           ),
           const SizedBox(height: 14),
           TextField(
@@ -1423,9 +1447,10 @@ class _RenameGroupSheetState extends State<_RenameGroupSheet> {
                       borderRadius: BorderRadius.circular(AppRadii.md),
                     ),
                   ),
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                  child: AppLabel(
+                    text: 'Cancel',
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -1442,9 +1467,10 @@ class _RenameGroupSheetState extends State<_RenameGroupSheet> {
                       borderRadius: BorderRadius.circular(AppRadii.md),
                     ),
                   ),
-                  child: const Text(
-                    'Save',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                  child: AppLabel(
+                    text: 'Save',
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../l10n/app_localizations.dart';
 
 /// Permission-gated demo destination wired up in Slice 1.3.2 so the
@@ -16,8 +18,19 @@ class AdminDemoPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.adminDemoTitle)),
-      body: Center(child: Text(l10n.adminDemoBody)),
+      appBar: AppBar(
+        title: AppLabel(
+          text: l10n.adminDemoTitle,
+          fontSize: AppFontSize.value20,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      body: Center(
+        child: AppLabel(
+          text: l10n.adminDemoBody,
+          fontSize: AppFontSize.value14,
+        ),
+      ),
     );
   }
 }

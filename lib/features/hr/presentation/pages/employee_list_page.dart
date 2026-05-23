@@ -5,6 +5,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -62,15 +64,24 @@ class _EmployeeListView extends StatelessWidget {
             itemBuilder: (_) => const [
               PopupMenuItem(
                 value: EmployeeSort.nameAsc,
-                child: Text('Name (A–Z)'),
+                child: AppLabel(
+                  text: 'Name (A–Z)',
+                  fontSize: AppFontSize.value14,
+                ),
               ),
               PopupMenuItem(
                 value: EmployeeSort.recentlyHired,
-                child: Text('Recently hired'),
+                child: AppLabel(
+                  text: 'Recently hired',
+                  fontSize: AppFontSize.value14,
+                ),
               ),
               PopupMenuItem(
                 value: EmployeeSort.departmentAsc,
-                child: Text('Department'),
+                child: AppLabel(
+                  text: 'Department',
+                  fontSize: AppFontSize.value14,
+                ),
               ),
             ],
           ),
@@ -98,19 +109,17 @@ class _EmployeeListView extends StatelessWidget {
                             color: theme.colorScheme.error,
                           ),
                           const SizedBox(height: 16),
-                          Text(
-                            'Error loading directory',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                          const AppLabel(
+                            text: 'Error loading directory',
+                            fontSize: AppFontSize.value16,
+                            fontWeight: FontWeight.bold,
                           ),
                           const SizedBox(height: 8),
-                          Text(
-                            state.errorMessage!,
+                          AppLabel(
+                            text: state.errorMessage!,
+                            fontSize: AppFontSize.value14,
                             textAlign: TextAlign.center,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ],
                       ),
@@ -166,7 +175,10 @@ class _EmployeeListView extends StatelessWidget {
                                   final dept = state.departments[idx];
                                   final isSelected = state.departmentFilter.contains(dept);
                                   return FilterChip(
-                                    label: Text(dept),
+                                    label: AppLabel(
+                                      text: dept,
+                                      fontSize: AppFontSize.value13,
+                                    ),
                                     selected: isSelected,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(AppRadii.pill),
@@ -208,19 +220,17 @@ class _EmployeeListView extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(height: 16),
-                              Text(
-                                'No matching employees',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                              AppLabel(
+                                text: 'No matching employees',
+                                fontSize: AppFontSize.value16,
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.bold,
                               ),
                               const SizedBox(height: 4),
-                              Text(
-                                'Try refining your search query or filters',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.outline,
-                                ),
+                              AppLabel(
+                                text: 'Try refining your search query or filters',
+                                fontSize: AppFontSize.value14,
+                                color: theme.colorScheme.outline,
                               ),
                             ],
                           ).animate().fadeIn(),
@@ -295,12 +305,11 @@ class _EmployeeCard extends StatelessWidget {
                     ? NetworkImage(employee.avatarUrl!)
                     : null,
                 child: employee.avatarUrl == null
-                    ? Text(
-                        employee.name.isEmpty ? '?' : employee.name[0],
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    ? AppLabel(
+                        text: employee.name.isEmpty ? '?' : employee.name[0],
+                        fontSize: AppFontSize.value16,
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.bold,
                       )
                     : null,
               ),
@@ -309,32 +318,29 @@ class _EmployeeCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      employee.name,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: -0.2,
-                      ),
+                    AppLabel(
+                      text: employee.name,
+                      fontSize: AppFontSize.value16,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.2,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      employee.position,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    AppLabel(
+                      text: employee.position,
+                      fontSize: AppFontSize.value14,
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      employee.department,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.outline,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    AppLabel(
+                      text: employee.department,
+                      fontSize: AppFontSize.value11,
+                      color: theme.colorScheme.outline,
+                      fontWeight: FontWeight.bold,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -377,7 +383,6 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final text = switch (status) {
       EmploymentStatus.active => 'ACTIVE',
       EmploymentStatus.onLeave => 'ON LEAVE',
@@ -392,14 +397,12 @@ class _StatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.pill),
         border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
-      child: Text(
-        text,
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w900,
-          fontSize: 8.5,
-          letterSpacing: 0.5,
-        ),
+      child: AppLabel(
+        text: text,
+        fontSize: AppFontSize.value9,
+        color: color,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 0.5,
       ),
     );
   }

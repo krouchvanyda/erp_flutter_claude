@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/error/failure.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -101,28 +103,45 @@ class _SalesOrderDetailPageState extends State<SalesOrderDetailPage> {
     final result = await showDialog<String>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(l10n.salesOrderTrackingDialogTitle),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.lg)),
+        title: AppLabel(
+          text: l10n.salesOrderTrackingDialogTitle,
+          fontSize: AppFontSize.value18,
+          fontWeight: FontWeight.bold,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+        ),
         content: TextField(
           controller: ctrl,
           autofocus: true,
           decoration: InputDecoration(
             labelText: l10n.salesOrderTrackingLabel,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadii.md),
+            ),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text(l10n.invoiceActionCancel),
+            child: AppLabel(
+              text: l10n.invoiceActionCancel,
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadii.md),
+              ),
             ),
-            onPressed: () =>
-                Navigator.of(context).pop(ctrl.text.trim()),
-            child: Text(l10n.salesOrderTrackingConfirm),
+            onPressed: () => Navigator.of(context).pop(ctrl.text.trim()),
+            child: AppLabel(
+              text: l10n.salesOrderTrackingConfirm,
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
@@ -157,7 +176,11 @@ class _SalesOrderDetailPageState extends State<SalesOrderDetailPage> {
                 final order = snap.data;
                 if (order == null) {
                   return Center(
-                      child: Text(l10n.salesOrderNotFound(widget.orderId)));
+                    child: AppLabel(
+                      text: l10n.salesOrderNotFound(widget.orderId),
+                      fontSize: AppFontSize.value14,
+                    ),
+                  );
                 }
                 return _Body(order: order);
               },
@@ -218,7 +241,11 @@ class _ActionBar extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: () => onAdvance(SalesOrderStatus.cancelled),
                   icon: const Icon(Icons.close),
-                  label: Text(l10n.salesOrderCancelAction),
+                  label: AppLabel(
+                    text: l10n.salesOrderCancelAction,
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.w600,
+                  ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: theme.colorScheme.error,
                     side: BorderSide(color: theme.colorScheme.error.withValues(alpha: 0.5)),
@@ -232,7 +259,11 @@ class _ActionBar extends StatelessWidget {
                 child: FilledButton.icon(
                   onPressed: () => onAdvance(SalesOrderStatus.packing),
                   icon: const Icon(Icons.inventory_2_outlined),
-                  label: Text(l10n.salesOrderStartPackingAction),
+                  label: AppLabel(
+                    text: l10n.salesOrderStartPackingAction,
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.w600,
+                  ),
                   style: FilledButton.styleFrom(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -251,7 +282,11 @@ class _ActionBar extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: () => onAdvance(SalesOrderStatus.cancelled),
                   icon: const Icon(Icons.close),
-                  label: Text(l10n.salesOrderCancelAction),
+                  label: AppLabel(
+                    text: l10n.salesOrderCancelAction,
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.w600,
+                  ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: theme.colorScheme.error,
                     side: BorderSide(color: theme.colorScheme.error.withValues(alpha: 0.5)),
@@ -265,7 +300,11 @@ class _ActionBar extends StatelessWidget {
                 child: FilledButton.icon(
                   onPressed: () => onAdvance(SalesOrderStatus.shipped),
                   icon: const Icon(Icons.local_shipping_outlined),
-                  label: Text(l10n.salesOrderShipAction),
+                  label: AppLabel(
+                    text: l10n.salesOrderShipAction,
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.w600,
+                  ),
                   style: FilledButton.styleFrom(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -281,7 +320,11 @@ class _ActionBar extends StatelessWidget {
           child: FilledButton.icon(
             onPressed: () => onAdvance(SalesOrderStatus.delivered),
             icon: const Icon(Icons.check_circle_outline),
-            label: Text(l10n.salesOrderMarkDeliveredAction),
+            label: AppLabel(
+              text: l10n.salesOrderMarkDeliveredAction,
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.w600,
+            ),
             style: FilledButton.styleFrom(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
               padding: const EdgeInsets.symmetric(vertical: 14),
@@ -351,19 +394,17 @@ class _Body extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            order.number,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                          AppLabel(
+                            text: order.number,
+                            fontSize: AppFontSize.value16,
+                            fontWeight: FontWeight.bold,
                           ),
                           const SizedBox(height: 4),
-                          Text(
-                            order.customerName,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                              fontWeight: FontWeight.w500,
-                            ),
+                          AppLabel(
+                            text: order.customerName,
+                            fontSize: AppFontSize.value14,
+                            color: theme.colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w500,
                           ),
                         ],
                       ),
@@ -434,11 +475,10 @@ class _Body extends StatelessWidget {
                   children: [
                     Icon(Icons.format_list_bulleted, color: theme.colorScheme.primary, size: 20),
                     const SizedBox(width: 8),
-                    Text(
-                      l10n.salesOrderDetailLinesHeading,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    AppLabel(
+                      text: l10n.salesOrderDetailLinesHeading,
+                      fontSize: AppFontSize.value14,
+                      fontWeight: FontWeight.bold,
                     ),
                   ],
                 ),
@@ -453,34 +493,36 @@ class _Body extends StatelessWidget {
                   final line = order.lineItems[index];
                   return ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    title: Text(
-                      line.description,
-                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                    title: AppLabel(
+                      text: line.description,
+                      fontSize: AppFontSize.value14,
+                      fontWeight: FontWeight.bold,
                     ),
                     subtitle: line.sku == null
                         ? null
                         : Padding(
                             padding: const EdgeInsets.only(top: 2.0),
-                            child: Text(
-                              line.sku!,
-                              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.primary),
+                            child: AppLabel(
+                              text: line.sku!,
+                              fontSize: AppFontSize.value12,
+                              color: theme.colorScheme.primary,
                             ),
                           ),
                     trailing: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
-                          '${line.quantity} × ${line.unitPrice}',
-                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                        AppLabel(
+                          text: '${line.quantity} × ${line.unitPrice}',
+                          fontSize: AppFontSize.value12,
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                         const SizedBox(height: 2),
-                        Text(
-                          line.lineTotal,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                          ),
+                        AppLabel(
+                          text: line.lineTotal,
+                          fontSize: AppFontSize.value14,
+                          fontWeight: FontWeight.bold,
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ],
                     ),
@@ -492,18 +534,18 @@ class _Body extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 child: Row(
                   children: [
-                    Text(
-                      l10n.salesQuotationTotalLabel,
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    AppLabel(
+                      text: l10n.salesQuotationTotalLabel,
+                      fontSize: AppFontSize.value16,
+                      fontWeight: FontWeight.bold,
                     ),
                     const Spacer(),
-                    Text(
-                      order.totalAmount,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.primary,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
+                    AppLabel(
+                      text: order.totalAmount,
+                      fontSize: AppFontSize.value20,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ],
                 ),
@@ -529,20 +571,18 @@ class _MetaChip extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
-            ),
+          AppLabel(
+            text: label,
+            fontSize: AppFontSize.value11,
+            color: theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w500,
           ),
           const SizedBox(height: 2),
-          Text(
-            value,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.onSurface,
-            ),
+          AppLabel(
+            text: value,
+            fontSize: AppFontSize.value14,
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.onSurface,
           ),
         ],
       ),

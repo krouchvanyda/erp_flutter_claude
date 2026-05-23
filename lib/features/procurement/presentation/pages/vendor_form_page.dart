@@ -4,6 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -95,9 +97,11 @@ class _VendorFormPageState extends State<VendorFormPage> {
         actions: [
           TextButton(
             onPressed: _submit,
-            child: Text(
-              l10n.vendorFormSaveTooltip.toUpperCase(),
-              style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.w800),
+            child: AppLabel(
+              text: l10n.vendorFormSaveTooltip.toUpperCase(),
+              fontSize: AppFontSize.value14,
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ],
@@ -153,7 +157,12 @@ class _VendorFormPageState extends State<VendorFormPage> {
                 child: FilledButton.icon(
                   onPressed: _submit,
                   icon: const Icon(Icons.check_circle_rounded),
-                  label: Text(l10n.vendorFormSaveAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+                  label: AppLabel(
+                    text: l10n.vendorFormSaveAction.toUpperCase(),
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                  ),
                   style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md))),
                 ),
               ).animate().fadeIn(delay: 300.ms).scale(curve: Curves.easeOutBack),
@@ -202,9 +211,12 @@ class _Section extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: 12),
-          child: Text(
-            title,
-            style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+          child: AppLabel(
+            text: title,
+            fontSize: AppFontSize.value11,
+            color: theme.colorScheme.primary,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.5,
           ),
         ),
         Container(

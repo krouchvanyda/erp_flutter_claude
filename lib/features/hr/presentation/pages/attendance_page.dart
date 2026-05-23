@@ -4,6 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../core/error/failure.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -128,24 +130,24 @@ class _AttendancePageState extends State<AttendancePage> {
                             ),
                           ).animate().scale(duration: 400.ms),
                           const SizedBox(height: 16),
-                          Text(
-                            isOpen ? 'YOU ARE CLOCKED IN' : 'YOU ARE CLOCKED OUT',
-                            style: theme.textTheme.labelMedium?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              color: accentColor,
-                              letterSpacing: 1.0,
-                            ),
+                          AppLabel(
+                            text: isOpen
+                                ? 'YOU ARE CLOCKED IN'
+                                : 'YOU ARE CLOCKED OUT',
+                            fontSize: AppFontSize.value12,
+                            fontWeight: FontWeight.w900,
+                            color: accentColor,
+                            letterSpacing: 1.0,
                           ),
                           if (latest != null) ...[
                             const SizedBox(height: 8),
-                            Text(
-                              isOpen
+                            AppLabel(
+                              text: isOpen
                                   ? 'Since ${_fmt(latest.clockIn)}'
                                   : 'Last out at ${_fmt(latest.clockOut!)}',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                                fontWeight: FontWeight.w500,
-                              ),
+                              fontSize: AppFontSize.value14,
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w500,
                             ),
                           ],
                           const SizedBox(height: 24),
@@ -172,12 +174,12 @@ class _AttendancePageState extends State<AttendancePage> {
                                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                       ),
                                     )
-                                  : Text(
-                                      isOpen ? 'Clock Out Now' : 'Clock In Now',
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                  : AppLabel(
+                                      text: isOpen
+                                          ? 'Clock Out Now'
+                                          : 'Clock In Now',
+                                      fontSize: AppFontSize.value16,
+                                      fontWeight: FontWeight.bold,
                                     ),
                             ),
                           ),
@@ -189,13 +191,11 @@ class _AttendancePageState extends State<AttendancePage> {
                                 color: theme.colorScheme.errorContainer,
                                 borderRadius: BorderRadius.circular(AppRadii.md),
                               ),
-                              child: Text(
-                                _error!,
-                                style: TextStyle(
-                                  color: theme.colorScheme.onErrorContainer,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
+                              child: AppLabel(
+                                text: _error!,
+                                fontSize: AppFontSize.value12,
+                                color: theme.colorScheme.onErrorContainer,
+                                fontWeight: FontWeight.bold,
                                 textAlign: TextAlign.center,
                               ),
                             ).animate().shake(),
@@ -216,14 +216,12 @@ class _AttendancePageState extends State<AttendancePage> {
                         color: theme.colorScheme.primary,
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        'RECENT ENTRIES',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                          color: theme.colorScheme.primary,
-                          letterSpacing: 0.5,
-                        ),
+                      AppLabel(
+                        text: 'RECENT ENTRIES',
+                        fontSize: AppFontSize.value12,
+                        fontWeight: FontWeight.w900,
+                        color: theme.colorScheme.primary,
+                        letterSpacing: 0.5,
                       ),
                     ],
                   ),
@@ -250,12 +248,11 @@ class _AttendancePageState extends State<AttendancePage> {
                                 color: theme.colorScheme.outline,
                               ),
                               const SizedBox(height: 12),
-                              Text(
-                                'No attendance records yet',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: theme.colorScheme.outline,
-                                ),
+                              AppLabel(
+                                text: 'No attendance records yet',
+                                fontSize: AppFontSize.value14,
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.outline,
                               ),
                             ],
                           ),
@@ -336,21 +333,19 @@ class _EntryCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    entry.date.toIso8601String().split('T').first,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                  AppLabel(
+                    text: entry.date.toIso8601String().split('T').first,
+                    fontSize: AppFontSize.value16,
+                    fontWeight: FontWeight.bold,
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    entry.isOpen
+                  AppLabel(
+                    text: entry.isOpen
                         ? 'In ${_fmtTime(entry.clockIn)} (open)'
                         : '${_fmtTime(entry.clockIn)}   ➔   ${_fmtTime(entry.clockOut!)}',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    fontSize: AppFontSize.value14,
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
                   ),
                 ],
               ),
@@ -362,12 +357,11 @@ class _EntryCard extends StatelessWidget {
                   color: theme.colorScheme.primaryContainer,
                   borderRadius: BorderRadius.circular(AppRadii.md),
                 ),
-                child: Text(
-                  '${hours.toStringAsFixed(1)} h',
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: theme.colorScheme.onPrimaryContainer,
-                    fontWeight: FontWeight.bold,
-                  ),
+                child: AppLabel(
+                  text: '${hours.toStringAsFixed(1)} h',
+                  fontSize: AppFontSize.value12,
+                  color: theme.colorScheme.onPrimaryContainer,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
           ],

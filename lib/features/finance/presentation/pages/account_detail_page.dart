@@ -5,6 +5,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -91,13 +93,12 @@ class _LoadedBody extends StatelessWidget {
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
-            child: Text(
-              'TRANSACTIONS',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.5,
-              ),
+            child: AppLabel(
+              text: 'TRANSACTIONS',
+              fontSize: AppFontSize.value11,
+              color: Theme.of(context).colorScheme.primary,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.5,
             ),
           ),
         ),
@@ -171,33 +172,30 @@ class _AccountHeaderCard extends StatelessWidget {
                   color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(AppRadii.pill),
                 ),
-                child: Text(
-                  account.code,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1,
-                  ),
+                child: AppLabel(
+                  text: account.code,
+                  fontSize: AppFontSize.value12,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1,
                 ),
               ),
               Icon(accountTypeIcon(account.type), color: Colors.white.withValues(alpha: 0.7), size: 24),
             ],
           ),
           const SizedBox(height: 20),
-          Text(
-            account.name,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-            ),
+          AppLabel(
+            text: account.name,
+            fontSize: AppFontSize.value24,
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
           ),
           const SizedBox(height: 4),
-          Text(
-            accountTypeLabel(l10n, account.type).toUpperCase(),
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: Colors.white.withValues(alpha: 0.7),
-              letterSpacing: 2,
-            ),
+          AppLabel(
+            text: accountTypeLabel(l10n, account.type).toUpperCase(),
+            fontSize: AppFontSize.value11,
+            color: Colors.white.withValues(alpha: 0.7),
+            letterSpacing: 2,
           ),
           const SizedBox(height: 24),
           Row(
@@ -206,21 +204,19 @@ class _AccountHeaderCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'CURRENT BALANCE',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: Colors.white.withValues(alpha: 0.6),
-                      fontWeight: FontWeight.bold,
-                    ),
+                  AppLabel(
+                    text: 'CURRENT BALANCE',
+                    fontSize: AppFontSize.value11,
+                    color: Colors.white.withValues(alpha: 0.6),
+                    fontWeight: FontWeight.bold,
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    account.formattedBalance ?? '—',
-                    style: theme.textTheme.displaySmall?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
+                  AppLabel(
+                    text: account.formattedBalance ?? '—',
+                    fontSize: AppFontSize.value36,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ],
               ),
@@ -278,16 +274,19 @@ class _TransactionTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    t.description,
-                    style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                  AppLabel(
+                    text: t.description,
+                    fontSize: AppFontSize.value16,
+                    fontWeight: FontWeight.w600,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    '${_dateFormatter.format(t.postedAt)} ${t.reference != null ? "· ${t.reference}" : ""}',
-                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  AppLabel(
+                    text:
+                        '${_dateFormatter.format(t.postedAt)} ${t.reference != null ? "· ${t.reference}" : ""}',
+                    fontSize: AppFontSize.value12,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ],
               ),
@@ -296,20 +295,18 @@ class _TransactionTile extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  amountText,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: isDebit ? theme.colorScheme.primary : theme.colorScheme.tertiary,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
+                AppLabel(
+                  text: amountText,
+                  fontSize: AppFontSize.value16,
+                  fontWeight: FontWeight.w800,
+                  color: isDebit ? theme.colorScheme.primary : theme.colorScheme.tertiary,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
-                Text(
-                  t.runningBalance,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.outline,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
+                AppLabel(
+                  text: t.runningBalance,
+                  fontSize: AppFontSize.value11,
+                  color: theme.colorScheme.outline,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ],
             ),
@@ -348,13 +345,12 @@ class _CenteredMessage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            Text(
-              text, 
+            AppLabel(
+              text: text,
+              fontSize: AppFontSize.value16,
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
-              ),
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
             ),
           ],
         ),

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
@@ -93,23 +95,21 @@ class _LoginPageState extends State<LoginPage> {
                         
                         const SizedBox(height: 16),
                         
-                        Text(
-                          l10n.appName,
+                        AppLabel(
+                          text: l10n.appName,
+                          fontSize: AppFontSize.value24,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.primary,
                           textAlign: TextAlign.center,
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.primary,
-                          ),
                         ).animate().fadeIn(delay: 200.ms),
-                        
+
                         const SizedBox(height: 8),
-                        
-                        Text(
-                          'Welcome back! Please sign in to continue.',
+
+                        AppLabel(
+                          text: 'Welcome back! Please sign in to continue.',
+                          fontSize: AppFontSize.value14,
+                          color: theme.colorScheme.onSurfaceVariant,
                           textAlign: TextAlign.center,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
                         ).animate().fadeIn(delay: 300.ms),
                         
                         const SizedBox(height: 48),

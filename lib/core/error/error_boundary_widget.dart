@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../theme/app_font_size.dart';
+import '../theme/app_label.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 
@@ -32,9 +34,10 @@ class ErrorBoundaryWidget extends StatelessWidget {
                   color: theme.colorScheme.error, size: 28),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
-                child: Text(
-                  'Something went wrong',
-                  style: theme.textTheme.titleMedium,
+                child: AppLabel(
+                  text: 'Something went wrong',
+                  fontSize: AppFontSize.value16,
+                  fontWeight: FontWeight.w600,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),

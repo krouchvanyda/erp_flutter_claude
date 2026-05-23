@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -69,15 +71,24 @@ class _ProjectListViewState extends State<_ProjectListView> {
             itemBuilder: (_) => const [
               PopupMenuItem(
                 value: ProjectSort.nameAsc,
-                child: Text('Name (A–Z)'),
+                child: AppLabel(
+                  text: 'Name (A–Z)',
+                  fontSize: AppFontSize.value14,
+                ),
               ),
               PopupMenuItem(
                 value: ProjectSort.recentlyStarted,
-                child: Text('Recently started'),
+                child: AppLabel(
+                  text: 'Recently started',
+                  fontSize: AppFontSize.value14,
+                ),
               ),
               PopupMenuItem(
                 value: ProjectSort.dueSoonest,
-                child: Text('Due soonest'),
+                child: AppLabel(
+                  text: 'Due soonest',
+                  fontSize: AppFontSize.value14,
+                ),
               ),
             ],
           ),
@@ -94,9 +105,10 @@ class _ProjectListViewState extends State<_ProjectListView> {
                 }
                 if (state.errorMessage != null) {
                   return Center(
-                    child: Text(
-                      'Error: ${state.errorMessage}',
-                      style: TextStyle(color: theme.colorScheme.error),
+                    child: AppLabel(
+                      text: 'Error: ${state.errorMessage}',
+                      fontSize: AppFontSize.value14,
+                      color: theme.colorScheme.error,
                     ),
                   );
                 }
@@ -132,12 +144,18 @@ class _ProjectListViewState extends State<_ProjectListView> {
                                 ButtonSegment(
                                   value: _Mode.list,
                                   icon: Icon(Icons.list_rounded),
-                                  label: Text('List View'),
+                                  label: AppLabel(
+                                    text: 'List View',
+                                    fontSize: AppFontSize.value13,
+                                  ),
                                 ),
                                 ButtonSegment(
                                   value: _Mode.gantt,
                                   icon: Icon(Icons.analytics_outlined),
-                                  label: Text('Gantt Chart'),
+                                  label: AppLabel(
+                                    text: 'Gantt Chart',
+                                    fontSize: AppFontSize.value13,
+                                  ),
                                 ),
                               ],
                               selected: {_mode},
@@ -184,10 +202,12 @@ class _ProjectListViewState extends State<_ProjectListView> {
                           final s = ProjectStatus.values[idx];
                           final isSelected = state.statusFilter.contains(s);
                           return FilterChip(
-                            label: Text(s.name.toUpperCase()),
-                            labelStyle: TextStyle(
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              fontSize: 11,
+                            label: AppLabel(
+                              text: s.name.toUpperCase(),
+                              fontSize: AppFontSize.value11,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                               letterSpacing: 0.5,
                             ),
                             selected: isSelected,
@@ -205,9 +225,10 @@ class _ProjectListViewState extends State<_ProjectListView> {
                     if (state.visible.isEmpty)
                       const Expanded(
                         child: Center(
-                          child: Text(
-                            'No projects match.',
-                            style: TextStyle(fontWeight: FontWeight.w500),
+                          child: AppLabel(
+                            text: 'No projects match.',
+                            fontSize: AppFontSize.value14,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       )
@@ -230,7 +251,11 @@ class _ProjectListViewState extends State<_ProjectListView> {
           const ProjectFormPage(),
         ),
         icon: const Icon(Icons.add_rounded),
-        label: const Text('New Project'),
+        label: const AppLabel(
+          text: 'New Project',
+          fontSize: AppFontSize.value14,
+          fontWeight: FontWeight.w600,
+        ),
       ).animate().scale(delay: 400.ms, curve: Curves.easeOutBack),
     );
   }
@@ -322,14 +347,12 @@ class _ProjectRow extends StatelessWidget {
                           ),
                         ),
                         alignment: Alignment.center,
-                        child: Text(
-                          project.code.split('-').first.substring(
+                        child: AppLabel(
+                          text: project.code.split('-').first.substring(
                               0, project.code.split('-').first.length.clamp(0, 3)),
-                          style: TextStyle(
-                            color: _projectColor(project.color),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w900,
-                          ),
+                          fontSize: AppFontSize.value12,
+                          color: _projectColor(project.color),
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
                       const SizedBox(width: 14),
@@ -337,20 +360,18 @@ class _ProjectRow extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              project.name,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: -0.3,
-                              ),
+                            AppLabel(
+                              text: project.name,
+                              fontSize: AppFontSize.value16,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: -0.3,
                             ),
                             const SizedBox(height: 2),
-                            Text(
-                              'Code: ${project.code} • Owner: ${project.ownerName}',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                                fontWeight: FontWeight.w500,
-                              ),
+                            AppLabel(
+                              text: 'Code: ${project.code} • Owner: ${project.ownerName}',
+                              fontSize: AppFontSize.value12,
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w500,
                             ),
                           ],
                         ),
@@ -362,14 +383,12 @@ class _ProjectRow extends StatelessWidget {
                           borderRadius: BorderRadius.circular(AppRadii.pill),
                           border: Border.all(color: statusColor.withValues(alpha: 0.15)),
                         ),
-                        child: Text(
-                          project.status.name.toUpperCase(),
-                          style: TextStyle(
-                            color: statusColor,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.5,
-                          ),
+                        child: AppLabel(
+                          text: project.status.name.toUpperCase(),
+                          fontSize: AppFontSize.value10,
+                          color: statusColor,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.5,
                         ),
                       ),
                     ],
@@ -386,12 +405,12 @@ class _ProjectRow extends StatelessWidget {
                             color: theme.colorScheme.outline,
                           ),
                           const SizedBox(width: 6),
-                          Text(
-                            '${project.startDate.toIso8601String().split('T').first} to ${project.endDate.toIso8601String().split('T').first}',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.outline,
-                              fontWeight: FontWeight.w600,
-                            ),
+                          AppLabel(
+                            text:
+                                '${project.startDate.toIso8601String().split('T').first} to ${project.endDate.toIso8601String().split('T').first}',
+                            fontSize: AppFontSize.value12,
+                            color: theme.colorScheme.outline,
+                            fontWeight: FontWeight.w600,
                           ),
                         ],
                       ),
@@ -401,12 +420,11 @@ class _ProjectRow extends StatelessWidget {
                           color: theme.colorScheme.primaryContainer.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: Text(
-                          '${project.totalDays} Days',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.w800,
-                          ),
+                        child: AppLabel(
+                          text: '${project.totalDays} Days',
+                          fontSize: AppFontSize.value11,
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ],

@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -205,16 +207,23 @@ class _PurchaseRequestFormPageState extends State<PurchaseRequestFormPage> {
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.only(left: 4),
-                      child: Text(
-                        l10n.prFormLinesHeading.toUpperCase(),
-                        style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+                      child: AppLabel(
+                        text: l10n.prFormLinesHeading.toUpperCase(),
+                        fontSize: AppFontSize.value11,
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5,
                       ),
                     ),
                   ),
                   TextButton.icon(
                     onPressed: _addLine,
                     icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
-                    label: Text(l10n.prFormAddLineAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                    label: AppLabel(
+                      text: l10n.prFormAddLineAction.toUpperCase(),
+                      fontSize: AppFontSize.value12,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ],
               ).animate().fadeIn(delay: 100.ms),
@@ -235,7 +244,12 @@ class _PurchaseRequestFormPageState extends State<PurchaseRequestFormPage> {
                 child: FilledButton.icon(
                   onPressed: _submit,
                   icon: const Icon(Icons.send_rounded),
-                  label: Text(l10n.prFormSubmitAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+                  label: AppLabel(
+                    text: l10n.prFormSubmitAction.toUpperCase(),
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                  ),
                   style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md))),
                 ),
               ).animate().fadeIn(delay: 300.ms).scale(curve: Curves.easeOutBack),
@@ -261,9 +275,12 @@ class _Section extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: 12),
-          child: Text(
-            title,
-            style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+          child: AppLabel(
+            text: title,
+            fontSize: AppFontSize.value11,
+            color: theme.colorScheme.primary,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.5,
           ),
         ),
         Container(
@@ -328,9 +345,11 @@ class _LineEditor extends StatelessWidget {
                   color: theme.colorScheme.primaryContainer.withValues(alpha: 0.4),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(
-                  l10n.prFormLineHeading(index + 1).toUpperCase(),
-                  style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w900),
+                child: AppLabel(
+                  text: l10n.prFormLineHeading(index + 1).toUpperCase(),
+                  fontSize: AppFontSize.value11,
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
               const Spacer(),

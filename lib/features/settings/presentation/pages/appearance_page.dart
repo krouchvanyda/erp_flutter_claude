@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -43,13 +45,12 @@ class AppearancePage extends StatelessWidget {
                     bottom: 40,
                   ),
                   children: [
-                    Text(
-                      'CHOOSE THEME MODE',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.5,
-                      ),
+                    AppLabel(
+                      text: 'CHOOSE THEME MODE',
+                      fontSize: AppFontSize.value11,
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
                     ),
                     const SizedBox(height: 12),
                     for (final m in AppThemeMode.values) ...[
@@ -169,18 +170,16 @@ class _ThemeCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    _label(mode),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                  AppLabel(
+                    text: _label(mode),
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.bold,
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    _subtitle(mode),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
+                  AppLabel(
+                    text: _subtitle(mode),
+                    fontSize: AppFontSize.value12,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ],
               ),

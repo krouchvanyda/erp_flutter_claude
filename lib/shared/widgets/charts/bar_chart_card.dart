@@ -1,6 +1,8 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_font_size.dart';
+import '../../../core/theme/app_label.dart';
 import 'chart_axis_ticks.dart';
 import 'chart_data.dart';
 
@@ -32,7 +34,7 @@ class BarChartCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: theme.textTheme.titleSmall),
+            AppLabel(text: title, fontSize: AppFontSize.value14, fontWeight: FontWeight.w600),
             const SizedBox(height: 8),
             Expanded(
               child: BarChart(
@@ -56,9 +58,9 @@ class BarChartCard extends StatelessWidget {
                         showTitles: true,
                         interval: yTicks.step,
                         reservedSize: 36,
-                        getTitlesWidget: (value, _) => Text(
-                          _formatTick(value),
-                          style: theme.textTheme.labelSmall,
+                        getTitlesWidget: (value, _) => AppLabel(
+                          text: _formatTick(value),
+                          fontSize: AppFontSize.value11,
                         ),
                       ),
                     ),
@@ -74,9 +76,9 @@ class BarChartCard extends StatelessWidget {
                           final p = series.points[idx];
                           return Padding(
                             padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              p.label ?? p.x.toStringAsFixed(0),
-                              style: theme.textTheme.labelSmall,
+                            child: AppLabel(
+                              text: p.label ?? p.x.toStringAsFixed(0),
+                              fontSize: AppFontSize.value11,
                             ),
                           );
                         },

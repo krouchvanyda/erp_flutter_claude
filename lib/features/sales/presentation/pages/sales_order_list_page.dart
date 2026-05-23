@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../data/repositories/sales_orders_repository.dart';
 import '../../entities/sales_order.dart';
@@ -17,7 +19,13 @@ class SalesOrderListPage extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final repo = getIt<SalesOrdersRepository>();
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.salesOrderListTitle)),
+      appBar: AppBar(
+        title: AppLabel(
+          text: l10n.salesOrderListTitle,
+          fontSize: AppFontSize.value20,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
       body: FutureBuilder<List<SalesOrder>>(
         future: repo.getAll(),
         builder: (context, snap) {
@@ -26,7 +34,12 @@ class SalesOrderListPage extends StatelessWidget {
           }
           final orders = snap.data ?? const <SalesOrder>[];
           if (orders.isEmpty) {
-            return Center(child: Text(l10n.salesOrderListEmpty));
+            return Center(
+              child: AppLabel(
+                text: l10n.salesOrderListEmpty,
+                fontSize: AppFontSize.value14,
+              ),
+            );
           }
           final sorted = List<SalesOrder>.of(orders)
             ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -57,40 +70,38 @@ class _OrderTile extends StatelessWidget {
       ),
       title: Row(
         children: [
-          Text(
-            order.number,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
+          AppLabel(
+            text: order.number,
+            fontSize: AppFontSize.value14,
+            fontWeight: FontWeight.w600,
+            fontFeatures: const [FontFeature.tabularFigures()],
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              order.customerName,
+            child: AppLabel(
+              text: order.customerName,
+              fontSize: AppFontSize.value14,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
         ],
       ),
-      subtitle: Text(
-        _date.format(order.createdAt.toLocal()),
-        style: theme.textTheme.labelSmall,
+      subtitle: AppLabel(
+        text: _date.format(order.createdAt.toLocal()),
+        fontSize: AppFontSize.value11,
       ),
       trailing: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            order.totalAmount,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
+          AppLabel(
+            text: order.totalAmount,
+            fontSize: AppFontSize.value14,
+            fontWeight: FontWeight.w600,
+            fontFeatures: const [FontFeature.tabularFigures()],
           ),
           const SizedBox(height: 2),
           SalesOrderStatusBadge(status: order.status),
@@ -118,9 +129,10 @@ class SalesOrderStatusBadge extends StatelessWidget {
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(4),
       ),
-      child: Text(
-        salesOrderStatusLabel(l10n, status),
-        style: theme.textTheme.labelSmall?.copyWith(color: color),
+      child: AppLabel(
+        text: salesOrderStatusLabel(l10n, status),
+        fontSize: AppFontSize.value11,
+        color: color,
       ),
     );
   }

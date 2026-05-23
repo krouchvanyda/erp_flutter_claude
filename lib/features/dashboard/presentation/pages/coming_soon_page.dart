@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../l10n/app_localizations.dart';
 
 /// Generic landing page used by Slice 2.1.2 module shortcut tiles whose
@@ -18,7 +20,13 @@ class ComingSoonPage extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(moduleLabel)),
+      appBar: AppBar(
+        title: AppLabel(
+          text: moduleLabel,
+          fontSize: AppFontSize.value20,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -29,8 +37,9 @@ class ComingSoonPage extends StatelessWidget {
               color: theme.colorScheme.primary,
             ),
             const SizedBox(height: 12),
-            Text(
-              l10n.comingSoonBody(moduleLabel),
+            AppLabel(
+              text: l10n.comingSoonBody(moduleLabel),
+              fontSize: AppFontSize.value14,
               textAlign: TextAlign.center,
             ),
           ],

@@ -6,6 +6,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -50,7 +52,6 @@ class _SalesAnalyticsPageState extends State<SalesAnalyticsPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
@@ -167,9 +168,10 @@ class _RevenueChartCard extends StatelessWidget {
                     children: [
                       Icon(Icons.bar_chart_outlined, color: theme.colorScheme.primary, size: 20),
                       const SizedBox(width: 8),
-                      Text(
-                        l10n.salesAnalyticsRevenueHeading,
-                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                      AppLabel(
+                        text: l10n.salesAnalyticsRevenueHeading,
+                        fontSize: AppFontSize.value14,
+                        fontWeight: FontWeight.bold,
                       ),
                     ],
                   ),
@@ -178,11 +180,19 @@ class _RevenueChartCard extends StatelessWidget {
                   segments: [
                     ButtonSegment(
                       value: RevenuePeriod.weekly,
-                      label: Text(l10n.salesAnalyticsPeriodWeekly, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                      label: AppLabel(
+                        text: l10n.salesAnalyticsPeriodWeekly,
+                        fontSize: AppFontSize.value12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     ButtonSegment(
                       value: RevenuePeriod.monthly,
-                      label: Text(l10n.salesAnalyticsPeriodMonthly, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                      label: AppLabel(
+                        text: l10n.salesAnalyticsPeriodMonthly,
+                        fontSize: AppFontSize.value12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                   selected: {period},
@@ -199,9 +209,10 @@ class _RevenueChartCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Center(
-                  child: Text(
-                    l10n.salesAnalyticsRevenueEmpty,
-                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  child: AppLabel(
+                    text: l10n.salesAnalyticsRevenueEmpty,
+                    fontSize: AppFontSize.value12,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               )
@@ -248,12 +259,11 @@ class _RevenueChartCard extends StatelessWidget {
                             }
                             return Padding(
                               padding: const EdgeInsets.only(top: 6),
-                              child: Text(
-                                _xLabel(buckets[idx].start, period),
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                              child: AppLabel(
+                                text: _xLabel(buckets[idx].start, period),
+                                fontSize: AppFontSize.value11,
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.bold,
                               ),
                             );
                           },
@@ -265,12 +275,11 @@ class _RevenueChartCard extends StatelessWidget {
                           reservedSize: 48,
                           getTitlesWidget: (v, meta) => Padding(
                             padding: const EdgeInsets.only(right: 6),
-                            child: Text(
-                              _compactCurrency(v),
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            child: AppLabel(
+                              text: _compactCurrency(v),
+                              fontSize: AppFontSize.value11,
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
@@ -438,9 +447,10 @@ class _RankingCard extends StatelessWidget {
               children: [
                 Icon(icon, color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                AppLabel(
+                  text: title,
+                  fontSize: AppFontSize.value14,
+                  fontWeight: FontWeight.bold,
                 ),
               ],
             ),
@@ -450,9 +460,10 @@ class _RankingCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
               child: Center(
-                child: Text(
-                  emptyMessage,
-                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                child: AppLabel(
+                  text: emptyMessage,
+                  fontSize: AppFontSize.value12,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
             )
@@ -470,26 +481,30 @@ class _RankingCard extends StatelessWidget {
                   radius: 14,
                   backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
                   foregroundColor: theme.colorScheme.primary,
-                  child: Text('${i + 1}',
-                      style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold)),
+                  child: AppLabel(
+                    text: '${i + 1}',
+                    fontSize: AppFontSize.value11,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                title: Text(
-                  entries[i].label,
+                title: AppLabel(
+                  text: entries[i].label,
+                  fontSize: AppFontSize.value14,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                  fontWeight: FontWeight.bold,
                 ),
-                subtitle: Text(
-                  '${entries[i].units} units',
-                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                subtitle: AppLabel(
+                  text: '${entries[i].units} units',
+                  fontSize: AppFontSize.value12,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
-                trailing: Text(
-                  entries[i].amount,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
+                trailing: AppLabel(
+                  text: entries[i].amount,
+                  fontSize: AppFontSize.value14,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.primary,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
             ),
@@ -537,9 +552,10 @@ class _LeaderboardCard extends StatelessWidget {
               children: [
                 Icon(Icons.emoji_events_outlined, color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
-                Text(
-                  l10n.salesAnalyticsLeaderboardHeading,
-                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                AppLabel(
+                  text: l10n.salesAnalyticsLeaderboardHeading,
+                  fontSize: AppFontSize.value14,
+                  fontWeight: FontWeight.bold,
                 ),
               ],
             ),
@@ -549,9 +565,10 @@ class _LeaderboardCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
               child: Center(
-                child: Text(
-                  l10n.salesAnalyticsLeaderboardEmpty,
-                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                child: AppLabel(
+                  text: l10n.salesAnalyticsLeaderboardEmpty,
+                  fontSize: AppFontSize.value12,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
             )
@@ -593,9 +610,10 @@ class _LeaderboardRow extends StatelessWidget {
             radius: 18,
             backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
             foregroundColor: theme.colorScheme.primary,
-            child: Text(
-              '${entry.rank}',
-              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+            child: AppLabel(
+              text: '${entry.rank}',
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(width: 14),
@@ -603,16 +621,18 @@ class _LeaderboardRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  entry.rep.name,
-                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                AppLabel(
+                  text: entry.rep.name,
+                  fontSize: AppFontSize.value14,
+                  fontWeight: FontWeight.bold,
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  l10n.salesAnalyticsLeaderboardDealsLabel(
+                AppLabel(
+                  text: l10n.salesAnalyticsLeaderboardDealsLabel(
                     entry.dealsClosed.toString(),
                   ),
-                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  fontSize: AppFontSize.value12,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(height: 6),
                 ClipRRect(
@@ -627,28 +647,26 @@ class _LeaderboardRow extends StatelessWidget {
                 ),
                 if (entry.rep.targetAmount.isNotEmpty) ...[
                   const SizedBox(height: 4),
-                  Text(
-                    l10n.salesAnalyticsLeaderboardAttainmentLabel(
+                  AppLabel(
+                    text: l10n.salesAnalyticsLeaderboardAttainmentLabel(
                       entry.attainmentPct.toStringAsFixed(0),
                       entry.rep.targetAmount,
                     ),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: attainmentColor,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    fontSize: AppFontSize.value12,
+                    color: attainmentColor,
+                    fontWeight: FontWeight.bold,
                   ),
                 ],
               ],
             ),
           ),
           const SizedBox(width: 14),
-          Text(
-            entry.formattedRevenue,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.primary,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
+          AppLabel(
+            text: entry.formattedRevenue,
+            fontSize: AppFontSize.value14,
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.primary,
+            fontFeatures: const [FontFeature.tabularFigures()],
           ),
         ],
       ),

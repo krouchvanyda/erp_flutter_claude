@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_font_size.dart';
+import '../../../core/theme/app_label.dart';
 import '../../../l10n/app_localizations.dart';
 import 'kpi_data.dart';
 import 'sparkline_geometry.dart';
@@ -53,13 +55,12 @@ class KpiCard extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      data.label.toUpperCase(),
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.2,
-                      ),
+                    child: AppLabel(
+                      text: data.label.toUpperCase(),
+                      fontSize: AppFontSize.value11,
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -68,12 +69,11 @@ class KpiCard extends StatelessWidget {
                 ],
               ),
               const Spacer(),
-              Text(
-                data.value,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: theme.colorScheme.onSurface,
-                ),
+              AppLabel(
+                text: data.value,
+                fontSize: AppFontSize.value24,
+                fontWeight: FontWeight.w800,
+                color: theme.colorScheme.onSurface,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -121,9 +121,10 @@ class _TrendChip extends StatelessWidget {
         children: [
           Icon(icon, size: 16, color: color),
           const SizedBox(width: 4),
-          Text(
-            label,
-            style: theme.textTheme.labelSmall?.copyWith(color: color),
+          AppLabel(
+            text: label,
+            fontSize: AppFontSize.value11,
+            color: color,
           ),
         ],
       ),

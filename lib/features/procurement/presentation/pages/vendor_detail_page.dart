@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -89,9 +91,11 @@ class _Body extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          vendor.name,
-                          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900, letterSpacing: -0.5),
+                        AppLabel(
+                          text: vendor.name,
+                          fontSize: AppFontSize.value24,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
                         ),
                         const SizedBox(height: 4),
                         VendorStatusBadge(status: vendor.status),
@@ -135,9 +139,11 @@ class _Body extends StatelessWidget {
           _SectionCard(
             title: l10n.vendorDetailNotesHeading.toUpperCase(),
             icon: Icons.speaker_notes_rounded,
-            child: Text(
-              vendor.notes!,
-              style: theme.textTheme.bodyMedium?.copyWith(height: 1.5, color: theme.colorScheme.onSurface),
+            child: AppLabel(
+              text: vendor.notes!,
+              fontSize: AppFontSize.value14,
+              lineHeight: 1.5,
+              color: theme.colorScheme.onSurface,
             ),
           ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.05, end: 0),
         ],
@@ -147,7 +153,12 @@ class _Body extends StatelessWidget {
           height: 56,
           child: OutlinedButton.icon(
             icon: const Icon(Icons.insights_rounded),
-            label: Text(l10n.vendorDetailScorecardAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+            label: AppLabel(
+              text: l10n.vendorDetailScorecardAction.toUpperCase(),
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.2,
+            ),
             onPressed: () => ConfigRouter.pushPageAnimation(
               context,
               VendorScorecardPage(vendorId: vendor.id),
@@ -180,11 +191,21 @@ class _MetaItem extends StatelessWidget {
           children: [
             Icon(icon, size: 14, color: theme.colorScheme.primary),
             const SizedBox(width: 6),
-            Text(label.toUpperCase(), style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+            AppLabel(
+              text: label.toUpperCase(),
+              fontSize: AppFontSize.value11,
+              color: theme.colorScheme.outline,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.5,
+            ),
           ],
         ),
         const SizedBox(height: 6),
-        Text(value, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+        AppLabel(
+          text: value,
+          fontSize: AppFontSize.value16,
+          fontWeight: FontWeight.w600,
+        ),
       ],
     );
   }
@@ -213,7 +234,13 @@ class _SectionCard extends StatelessWidget {
             children: [
               Icon(icon, size: 18, color: theme.colorScheme.primary),
               const SizedBox(width: 8),
-              Text(title, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w900, letterSpacing: 1)),
+              AppLabel(
+                text: title,
+                fontSize: AppFontSize.value11,
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1,
+              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -249,9 +276,19 @@ class _ContactRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label.toUpperCase(), style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.w900, fontSize: 8, letterSpacing: 0.5)),
+                AppLabel(
+                  text: label.toUpperCase(),
+                  fontSize: AppFontSize.value8,
+                  color: theme.colorScheme.outline,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.5,
+                ),
                 const SizedBox(height: 2),
-                Text(value, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
+                AppLabel(
+                  text: value,
+                  fontSize: AppFontSize.value14,
+                  fontWeight: FontWeight.w500,
+                ),
               ],
             ),
           ),
@@ -276,7 +313,12 @@ class _CenteredMessage extends StatelessWidget {
           children: [
             Icon(icon ?? Icons.storefront_rounded, size: 64, color: theme.colorScheme.outline.withValues(alpha: 0.5)),
             const SizedBox(height: 24),
-            Text(text, textAlign: TextAlign.center, style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            AppLabel(
+              text: text,
+              fontSize: AppFontSize.value16,
+              textAlign: TextAlign.center,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ],
         ),
       ),

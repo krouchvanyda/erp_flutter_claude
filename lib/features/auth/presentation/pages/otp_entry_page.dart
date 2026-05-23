@@ -8,6 +8,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/auth_session.dart';
 import '../../../../core/router/route_paths.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../data/demo_sign_in.dart';
@@ -127,23 +129,21 @@ class _OtpEntryView extends StatelessWidget {
                                   
                                   const SizedBox(height: 24),
                                   
-                                  Text(
-                                    l10n.otpPageTitle,
+                                  AppLabel(
+                                    text: l10n.otpPageTitle,
+                                    fontSize: AppFontSize.value22,
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.onSurface,
                                     textAlign: TextAlign.center,
-                                    style: theme.textTheme.headlineMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: theme.colorScheme.onSurface,
-                                    ),
                                   ).animate().fadeIn(delay: 200.ms),
-                                  
+
                                   const SizedBox(height: 12),
-                                  
-                                  Text(
-                                    l10n.otpSubtitle,
+
+                                  AppLabel(
+                                    text: l10n.otpSubtitle,
+                                    fontSize: AppFontSize.value16,
+                                    color: theme.colorScheme.onSurfaceVariant,
                                     textAlign: TextAlign.center,
-                                    style: theme.textTheme.bodyLarge?.copyWith(
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                    ),
                                   ).animate().fadeIn(delay: 300.ms),
                                   
                                   const SizedBox(height: 48),
@@ -187,13 +187,12 @@ class _OtpEntryView extends StatelessWidget {
                                             const SizedBox(height: 24),
                                             
                                             if (state.hasError)
-                                              Text(
-                                                _errorMessage(l10n, state.rejectionReason!),
+                                              AppLabel(
+                                                text: _errorMessage(l10n, state.rejectionReason!),
+                                                fontSize: AppFontSize.value12,
+                                                color: theme.colorScheme.error,
+                                                fontWeight: FontWeight.bold,
                                                 textAlign: TextAlign.center,
-                                                style: theme.textTheme.bodySmall?.copyWith(
-                                                  color: theme.colorScheme.error,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
                                               ).animate().shake(),
                                             
                                             const SizedBox(height: 24),
@@ -230,13 +229,12 @@ class _OtpEntryView extends StatelessWidget {
                                   
                                   const SizedBox(height: 40),
                                   
-                                  Text(
-                                    l10n.otpDevHint(OtpRepository.devCode),
+                                  AppLabel(
+                                    text: l10n.otpDevHint(OtpRepository.devCode),
+                                    fontSize: AppFontSize.value12,
+                                    color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+                                    fontStyle: FontStyle.italic,
                                     textAlign: TextAlign.center,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
-                                      fontStyle: FontStyle.italic,
-                                    ),
                                   ).animate().fadeIn(delay: 800.ms),
                                 ],
                               ),

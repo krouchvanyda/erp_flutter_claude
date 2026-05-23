@@ -1,6 +1,8 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_font_size.dart';
+import '../../../core/theme/app_label.dart';
 import 'chart_axis_ticks.dart';
 import 'chart_data.dart';
 
@@ -42,7 +44,7 @@ class LineChartCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: theme.textTheme.titleSmall),
+            AppLabel(text: title, fontSize: AppFontSize.value14, fontWeight: FontWeight.w600),
             const SizedBox(height: 8),
             Expanded(
               child: LineChart(
@@ -65,9 +67,9 @@ class LineChartCard extends StatelessWidget {
                         showTitles: true,
                         interval: yTicks.step,
                         reservedSize: 36,
-                        getTitlesWidget: (value, _) => Text(
-                          _formatTick(value),
-                          style: theme.textTheme.labelSmall,
+                        getTitlesWidget: (value, _) => AppLabel(
+                          text: _formatTick(value),
+                          fontSize: AppFontSize.value11,
                         ),
                       ),
                     ),
@@ -79,9 +81,9 @@ class LineChartCard extends StatelessWidget {
                           final label = _xLabel(series, value);
                           return Padding(
                             padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              label,
-                              style: theme.textTheme.labelSmall,
+                            child: AppLabel(
+                              text: label,
+                              fontSize: AppFontSize.value11,
                             ),
                           );
                         },
@@ -158,7 +160,6 @@ class _Legend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Wrap(
       spacing: 12,
       runSpacing: 4,
@@ -176,7 +177,7 @@ class _Legend extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 6),
-              Text(series[i].label, style: theme.textTheme.labelSmall),
+              AppLabel(text: series[i].label, fontSize: AppFontSize.value11),
             ],
           ),
       ],

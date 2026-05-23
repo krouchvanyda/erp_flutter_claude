@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../entities/invoice.dart';
 import '../bloc/reject_reason_form_bloc.dart';
@@ -68,14 +70,17 @@ class _RejectBody extends StatelessWidget {
                     Icon(Icons.cancel_outlined,
                         color: theme.colorScheme.error),
                     const SizedBox(width: 8),
-                    Text(l10n.invoiceRejectSheetTitle,
-                        style: theme.textTheme.titleMedium),
+                    AppLabel(
+                      text: l10n.invoiceRejectSheetTitle,
+                      fontSize: AppFontSize.value16,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  l10n.invoiceRejectSheetBody(invoice.invoiceNumber),
-                  style: theme.textTheme.bodyMedium,
+                AppLabel(
+                  text: l10n.invoiceRejectSheetBody(invoice.invoiceNumber),
+                  fontSize: AppFontSize.value14,
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -96,7 +101,11 @@ class _RejectBody extends StatelessWidget {
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () => Navigator.of(context).pop(),
-                        child: Text(l10n.invoiceActionCancel),
+                        child: AppLabel(
+                          text: l10n.invoiceActionCancel,
+                          fontSize: AppFontSize.value14,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -113,7 +122,11 @@ class _RejectBody extends StatelessWidget {
                           }
                         },
                         icon: const Icon(Icons.close),
-                        label: Text(l10n.invoiceRejectAction),
+                        label: AppLabel(
+                          text: l10n.invoiceRejectAction,
+                          fontSize: AppFontSize.value14,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],

@@ -4,6 +4,8 @@ import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -369,12 +371,11 @@ class _Tile extends StatelessWidget {
               color: Colors.blue.shade700,
             ),
             const SizedBox(width: 8),
-            Text(
-              conversation.isMuted ? 'Unmute' : 'Mute',
-              style: TextStyle(
-                color: Colors.blue.shade700,
-                fontWeight: FontWeight.w800,
-              ),
+            AppLabel(
+              text: conversation.isMuted ? 'Unmute' : 'Mute',
+              fontSize: AppFontSize.value14,
+              color: Colors.blue.shade700,
+              fontWeight: FontWeight.w800,
             ),
           ],
         ),
@@ -389,12 +390,11 @@ class _Tile extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            Text(
-              'Delete',
-              style: TextStyle(
-                color: Colors.red.shade700,
-                fontWeight: FontWeight.w800,
-              ),
+            AppLabel(
+              text: 'Delete',
+              fontSize: AppFontSize.value14,
+              color: Colors.red.shade700,
+              fontWeight: FontWeight.w800,
             ),
             const SizedBox(width: 8),
             Icon(Icons.delete_outline, color: Colors.red.shade700),
@@ -409,20 +409,35 @@ class _Tile extends StatelessWidget {
         return await showDialog<bool>(
               context: context,
               builder: (dCtx) => AlertDialog(
-                title: const Text('Delete conversation?'),
-                content: Text(
-                    'Remove "${conversation.name}" from your inbox. The other side keeps the conversation.'),
+                title: AppLabel(
+                  text: 'Delete conversation?',
+                  fontSize: AppFontSize.value18,
+                  fontWeight: FontWeight.w800,
+                ),
+                content: AppLabel(
+                  text: 'Remove "${conversation.name}" from your inbox. The other side keeps the conversation.',
+                  fontSize: AppFontSize.value14,
+                  maxLines: 4,
+                ),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(dCtx, false),
-                    child: const Text('Cancel'),
+                    child: AppLabel(
+                      text: 'Cancel',
+                      fontSize: AppFontSize.value14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   FilledButton(
                     style: FilledButton.styleFrom(
                       backgroundColor: theme.colorScheme.error,
                     ),
                     onPressed: () => Navigator.pop(dCtx, true),
-                    child: const Text('Delete'),
+                    child: AppLabel(
+                      text: 'Delete',
+                      fontSize: AppFontSize.value14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -481,15 +496,14 @@ class _Tile extends StatelessWidget {
                       Row(
                         children: [
                           Expanded(
-                            child: Text(
-                              conversation.name,
+                            child: AppLabel(
+                              text: conversation.name,
+                              fontSize: AppFontSize.value16,
+                              fontWeight: hasUnread
+                                  ? FontWeight.w800
+                                  : FontWeight.w600,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodyLarge?.copyWith(
-                                fontWeight: hasUnread
-                                    ? FontWeight.w800
-                                    : FontWeight.w600,
-                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -503,17 +517,15 @@ class _Tile extends StatelessWidget {
                               ),
                             ),
                           if (conversation.lastMessageAt != null)
-                            Text(
-                              _formatStamp(conversation.lastMessageAt!),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: hasUnread
-                                    ? theme.colorScheme.primary
-                                    : theme.colorScheme.onSurfaceVariant,
-                                fontWeight: hasUnread
-                                    ? FontWeight.w800
-                                    : FontWeight.w500,
-                                fontSize: 11,
-                              ),
+                            AppLabel(
+                              text: _formatStamp(conversation.lastMessageAt!),
+                              fontSize: AppFontSize.value11,
+                              color: hasUnread
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.onSurfaceVariant,
+                              fontWeight: hasUnread
+                                  ? FontWeight.w800
+                                  : FontWeight.w500,
                             ),
                         ],
                       ),
@@ -521,18 +533,17 @@ class _Tile extends StatelessWidget {
                       Row(
                         children: [
                           Expanded(
-                            child: Text(
-                              _previewFor(conversation),
+                            child: AppLabel(
+                              text: _previewFor(conversation),
+                              fontSize: AppFontSize.value12,
+                              color: hasUnread
+                                  ? theme.colorScheme.onSurface
+                                  : theme.colorScheme.onSurfaceVariant,
+                              fontWeight: hasUnread
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: hasUnread
-                                    ? theme.colorScheme.onSurface
-                                    : theme.colorScheme.onSurfaceVariant,
-                                fontWeight: hasUnread
-                                    ? FontWeight.w600
-                                    : FontWeight.w400,
-                              ),
                             ),
                           ),
                           if (hasUnread) ...[
@@ -586,13 +597,11 @@ class _UnreadBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.pill),
       ),
       alignment: Alignment.center,
-      child: Text(
-        count > 99 ? '99+' : '$count',
-        style: TextStyle(
-          color: theme.colorScheme.onPrimary,
-          fontWeight: FontWeight.w900,
-          fontSize: 11,
-        ),
+      child: AppLabel(
+        text: count > 99 ? '99+' : '$count',
+        fontSize: AppFontSize.value11,
+        color: theme.colorScheme.onPrimary,
+        fontWeight: FontWeight.w900,
       ),
     );
   }
@@ -622,18 +631,16 @@ class _EmptyState extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            Text(
-              'No conversations',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+            AppLabel(
+              text: 'No conversations',
+              fontSize: AppFontSize.value16,
+              fontWeight: FontWeight.w800,
             ),
             const SizedBox(height: 6),
-            Text(
-              'Start a chat with a teammate or create a group.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+            AppLabel(
+              text: 'Start a chat with a teammate or create a group.',
+              fontSize: AppFontSize.value12,
+              color: theme.colorScheme.onSurfaceVariant,
               textAlign: TextAlign.center,
             ),
           ],
@@ -716,16 +723,14 @@ class _TransportStatusPill extends StatelessWidget {
                     Icon(icon, size: 14, color: accent),
                     const SizedBox(width: 6),
                     Flexible(
-                      child: Text(
-                        label,
+                      child: AppLabel(
+                        text: label,
+                        fontSize: AppFontSize.value11,
+                        color: accent,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.2,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: accent,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 11,
-                          letterSpacing: 0.2,
-                        ),
                       ),
                     ),
                     if (settings.userName.isNotEmpty) ...[
@@ -739,13 +744,11 @@ class _TransportStatusPill extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 6),
-                      Text(
-                        settings.userName,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: accent.withValues(alpha: 0.9),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11,
-                        ),
+                      AppLabel(
+                        text: settings.userName,
+                        fontSize: AppFontSize.value11,
+                        color: accent.withValues(alpha: 0.9),
+                        fontWeight: FontWeight.w700,
                       ),
                     ],
                   ],
@@ -819,18 +822,18 @@ class _IdentitySheetState extends State<_IdentitySheet> {
               ),
             ),
             const SizedBox(height: 12),
-            Text(
-              'Sign in as…',
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w800),
+            AppLabel(
+              text: 'Sign in as…',
+              fontSize: AppFontSize.value16,
+              fontWeight: FontWeight.w800,
             ),
             const SizedBox(height: 4),
-            Text(
-              'Switch identity to test two-way chat. The relay routes '
-              'each message to every other connected client.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+            AppLabel(
+              text: 'Switch identity to test two-way chat. The relay routes '
+                  'each message to every other connected client.',
+              fontSize: AppFontSize.value12,
+              color: theme.colorScheme.onSurfaceVariant,
+              maxLines: 3,
             ),
             const SizedBox(height: 12),
             Flexible(
@@ -872,11 +875,10 @@ class _IdentitySheetState extends State<_IdentitySheet> {
                             ),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: Text(
-                                p.name,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                ),
+                              child: AppLabel(
+                                text: p.name,
+                                fontSize: AppFontSize.value14,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                             if (isSel)
@@ -949,18 +951,18 @@ class _RelayUrlSheetState extends State<_RelayUrlSheet> {
             ),
           ),
           const SizedBox(height: 16),
-          Text(
-            'Chat relay URL',
-            style: theme.textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.w800),
+          AppLabel(
+            text: 'Chat relay URL',
+            fontSize: AppFontSize.value16,
+            fontWeight: FontWeight.w800,
           ),
           const SizedBox(height: 4),
-          Text(
-            'Point both devices at the WebSocket relay running on your PC. '
-            'Leave blank to stay offline.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+          AppLabel(
+            text: 'Point both devices at the WebSocket relay running on your PC. '
+                'Leave blank to stay offline.',
+            fontSize: AppFontSize.value12,
+            color: theme.colorScheme.onSurfaceVariant,
+            maxLines: 3,
           ),
           const SizedBox(height: 14),
           TextField(
@@ -988,7 +990,11 @@ class _RelayUrlSheetState extends State<_RelayUrlSheet> {
                 ('Simulator', 'ws://127.0.0.1:7777'),
               ])
                 ActionChip(
-                  label: Text(preset.$1),
+                  label: AppLabel(
+                    text: preset.$1,
+                    fontSize: AppFontSize.value12,
+                    fontWeight: FontWeight.w600,
+                  ),
                   onPressed: () => _ctrl.text = preset.$2,
                 ),
             ],
@@ -1005,9 +1011,10 @@ class _RelayUrlSheetState extends State<_RelayUrlSheet> {
                       borderRadius: BorderRadius.circular(AppRadii.md),
                     ),
                   ),
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                  child: AppLabel(
+                    text: 'Cancel',
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -1025,9 +1032,10 @@ class _RelayUrlSheetState extends State<_RelayUrlSheet> {
                       borderRadius: BorderRadius.circular(AppRadii.md),
                     ),
                   ),
-                  child: const Text(
-                    'Save',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                  child: AppLabel(
+                    text: 'Save',
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -1067,20 +1075,18 @@ class _RecentCallsList extends StatelessWidget {
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(height: 12),
-                  Text(
-                    'No calls yet',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
+                  AppLabel(
+                    text: 'No calls yet',
+                    fontSize: AppFontSize.value16,
+                    fontWeight: FontWeight.w800,
                   ),
                   const SizedBox(height: 6),
-                  Text(
-                    'Place a voice or video call from any conversation.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurfaceVariant,
-                        ),
+                  AppLabel(
+                    text: 'Place a voice or video call from any conversation.',
+                    fontSize: AppFontSize.value12,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurfaceVariant,
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -1173,14 +1179,13 @@ class _RecentCallTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      peerName,
+                    AppLabel(
+                      text: peerName,
+                      fontSize: AppFontSize.value16,
+                      fontWeight: FontWeight.w700,
+                      color: isMissed ? theme.colorScheme.error : null,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: isMissed ? theme.colorScheme.error : null,
-                      ),
                     ),
                     const SizedBox(height: 2),
                     Row(
@@ -1196,13 +1201,12 @@ class _RecentCallTile extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         Expanded(
-                          child: Text(
-                            _subtitle(log, isMissed, isOutgoing),
+                          child: AppLabel(
+                            text: _subtitle(log, isMissed, isOutgoing),
+                            fontSize: AppFontSize.value12,
+                            color: theme.colorScheme.onSurfaceVariant,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
                           ),
                         ),
                       ],
@@ -1210,13 +1214,11 @@ class _RecentCallTile extends StatelessWidget {
                   ],
                 ),
               ),
-              Text(
-                _formatStamp(log.startedAt),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 11,
-                ),
+              AppLabel(
+                text: _formatStamp(log.startedAt),
+                fontSize: AppFontSize.value11,
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
               ),
             ],
           ),

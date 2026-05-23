@@ -4,6 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../core/error/failure.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -54,13 +56,12 @@ class ApiConfigPage extends StatelessWidget {
                             .fadeIn(duration: 350.ms)
                             .slideY(begin: -0.05, end: 0),
                         const SizedBox(height: 16),
-                        Text(
-                          'AVAILABLE ENVIRONMENT CLUSTERS',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.5,
-                          ),
+                        AppLabel(
+                          text: 'AVAILABLE ENVIRONMENT CLUSTERS',
+                          fontSize: AppFontSize.value11,
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.5,
                         ),
                         const SizedBox(height: 12),
                         for (int idx = 0; idx < envs.length; idx++) ...[
@@ -97,7 +98,11 @@ class ApiConfigPage extends StatelessWidget {
         onPressed: () => _showAddSheet(context),
         elevation: 4,
         icon: const Icon(Icons.add),
-        label: const Text('Add Cluster', style: TextStyle(fontWeight: FontWeight.bold)),
+        label: const AppLabel(
+          text: 'Add Cluster',
+          fontSize: AppFontSize.value14,
+          fontWeight: FontWeight.bold,
+        ),
       ).animate().scale(delay: 200.ms),
     );
   }
@@ -137,9 +142,10 @@ class ApiConfigPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              Text(
-                'Add Custom Cluster',
-                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              const AppLabel(
+                text: 'Add Custom Cluster',
+                fontSize: AppFontSize.value16,
+                fontWeight: FontWeight.bold,
               ),
               const SizedBox(height: 16),
               TextField(
@@ -176,7 +182,11 @@ class ApiConfigPage extends StatelessWidget {
                       setSheet(() => errors = f.fieldErrors);
                     }
                   },
-                  child: const Text('Add Cluster', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: const AppLabel(
+                    text: 'Add Cluster',
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -220,12 +230,12 @@ class _Banner extends StatelessWidget {
           ),
           const SizedBox(width: 14),
           Expanded(
-            child: Text(
-              'Switching environment clusters signs you out of the current tenant session to prevent cross-contamination of credentials.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w500,
-                color: theme.colorScheme.onSurface,
-              ),
+            child: AppLabel(
+              text:
+                  'Switching environment clusters signs you out of the current tenant session to prevent cross-contamination of credentials.',
+              fontSize: AppFontSize.value12,
+              fontWeight: FontWeight.w500,
+              color: theme.colorScheme.onSurface,
             ),
           ),
         ],
@@ -307,11 +317,10 @@ class _EnvTile extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          env.name,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        child: AppLabel(
+                          text: env.name,
+                          fontSize: AppFontSize.value14,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -322,24 +331,21 @@ class _EnvTile extends StatelessWidget {
                             color: theme.colorScheme.surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(AppRadii.pill),
                           ),
-                          child: Text(
-                            'BUILT-IN',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              fontSize: 8,
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
+                          child: AppLabel(
+                            text: 'BUILT-IN',
+                            fontSize: AppFontSize.value8,
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
                     ],
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    env.baseUrl,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontFamily: 'monospace',
-                    ),
+                  AppLabel(
+                    text: env.baseUrl,
+                    fontSize: AppFontSize.value12,
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontFamily: 'monospace',
                   ),
                 ],
               ),

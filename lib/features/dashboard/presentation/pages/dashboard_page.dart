@@ -17,6 +17,8 @@ import '../../../../core/push/push_notification_service.dart';
 import '../../../../core/realtime/realtime_service.dart';
 import '../../../../core/realtime/realtime_status_indicator.dart';
 import '../../../../core/router/route_paths.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../features/auth/entities/permission.dart';
@@ -188,19 +190,17 @@ class _DashboardPageState extends State<DashboardPage> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Good Morning,',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+                      AppLabel(
+                        text: 'Good Morning,',
+                        fontSize: AppFontSize.value16,
+                        color: theme.colorScheme.onSurfaceVariant,
                       ).animate().fadeIn(duration: 600.ms).slideX(begin: -0.2, end: 0),
-                      Text(
-                        'Demo Approver',
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.w900,
-                          color: theme.colorScheme.onSurface,
-                          letterSpacing: -0.5,
-                        ),
+                      AppLabel(
+                        text: 'Demo Approver',
+                        fontSize: AppFontSize.value22,
+                        fontWeight: FontWeight.w900,
+                        color: theme.colorScheme.onSurface,
+                        letterSpacing: -0.5,
                       ).animate().fadeIn(delay: 200.ms, duration: 600.ms).slideX(begin: -0.1, end: 0),
                     ],
                   ),
@@ -309,13 +309,12 @@ class _SectionHeader extends StatelessWidget {
       children: [
         Icon(icon, size: 20, color: theme.colorScheme.primary),
         const SizedBox(width: 8),
-        Text(
-          title,
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.primary,
-            letterSpacing: 0.5,
-          ),
+        AppLabel(
+          text: title,
+          fontSize: AppFontSize.value14,
+          fontWeight: FontWeight.bold,
+          color: theme.colorScheme.primary,
+          letterSpacing: 0.5,
         ),
       ],
     );
@@ -351,12 +350,11 @@ class _QuickActionChip extends StatelessWidget {
           children: [
             Icon(icon, size: 18, color: theme.colorScheme.onSurfaceVariant),
             const SizedBox(width: 8),
-            Text(
-              label,
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: theme.colorScheme.onSurface,
-                fontWeight: FontWeight.w600,
-              ),
+            AppLabel(
+              text: label,
+              fontSize: AppFontSize.value14,
+              color: theme.colorScheme.onSurface,
+              fontWeight: FontWeight.w600,
             ),
           ],
         ),

@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -105,14 +107,18 @@ class _PurchaseOrderCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          po.number,
-                          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontFeatures: const [FontFeature.tabularFigures()]),
+                        AppLabel(
+                          text: po.number,
+                          fontSize: AppFontSize.value16,
+                          fontWeight: FontWeight.bold,
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                         const SizedBox(height: 2),
-                        Text(
-                          po.vendorName,
-                          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500),
+                        AppLabel(
+                          text: po.vendorName,
+                          fontSize: AppFontSize.value14,
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -132,15 +138,20 @@ class _PurchaseOrderCard extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        l10n.poListExpectedLabel(_date.format(po.expectedAt)).toUpperCase(),
-                        style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.bold),
+                      AppLabel(
+                        text: l10n.poListExpectedLabel(_date.format(po.expectedAt)).toUpperCase(),
+                        fontSize: AppFontSize.value11,
+                        color: theme.colorScheme.outline,
+                        fontWeight: FontWeight.bold,
                       ),
                     ],
                   ),
-                  Text(
-                    po.totalAmount,
-                    style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900, color: theme.colorScheme.primary, fontFeatures: const [FontFeature.tabularFigures()]),
+                  AppLabel(
+                    text: po.totalAmount,
+                    fontSize: AppFontSize.value24,
+                    fontWeight: FontWeight.w900,
+                    color: theme.colorScheme.primary,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ],
               ),
@@ -168,9 +179,12 @@ class PurchaseOrderStatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.pill),
         border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
-      child: Text(
-        poStatusLabel(l10n, status).toUpperCase(),
-        style: theme.textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w900, fontSize: 9, letterSpacing: 0.5),
+      child: AppLabel(
+        text: poStatusLabel(l10n, status).toUpperCase(),
+        fontSize: AppFontSize.value9,
+        color: color,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 0.5,
       ),
     );
   }
@@ -195,7 +209,13 @@ class _CenteredMessage extends StatelessWidget {
               child: Icon(icon ?? Icons.inventory_2_rounded, size: 64, color: theme.colorScheme.outline.withValues(alpha: 0.5)),
             ),
             const SizedBox(height: 24),
-            Text(text, textAlign: TextAlign.center, style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500)),
+            AppLabel(
+              text: text,
+              fontSize: AppFontSize.value16,
+              textAlign: TextAlign.center,
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
           ],
         ),
       ),

@@ -3,6 +3,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -278,13 +280,12 @@ class _SectionLabel extends StatelessWidget {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(left: 4),
-      child: Text(
-        text.toUpperCase(),
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: theme.colorScheme.primary,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 1.2,
-        ),
+      child: AppLabel(
+        text: text.toUpperCase(),
+        fontSize: AppFontSize.value11,
+        color: theme.colorScheme.primary,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 1.2,
       ),
     );
   }
@@ -351,31 +352,27 @@ class _DetailsCard extends StatelessWidget {
                     CircleAvatar(
                       radius: 12,
                       backgroundColor: theme.colorScheme.primary,
-                      child: Text(
-                        _initials(assignee!.name),
-                        style: TextStyle(
-                          color: theme.colorScheme.onPrimary,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                        ),
+                      child: AppLabel(
+                        text: _initials(assignee!.name),
+                        fontSize: AppFontSize.value10,
+                        color: theme.colorScheme.onPrimary,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Flexible(
-                      child: Text(
-                        assignee!.name,
+                      child: AppLabel(
+                        text: assignee!.name,
+                        fontSize: AppFontSize.value14,
                         overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ] else
-                    Text(
-                      'Unassigned',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                    AppLabel(
+                      text: 'Unassigned',
+                      fontSize: AppFontSize.value14,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   const SizedBox(width: 4),
                   Icon(Icons.chevron_right_rounded,
@@ -394,7 +391,11 @@ class _DetailsCard extends StatelessWidget {
                   TextButton.icon(
                     onPressed: onDueDateTap,
                     icon: const Icon(Icons.calendar_today_rounded, size: 14),
-                    label: Text(dateFormat.format(dueDate!)),
+                    label: AppLabel(
+                      text: dateFormat.format(dueDate!),
+                      fontSize: AppFontSize.value13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close_rounded, size: 18),
@@ -405,7 +406,11 @@ class _DetailsCard extends StatelessWidget {
                   TextButton.icon(
                     onPressed: onDueDateTap,
                     icon: const Icon(Icons.add_rounded, size: 14),
-                    label: const Text('Add due date'),
+                    label: const AppLabel(
+                      text: 'Add due date',
+                      fontSize: AppFontSize.value13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
               ],
             ),
@@ -432,12 +437,11 @@ class _Row extends StatelessWidget {
           const SizedBox(width: 10),
           SizedBox(
             width: 88,
-            child: Text(
-              label,
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-              ),
+            child: AppLabel(
+              text: label,
+              fontSize: AppFontSize.value12,
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
             ),
           ),
           Expanded(child: child),
@@ -470,7 +474,10 @@ class _StatusChips extends StatelessWidget {
       children: [
         for (final s in TaskStatus.values)
           ChoiceChip(
-            label: Text(_statusLabel(s), style: const TextStyle(fontSize: 12)),
+            label: AppLabel(
+              text: _statusLabel(s),
+              fontSize: AppFontSize.value12,
+            ),
             selected: current == s,
             onSelected: (_) => onChanged(s),
             visualDensity: VisualDensity.compact,
@@ -501,7 +508,10 @@ class _PriorityChips extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
             ),
-            label: Text(_priorityLabel(p), style: const TextStyle(fontSize: 12)),
+            label: AppLabel(
+              text: _priorityLabel(p),
+              fontSize: AppFontSize.value12,
+            ),
             selected: current == p,
             onSelected: (_) => onChanged(p),
             visualDensity: VisualDensity.compact,
@@ -553,7 +563,11 @@ class _SaveBar extends StatelessWidget {
                   ),
                 )
               : const Icon(Icons.check_rounded),
-          label: Text(saving ? 'Saving…' : label),
+          label: AppLabel(
+            text: saving ? 'Saving…' : label,
+            fontSize: AppFontSize.value14,
+            fontWeight: FontWeight.w600,
+          ),
           style: FilledButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 14),
             shape: RoundedRectangleBorder(
@@ -648,16 +662,21 @@ Future<Employee?> _showEmployeeSheet(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: Text('Assign to…',
-                      style: theme.textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.w700)),
+                  child: AppLabel(
+                    text: 'Assign to…',
+                    fontSize: AppFontSize.value22,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
               if (current != null)
                 ListTile(
                   leading: const Icon(Icons.person_off_outlined),
-                  title: const Text('Unassign'),
+                  title: const AppLabel(
+                    text: 'Unassign',
+                    fontSize: AppFontSize.value14,
+                  ),
                   onTap: () {
                     Navigator.pop(ctx);
                   },
@@ -672,13 +691,22 @@ Future<Employee?> _showEmployeeSheet(
                     return ListTile(
                       leading: CircleAvatar(
                         backgroundColor: theme.colorScheme.primary,
-                        child: Text(
-                          _initials(e.name),
-                          style: TextStyle(color: theme.colorScheme.onPrimary),
+                        child: AppLabel(
+                          text: _initials(e.name),
+                          fontSize: AppFontSize.value14,
+                          color: theme.colorScheme.onPrimary,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      title: Text(e.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                      subtitle: Text('${e.position} • ${e.department}'),
+                      title: AppLabel(
+                        text: e.name,
+                        fontSize: AppFontSize.value16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      subtitle: AppLabel(
+                        text: '${e.position} • ${e.department}',
+                        fontSize: AppFontSize.value12,
+                      ),
                       trailing: selected
                           ? Icon(Icons.check_circle_rounded, color: theme.colorScheme.primary)
                           : null,

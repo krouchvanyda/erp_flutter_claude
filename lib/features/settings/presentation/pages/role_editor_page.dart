@@ -4,6 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../core/error/failure.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -31,7 +33,6 @@ class RoleEditorPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final repo = GetIt.I<RolesRepository>();
-    final theme = Theme.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -77,7 +78,11 @@ class RoleEditorPage extends StatelessWidget {
         onPressed: () => _showCreateSheet(context),
         elevation: 4,
         icon: const Icon(Icons.add),
-        label: const Text('New Role', style: TextStyle(fontWeight: FontWeight.bold)),
+        label: const AppLabel(
+          text: 'New Role',
+          fontSize: AppFontSize.value14,
+          fontWeight: FontWeight.bold,
+        ),
       ).animate().scale(delay: 200.ms),
     );
   }
@@ -131,9 +136,10 @@ class RoleEditorPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Text(
-                  'Create Custom Role',
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                const AppLabel(
+                  text: 'Create Custom Role',
+                  fontSize: AppFontSize.value16,
+                  fontWeight: FontWeight.bold,
                 ),
                 const SizedBox(height: 16),
                 AppTextField(
@@ -148,9 +154,10 @@ class RoleEditorPage extends StatelessWidget {
                   icon: Icons.notes_outlined,
                 ),
                 const SizedBox(height: 16),
-                Text(
-                  'Assign Permission Scopes',
-                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                const AppLabel(
+                  text: 'Assign Permission Scopes',
+                  fontSize: AppFontSize.value14,
+                  fontWeight: FontWeight.bold,
                 ),
                 const SizedBox(height: 8),
                 Wrap(
@@ -159,7 +166,11 @@ class RoleEditorPage extends StatelessWidget {
                   children: [
                     for (final scope in _knownScopes)
                       FilterChip(
-                        label: Text(scope),
+                        label: AppLabel(
+                          text: scope,
+                          fontSize: AppFontSize.value13,
+                          fontFamily: 'monospace',
+                        ),
                         selected: selectedScopes.contains(scope),
                         checkmarkColor: theme.colorScheme.primary,
                         selectedColor: theme.colorScheme.primaryContainer,
@@ -190,12 +201,11 @@ class RoleEditorPage extends StatelessWidget {
                       color: theme.colorScheme.errorContainer,
                       borderRadius: BorderRadius.circular(AppRadii.md),
                     ),
-                    child: Text(
-                      errorMsg!,
-                      style: TextStyle(
-                        color: theme.colorScheme.onErrorContainer,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    child: AppLabel(
+                      text: errorMsg!,
+                      fontSize: AppFontSize.value14,
+                      color: theme.colorScheme.onErrorContainer,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
@@ -217,7 +227,11 @@ class RoleEditorPage extends StatelessWidget {
                             .join('\n'));
                       }
                     },
-                    child: const Text('Create Role', style: TextStyle(fontWeight: FontWeight.bold)),
+                    child: const AppLabel(
+                      text: 'Create Role',
+                      fontSize: AppFontSize.value14,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                     ],
@@ -308,11 +322,10 @@ class _RoleCardState extends State<_RoleCard> {
                       children: [
                         Row(
                           children: [
-                            Text(
-                              widget.role.name,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                            AppLabel(
+                              text: widget.role.name,
+                              fontSize: AppFontSize.value14,
+                              fontWeight: FontWeight.bold,
                             ),
                             const SizedBox(width: 8),
                             if (isSys)
@@ -322,23 +335,20 @@ class _RoleCardState extends State<_RoleCard> {
                                   color: theme.colorScheme.surfaceContainerHighest,
                                   borderRadius: BorderRadius.circular(AppRadii.pill),
                                 ),
-                                child: Text(
-                                  'SYSTEM',
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.bold,
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
+                                child: AppLabel(
+                                  text: 'SYSTEM',
+                                  fontSize: AppFontSize.value8,
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.onSurfaceVariant,
                                 ),
                               ),
                           ],
                         ),
                         const SizedBox(height: 2),
-                        Text(
-                          widget.role.description,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
+                        AppLabel(
+                          text: widget.role.description,
+                          fontSize: AppFontSize.value12,
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ],
                     ),
@@ -359,13 +369,12 @@ class _RoleCardState extends State<_RoleCard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'PERMISSION SCOPES',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.5,
-                    ),
+                  AppLabel(
+                    text: 'PERMISSION SCOPES',
+                    fontSize: AppFontSize.value11,
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.5,
                   ),
                   const SizedBox(height: 12),
                   Wrap(
@@ -390,7 +399,11 @@ class _RoleCardState extends State<_RoleCard> {
                       child: TextButton.icon(
                         style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
                         icon: const Icon(Icons.delete_outline, size: 18),
-                        label: const Text('Delete Role', style: TextStyle(fontWeight: FontWeight.bold)),
+                        label: const AppLabel(
+                          text: 'Delete Role',
+                          fontSize: AppFontSize.value14,
+                          fontWeight: FontWeight.bold,
+                        ),
                         onPressed: () => _confirmDelete(context),
                       ),
                     ),
@@ -456,18 +469,34 @@ class _RoleCardState extends State<_RoleCard> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        title: Text('Delete "${widget.role.name}"?'),
-        content: const Text('This action cannot be undone and will strip permissions from all assigned users.'),
+        title: AppLabel(
+          text: 'Delete "${widget.role.name}"?',
+          fontSize: AppFontSize.value18,
+          fontWeight: FontWeight.bold,
+        ),
+        content: const AppLabel(
+          text:
+              'This action cannot be undone and will strip permissions from all assigned users.',
+          fontSize: AppFontSize.value14,
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.lg)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx, false),
-            child: const Text('Cancel'),
+            child: const AppLabel(
+              text: 'Cancel',
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
             onPressed: () => Navigator.pop(dialogCtx, true),
-            child: const Text('Delete', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const AppLabel(
+              text: 'Delete',
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
@@ -521,12 +550,14 @@ class _PermissionChip extends StatelessWidget {
               color: isEnabled ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
             ),
             const SizedBox(width: 6),
-            Text(
-              scope,
-              style: theme.textTheme.labelMedium?.copyWith(
-                fontWeight: isEnabled ? FontWeight.bold : FontWeight.w500,
-                color: isEnabled ? theme.colorScheme.onPrimaryContainer : theme.colorScheme.onSurfaceVariant,
-              ),
+            AppLabel(
+              text: scope,
+              fontSize: AppFontSize.value12,
+              fontWeight: isEnabled ? FontWeight.bold : FontWeight.w500,
+              color: isEnabled
+                  ? theme.colorScheme.onPrimaryContainer
+                  : theme.colorScheme.onSurfaceVariant,
+              fontFamily: 'monospace',
             ),
           ],
         ),

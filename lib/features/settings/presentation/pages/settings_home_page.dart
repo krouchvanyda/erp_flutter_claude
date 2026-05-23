@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -190,7 +192,11 @@ class SettingsHomePage extends StatelessWidget {
                       ),
                       onPressed: onSignOut,
                       icon: const Icon(Icons.logout_rounded),
-                      label: const Text('Sign out'),
+                      label: const AppLabel(
+                        text: 'Sign out',
+                        fontSize: AppFontSize.value14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ).animate().fadeIn(delay: 400.ms),
                 ),
@@ -217,13 +223,12 @@ class _Section extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 8, bottom: 8),
-          child: Text(
-            title.toUpperCase(),
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0.5,
-            ),
+          child: AppLabel(
+            text: title.toUpperCase(),
+            fontSize: AppFontSize.value11,
+            color: theme.colorScheme.primary,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.5,
           ),
         ),
         Container(
@@ -277,17 +282,15 @@ class _Tile extends StatelessWidget {
         ),
         child: Icon(icon, color: color, size: 20),
       ),
-      title: Text(
-        title,
-        style: theme.textTheme.bodyMedium?.copyWith(
-          fontWeight: FontWeight.bold,
-        ),
+      title: AppLabel(
+        text: title,
+        fontSize: AppFontSize.value14,
+        fontWeight: FontWeight.bold,
       ),
-      subtitle: Text(
-        subtitle,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
+      subtitle: AppLabel(
+        text: subtitle,
+        fontSize: AppFontSize.value12,
+        color: theme.colorScheme.onSurfaceVariant,
       ),
       trailing: Icon(
         Icons.chevron_right,

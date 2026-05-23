@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -259,7 +261,12 @@ class _ActionBar extends StatelessWidget {
       action = FilledButton.icon(
         onPressed: onSubmit,
         icon: const Icon(Icons.send_rounded),
-        label: Text(l10n.prSubmitAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+        label: AppLabel(
+          text: l10n.prSubmitAction.toUpperCase(),
+          fontSize: AppFontSize.value14,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1.2,
+        ),
         style: FilledButton.styleFrom(
           minimumSize: const Size.fromHeight(56),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
@@ -272,7 +279,11 @@ class _ActionBar extends StatelessWidget {
             child: OutlinedButton.icon(
               onPressed: onReject,
               icon: const Icon(Icons.close_rounded),
-              label: Text(l10n.prRejectAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800)),
+              label: AppLabel(
+                text: l10n.prRejectAction.toUpperCase(),
+                fontSize: AppFontSize.value14,
+                fontWeight: FontWeight.w800,
+              ),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size.fromHeight(56),
                 foregroundColor: theme.colorScheme.error,
@@ -286,7 +297,11 @@ class _ActionBar extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: onApprove,
               icon: const Icon(Icons.check_rounded),
-              label: Text(l10n.prApproveAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800)),
+              label: AppLabel(
+                text: l10n.prApproveAction.toUpperCase(),
+                fontSize: AppFontSize.value14,
+                fontWeight: FontWeight.w800,
+              ),
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(56),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
@@ -299,7 +314,12 @@ class _ActionBar extends StatelessWidget {
       action = FilledButton.icon(
         onPressed: onConvert,
         icon: const Icon(Icons.shopping_bag_rounded),
-        label: Text(l10n.prConvertAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+        label: AppLabel(
+          text: l10n.prConvertAction.toUpperCase(),
+          fontSize: AppFontSize.value14,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1.2,
+        ),
         style: FilledButton.styleFrom(
           minimumSize: const Size.fromHeight(56),
           backgroundColor: theme.colorScheme.tertiary,
@@ -362,11 +382,14 @@ class _ConvertDialogState extends State<_ConvertDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
     final dateFmt = DateFormat('MMM dd, yyyy');
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.lg)),
-      title: Text(l10n.prConvertDialogTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
+      title: AppLabel(
+        text: l10n.prConvertDialogTitle,
+        fontSize: AppFontSize.value18,
+        fontWeight: FontWeight.bold,
+      ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -377,7 +400,16 @@ class _ConvertDialogState extends State<_ConvertDialog> {
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
               errorText: _vendorError,
             ),
-            items: [for (final v in widget.vendors) DropdownMenuItem(value: v, child: Text(v.name))],
+            items: [
+              for (final v in widget.vendors)
+                DropdownMenuItem(
+                  value: v,
+                  child: AppLabel(
+                    text: v.name,
+                    fontSize: AppFontSize.value14,
+                  ),
+                ),
+            ],
             onChanged: (v) => setState(() { _vendor = v; _vendorError = null; }),
           ),
           const SizedBox(height: 20),
@@ -390,14 +422,32 @@ class _ConvertDialogState extends State<_ConvertDialog> {
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
                 suffixIcon: const Icon(Icons.calendar_today_rounded, size: 18),
               ),
-              child: Text(dateFmt.format(_expectedAt)),
+              child: AppLabel(
+                text: dateFmt.format(_expectedAt),
+                fontSize: AppFontSize.value14,
+              ),
             ),
           ),
         ],
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l10n.prConvertCancel.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold))),
-        FilledButton(onPressed: _confirm, style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md))), child: Text(l10n.prConvertConfirm.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold))),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: AppLabel(
+            text: l10n.prConvertCancel.toUpperCase(),
+            fontSize: AppFontSize.value14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        FilledButton(
+          onPressed: _confirm,
+          style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md))),
+          child: AppLabel(
+            text: l10n.prConvertConfirm.toUpperCase(),
+            fontSize: AppFontSize.value14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ],
     );
   }
@@ -438,14 +488,19 @@ class _DetailBody extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          pr.number,
-                          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900, letterSpacing: -0.5, fontFeatures: const [FontFeature.tabularFigures()]),
+                        AppLabel(
+                          text: pr.number,
+                          fontSize: AppFontSize.value24,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          _date.format(pr.createdAt.toLocal()),
-                          style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.bold),
+                        AppLabel(
+                          text: _date.format(pr.createdAt.toLocal()),
+                          fontSize: AppFontSize.value12,
+                          color: theme.colorScheme.outline,
+                          fontWeight: FontWeight.bold,
                         ),
                       ],
                     ),
@@ -474,9 +529,11 @@ class _DetailBody extends StatelessWidget {
           _SectionCard(
             title: l10n.prDetailJustificationHeading.toUpperCase(),
             icon: Icons.subject_rounded,
-            child: Text(
-              pr.justification!,
-              style: theme.textTheme.bodyMedium?.copyWith(height: 1.5, color: theme.colorScheme.onSurface),
+            child: AppLabel(
+              text: pr.justification!,
+              fontSize: AppFontSize.value14,
+              lineHeight: 1.5,
+              color: theme.colorScheme.onSurface,
             ),
           ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.05, end: 0),
         ],
@@ -497,11 +554,19 @@ class _DetailBody extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    Text(l10n.prDetailTotalLabel.toUpperCase(), style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900, color: theme.colorScheme.primary)),
+                    AppLabel(
+                      text: l10n.prDetailTotalLabel.toUpperCase(),
+                      fontSize: AppFontSize.value14,
+                      fontWeight: FontWeight.w900,
+                      color: theme.colorScheme.primary,
+                    ),
                     const Spacer(),
-                    Text(
-                      pr.totalAmount,
-                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900, color: theme.colorScheme.primary, fontFeatures: const [FontFeature.tabularFigures()]),
+                    AppLabel(
+                      text: pr.totalAmount,
+                      fontSize: AppFontSize.value22,
+                      fontWeight: FontWeight.w900,
+                      color: theme.colorScheme.primary,
+                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ],
                 ),
@@ -531,11 +596,21 @@ class _MetaItem extends StatelessWidget {
           children: [
             Icon(icon, size: 14, color: theme.colorScheme.primary),
             const SizedBox(width: 6),
-            Text(label.toUpperCase(), style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+            AppLabel(
+              text: label.toUpperCase(),
+              fontSize: AppFontSize.value11,
+              color: theme.colorScheme.outline,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.5,
+            ),
           ],
         ),
         const SizedBox(height: 6),
-        Text(value, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+        AppLabel(
+          text: value,
+          fontSize: AppFontSize.value16,
+          fontWeight: FontWeight.w600,
+        ),
       ],
     );
   }
@@ -567,7 +642,13 @@ class _SectionCard extends StatelessWidget {
               children: [
                 Icon(icon, size: 18, color: theme.colorScheme.primary),
                 const SizedBox(width: 8),
-                Text(title, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                AppLabel(
+                  text: title,
+                  fontSize: AppFontSize.value11,
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1,
+                ),
               ],
             ),
           ),
@@ -595,10 +676,18 @@ class _LineRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(line.description, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
+                AppLabel(
+                  text: line.description,
+                  fontSize: AppFontSize.value16,
+                  fontWeight: FontWeight.bold,
+                ),
                 if (line.sku != null) ...[
                   const SizedBox(height: 4),
-                  Text('SKU: ${line.sku}', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline)),
+                  AppLabel(
+                    text: 'SKU: ${line.sku}',
+                    fontSize: AppFontSize.value11,
+                    color: theme.colorScheme.outline,
+                  ),
                 ],
               ],
             ),
@@ -607,11 +696,18 @@ class _LineRow extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text('${line.quantity} × ${line.unitPrice}', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline)),
+              AppLabel(
+                text: '${line.quantity} × ${line.unitPrice}',
+                fontSize: AppFontSize.value11,
+                color: theme.colorScheme.outline,
+              ),
               const SizedBox(height: 4),
-              Text(
-                line.lineTotal,
-                style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w900, color: theme.colorScheme.onSurface, fontFeatures: const [FontFeature.tabularFigures()]),
+              AppLabel(
+                text: line.lineTotal,
+                fontSize: AppFontSize.value16,
+                fontWeight: FontWeight.w900,
+                color: theme.colorScheme.onSurface,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ],
           ),
@@ -636,7 +732,12 @@ class _CenteredMessage extends StatelessWidget {
           children: [
             Icon(icon ?? Icons.shopping_cart_rounded, size: 64, color: theme.colorScheme.outline.withValues(alpha: 0.5)),
             const SizedBox(height: 24),
-            Text(text, textAlign: TextAlign.center, style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            AppLabel(
+              text: text,
+              fontSize: AppFontSize.value16,
+              textAlign: TextAlign.center,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ],
         ),
       ),
@@ -665,7 +766,11 @@ class _RejectReasonDialogState extends State<_RejectReasonDialog> {
     final l10n = AppLocalizations.of(context);
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.lg)),
-      title: Text(l10n.prRejectDialogTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
+      title: AppLabel(
+        text: l10n.prRejectDialogTitle,
+        fontSize: AppFontSize.value18,
+        fontWeight: FontWeight.bold,
+      ),
       content: Form(
         key: _formKey,
         child: AppTextField(
@@ -679,14 +784,25 @@ class _RejectReasonDialogState extends State<_RejectReasonDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l10n.prRejectCancel.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold))),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: AppLabel(
+            text: l10n.prRejectCancel.toUpperCase(),
+            fontSize: AppFontSize.value14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         FilledButton(
           style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md))),
           onPressed: () {
             if (!(_formKey.currentState?.validate() ?? false)) return;
             Navigator.of(context).pop(_controller.text.trim());
           },
-          child: Text(l10n.prRejectConfirm.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold)),
+          child: AppLabel(
+            text: l10n.prRejectConfirm.toUpperCase(),
+            fontSize: AppFontSize.value14,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ],
     );

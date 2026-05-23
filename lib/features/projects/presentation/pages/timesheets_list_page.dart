@@ -4,6 +4,8 @@ import 'package:get_it/get_it.dart';
 
 import '../../../../core/error/failure.dart';
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -53,12 +55,21 @@ class _TimesheetsListPageState extends State<TimesheetsListPage> {
                 visualDensity: VisualDensity.compact,
               ),
               segments: const [
-                ButtonSegment(value: _TsFilter.mine, label: Text('Mine')),
+                ButtonSegment(
+                  value: _TsFilter.mine,
+                  label: AppLabel(text: 'Mine', fontSize: AppFontSize.value13),
+                ),
                 ButtonSegment(
                   value: _TsFilter.approvals,
-                  label: Text('Approvals'),
+                  label: AppLabel(
+                    text: 'Approvals',
+                    fontSize: AppFontSize.value13,
+                  ),
                 ),
-                ButtonSegment(value: _TsFilter.all, label: Text('All')),
+                ButtonSegment(
+                  value: _TsFilter.all,
+                  label: AppLabel(text: 'All', fontSize: AppFontSize.value13),
+                ),
               ],
               selected: {_filter},
               onSelectionChanged: (s) =>
@@ -91,12 +102,11 @@ class _TimesheetsListPageState extends State<TimesheetsListPage> {
                           color: theme.colorScheme.outline.withValues(alpha: 0.5),
                         ),
                         const SizedBox(height: 12),
-                        Text(
-                          'No timesheet entries found.',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.outline,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        AppLabel(
+                          text: 'No timesheet entries found.',
+                          fontSize: AppFontSize.value14,
+                          color: theme.colorScheme.outline,
+                          fontWeight: FontWeight.w500,
                         ),
                       ],
                     ),
@@ -124,7 +134,11 @@ class _TimesheetsListPageState extends State<TimesheetsListPage> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => ConfigRouter.pushPageAnimation(context, const TimesheetFormPage()),
         icon: const Icon(Icons.add_rounded),
-        label: const Text('Log time'),
+        label: const AppLabel(
+          text: 'Log time',
+          fontSize: AppFontSize.value14,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -194,22 +208,21 @@ class _EntryCard extends StatelessWidget {
                   CircleAvatar(
                     radius: 12,
                     backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
-                    child: Text(
-                      entry.employeeName.isEmpty ? '?' : entry.employeeName[0].toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.primary,
-                      ),
+                    child: AppLabel(
+                      text: entry.employeeName.isEmpty
+                          ? '?'
+                          : entry.employeeName[0].toUpperCase(),
+                      fontSize: AppFontSize.value10,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      entry.employeeName,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    child: AppLabel(
+                      text: entry.employeeName,
+                      fontSize: AppFontSize.value14,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                   Container(
@@ -219,14 +232,12 @@ class _EntryCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(AppRadii.pill),
                       border: Border.all(color: statusColor.withValues(alpha: 0.15)),
                     ),
-                    child: Text(
-                      entry.status.name.toUpperCase(),
-                      style: TextStyle(
-                        color: statusColor,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.5,
-                      ),
+                    child: AppLabel(
+                      text: entry.status.name.toUpperCase(),
+                      fontSize: AppFontSize.value9,
+                      color: statusColor,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ],
@@ -236,11 +247,10 @@ class _EntryCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
-                    child: Text(
-                      entry.projectName,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    child: AppLabel(
+                      text: entry.projectName,
+                      fontSize: AppFontSize.value14,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                   Container(
@@ -249,12 +259,11 @@ class _EntryCard extends StatelessWidget {
                       color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.4),
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: Text(
-                      '${entry.hours} Hours',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSecondaryContainer,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    child: AppLabel(
+                      text: '${entry.hours} Hours',
+                      fontSize: AppFontSize.value11,
+                      color: theme.colorScheme.onSecondaryContainer,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
@@ -264,12 +273,11 @@ class _EntryCard extends StatelessWidget {
                 children: [
                   Icon(Icons.calendar_today_rounded, size: 12, color: theme.colorScheme.outline),
                   const SizedBox(width: 6),
-                  Text(
-                    entry.date.toIso8601String().split('T').first,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.outline,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  AppLabel(
+                    text: entry.date.toIso8601String().split('T').first,
+                    fontSize: AppFontSize.value12,
+                    color: theme.colorScheme.outline,
+                    fontWeight: FontWeight.w600,
                   ),
                 ],
               ),
@@ -286,24 +294,22 @@ class _EntryCard extends StatelessWidget {
                     children: [
                       Icon(Icons.assignment_outlined, size: 12, color: theme.colorScheme.primary),
                       const SizedBox(width: 6),
-                      Text(
-                        'Task: ${entry.taskTitle}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      AppLabel(
+                        text: 'Task: ${entry.taskTitle}',
+                        fontSize: AppFontSize.value12,
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.bold,
                       ),
                     ],
                   ),
                 ),
               ],
               const SizedBox(height: 10),
-              Text(
-                entry.description,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  height: 1.3,
-                ),
+              AppLabel(
+                text: entry.description,
+                fontSize: AppFontSize.value14,
+                color: theme.colorScheme.onSurfaceVariant,
+                lineHeight: 1.3,
               ),
               if (entry.decisionNote != null) ...[
                 const SizedBox(height: 10),
@@ -317,13 +323,12 @@ class _EntryCard extends StatelessWidget {
                       color: theme.colorScheme.outlineVariant.withValues(alpha: 0.2),
                     ),
                   ),
-                  child: Text(
-                    'Rejection Note: ${entry.decisionNote}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontStyle: FontStyle.italic,
-                      color: theme.colorScheme.error,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  child: AppLabel(
+                    text: 'Rejection Note: ${entry.decisionNote}',
+                    fontSize: AppFontSize.value12,
+                    fontStyle: FontStyle.italic,
+                    color: theme.colorScheme.error,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -337,7 +342,11 @@ class _EntryCard extends StatelessWidget {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
                       ),
                       onPressed: () => _reject(context),
-                      child: const Text('Reject'),
+                      child: const AppLabel(
+                        text: 'Reject',
+                        fontSize: AppFontSize.value14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(width: 8),
                     FilledButton(
@@ -345,7 +354,11 @@ class _EntryCard extends StatelessWidget {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
                       ),
                       onPressed: () => _approve(context),
-                      child: const Text('Approve'),
+                      child: const AppLabel(
+                        text: 'Approve',
+                        fontSize: AppFontSize.value14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -360,7 +373,11 @@ class _EntryCard extends StatelessWidget {
                       ),
                       icon: const Icon(Icons.send_rounded, size: 14),
                       onPressed: () => _submit(context),
-                      label: const Text('Submit for Approval'),
+                      label: const AppLabel(
+                        text: 'Submit for Approval',
+                        fontSize: AppFontSize.value14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -375,7 +392,11 @@ class _EntryCard extends StatelessWidget {
                       ),
                       icon: const Icon(Icons.replay_rounded, size: 14),
                       onPressed: () => _reopen(context),
-                      label: const Text('Re-open as Draft'),
+                      label: const AppLabel(
+                        text: 'Re-open as Draft',
+                        fontSize: AppFontSize.value14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -415,7 +436,11 @@ class _EntryCard extends StatelessWidget {
     final reason = await showDialog<String>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        title: const Text('Reject timesheet'),
+        title: const AppLabel(
+          text: 'Reject timesheet',
+          fontSize: AppFontSize.value18,
+          fontWeight: FontWeight.bold,
+        ),
         content: TextField(
           controller: reasonCtrl,
           autofocus: true,
@@ -428,11 +453,19 @@ class _EntryCard extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('Cancel'),
+            child: const AppLabel(
+              text: 'Cancel',
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogCtx, reasonCtrl.text),
-            child: const Text('Reject'),
+            child: const AppLabel(
+              text: 'Reject',
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),

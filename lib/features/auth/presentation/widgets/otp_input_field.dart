@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/theme/app_spacing.dart';
 
@@ -178,14 +180,13 @@ class _OtpDigitBox extends StatelessWidget {
             : theme.colorScheme.surfaceContainerLow,
       ),
       alignment: Alignment.center,
-      child: Text(
-        digit ?? '',
-        style: theme.textTheme.headlineSmall?.copyWith(
-          fontFeatures: const [FontFeature.tabularFigures()],
-          color: enabled
-              ? theme.colorScheme.onSurface
-              : theme.colorScheme.onSurface.withValues(alpha: 0.4),
-        ),
+      child: AppLabel(
+        text: digit ?? '',
+        fontSize: AppFontSize.value24,
+        fontFeatures: const [FontFeature.tabularFigures()],
+        color: enabled
+            ? theme.colorScheme.onSurface
+            : theme.colorScheme.onSurface.withValues(alpha: 0.4),
       ),
     );
   }

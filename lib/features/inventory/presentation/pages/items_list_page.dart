@@ -5,6 +5,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -35,7 +37,6 @@ class _ListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
@@ -79,7 +80,14 @@ class _SortAction extends StatelessWidget {
         initialValue: state.sort,
         onSelected: (s) => context.read<ItemsListBloc>().add(ItemsListSortChanged(s)),
         itemBuilder: (_) => [
-          for (final s in InventoryItemSort.values) PopupMenuItem(value: s, child: Text(_sortLabel(l10n, s))),
+          for (final s in InventoryItemSort.values)
+            PopupMenuItem(
+              value: s,
+              child: AppLabel(
+                text: _sortLabel(l10n, s),
+                fontSize: AppFontSize.value14,
+              ),
+            ),
         ],
       ),
     );
@@ -134,7 +142,10 @@ class _Toolbar extends StatelessWidget {
                     padding: const EdgeInsets.only(right: 8),
                     child: FilterChip(
                       avatar: Icon(Icons.warning_amber_rounded, size: 18, color: state.onlyLowStock ? theme.colorScheme.error : null),
-                      label: Text(l10n.inventoryLowStockChip),
+                      label: AppLabel(
+                        text: l10n.inventoryLowStockChip,
+                        fontSize: AppFontSize.value13,
+                      ),
                       selected: state.onlyLowStock,
                       onSelected: (v) => bloc.add(ItemsListLowStockToggled(v)),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.pill)),
@@ -150,7 +161,10 @@ class _Toolbar extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: FilterChip(
-                        label: Text(wh),
+                        label: AppLabel(
+                          text: wh,
+                          fontSize: AppFontSize.value13,
+                        ),
                         selected: state.warehouseFilter.contains(wh),
                         onSelected: (_) => bloc.add(ItemsListWarehouseToggled(wh)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.pill)),
@@ -246,21 +260,26 @@ class _ItemCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      item.name,
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    AppLabel(
+                      text: item.name,
+                      fontSize: AppFontSize.value16,
+                      fontWeight: FontWeight.bold,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      'SKU: ${item.sku}',
-                      style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.bold, fontFeatures: const [FontFeature.tabularFigures()]),
+                    AppLabel(
+                      text: 'SKU: ${item.sku}',
+                      fontSize: AppFontSize.value11,
+                      color: theme.colorScheme.outline,
+                      fontWeight: FontWeight.bold,
+                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      'WH: ${item.warehouseCode} · LOC: ${item.locationCode}',
-                      style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    AppLabel(
+                      text: 'WH: ${item.warehouseCode} · LOC: ${item.locationCode}',
+                      fontSize: AppFontSize.value11,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ],
                 ),
@@ -275,20 +294,23 @@ class _ItemCard extends StatelessWidget {
                       color: (lowStock ? theme.colorScheme.error : theme.colorScheme.primary).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(AppRadii.pill),
                     ),
-                    child: Text(
-                      l10n.inventoryItemsOnHand(item.onHandQty.toString()),
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: lowStock ? theme.colorScheme.error : theme.colorScheme.primary,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
+                    child: AppLabel(
+                      text: l10n.inventoryItemsOnHand(item.onHandQty.toString()),
+                      fontSize: AppFontSize.value14,
+                      fontWeight: FontWeight.w900,
+                      color: lowStock
+                          ? theme.colorScheme.error
+                          : theme.colorScheme.primary,
+                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
                   if (lowStock) ...[
                     const SizedBox(height: 4),
-                    Text(
-                      l10n.inventoryReorderBadge(item.reorderPoint.toString()).toUpperCase(),
-                      style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.error, fontWeight: FontWeight.w900, fontSize: 9),
+                    AppLabel(
+                      text: l10n.inventoryReorderBadge(item.reorderPoint.toString()).toUpperCase(),
+                      fontSize: AppFontSize.value9,
+                      color: theme.colorScheme.error,
+                      fontWeight: FontWeight.w900,
                     ),
                   ],
                 ],
@@ -320,7 +342,13 @@ class _CenteredMessage extends StatelessWidget {
               child: Icon(icon ?? Icons.inventory_2_rounded, size: 64, color: theme.colorScheme.outline.withValues(alpha: 0.5)),
             ),
             const SizedBox(height: 24),
-            Text(text, textAlign: TextAlign.center, style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500)),
+            AppLabel(
+              text: text,
+              fontSize: AppFontSize.value16,
+              textAlign: TextAlign.center,
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
           ],
         ),
       ),

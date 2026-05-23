@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/error/failure.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -76,7 +78,6 @@ class _DetailViewState extends State<_DetailView> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
 
     return BlocListener<InvoiceActionBloc, InvoiceActionState>(
       listener: (context, state) {
@@ -155,10 +156,8 @@ class _DetailBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
     final h = detail.header;
-    
+
     return ListView(
       padding: EdgeInsets.only(
         top: context.dynamicAppBarPadding,
@@ -194,7 +193,6 @@ class _HeaderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final statusColor = invoiceStatusColor(theme, h.status);
 
     return Container(
       decoration: BoxDecoration(
@@ -212,21 +210,21 @@ class _HeaderCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                h.invoiceNumber,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  color: theme.colorScheme.primary,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
+              AppLabel(
+                text: h.invoiceNumber,
+                fontSize: AppFontSize.value24,
+                fontWeight: FontWeight.w900,
+                color: theme.colorScheme.primary,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
               _StatusBadge(status: h.status),
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            h.customerName,
-            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          AppLabel(
+            text: h.customerName,
+            fontSize: AppFontSize.value16,
+            fontWeight: FontWeight.w700,
           ),
           const SizedBox(height: 20),
           Row(
@@ -273,13 +271,12 @@ class _LineItemsCard extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Text(
-              l10n.invoiceDetailLinesHeading.toUpperCase(),
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.5,
-              ),
+            child: AppLabel(
+              text: l10n.invoiceDetailLinesHeading.toUpperCase(),
+              fontSize: AppFontSize.value11,
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.5,
             ),
           ),
           for (final line in detail.lineItems) _LineItemRow(line: line),
@@ -306,22 +303,30 @@ class _LineItemRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(line.description, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+                AppLabel(
+                  text: line.description,
+                  fontSize: AppFontSize.value16,
+                  fontWeight: FontWeight.w600,
+                ),
                 if (line.sku != null)
-                  Text(line.sku!, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline)),
-                Text(
-                  '${line.quantity} × ${line.unitPrice}',
-                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  AppLabel(
+                    text: line.sku!,
+                    fontSize: AppFontSize.value12,
+                    color: theme.colorScheme.outline,
+                  ),
+                AppLabel(
+                  text: '${line.quantity} × ${line.unitPrice}',
+                  fontSize: AppFontSize.value12,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ],
             ),
           ),
-          Text(
-            line.lineTotal,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
+          AppLabel(
+            text: line.lineTotal,
+            fontSize: AppFontSize.value16,
+            fontWeight: FontWeight.w700,
+            fontFeatures: const [FontFeature.tabularFigures()],
           ),
         ],
       ),
@@ -350,17 +355,18 @@ class _TotalSection extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                l10n.invoiceDetailTotalLabel.toUpperCase(),
-                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900, color: theme.colorScheme.primary),
+              AppLabel(
+                text: l10n.invoiceDetailTotalLabel.toUpperCase(),
+                fontSize: AppFontSize.value16,
+                fontWeight: FontWeight.w900,
+                color: theme.colorScheme.primary,
               ),
-              Text(
-                detail.header.totalAmount,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  color: theme.colorScheme.primary,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
+              AppLabel(
+                text: detail.header.totalAmount,
+                fontSize: AppFontSize.value24,
+                fontWeight: FontWeight.w900,
+                color: theme.colorScheme.primary,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ],
           ),
@@ -413,7 +419,11 @@ class _ActionBar extends StatelessWidget {
                   child: FilledButton.icon(
                     onPressed: isLoading ? null : () => context.read<InvoiceActionBloc>().add(InvoiceActionSubmit(invoice.id)),
                     icon: const Icon(Icons.send_rounded),
-                    label: Text(l10n.invoiceSubmitAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800)),
+                    label: AppLabel(
+                      text: l10n.invoiceSubmitAction.toUpperCase(),
+                      fontSize: AppFontSize.value14,
+                      fontWeight: FontWeight.w800,
+                    ),
                     style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md))),
                   ),
                 );
@@ -491,9 +501,11 @@ class _AuditCard extends StatelessWidget {
             children: [
               Icon(isReject ? Icons.cancel_rounded : Icons.verified_rounded, size: 20, color: statusColor),
               const SizedBox(width: 8),
-              Text(
-                (isReject ? l10n.invoiceAuditRejectedHeading : l10n.invoiceAuditApprovedHeading).toUpperCase(),
-                style: theme.textTheme.labelSmall?.copyWith(color: statusColor, fontWeight: FontWeight.w900),
+              AppLabel(
+                text: (isReject ? l10n.invoiceAuditRejectedHeading : l10n.invoiceAuditApprovedHeading).toUpperCase(),
+                fontSize: AppFontSize.value11,
+                color: statusColor,
+                fontWeight: FontWeight.w900,
               ),
             ],
           ),
@@ -504,9 +516,11 @@ class _AuditCard extends StatelessWidget {
           if (isReject && invoice.rejectedReason != null)
             Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                'Reason: ${invoice.rejectedReason!}',
-                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error, fontWeight: FontWeight.bold),
+              child: AppLabel(
+                text: 'Reason: ${invoice.rejectedReason!}',
+                fontSize: AppFontSize.value12,
+                color: theme.colorScheme.error,
+                fontWeight: FontWeight.bold,
               ),
             ),
         ],
@@ -529,7 +543,12 @@ class _AuditLine extends StatelessWidget {
         children: [
           Icon(icon, size: 14, color: theme.colorScheme.outline),
           const SizedBox(width: 8),
-          Expanded(child: Text(text, style: theme.textTheme.bodySmall)),
+          Expanded(
+            child: AppLabel(
+              text: text,
+              fontSize: AppFontSize.value12,
+            ),
+          ),
         ],
       ),
     );
@@ -554,9 +573,17 @@ class _NotesCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(l10n.invoiceDetailNotesHeading.toUpperCase(), style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
+          AppLabel(
+            text: l10n.invoiceDetailNotesHeading.toUpperCase(),
+            fontSize: AppFontSize.value11,
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.primary,
+          ),
           const SizedBox(height: 8),
-          Text(notes, style: theme.textTheme.bodyMedium),
+          AppLabel(
+            text: notes,
+            fontSize: AppFontSize.value14,
+          ),
         ],
       ),
     );
@@ -587,8 +614,15 @@ class _PdfPlaceholder extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(l10n.invoiceDetailPdfHeading, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
-                Text(l10n.invoiceDetailPdfPlaceholder, style: theme.textTheme.bodySmall),
+                AppLabel(
+                  text: l10n.invoiceDetailPdfHeading,
+                  fontSize: AppFontSize.value14,
+                  fontWeight: FontWeight.bold,
+                ),
+                AppLabel(
+                  text: l10n.invoiceDetailPdfPlaceholder,
+                  fontSize: AppFontSize.value12,
+                ),
               ],
             ),
           ),
@@ -610,8 +644,17 @@ class _SummaryRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.outline)),
-        Text(value, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, fontFeatures: const [FontFeature.tabularFigures()])),
+        AppLabel(
+          text: label,
+          fontSize: AppFontSize.value14,
+          color: theme.colorScheme.outline,
+        ),
+        AppLabel(
+          text: value,
+          fontSize: AppFontSize.value14,
+          fontWeight: FontWeight.w600,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
       ],
     );
   }
@@ -629,9 +672,20 @@ class _MetaItem extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.bold)),
+        AppLabel(
+          text: label,
+          fontSize: AppFontSize.value11,
+          color: theme.colorScheme.outline,
+          fontWeight: FontWeight.bold,
+        ),
         const SizedBox(height: 2),
-        Text(value, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: valueColor, fontFeatures: const [FontFeature.tabularFigures()])),
+        AppLabel(
+          text: value,
+          fontSize: AppFontSize.value16,
+          fontWeight: FontWeight.bold,
+          color: valueColor,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
       ],
     );
   }
@@ -649,7 +703,13 @@ class _StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(AppRadii.pill), border: Border.all(color: color.withValues(alpha: 0.2))),
-      child: Text(invoiceStatusLabel(l10n, status).toUpperCase(), style: theme.textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w900, fontSize: 9, letterSpacing: 0.5)),
+      child: AppLabel(
+        text: invoiceStatusLabel(l10n, status).toUpperCase(),
+        fontSize: AppFontSize.value9,
+        color: color,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 0.5,
+      ),
     );
   }
 }
@@ -670,7 +730,13 @@ class _CenteredMessage extends StatelessWidget {
           children: [
             Container(padding: const EdgeInsets.all(24), decoration: BoxDecoration(color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3), shape: BoxShape.circle), child: Icon(icon ?? Icons.receipt_long_rounded, size: 64, color: theme.colorScheme.outline.withValues(alpha: 0.5))),
             const SizedBox(height: 24),
-            Text(text, textAlign: TextAlign.center, style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500)),
+            AppLabel(
+              text: text,
+              fontSize: AppFontSize.value16,
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),

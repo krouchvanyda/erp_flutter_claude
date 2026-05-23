@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../data/low_stock_notifier.dart';
 import '../../data/repositories/items_repository.dart';
@@ -43,7 +45,13 @@ class _LowStockAlertsPageState extends State<LowStockAlertsPage> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.inventoryLowStockTitle)),
+      appBar: AppBar(
+        title: AppLabel(
+          text: l10n.inventoryLowStockTitle,
+          fontSize: AppFontSize.value20,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
       body: FutureBuilder<List<InventoryItem>>(
         future: _future,
         builder: (context, snap) {
@@ -79,29 +87,32 @@ class _AlertRow extends StatelessWidget {
         foregroundColor: theme.colorScheme.error,
         child: const Icon(Icons.warning_amber_outlined),
       ),
-      title: Text(item.sku, style: theme.textTheme.titleSmall),
-      subtitle: Text(
-        '${item.name} · ${item.warehouseCode}/${item.locationCode}',
+      title: AppLabel(
+        text: item.sku,
+        fontSize: AppFontSize.value14,
+        fontWeight: FontWeight.w600,
+      ),
+      subtitle: AppLabel(
+        text: '${item.name} · ${item.warehouseCode}/${item.locationCode}',
+        fontSize: AppFontSize.value11,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: theme.textTheme.labelSmall,
       ),
       trailing: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            l10n.inventoryItemsOnHand(item.onHandQty.toString()),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.error,
-              fontWeight: FontWeight.w600,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
+          AppLabel(
+            text: l10n.inventoryItemsOnHand(item.onHandQty.toString()),
+            fontSize: AppFontSize.value14,
+            color: theme.colorScheme.error,
+            fontWeight: FontWeight.w600,
+            fontFeatures: const [FontFeature.tabularFigures()],
           ),
-          Text(
-            l10n.inventoryReorderBadge(item.reorderPoint.toString()),
-            style: theme.textTheme.labelSmall,
+          AppLabel(
+            text: l10n.inventoryReorderBadge(item.reorderPoint.toString()),
+            fontSize: AppFontSize.value11,
           ),
         ],
       ),
@@ -128,7 +139,11 @@ class _Empty extends StatelessWidget {
             Icon(Icons.check_circle_outline,
                 size: 64, color: theme.colorScheme.tertiary),
             const SizedBox(height: 12),
-            Text(text, textAlign: TextAlign.center),
+            AppLabel(
+              text: text,
+              fontSize: AppFontSize.value14,
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),

@@ -3,6 +3,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -275,13 +277,12 @@ class _RoleSummaryCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  'Your assigned roles',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: theme.colorScheme.onPrimary,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.3,
-                  ),
+                child: AppLabel(
+                  text: 'Your assigned roles',
+                  fontSize: AppFontSize.value14,
+                  color: theme.colorScheme.onPrimary,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.3,
                 ),
               ),
               Container(
@@ -291,25 +292,24 @@ class _RoleSummaryCard extends StatelessWidget {
                   color: theme.colorScheme.onPrimary.withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(AppRadii.pill),
                 ),
-                child: Text(
-                  '${vm.granted.length} scope${vm.granted.length == 1 ? '' : 's'}',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onPrimary,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 10,
-                  ),
+                child: AppLabel(
+                  text:
+                      '${vm.granted.length} scope${vm.granted.length == 1 ? '' : 's'}',
+                  fontSize: AppFontSize.value10,
+                  color: theme.colorScheme.onPrimary,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
           if (vm.assigned.isEmpty)
-            Text(
-              'No roles assigned. Ask an administrator if this looks wrong.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onPrimary.withValues(alpha: 0.85),
-                fontWeight: FontWeight.w600,
-              ),
+            AppLabel(
+              text:
+                  'No roles assigned. Ask an administrator if this looks wrong.',
+              fontSize: AppFontSize.value12,
+              color: theme.colorScheme.onPrimary.withValues(alpha: 0.85),
+              fontWeight: FontWeight.w600,
             )
           else
             Wrap(
@@ -340,13 +340,11 @@ class _RoleSummaryCard extends StatelessWidget {
                           color: theme.colorScheme.onPrimary,
                         ),
                         const SizedBox(width: 6),
-                        Text(
-                          role.name,
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            color: theme.colorScheme.onPrimary,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 12,
-                          ),
+                        AppLabel(
+                          text: role.name,
+                          fontSize: AppFontSize.value12,
+                          color: theme.colorScheme.onPrimary,
+                          fontWeight: FontWeight.w900,
                         ),
                       ],
                     ),
@@ -362,12 +360,11 @@ class _RoleSummaryCard extends StatelessWidget {
                 color: theme.colorScheme.onPrimary.withValues(alpha: 0.75),
               ),
               const SizedBox(width: 6),
-              Text(
-                'Synced ${df.format(vm.lastSyncedAt)}',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onPrimary.withValues(alpha: 0.85),
-                  fontWeight: FontWeight.w600,
-                ),
+              AppLabel(
+                text: 'Synced ${df.format(vm.lastSyncedAt)}',
+                fontSize: AppFontSize.value12,
+                color: theme.colorScheme.onPrimary.withValues(alpha: 0.85),
+                fontWeight: FontWeight.w600,
               ),
             ],
           ),
@@ -444,20 +441,18 @@ class _ListSectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(left: 8),
       child: Row(
         children: [
           Icon(icon, size: 14, color: accent),
           const SizedBox(width: 6),
-          Text(
-            title.toUpperCase(),
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: accent,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0.5,
-            ),
+          AppLabel(
+            text: title.toUpperCase(),
+            fontSize: AppFontSize.value11,
+            color: accent,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.5,
           ),
           const SizedBox(width: 6),
           Container(
@@ -466,13 +461,11 @@ class _ListSectionHeader extends StatelessWidget {
               color: accent.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(AppRadii.pill),
             ),
-            child: Text(
-              '$count',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: accent,
-                fontWeight: FontWeight.w900,
-                fontSize: 10,
-              ),
+            child: AppLabel(
+              text: '$count',
+              fontSize: AppFontSize.value10,
+              color: accent,
+              fontWeight: FontWeight.w900,
             ),
           ),
         ],
@@ -558,35 +551,31 @@ class _ScopeRow extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        label.title,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: isGranted
-                              ? null
-                              : theme.colorScheme.onSurfaceVariant,
-                        ),
+                      child: AppLabel(
+                        text: label.title,
+                        fontSize: AppFontSize.value14,
+                        fontWeight: FontWeight.w700,
+                        color: isGranted
+                            ? null
+                            : theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  label.subtitle,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w500,
-                  ),
+                AppLabel(
+                  text: label.subtitle,
+                  fontSize: AppFontSize.value12,
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  scope,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.outline,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'monospace',
-                    fontSize: 10,
-                  ),
+                AppLabel(
+                  text: scope,
+                  fontSize: AppFontSize.value10,
+                  color: theme.colorScheme.outline,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'monospace',
                 ),
               ],
             ),
@@ -601,14 +590,12 @@ class _ScopeRow extends StatelessWidget {
                 color: moduleAccent.withValues(alpha: 0.35),
               ),
             ),
-            child: Text(
-              label.module,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: moduleAccent,
-                fontWeight: FontWeight.w900,
-                fontSize: 9,
-                letterSpacing: 0.3,
-              ),
+            child: AppLabel(
+              text: label.module,
+              fontSize: AppFontSize.value9,
+              color: moduleAccent,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.3,
             ),
           ),
         ],
@@ -662,12 +649,11 @@ class _EmptyPanel extends StatelessWidget {
           Icon(icon, color: theme.colorScheme.onSurfaceVariant, size: 20),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              message,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
+            child: AppLabel(
+              text: message,
+              fontSize: AppFontSize.value14,
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

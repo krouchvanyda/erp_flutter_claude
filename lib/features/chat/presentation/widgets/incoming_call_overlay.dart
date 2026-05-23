@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../core/router/app_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../data/call_signaling_service.dart';
 import '../../entities/call_log.dart';
 import '../pages/video_call_page.dart';
@@ -79,48 +81,41 @@ class _IncomingCallSheet extends StatelessWidget {
           child: Column(
             children: [
               const SizedBox(height: 24),
-              Text(
-                // Slice 10.2.9 — surface "Incoming group voice/video
-                // call" for group calls so the recipient knows it's not
-                // a 1:1 invite.
-                _typeLabel(call),
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.75),
-                  fontWeight: FontWeight.w800,
-                  fontSize: 13,
-                  letterSpacing: 1.2,
-                ),
+              // Slice 10.2.9 — surface "Incoming group voice/video
+              // call" for group calls so the recipient knows it's not
+              // a 1:1 invite.
+              AppLabel(
+                text: _typeLabel(call),
+                fontSize: AppFontSize.value13,
+                color: Colors.white.withValues(alpha: 0.75),
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.2,
               ),
               const Spacer(),
               _IncomingAvatar(call: call),
               const SizedBox(height: 20),
-              Text(
-                // For groups the title is the GROUP name (e.g.
-                // "TEST01"). For direct calls it stays the caller's
-                // name.
-                call.isGroup
+              // For groups the title is the GROUP name (e.g. "TEST01").
+              // For direct calls it stays the caller's name.
+              AppLabel(
+                text: call.isGroup
                     ? (call.conversationName ?? 'Group call')
                     : call.peerName,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 28,
-                  letterSpacing: -0.5,
-                ),
+                fontSize: AppFontSize.value25,
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.5,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
-              Text(
-                // Group calls add the caller as a subtitle so the
-                // recipient knows WHO started the call.
-                call.isGroup
+              // Group calls add the caller as a subtitle so the
+              // recipient knows WHO started the call.
+              AppLabel(
+                text: call.isGroup
                     ? '${call.peerName} is calling…'
                     : 'Ringing…',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+                fontSize: AppFontSize.value16,
+                color: Colors.white.withValues(alpha: 0.7),
+                fontWeight: FontWeight.w600,
               ),
               const Spacer(flex: 2),
               Row(
@@ -233,14 +228,12 @@ class _IncomingAvatar extends StatelessWidget {
                   color: Colors.white,
                   size: 56,
                 )
-              : Text(
-                  _initialsFor(call.peerName),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 40,
-                    letterSpacing: 0.5,
-                  ),
+              : AppLabel(
+                  text: _initialsFor(call.peerName),
+                  fontSize: AppFontSize.value40,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.5,
                 )),
     );
   }
@@ -285,13 +278,11 @@ class _BigCircleButton extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.85),
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-          ),
+        AppLabel(
+          text: label,
+          fontSize: AppFontSize.value13,
+          color: Colors.white.withValues(alpha: 0.85),
+          fontWeight: FontWeight.w700,
         ),
       ],
     );

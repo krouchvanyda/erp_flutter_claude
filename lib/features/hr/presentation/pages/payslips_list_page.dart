@@ -4,6 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -51,11 +53,10 @@ class PayslipsListPage extends StatelessWidget {
                           color: theme.colorScheme.outline,
                         ),
                         const SizedBox(height: 16),
-                        Text(
-                          'No payslips on file',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        const AppLabel(
+                          text: 'No payslips on file',
+                          fontSize: AppFontSize.value16,
+                          fontWeight: FontWeight.bold,
                         ),
                       ],
                     ),
@@ -78,14 +79,12 @@ class PayslipsListPage extends StatelessWidget {
                     const SizedBox(height: 28),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Text(
-                        'PAYSLIP ARCHIVE',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                          color: theme.colorScheme.primary,
-                          letterSpacing: 0.5,
-                        ),
+                      child: AppLabel(
+                        text: 'PAYSLIP ARCHIVE',
+                        fontSize: AppFontSize.value12,
+                        fontWeight: FontWeight.w900,
+                        color: theme.colorScheme.primary,
+                        letterSpacing: 0.5,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -139,11 +138,10 @@ class _SummaryCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Aggregate Summary',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+              const AppLabel(
+                text: 'Aggregate Summary',
+                fontSize: AppFontSize.value16,
+                fontWeight: FontWeight.bold,
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -151,12 +149,11 @@ class _SummaryCard extends StatelessWidget {
                   color: theme.colorScheme.primary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(AppRadii.pill),
                 ),
-                child: Text(
-                  '$periods Periods',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
+                child: AppLabel(
+                  text: '$periods Periods',
+                  fontSize: AppFontSize.value11,
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
@@ -210,21 +207,20 @@ class _SummaryCard extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              label,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: bold ? FontWeight.bold : FontWeight.w500,
-                color: bold ? theme.colorScheme.onSurface : theme.colorScheme.onSurfaceVariant,
-              ),
+            child: AppLabel(
+              text: label,
+              fontSize: AppFontSize.value14,
+              fontWeight: bold ? FontWeight.bold : FontWeight.w500,
+              color: bold
+                  ? theme.colorScheme.onSurface
+                  : theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          Text(
-            value,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: bold ? FontWeight.w900 : FontWeight.bold,
-              color: displayColor,
-              fontSize: bold ? 18 : 14.5,
-            ),
+          AppLabel(
+            text: value,
+            fontSize: bold ? AppFontSize.value18 : AppFontSize.value14,
+            fontWeight: bold ? FontWeight.w900 : FontWeight.bold,
+            color: displayColor,
           ),
         ],
       ),
@@ -269,12 +265,11 @@ class _PayslipRow extends StatelessWidget {
             size: 22,
           ),
         ),
-        title: Text(
-          '${_formatDate(slip.periodStart)}   ➔   ${_formatDate(slip.periodEnd)}',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            fontSize: 14.5,
-          ),
+        title: AppLabel(
+          text:
+              '${_formatDate(slip.periodStart)}   ➔   ${_formatDate(slip.periodEnd)}',
+          fontSize: AppFontSize.value14,
+          fontWeight: FontWeight.bold,
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 6.0),
@@ -287,21 +282,19 @@ class _PayslipRow extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppRadii.pill),
                   border: Border.all(color: Colors.teal.withValues(alpha: 0.15)),
                 ),
-                child: Text(
-                  'Net: ${slip.netPay}',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: Colors.teal,
-                    fontWeight: FontWeight.bold,
-                  ),
+                child: AppLabel(
+                  text: 'Net: ${slip.netPay}',
+                  fontSize: AppFontSize.value11,
+                  color: Colors.teal,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                'Gross: ${slip.grossPay}',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w500,
-                ),
+              AppLabel(
+                text: 'Gross: ${slip.grossPay}',
+                fontSize: AppFontSize.value11,
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
               ),
             ],
           ),

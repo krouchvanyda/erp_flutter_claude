@@ -1,6 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
+import '../theme/app_font_size.dart';
+import '../theme/app_label.dart';
+
 /// A premium, dynamic AppBar that supports transitions and modern ERP aesthetics.
 /// 
 /// It automatically handles status bar styling when used in conjunction with
@@ -30,13 +33,12 @@ class DynamicAppBar extends StatelessWidget implements PreferredSizeWidget {
     final theme = Theme.of(context);
     
     return AppBar(
-      title: Text(
-        title,
-        style: theme.textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.w800,
-          letterSpacing: -0.5,
-          color: theme.colorScheme.onSurface,
-        ),
+      title: AppLabel(
+        text: title,
+        fontSize: AppFontSize.value20,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.5,
+        color: theme.colorScheme.onSurface,
       ),
       actions: actions,
       leading: leading,

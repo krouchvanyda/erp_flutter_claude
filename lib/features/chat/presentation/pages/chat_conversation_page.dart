@@ -8,6 +8,8 @@ import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -347,20 +349,17 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          conv.name,
+                        AppLabel(
+                          text: conv.name,
+                          fontSize: AppFontSize.value16,
+                          fontWeight: FontWeight.w800,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
                         ),
-                        Text(
-                          _subtitleFor(conv),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontSize: 11.5,
-                          ),
+                        AppLabel(
+                          text: _subtitleFor(conv),
+                          fontSize: 11.5,
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ],
                     ),
@@ -727,19 +726,17 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                       duration: 600.ms,
                     ),
                 const SizedBox(width: 8),
-                Text(
-                  'Recording…',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+                AppLabel(
+                  text: 'Recording…',
+                  fontSize: AppFontSize.value14,
+                  fontWeight: FontWeight.w800,
                 ),
                 const Spacer(),
-                Text(
-                  '0:03',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
+                AppLabel(
+                  text: '0:03',
+                  fontSize: AppFontSize.value14,
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ],
             ),
@@ -750,7 +747,11 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                   child: OutlinedButton.icon(
                     onPressed: () => Navigator.pop(sheetCtx),
                     icon: const Icon(Icons.close_rounded),
-                    label: const Text('Cancel'),
+                    label: AppLabel(
+                      text: 'Cancel',
+                      fontSize: AppFontSize.value14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -784,7 +785,11 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                       );
                     },
                     icon: const Icon(Icons.send_rounded),
-                    label: const Text('Send'),
+                    label: AppLabel(
+                      text: 'Send',
+                      fontSize: AppFontSize.value14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
@@ -827,14 +832,13 @@ class _PinnedBanner extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  m.body ?? '(pinned message)',
+                child: AppLabel(
+                  text: m.body ?? '(pinned message)',
+                  fontSize: AppFontSize.value12,
+                  color: theme.colorScheme.onTertiaryContainer,
+                  fontWeight: FontWeight.w700,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onTertiaryContainer,
-                    fontWeight: FontWeight.w700,
-                  ),
                 ),
               ),
             ],
@@ -1082,22 +1086,20 @@ class _CallEntryBubble extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        title,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: missed || declined
-                              ? theme.colorScheme.error
-                              : theme.colorScheme.onSurface,
-                        ),
+                      AppLabel(
+                        text: title,
+                        fontSize: AppFontSize.value14,
+                        color: missed || declined
+                            ? theme.colorScheme.error
+                            : theme.colorScheme.onSurface,
+                        fontWeight: FontWeight.w700,
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        ),
+                      AppLabel(
+                        text: subtitle,
+                        fontSize: AppFontSize.value12,
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ],
                   ),
@@ -1149,20 +1151,18 @@ class _ReplyPreviewBar extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      'Replying to ${m?.senderName ?? '…'}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.w800,
-                      ),
+                    AppLabel(
+                      text: 'Replying to ${m?.senderName ?? '…'}',
+                      fontSize: AppFontSize.value12,
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w800,
                     ),
-                    Text(
-                      m?.body ?? '',
+                    AppLabel(
+                      text: m?.body ?? '',
+                      fontSize: AppFontSize.value12,
+                      color: theme.colorScheme.onSurfaceVariant,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
                     ),
                   ],
                 ),
@@ -1193,12 +1193,11 @@ class _EditPreviewBar extends StatelessWidget {
         children: [
           Icon(Icons.edit_rounded, size: 16, color: theme.colorScheme.tertiary),
           const SizedBox(width: 8),
-          Text(
-            'Editing message',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onTertiaryContainer,
-              fontWeight: FontWeight.w800,
-            ),
+          AppLabel(
+            text: 'Editing message',
+            fontSize: AppFontSize.value12,
+            color: theme.colorScheme.onTertiaryContainer,
+            fontWeight: FontWeight.w800,
           ),
           const Spacer(),
           IconButton(
@@ -1320,7 +1319,7 @@ class _EmojiQuickBar extends StatelessWidget {
             onTap: () => onSelect(e),
             child: Padding(
               padding: const EdgeInsets.all(6),
-              child: Text(e, style: const TextStyle(fontSize: 24)),
+              child: AppLabel(text: e, fontSize: AppFontSize.value24),
             ),
           ),
       ],
@@ -1346,9 +1345,11 @@ class _ActionTile extends StatelessWidget {
     final fg = destructive ? theme.colorScheme.error : theme.colorScheme.onSurface;
     return ListTile(
       leading: Icon(icon, color: fg),
-      title: Text(
-        label,
-        style: TextStyle(color: fg, fontWeight: FontWeight.w700),
+      title: AppLabel(
+        text: label,
+        fontSize: AppFontSize.value14,
+        color: fg,
+        fontWeight: FontWeight.w700,
       ),
       onTap: onTap,
     );
@@ -1369,7 +1370,6 @@ class _AttachTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return InkWell(
       borderRadius: BorderRadius.circular(AppRadii.md),
       onTap: onTap,
@@ -1386,11 +1386,10 @@ class _AttachTile extends StatelessWidget {
             child: Icon(icon, color: color, size: 24),
           ),
           const SizedBox(height: 6),
-          Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+          AppLabel(
+            text: label,
+            fontSize: AppFontSize.value12,
+            fontWeight: FontWeight.w700,
           ),
         ],
       ),

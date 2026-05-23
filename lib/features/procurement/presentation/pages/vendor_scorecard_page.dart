@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../data/repositories/vendors_repository.dart';
 import '../../entities/vendor.dart';
@@ -19,7 +21,13 @@ class VendorScorecardPage extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final repo = getIt<VendorsRepository>();
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.vendorScorecardTitle)),
+      appBar: AppBar(
+        title: AppLabel(
+          text: l10n.vendorScorecardTitle,
+          fontSize: AppFontSize.value20,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
       body: FutureBuilder<_Bundle>(
         future: _load(repo),
         builder: (context, snap) {
@@ -28,7 +36,12 @@ class VendorScorecardPage extends StatelessWidget {
           }
           final b = snap.data;
           if (b == null || b.vendor == null) {
-            return Center(child: Text(l10n.vendorDetailNotFound(vendorId)));
+            return Center(
+              child: AppLabel(
+                text: l10n.vendorDetailNotFound(vendorId),
+                fontSize: AppFontSize.value14,
+              ),
+            );
           }
           return _Body(vendor: b.vendor!, scorecard: b.scorecard!);
         },
@@ -62,7 +75,11 @@ class _Body extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text(vendor.name, style: theme.textTheme.titleLarge),
+        AppLabel(
+          text: vendor.name,
+          fontSize: AppFontSize.value22,
+          fontWeight: FontWeight.w600,
+        ),
         const SizedBox(height: 12),
         Card(
           child: Padding(
@@ -75,15 +92,15 @@ class _Body extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(l10n.vendorScorecardCompositeLabel,
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          )),
-                      Text(
-                        scorecard.compositeScore.toStringAsFixed(1),
-                        style: theme.textTheme.displaySmall?.copyWith(
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        ),
+                      AppLabel(
+                        text: l10n.vendorScorecardCompositeLabel,
+                        fontSize: AppFontSize.value12,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      AppLabel(
+                        text: scorecard.compositeScore.toStringAsFixed(1),
+                        fontSize: AppFontSize.value36,
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                       const SizedBox(height: 8),
                       LinearProgressIndicator(
@@ -163,12 +180,11 @@ class _GradePill extends StatelessWidget {
         color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Text(
-        label,
-        style: theme.textTheme.displayMedium?.copyWith(
-          color: color,
-          fontWeight: FontWeight.bold,
-        ),
+      child: AppLabel(
+        text: label,
+        fontSize: AppFontSize.value40,
+        color: color,
+        fontWeight: FontWeight.bold,
       ),
     );
   }
@@ -186,15 +202,17 @@ class _MetricTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return ListTile(
-      title: Text(label),
-      trailing: Text(
-        value,
-        style: theme.textTheme.titleMedium?.copyWith(
-          color: color,
-          fontFeatures: const [FontFeature.tabularFigures()],
-        ),
+      title: AppLabel(
+        text: label,
+        fontSize: AppFontSize.value14,
+      ),
+      trailing: AppLabel(
+        text: value,
+        fontSize: AppFontSize.value16,
+        color: color,
+        fontWeight: FontWeight.w600,
+        fontFeatures: const [FontFeature.tabularFigures()],
       ),
     );
   }

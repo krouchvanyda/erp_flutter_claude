@@ -3,6 +3,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -343,7 +345,10 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
                               for (final s in CustomerSegment.values)
                                 DropdownMenuItem(
                                   value: s,
-                                  child: Text(customerSegmentLabel(l10n, s)),
+                                  child: AppLabel(
+                                    text: customerSegmentLabel(l10n, s),
+                                    fontSize: AppFontSize.value14,
+                                  ),
                                 ),
                             ],
                             onChanged: (val) => setState(() => _segment = val!),
@@ -371,7 +376,10 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
                               for (final s in CustomerStatus.values)
                                 DropdownMenuItem(
                                   value: s,
-                                  child: Text(customerStatusLabel(l10n, s)),
+                                  child: AppLabel(
+                                    text: customerStatusLabel(l10n, s),
+                                    fontSize: AppFontSize.value14,
+                                  ),
                                 ),
                             ],
                             onChanged: (val) => setState(() => _status = val!),
@@ -399,12 +407,10 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
                       ),
                     ),
                     icon: const Icon(Icons.save_outlined),
-                    label: Text(
-                      _isEdit ? 'Update Customer' : 'Create Customer',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
+                    label: AppLabel(
+                      text: _isEdit ? 'Update Customer' : 'Create Customer',
+                      fontSize: AppFontSize.value16,
+                      fontWeight: FontWeight.bold,
                     ),
                   ).animate().fadeIn(duration: 400.ms, delay: 150.ms),
                 ],
@@ -419,12 +425,11 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
   Widget _sectionHeader(ThemeData theme, String title) {
     return Padding(
       padding: const EdgeInsets.only(left: 4.0),
-      child: Text(
-        title,
-        style: theme.textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.bold,
-          color: theme.colorScheme.onSurface,
-        ),
+      child: AppLabel(
+        text: title,
+        fontSize: AppFontSize.value16,
+        fontWeight: FontWeight.bold,
+        color: theme.colorScheme.onSurface,
       ),
     );
   }

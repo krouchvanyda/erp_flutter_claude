@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/validators/validators.dart';
 import '../../../../shared/widgets/app_text_field.dart';
@@ -108,9 +110,13 @@ class _ContactFormPageState extends State<ContactFormPage> {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEdit
-            ? l10n.salesContactEditTitle
-            : l10n.salesContactNewTitle),
+        title: AppLabel(
+          text: _isEdit
+              ? l10n.salesContactEditTitle
+              : l10n.salesContactNewTitle,
+          fontSize: AppFontSize.value20,
+          fontWeight: FontWeight.w600,
+        ),
       ),
       body: Form(
         key: _formKey,
@@ -154,8 +160,15 @@ class _ContactFormPageState extends State<ContactFormPage> {
             ),
             const SizedBox(height: 12),
             SwitchListTile(
-              title: Text(l10n.salesContactPrimaryToggle),
-              subtitle: Text(l10n.salesContactPrimaryDescription),
+              title: AppLabel(
+                text: l10n.salesContactPrimaryToggle,
+                fontSize: AppFontSize.value14,
+                fontWeight: FontWeight.w600,
+              ),
+              subtitle: AppLabel(
+                text: l10n.salesContactPrimaryDescription,
+                fontSize: AppFontSize.value12,
+              ),
               value: _isPrimary,
               onChanged: (v) => setState(() => _isPrimary = v),
             ),
@@ -163,7 +176,11 @@ class _ContactFormPageState extends State<ContactFormPage> {
             FilledButton.icon(
               onPressed: _submit,
               icon: const Icon(Icons.check),
-              label: Text(l10n.salesContactSaveAction),
+              label: AppLabel(
+                text: l10n.salesContactSaveAction,
+                fontSize: AppFontSize.value14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),

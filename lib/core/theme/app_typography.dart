@@ -2,7 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 abstract final class AppTypography {
-  static String get _fontFamily => GoogleFonts.plusJakartaSans().fontFamily!;
+  // App-wide font. Driven by `google_fonts` so no manual asset wiring
+  // is needed — the family is downloaded on first use and cached.
+  // Every `theme.textTheme.X` consumer across the app (Text widgets,
+  // AppBar titles, Button labels, ListTile, etc.) picks up this font
+  // through the Material 3 theme — that's why a single change here
+  // recolours the whole app instead of needing 1k+ widget edits.
+  static String get _fontFamily => GoogleFonts.robotoMono().fontFamily!;
   static const String _monoFamily = 'RobotoMono';
 
   static const double _displayTracking = -0.5;

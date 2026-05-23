@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -111,7 +113,10 @@ class _QuotationListPageState extends State<QuotationListPage> {
                                 children: [
                                   for (final s in QuotationStatus.values) ...[
                                     FilterChip(
-                                      label: Text(quotationStatusLabel(l10n, s)),
+                                      label: AppLabel(
+                                        text: quotationStatusLabel(l10n, s),
+                                        fontSize: AppFontSize.value13,
+                                      ),
                                       selected: _statusFilter.contains(s),
                                       onSelected: (_) => setState(() {
                                         if (!_statusFilter.remove(s)) {
@@ -147,7 +152,12 @@ class _QuotationListPageState extends State<QuotationListPage> {
                               itemBuilder: (_) => [
                                 for (final s in QuotationSort.values)
                                   PopupMenuItem(
-                                      value: s, child: Text(_sortLabel(l10n, s))),
+                                    value: s,
+                                    child: AppLabel(
+                                      text: _sortLabel(l10n, s),
+                                      fontSize: AppFontSize.value14,
+                                    ),
+                                  ),
                               ],
                             ),
                           ),
@@ -184,12 +194,11 @@ class _QuotationListPageState extends State<QuotationListPage> {
                                 child: Icon(Icons.request_quote_outlined, size: 48, color: theme.colorScheme.primary),
                               ),
                               const SizedBox(height: 16),
-                              Text(
-                                l10n.salesQuotationListEmpty,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                              AppLabel(
+                                text: l10n.salesQuotationListEmpty,
+                                fontSize: AppFontSize.value14,
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w500,
                               ),
                             ],
                           ),
@@ -262,32 +271,31 @@ class _QuotationTile extends StatelessWidget {
           ),
           title: Row(
             children: [
-              Text(
-                quotation.number,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
+              AppLabel(
+                text: quotation.number,
+                fontSize: AppFontSize.value14,
+                fontWeight: FontWeight.bold,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  quotation.customerName,
+                child: AppLabel(
+                  text: quotation.customerName,
+                  fontSize: AppFontSize.value14,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
           ),
           subtitle: Padding(
             padding: const EdgeInsets.only(top: 4.0),
-            child: Text(
-              '${_date.format(quotation.createdAt.toLocal())} • '
-              '${l10n.salesQuotationValidUntilLabel(_date.format(quotation.validUntil.toLocal()))}',
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            child: AppLabel(
+              text:
+                  '${_date.format(quotation.createdAt.toLocal())} • ${l10n.salesQuotationValidUntilLabel(_date.format(quotation.validUntil.toLocal()))}',
+              fontSize: AppFontSize.value12,
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
           trailing: Column(
@@ -295,13 +303,12 @@ class _QuotationTile extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                quotation.totalAmount,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.primary,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
+              AppLabel(
+                text: quotation.totalAmount,
+                fontSize: AppFontSize.value14,
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
               const SizedBox(height: 4),
               QuotationStatusBadge(status: quotation.status),
@@ -331,9 +338,11 @@ class QuotationStatusBadge extends StatelessWidget {
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(AppRadii.sm),
       ),
-      child: Text(
-        quotationStatusLabel(l10n, status),
-        style: theme.textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.bold),
+      child: AppLabel(
+        text: quotationStatusLabel(l10n, status),
+        fontSize: AppFontSize.value11,
+        color: color,
+        fontWeight: FontWeight.bold,
       ),
     );
   }

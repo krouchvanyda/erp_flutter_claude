@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -44,13 +46,12 @@ class LanguagePage extends StatelessWidget {
                     bottom: 40,
                   ),
                   children: [
-                    Text(
-                      'SELECT PREFERRED LANGUAGE',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.5,
-                      ),
+                    AppLabel(
+                      text: 'SELECT PREFERRED LANGUAGE',
+                      fontSize: AppFontSize.value11,
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
                     ),
                     const SizedBox(height: 12),
                     for (final l in AppLanguage.values) ...[
@@ -80,11 +81,11 @@ class LanguagePage extends StatelessWidget {
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: Text(
-                              'Language change applies on next app launch in this demo build.',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
+                            child: AppLabel(
+                              text:
+                                  'Language change applies on next app launch in this demo build.',
+                              fontSize: AppFontSize.value12,
+                              color: theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -158,9 +159,9 @@ class _LanguageCard extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               alignment: Alignment.center,
-              child: Text(
-                _flag(lang),
-                style: const TextStyle(fontSize: 24),
+              child: AppLabel(
+                text: _flag(lang),
+                fontSize: AppFontSize.value24,
               ),
             ),
             const SizedBox(width: 16),
@@ -168,19 +169,17 @@ class _LanguageCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    _label(lang),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                  AppLabel(
+                    text: _label(lang),
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.bold,
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    _nativeLabel(lang),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  AppLabel(
+                    text: _nativeLabel(lang),
+                    fontSize: AppFontSize.value12,
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
                   ),
                 ],
               ),

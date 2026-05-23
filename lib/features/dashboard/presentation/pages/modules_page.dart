@@ -5,6 +5,8 @@ import '../../../../core/di/injection.dart';
 import '../../../../core/layout/responsive_breakpoint.dart';
 import '../../../../core/router/config_router.dart';
 import '../../../../core/router/permissions_snapshot.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/shortcuts/module_shortcut.dart';
 import '../../../../core/shortcuts/module_shortcut_catalog.dart';
@@ -138,13 +140,12 @@ class _ShortcutTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              Text(
-                shortcut.labelOf(l10n),
+              AppLabel(
+                text: shortcut.labelOf(l10n),
+                fontSize: AppFontSize.value14,
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onSurface,
                 textAlign: TextAlign.center,
-                style: theme.textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface,
-                ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -176,12 +177,11 @@ class _EmptyState extends StatelessWidget {
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Text(
-              label, 
+            child: AppLabel(
+              text: label,
+              fontSize: AppFontSize.value16,
+              color: theme.colorScheme.onSurfaceVariant,
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
             ),
           ),
         ],

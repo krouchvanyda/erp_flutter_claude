@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../data/repositories/projects_repository.dart';
 import '../../entities/project.dart';
 
@@ -31,7 +33,12 @@ class GanttChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (rows.isEmpty) {
-      return const Center(child: Text('No projects in this window.'));
+      return const Center(
+        child: AppLabel(
+          text: 'No projects in this window.',
+          fontSize: AppFontSize.value14,
+        ),
+      );
     }
     final totalDays = windowDays(windowStart, windowEnd);
     return LayoutBuilder(

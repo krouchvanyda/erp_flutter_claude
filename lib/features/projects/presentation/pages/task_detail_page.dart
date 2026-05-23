@@ -3,6 +3,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -107,7 +109,10 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                 value: 'edit',
                 child: ListTile(
                   leading: Icon(Icons.edit_outlined),
-                  title: Text('Edit task'),
+                  title: AppLabel(
+                    text: 'Edit task',
+                    fontSize: AppFontSize.value14,
+                  ),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -115,7 +120,10 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                 value: 'assign',
                 child: ListTile(
                   leading: Icon(Icons.assignment_ind_outlined),
-                  title: Text('Reassign'),
+                  title: AppLabel(
+                    text: 'Reassign',
+                    fontSize: AppFontSize.value14,
+                  ),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -136,7 +144,10 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                 final task = snap.data;
                 if (task == null) {
                   return Center(
-                    child: Text('No task with id "${widget.taskId}".'),
+                    child: AppLabel(
+                      text: 'No task with id "${widget.taskId}".',
+                      fontSize: AppFontSize.value14,
+                    ),
                   );
                 }
                 return Column(
@@ -170,13 +181,11 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  task.title,
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 18,
-                                    letterSpacing: -0.3,
-                                  ),
+                                AppLabel(
+                                  text: task.title,
+                                  fontSize: AppFontSize.value18,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.3,
                                 ),
                                 const SizedBox(height: 12),
                                 Wrap(
@@ -191,14 +200,12 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                                         borderRadius: BorderRadius.circular(AppRadii.pill),
                                         border: Border.all(color: _statusColor(task.status).withValues(alpha: 0.15)),
                                       ),
-                                      child: Text(
-                                        task.status.name.toUpperCase(),
-                                        style: TextStyle(
-                                          color: _statusColor(task.status),
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w900,
-                                          letterSpacing: 0.5,
-                                        ),
+                                      child: AppLabel(
+                                        text: task.status.name.toUpperCase(),
+                                        fontSize: AppFontSize.value9,
+                                        color: _statusColor(task.status),
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 0.5,
                                       ),
                                     ),
                                     Container(
@@ -208,14 +215,12 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                                         borderRadius: BorderRadius.circular(AppRadii.pill),
                                         border: Border.all(color: _priorityColor(task.priority).withValues(alpha: 0.15)),
                                       ),
-                                      child: Text(
-                                        task.priority.name.toUpperCase(),
-                                        style: TextStyle(
-                                          color: _priorityColor(task.priority),
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w900,
-                                          letterSpacing: 0.5,
-                                        ),
+                                      child: AppLabel(
+                                        text: task.priority.name.toUpperCase(),
+                                        fontSize: AppFontSize.value9,
+                                        color: _priorityColor(task.priority),
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 0.5,
                                       ),
                                     ),
                                     if (task.assigneeName != null)
@@ -231,18 +236,19 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                                             CircleAvatar(
                                               radius: 8,
                                               backgroundColor: theme.colorScheme.primary,
-                                              child: Text(
-                                                task.assigneeName![0].toUpperCase(),
-                                                style: const TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold),
+                                              child: AppLabel(
+                                                text: task.assigneeName![0].toUpperCase(),
+                                                fontSize: AppFontSize.value8,
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
                                               ),
                                             ),
                                             const SizedBox(width: 6),
-                                            Text(
-                                              task.assigneeName!,
-                                              style: theme.textTheme.bodySmall?.copyWith(
-                                                fontWeight: FontWeight.w700,
-                                                color: theme.colorScheme.onSecondaryContainer,
-                                              ),
+                                            AppLabel(
+                                              text: task.assigneeName!,
+                                              fontSize: AppFontSize.value12,
+                                              fontWeight: FontWeight.w700,
+                                              color: theme.colorScheme.onSecondaryContainer,
                                             ),
                                           ],
                                         ),
@@ -265,12 +271,13 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                                               color: task.isOverdue ? theme.colorScheme.error : theme.colorScheme.primary,
                                             ),
                                             const SizedBox(width: 6),
-                                            Text(
-                                              task.dueDate!.toIso8601String().split('T').first,
-                                              style: theme.textTheme.bodySmall?.copyWith(
-                                                fontWeight: FontWeight.bold,
-                                                color: task.isOverdue ? theme.colorScheme.error : theme.colorScheme.primary,
-                                              ),
+                                            AppLabel(
+                                              text: task.dueDate!.toIso8601String().split('T').first,
+                                              fontSize: AppFontSize.value12,
+                                              fontWeight: FontWeight.bold,
+                                              color: task.isOverdue
+                                                  ? theme.colorScheme.error
+                                                  : theme.colorScheme.primary,
                                             ),
                                           ],
                                         ),
@@ -291,12 +298,11 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                                               color: theme.colorScheme.onTertiaryContainer,
                                             ),
                                             const SizedBox(width: 6),
-                                            Text(
-                                              '${task.estimatedHours}h',
-                                              style: theme.textTheme.bodySmall?.copyWith(
-                                                fontWeight: FontWeight.bold,
-                                                color: theme.colorScheme.onTertiaryContainer,
-                                              ),
+                                            AppLabel(
+                                              text: '${task.estimatedHours}h',
+                                              fontSize: AppFontSize.value12,
+                                              fontWeight: FontWeight.bold,
+                                              color: theme.colorScheme.onTertiaryContainer,
                                             ),
                                           ],
                                         ),
@@ -305,34 +311,31 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                                 ),
                                 if (task.description.isNotEmpty) ...[
                                   const Divider(height: 32, thickness: 0.5),
-                                  Text(
-                                    'DESCRIPTION',
-                                    style: theme.textTheme.labelSmall?.copyWith(
-                                      color: theme.colorScheme.primary,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 0.5,
-                                    ),
+                                  AppLabel(
+                                    text: 'DESCRIPTION',
+                                    fontSize: AppFontSize.value11,
+                                    color: theme.colorScheme.primary,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.5,
                                   ),
                                   const SizedBox(height: 6),
-                                  Text(
-                                    task.description,
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                      height: 1.4,
-                                    ),
+                                  AppLabel(
+                                    text: task.description,
+                                    fontSize: AppFontSize.value14,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                    lineHeight: 1.4,
                                   ),
                                 ],
                               ],
                             ),
                           ).animate().fadeIn().slideY(begin: 0.05, end: 0, duration: 300.ms),
                           const SizedBox(height: 24),
-                          Text(
-                            'COMMENTS',
-                            style: theme.textTheme.labelMedium?.copyWith(
-                              color: theme.colorScheme.onSurface,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.5,
-                            ),
+                          AppLabel(
+                            text: 'COMMENTS',
+                            fontSize: AppFontSize.value12,
+                            color: theme.colorScheme.onSurface,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
                           ),
                           const SizedBox(height: 8),
                           StreamBuilder<List<TaskComment>>(
@@ -345,12 +348,11 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                                 return Padding(
                                   padding: const EdgeInsets.symmetric(vertical: 24),
                                   child: Center(
-                                    child: Text(
-                                      'No comments yet.',
-                                      style: theme.textTheme.bodyMedium?.copyWith(
-                                        color: theme.colorScheme.outline,
-                                        fontWeight: FontWeight.w500,
-                                      ),
+                                    child: AppLabel(
+                                      text: 'No comments yet.',
+                                      fontSize: AppFontSize.value14,
+                                      color: theme.colorScheme.outline,
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                 );
@@ -509,44 +511,38 @@ class _CommentTile extends StatelessWidget {
               CircleAvatar(
                 radius: 12,
                 backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
-                child: Text(
-                  comment.authorName.isEmpty ? '?' : comment.authorName[0].toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
-                  ),
+                child: AppLabel(
+                  text: comment.authorName.isEmpty ? '?' : comment.authorName[0].toUpperCase(),
+                  fontSize: AppFontSize.value10,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.primary,
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                comment.authorName,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+              AppLabel(
+                text: comment.authorName,
+                fontSize: AppFontSize.value14,
+                fontWeight: FontWeight.bold,
               ),
               const Spacer(),
-              Text(
-                comment.postedAt
+              AppLabel(
+                text: comment.postedAt
                     .toIso8601String()
                     .split('.')
                     .first
                     .replaceFirst('T', ' '),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.outline,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500,
-                ),
+                fontSize: AppFontSize.value10,
+                color: theme.colorScheme.outline,
+                fontWeight: FontWeight.w500,
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            comment.body,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface,
-              height: 1.3,
-            ),
+          AppLabel(
+            text: comment.body,
+            fontSize: AppFontSize.value14,
+            color: theme.colorScheme.onSurface,
+            lineHeight: 1.3,
           ),
         ],
       ),

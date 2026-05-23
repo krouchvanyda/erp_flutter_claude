@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../data/repositories/journal_entries_repository.dart';
 import '../../entities/journal_entry.dart';
@@ -20,7 +22,13 @@ class JournalEntryDetailPage extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final repo = getIt<JournalEntriesRepository>();
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.journalEntryDetailTitle)),
+      appBar: AppBar(
+        title: AppLabel(
+          text: l10n.journalEntryDetailTitle,
+          fontSize: AppFontSize.value20,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
       body: FutureBuilder<JournalEntry?>(
         future: repo.findById(entryId),
         builder: (context, snap) {
@@ -29,7 +37,12 @@ class JournalEntryDetailPage extends StatelessWidget {
           }
           final entry = snap.data;
           if (entry == null) {
-            return Center(child: Text(l10n.journalEntryNotFound(entryId)));
+            return Center(
+              child: AppLabel(
+                text: l10n.journalEntryNotFound(entryId),
+                fontSize: AppFontSize.value14,
+              ),
+            );
           }
           return _Body(entry: entry);
         },
@@ -56,15 +69,22 @@ class _Body extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(entry.reference, style: theme.textTheme.titleMedium),
+                AppLabel(
+                  text: entry.reference,
+                  fontSize: AppFontSize.value16,
+                  fontWeight: FontWeight.w600,
+                ),
                 const SizedBox(height: 4),
-                Text(entry.description),
+                AppLabel(
+                  text: entry.description,
+                  fontSize: AppFontSize.value14,
+                ),
                 const SizedBox(height: 8),
-                Text(
-                  _date.format(entry.postedAt.toLocal()),
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+                AppLabel(
+                  text: _date.format(entry.postedAt.toLocal()),
+                  fontSize: AppFontSize.value11,
+                  fontWeight: FontWeight.w500,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ],
             ),
@@ -80,21 +100,26 @@ class _Body extends StatelessWidget {
                   children: [
                     Expanded(
                       flex: 3,
-                      child: Text(l10n.journalEntryAccountColumn,
-                          style: theme.textTheme.labelMedium),
-                    ),
-                    Expanded(
-                      child: Text(
-                        l10n.journalEntryDebitColumn,
-                        textAlign: TextAlign.end,
-                        style: theme.textTheme.labelMedium,
+                      child: AppLabel(
+                        text: l10n.journalEntryAccountColumn,
+                        fontSize: AppFontSize.value12,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                     Expanded(
-                      child: Text(
-                        l10n.journalEntryCreditColumn,
+                      child: AppLabel(
+                        text: l10n.journalEntryDebitColumn,
+                        fontSize: AppFontSize.value12,
+                        fontWeight: FontWeight.w500,
                         textAlign: TextAlign.end,
-                        style: theme.textTheme.labelMedium,
+                      ),
+                    ),
+                    Expanded(
+                      child: AppLabel(
+                        text: l10n.journalEntryCreditColumn,
+                        fontSize: AppFontSize.value12,
+                        fontWeight: FontWeight.w500,
+                        textAlign: TextAlign.end,
                       ),
                     ),
                   ],
@@ -109,41 +134,32 @@ class _Body extends StatelessWidget {
                     children: [
                       Expanded(
                         flex: 3,
-                        child: Text(
-                          '${line.accountCode}  ${line.accountName}',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontFeatures: const [
-                              FontFeature.tabularFigures()
-                            ],
-                          ),
+                        child: AppLabel(
+                          text: '${line.accountCode}  ${line.accountName}',
+                          fontSize: AppFontSize.value14,
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
                       Expanded(
-                        child: Text(
-                          line.debit ?? '—',
+                        child: AppLabel(
+                          text: line.debit ?? '—',
+                          fontSize: AppFontSize.value14,
+                          color: line.debit == null
+                              ? theme.colorScheme.outline
+                              : theme.colorScheme.primary,
                           textAlign: TextAlign.end,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: line.debit == null
-                                ? theme.colorScheme.outline
-                                : theme.colorScheme.primary,
-                            fontFeatures: const [
-                              FontFeature.tabularFigures()
-                            ],
-                          ),
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
                       Expanded(
-                        child: Text(
-                          line.credit ?? '—',
+                        child: AppLabel(
+                          text: line.credit ?? '—',
+                          fontSize: AppFontSize.value14,
+                          color: line.credit == null
+                              ? theme.colorScheme.outline
+                              : theme.colorScheme.tertiary,
                           textAlign: TextAlign.end,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: line.credit == null
-                                ? theme.colorScheme.outline
-                                : theme.colorScheme.tertiary,
-                            fontFeatures: const [
-                              FontFeature.tabularFigures()
-                            ],
-                          ),
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
                     ],
@@ -155,14 +171,17 @@ class _Body extends StatelessWidget {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text(l10n.journalEntryTotalLabel,
-                          style: theme.textTheme.titleSmall),
-                    ),
-                    Text(
-                      entry.formattedTotal,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontFeatures: const [FontFeature.tabularFigures()],
+                      child: AppLabel(
+                        text: l10n.journalEntryTotalLabel,
+                        fontSize: AppFontSize.value14,
+                        fontWeight: FontWeight.w600,
                       ),
+                    ),
+                    AppLabel(
+                      text: entry.formattedTotal,
+                      fontSize: AppFontSize.value14,
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ],
                 ),

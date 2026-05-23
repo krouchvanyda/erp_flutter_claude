@@ -4,6 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -54,18 +56,16 @@ class EmployeeDetailPage extends StatelessWidget {
                             color: theme.colorScheme.outline,
                           ),
                           const SizedBox(height: 16),
-                          Text(
-                            'Employee not found',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                          const AppLabel(
+                            text: 'Employee not found',
+                            fontSize: AppFontSize.value16,
+                            fontWeight: FontWeight.bold,
                           ),
                           const SizedBox(height: 8),
-                          Text(
-                            'No employee with ID "$employeeId" exists.',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
+                          AppLabel(
+                            text: 'No employee with ID "$employeeId" exists.',
+                            fontSize: AppFontSize.value14,
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ],
                       ),
@@ -208,31 +208,28 @@ class _HeaderCard extends StatelessWidget {
                 ? NetworkImage(employee.avatarUrl!)
                 : null,
             child: employee.avatarUrl == null
-                ? Text(
-                    employee.name.isEmpty ? '?' : employee.name[0],
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
+                ? AppLabel(
+                    text: employee.name.isEmpty ? '?' : employee.name[0],
+                    fontSize: AppFontSize.value32,
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.bold,
                   )
                 : null,
           ),
           const SizedBox(height: 16),
-          Text(
-            employee.name,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.5,
-            ),
+          AppLabel(
+            text: employee.name,
+            fontSize: AppFontSize.value24,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 4),
-          Text(
-            employee.position,
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
-            ),
+          AppLabel(
+            text: employee.position,
+            fontSize: AppFontSize.value16,
+            color: theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
@@ -250,7 +247,6 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final text = switch (status) {
       EmploymentStatus.active => 'ACTIVE',
       EmploymentStatus.onLeave => 'ON LEAVE',
@@ -265,13 +261,12 @@ class _StatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.pill),
         border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
-      child: Text(
-        text,
-        style: theme.textTheme.labelMedium?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 0.5,
-        ),
+      child: AppLabel(
+        text: text,
+        fontSize: AppFontSize.value12,
+        color: color,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 0.5,
       ),
     );
   }
@@ -286,13 +281,12 @@ class _SectionHeading extends StatelessWidget {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Text(
-        title.toUpperCase(),
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: theme.colorScheme.primary,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 1,
-        ),
+      child: AppLabel(
+        text: title.toUpperCase(),
+        fontSize: AppFontSize.value11,
+        color: theme.colorScheme.primary,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 1,
       ),
     );
   }
@@ -398,12 +392,10 @@ class _ActionButton extends StatelessWidget {
                   child: Icon(icon, color: color, size: 22),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  label,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 10,
-                  ),
+                AppLabel(
+                  text: label,
+                  fontSize: AppFontSize.value10,
+                  fontWeight: FontWeight.bold,
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -486,19 +478,17 @@ class _DetailItem extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.outline,
-                    fontWeight: FontWeight.bold,
-                  ),
+                AppLabel(
+                  text: label,
+                  fontSize: AppFontSize.value11,
+                  color: theme.colorScheme.outline,
+                  fontWeight: FontWeight.bold,
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                AppLabel(
+                  text: value,
+                  fontSize: AppFontSize.value14,
+                  fontWeight: FontWeight.w600,
                 ),
               ],
             ),

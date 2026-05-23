@@ -3,6 +3,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../core/error/failure.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -165,8 +167,9 @@ class _TimesheetFormPageState extends State<TimesheetFormPage> {
                             items: projects
                                 .map((p) => DropdownMenuItem(
                                       value: p,
-                                      child: Text(
-                                        '${p.code} — ${p.name}',
+                                      child: AppLabel(
+                                        text: '${p.code} — ${p.name}',
+                                        fontSize: AppFontSize.value14,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         softWrap: false,
@@ -198,13 +201,12 @@ class _TimesheetFormPageState extends State<TimesheetFormPage> {
                               },
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(vertical: 4),
-                                child: Text(
-                                  _date == null
+                                child: AppLabel(
+                                  text: _date == null
                                       ? 'Select Date'
                                       : _date!.toIso8601String().split('T').first,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                  fontSize: AppFontSize.value14,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
@@ -240,17 +242,15 @@ class _TimesheetFormPageState extends State<TimesheetFormPage> {
                           const SizedBox(height: 16),
                           SwitchListTile(
                             contentPadding: EdgeInsets.zero,
-                            title: Text(
-                              'Submit for approval immediately',
-                              style: theme.textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                            title: const AppLabel(
+                              text: 'Submit for approval immediately',
+                              fontSize: AppFontSize.value14,
+                              fontWeight: FontWeight.bold,
                             ),
-                            subtitle: Text(
-                              'Otherwise it lands as a draft you can edit later.',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
+                            subtitle: AppLabel(
+                              text: 'Otherwise it lands as a draft you can edit later.',
+                              fontSize: AppFontSize.value12,
+                              color: theme.colorScheme.onSurfaceVariant,
                             ),
                             value: _submitImmediately,
                             onChanged: (v) => setState(() => _submitImmediately = v),
@@ -263,9 +263,10 @@ class _TimesheetFormPageState extends State<TimesheetFormPage> {
                                 color: theme.colorScheme.errorContainer,
                                 borderRadius: BorderRadius.circular(AppRadii.md),
                               ),
-                              child: Text(
-                                _topError!,
-                                style: TextStyle(color: theme.colorScheme.onErrorContainer),
+                              child: AppLabel(
+                                text: _topError!,
+                                fontSize: AppFontSize.value14,
+                                color: theme.colorScheme.onErrorContainer,
                               ),
                             ),
                           ],
@@ -285,9 +286,10 @@ class _TimesheetFormPageState extends State<TimesheetFormPage> {
                                       width: 20,
                                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                     )
-                                  : const Text(
-                                      'Save Timesheet',
-                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                  : const AppLabel(
+                                      text: 'Save Timesheet',
+                                      fontSize: AppFontSize.value14,
+                                      fontWeight: FontWeight.bold,
                                     ),
                             ),
                           ),

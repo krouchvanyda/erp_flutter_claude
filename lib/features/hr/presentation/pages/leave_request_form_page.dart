@@ -4,6 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../core/error/failure.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -209,13 +211,12 @@ class _LeaveRequestFormPageState extends State<LeaveRequestFormPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'LEAVE PREFERENCES',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.5,
-                        ),
+                      AppLabel(
+                        text: 'LEAVE PREFERENCES',
+                        fontSize: AppFontSize.value11,
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
                       ),
                       const SizedBox(height: 16),
 
@@ -245,9 +246,10 @@ class _LeaveRequestFormPageState extends State<LeaveRequestFormPage> {
                         items: LeaveType.values
                             .map((t) => DropdownMenuItem(
                                   value: t,
-                                  child: Text(
-                                    t.name.toUpperCase(),
-                                    style: const TextStyle(fontWeight: FontWeight.w600),
+                                  child: AppLabel(
+                                    text: t.name.toUpperCase(),
+                                    fontSize: AppFontSize.value14,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ))
                             .toList(),
@@ -281,19 +283,19 @@ class _LeaveRequestFormPageState extends State<LeaveRequestFormPage> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  'Current ${_type.name.toUpperCase()} Balance:',
-                                  style: theme.textTheme.labelMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: theme.colorScheme.primary,
-                                  ),
+                                AppLabel(
+                                  text:
+                                      'Current ${_type.name.toUpperCase()} Balance:',
+                                  fontSize: AppFontSize.value12,
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.primary,
                                 ),
-                                Text(
-                                  '${currentBalance.remainingDays} days available',
-                                  style: theme.textTheme.labelMedium?.copyWith(
-                                    fontWeight: FontWeight.w900,
-                                    color: theme.colorScheme.primary,
-                                  ),
+                                AppLabel(
+                                  text:
+                                      '${currentBalance.remainingDays} days available',
+                                  fontSize: AppFontSize.value12,
+                                  fontWeight: FontWeight.w900,
+                                  color: theme.colorScheme.primary,
                                 ),
                               ],
                             ),
@@ -302,13 +304,12 @@ class _LeaveRequestFormPageState extends State<LeaveRequestFormPage> {
                       ).animate().fadeIn(delay: 50.ms),
                       const Divider(height: 36),
 
-                      Text(
-                        'DURATION SELECTOR',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.5,
-                        ),
+                      AppLabel(
+                        text: 'DURATION SELECTOR',
+                        fontSize: AppFontSize.value11,
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
                       ),
                       const SizedBox(height: 12),
 
@@ -369,12 +370,12 @@ class _LeaveRequestFormPageState extends State<LeaveRequestFormPage> {
                               const Icon(Icons.info_outline_rounded, color: Colors.white),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: Text(
-                                  'You are requesting $daysCount consecutive working days of leave.',
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                child: AppLabel(
+                                  text:
+                                      'You are requesting $daysCount consecutive working days of leave.',
+                                  fontSize: AppFontSize.value14,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ],
@@ -383,13 +384,12 @@ class _LeaveRequestFormPageState extends State<LeaveRequestFormPage> {
                       ],
                       const Divider(height: 36),
 
-                      Text(
-                        'ATTACHMENTS & EVIDENCE',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.5,
-                        ),
+                      AppLabel(
+                        text: 'ATTACHMENTS & EVIDENCE',
+                        fontSize: AppFontSize.value11,
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
                       ),
                       const SizedBox(height: 12),
 
@@ -404,13 +404,12 @@ class _LeaveRequestFormPageState extends State<LeaveRequestFormPage> {
 
                       const Divider(height: 36),
 
-                      Text(
-                        'JUSTIFICATION',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.5,
-                        ),
+                      AppLabel(
+                        text: 'JUSTIFICATION',
+                        fontSize: AppFontSize.value11,
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
                       ),
                       const SizedBox(height: 12),
 
@@ -472,12 +471,11 @@ class _LeaveRequestFormPageState extends State<LeaveRequestFormPage> {
                               Icon(Icons.error_outline, color: theme.colorScheme.onErrorContainer),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: Text(
-                                  _topError!,
-                                  style: TextStyle(
-                                    color: theme.colorScheme.onErrorContainer,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                child: AppLabel(
+                                  text: _topError!,
+                                  fontSize: AppFontSize.value14,
+                                  color: theme.colorScheme.onErrorContainer,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ],
@@ -527,13 +525,11 @@ class _LeaveRequestFormPageState extends State<LeaveRequestFormPage> {
                           valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       )
-                    : const Text(
-                        'Submit Leave Request',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.2,
-                        ),
+                    : const AppLabel(
+                        text: 'Submit Leave Request',
+                        fontSize: AppFontSize.value16,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.2,
                       ),
               ),
             ),
@@ -567,14 +563,13 @@ class _CustomDatePickerTile extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          labelText,
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: isError
-                ? theme.colorScheme.error
-                : theme.colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.bold,
-          ),
+        AppLabel(
+          text: labelText,
+          fontSize: AppFontSize.value12,
+          color: isError
+              ? theme.colorScheme.error
+              : theme.colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.bold,
         ),
         const SizedBox(height: 8),
         InkWell(
@@ -618,16 +613,15 @@ class _CustomDatePickerTile extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    valueText,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                      color: isError
-                          ? theme.colorScheme.error
-                          : isSelected
-                              ? theme.colorScheme.onSurface
-                              : theme.colorScheme.outline,
-                    ),
+                  child: AppLabel(
+                    text: valueText,
+                    fontSize: AppFontSize.value14,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                    color: isError
+                        ? theme.colorScheme.error
+                        : isSelected
+                            ? theme.colorScheme.onSurface
+                            : theme.colorScheme.outline,
                   ),
                 ),
               ],
@@ -638,11 +632,10 @@ class _CustomDatePickerTile extends StatelessWidget {
           const SizedBox(height: 6),
           Padding(
             padding: const EdgeInsets.only(left: 4),
-            child: Text(
-              errorText!,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.error,
-              ),
+            child: AppLabel(
+              text: errorText!,
+              fontSize: AppFontSize.value11,
+              color: theme.colorScheme.error,
             ),
           ),
         ],
@@ -692,12 +685,11 @@ class _FileAttachmentCard extends StatelessWidget {
                     child: CircularProgressIndicator(strokeWidth: 2.5),
                   ),
                   const SizedBox(height: 12),
-                  Text(
-                    'Uploading attachment...',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.primary,
-                    ),
+                  AppLabel(
+                    text: 'Uploading attachment...',
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
                   ),
                 ],
               ),
@@ -724,33 +716,29 @@ class _FileAttachmentCard extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              fileName!,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                            AppLabel(
+                              text: fileName!,
+                              fontSize: AppFontSize.value14,
+                              fontWeight: FontWeight.bold,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 4),
                             Row(
                               children: [
-                                Text(
-                                  fileSize!,
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    color: theme.colorScheme.outline,
-                                  ),
+                                AppLabel(
+                                  text: fileSize!,
+                                  fontSize: AppFontSize.value11,
+                                  color: theme.colorScheme.outline,
                                 ),
                                 const SizedBox(width: 8),
                                 const CircleAvatar(radius: 2, backgroundColor: Colors.green),
                                 const SizedBox(width: 4),
-                                const Text(
-                                  'Ready to upload',
-                                  style: TextStyle(
-                                    fontSize: 10.5,
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                const AppLabel(
+                                  text: 'Ready to upload',
+                                  fontSize: AppFontSize.value11,
+                                  color: Colors.green,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ],
                             ),
@@ -780,20 +768,18 @@ class _FileAttachmentCard extends StatelessWidget {
                             color: theme.colorScheme.primary,
                           ),
                           const SizedBox(height: 12),
-                          Text(
-                            'TAP TO UPLOAD DOCUMENT',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              color: theme.colorScheme.primary,
-                              letterSpacing: 0.5,
-                            ),
+                          AppLabel(
+                            text: 'TAP TO UPLOAD DOCUMENT',
+                            fontSize: AppFontSize.value11,
+                            fontWeight: FontWeight.w900,
+                            color: theme.colorScheme.primary,
+                            letterSpacing: 0.5,
                           ),
                           const SizedBox(height: 6),
-                          Text(
-                            'Support PDF, PNG, JPG up to 10MB (Medical Cert, etc.)',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.outline,
-                            ),
+                          AppLabel(
+                            text: 'Support PDF, PNG, JPG up to 10MB (Medical Cert, etc.)',
+                            fontSize: AppFontSize.value12,
+                            color: theme.colorScheme.outline,
                             textAlign: TextAlign.center,
                           ),
                         ],

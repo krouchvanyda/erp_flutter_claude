@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -43,13 +45,12 @@ class NotificationPreferencesPage extends StatelessWidget {
                     bottom: 40,
                   ),
                   children: [
-                    Text(
-                      'NOTIFICATION CHANNELS',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.5,
-                      ),
+                    AppLabel(
+                      text: 'NOTIFICATION CHANNELS',
+                      fontSize: AppFontSize.value11,
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
                     ),
                     const SizedBox(height: 12),
                     for (int i = 0; i < prefs.length; i++) ...[
@@ -78,12 +79,12 @@ class NotificationPreferencesPage extends StatelessWidget {
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: Text(
-                              'System alerts always include critical security events; you cannot disable those.',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                                fontStyle: FontStyle.italic,
-                              ),
+                            child: AppLabel(
+                              text:
+                                  'System alerts always include critical security events; you cannot disable those.',
+                              fontSize: AppFontSize.value12,
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontStyle: FontStyle.italic,
                             ),
                           ),
                         ],
@@ -148,18 +149,16 @@ class _ChannelCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _label(pref.channel),
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    AppLabel(
+                      text: _label(pref.channel),
+                      fontSize: AppFontSize.value14,
+                      fontWeight: FontWeight.bold,
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      _description(pref.channel),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                    AppLabel(
+                      text: _description(pref.channel),
+                      fontSize: AppFontSize.value12,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ],
                 ),
@@ -173,11 +172,10 @@ class _ChannelCard extends StatelessWidget {
             dense: true,
             activeColor: theme.colorScheme.primary,
             contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-            title: Text(
-              'Push Notifications',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
+            title: const AppLabel(
+              text: 'Push Notifications',
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.w500,
             ),
             value: pref.pushEnabled,
             onChanged: isSystem
@@ -190,11 +188,10 @@ class _ChannelCard extends StatelessWidget {
             dense: true,
             activeColor: theme.colorScheme.primary,
             contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-            title: Text(
-              'Email Updates',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
+            title: const AppLabel(
+              text: 'Email Updates',
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.w500,
             ),
             value: pref.emailEnabled,
             onChanged: isSystem

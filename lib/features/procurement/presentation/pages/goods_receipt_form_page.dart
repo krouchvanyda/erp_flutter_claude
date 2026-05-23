@@ -5,6 +5,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -123,9 +125,11 @@ class _GoodsReceiptFormPageState extends State<GoodsReceiptFormPage> {
               if (po == null) return const SizedBox.shrink();
               return TextButton(
                 onPressed: () => _submit(po),
-                child: Text(
-                  l10n.invoiceFormSaveTooltip.toUpperCase(),
-                  style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.w800),
+                child: AppLabel(
+                  text: l10n.invoiceFormSaveTooltip.toUpperCase(),
+                  fontSize: AppFontSize.value14,
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w800,
                 ),
               );
             },
@@ -196,14 +200,18 @@ class _Body extends StatelessWidget {
           _Section(
             title: 'RECEIPT DETAILS',
             children: [
-              Text(
-                l10n.goodsReceiptFormForPo(po.number).toUpperCase(),
-                style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w900, color: theme.colorScheme.primary),
+              AppLabel(
+                text: l10n.goodsReceiptFormForPo(po.number).toUpperCase(),
+                fontSize: AppFontSize.value12,
+                fontWeight: FontWeight.w900,
+                color: theme.colorScheme.primary,
               ),
               const SizedBox(height: 4),
-              Text(
-                po.vendorName,
-                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.bold),
+              AppLabel(
+                text: po.vendorName,
+                fontSize: AppFontSize.value14,
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.bold,
               ),
               const SizedBox(height: 20),
               AppTextField(
@@ -224,9 +232,12 @@ class _Body extends StatelessWidget {
           const SizedBox(height: 24),
           Padding(
             padding: const EdgeInsets.only(left: 4, bottom: 12),
-            child: Text(
-              l10n.goodsReceiptLinesHeading.toUpperCase(),
-              style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+            child: AppLabel(
+              text: l10n.goodsReceiptLinesHeading.toUpperCase(),
+              fontSize: AppFontSize.value11,
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.5,
             ),
           ),
           for (final line in po.lineItems)
@@ -251,7 +262,12 @@ class _Body extends StatelessWidget {
                   Icon(Icons.error_rounded, color: theme.colorScheme.error, size: 20),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(formError!, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error, fontWeight: FontWeight.bold)),
+                    child: AppLabel(
+                      text: formError!,
+                      fontSize: AppFontSize.value12,
+                      color: theme.colorScheme.error,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
@@ -263,7 +279,12 @@ class _Body extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: onSubmit,
               icon: const Icon(Icons.local_shipping_rounded),
-              label: Text(l10n.goodsReceiptSubmitAction.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+              label: AppLabel(
+                text: l10n.goodsReceiptSubmitAction.toUpperCase(),
+                fontSize: AppFontSize.value14,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.2,
+              ),
               style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md))),
             ),
           ).animate().fadeIn(delay: 200.ms).scale(curve: Curves.easeOutBack),
@@ -287,9 +308,12 @@ class _Section extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: 12),
-          child: Text(
-            title,
-            style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+          child: AppLabel(
+            text: title,
+            fontSize: AppFontSize.value11,
+            color: theme.colorScheme.primary,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.5,
           ),
         ),
         Container(
@@ -335,13 +359,19 @@ class _LineRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      line.description,
-                      style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: isDisabled ? theme.colorScheme.outline : null),
+                    AppLabel(
+                      text: line.description,
+                      fontSize: AppFontSize.value16,
+                      fontWeight: FontWeight.bold,
+                      color: isDisabled ? theme.colorScheme.outline : null,
                     ),
                     if (line.sku != null) ...[
                       const SizedBox(height: 4),
-                      Text('SKU: ${line.sku}', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline)),
+                      AppLabel(
+                        text: 'SKU: ${line.sku}',
+                        fontSize: AppFontSize.value11,
+                        color: theme.colorScheme.outline,
+                      ),
                     ],
                   ],
                 ),
@@ -352,13 +382,11 @@ class _LineRow extends StatelessWidget {
                   color: (isDisabled ? theme.colorScheme.outline : theme.colorScheme.primary).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppRadii.pill),
                 ),
-                child: Text(
-                  l10n.poLineOutstandingLabel(outstanding.toString()).toUpperCase(),
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: isDisabled ? theme.colorScheme.outline : theme.colorScheme.primary,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 10,
-                  ),
+                child: AppLabel(
+                  text: l10n.poLineOutstandingLabel(outstanding.toString()).toUpperCase(),
+                  fontSize: AppFontSize.value10,
+                  color: isDisabled ? theme.colorScheme.outline : theme.colorScheme.primary,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
             ],
@@ -394,7 +422,12 @@ class _CenteredMessage extends StatelessWidget {
           children: [
             Icon(icon ?? Icons.local_shipping_rounded, size: 64, color: theme.colorScheme.outline.withValues(alpha: 0.5)),
             const SizedBox(height: 24),
-            Text(text, textAlign: TextAlign.center, style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            AppLabel(
+              text: text,
+              fontSize: AppFontSize.value16,
+              textAlign: TextAlign.center,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ],
         ),
       ),

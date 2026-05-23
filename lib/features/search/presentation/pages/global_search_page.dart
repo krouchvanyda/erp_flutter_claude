@@ -5,6 +5,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/config_router.dart';
 import '../../../../core/router/permissions_snapshot.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/shortcuts/module_shortcut_catalog.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
@@ -199,13 +201,12 @@ class _GroupedResultsList extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(8, 24, 8, 12),
             child: Row(
               children: [
-                Text(
-                  _providerHeader(context, groups[gIdx].providerId).toUpperCase(),
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.5,
-                  ),
+                AppLabel(
+                  text: _providerHeader(context, groups[gIdx].providerId).toUpperCase(),
+                  fontSize: AppFontSize.value11,
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.5,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -281,20 +282,18 @@ class _ResultTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      result.title,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: theme.colorScheme.onSurface,
-                      ),
+                    AppLabel(
+                      text: result.title,
+                      fontSize: AppFontSize.value16,
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.onSurface,
                     ),
                     if (result.subtitle != null)
-                      Text(
-                        result.subtitle!,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          height: 1.4,
-                        ),
+                      AppLabel(
+                        text: result.subtitle!,
+                        fontSize: AppFontSize.value12,
+                        color: theme.colorScheme.onSurfaceVariant,
+                        lineHeight: 1.4,
                       ),
                   ],
                 ),

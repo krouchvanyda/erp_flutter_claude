@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/auth_session.dart';
 import '../../../../core/router/route_paths.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../data/demo_sign_in.dart';
@@ -107,23 +109,21 @@ class _BiometricUnlockPageState extends State<BiometricUnlockPage> {
                       
                       const SizedBox(height: 48),
                       
-                      Text(
-                        _isAuthenticating ? 'Authenticating...' : 'Biometric Unlock',
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      AppLabel(
+                        text: _isAuthenticating ? 'Authenticating...' : 'Biometric Unlock',
+                        fontSize: AppFontSize.value22,
+                        fontWeight: FontWeight.bold,
                       ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2, end: 0),
-                      
+
                       const SizedBox(height: 16),
-                      
-                      Text(
-                        _isAuthenticating 
-                          ? 'Please hold your finger on the sensor' 
+
+                      AppLabel(
+                        text: _isAuthenticating
+                          ? 'Please hold your finger on the sensor'
                           : 'Use your fingerprint or face to continue',
+                        fontSize: AppFontSize.value16,
+                        color: theme.colorScheme.onSurfaceVariant,
                         textAlign: TextAlign.center,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
                       ).animate().fadeIn(delay: 600.ms),
                       
                       const SizedBox(height: 64),

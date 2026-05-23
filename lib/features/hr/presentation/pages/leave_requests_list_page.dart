@@ -5,6 +5,8 @@ import 'package:get_it/get_it.dart';
 
 import '../../../../core/error/failure.dart';
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -47,17 +49,20 @@ class _LeaveRequestsListPageState extends State<LeaveRequestsListPage> {
               segments: const [
                 ButtonSegment(
                   value: _Filter.all,
-                  label: Text('All'),
+                  label: AppLabel(text: 'All', fontSize: AppFontSize.value13),
                   icon: Icon(Icons.list_alt_rounded),
                 ),
                 ButtonSegment(
                   value: _Filter.pending,
-                  label: Text('Pending'),
+                  label: AppLabel(
+                    text: 'Pending',
+                    fontSize: AppFontSize.value13,
+                  ),
                   icon: Icon(Icons.hourglass_empty_rounded),
                 ),
                 ButtonSegment(
                   value: _Filter.mine,
-                  label: Text('Mine'),
+                  label: AppLabel(text: 'Mine', fontSize: AppFontSize.value13),
                   icon: Icon(Icons.person_outline_rounded),
                 ),
               ],
@@ -114,18 +119,16 @@ class _LeaveRequestsListPageState extends State<LeaveRequestsListPage> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        Text(
-                          'No leave requests',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        const AppLabel(
+                          text: 'No leave requests',
+                          fontSize: AppFontSize.value16,
+                          fontWeight: FontWeight.bold,
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          'There are no requests matching this filter.',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
+                        AppLabel(
+                          text: 'There are no requests matching this filter.',
+                          fontSize: AppFontSize.value14,
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ],
                     ).animate().fadeIn(),
@@ -223,21 +226,19 @@ class _RequestCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          request.employeeName,
-                        style: theme.textTheme.titleMedium?.copyWith(
+                        AppLabel(
+                          text: request.employeeName,
+                          fontSize: AppFontSize.value16,
                           fontWeight: FontWeight.bold,
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        request.type.name.toUpperCase(),
-                        style: theme.textTheme.labelSmall?.copyWith(
+                        const SizedBox(height: 2),
+                        AppLabel(
+                          text: request.type.name.toUpperCase(),
+                          fontSize: AppFontSize.value11,
                           color: theme.colorScheme.primary,
                           fontWeight: FontWeight.w900,
                           letterSpacing: 0.5,
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -254,11 +255,11 @@ class _RequestCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    '${request.fromDate.toIso8601String().split('T').first}   ➔   ${request.toDate.toIso8601String().split('T').first}',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                  child: AppLabel(
+                    text:
+                        '${request.fromDate.toIso8601String().split('T').first}   ➔   ${request.toDate.toIso8601String().split('T').first}',
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 Container(
@@ -267,12 +268,11 @@ class _RequestCard extends StatelessWidget {
                     color: theme.colorScheme.primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(AppRadii.pill),
                   ),
-                  child: Text(
-                    '${request.days} day(s)',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: AppLabel(
+                    text: '${request.days} day(s)',
+                    fontSize: AppFontSize.value11,
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
@@ -286,12 +286,11 @@ class _RequestCard extends StatelessWidget {
                   color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(AppRadii.md),
                 ),
-                child: Text(
-                  request.reason,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontStyle: FontStyle.italic,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+                child: AppLabel(
+                  text: request.reason,
+                  fontSize: AppFontSize.value14,
+                  fontStyle: FontStyle.italic,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -309,7 +308,11 @@ class _RequestCard extends StatelessWidget {
                       ),
                     ),
                     icon: const Icon(Icons.close_rounded, size: 16),
-                    label: const Text('Reject'),
+                    label: const AppLabel(
+                      text: 'Reject',
+                      fontSize: AppFontSize.value13,
+                      fontWeight: FontWeight.w600,
+                    ),
                     onPressed: () => _reject(context),
                   ),
                   const SizedBox(width: 12),
@@ -322,7 +325,11 @@ class _RequestCard extends StatelessWidget {
                       ),
                     ),
                     icon: const Icon(Icons.check_rounded, size: 16),
-                    label: const Text('Approve'),
+                    label: const AppLabel(
+                      text: 'Approve',
+                      fontSize: AppFontSize.value13,
+                      fontWeight: FontWeight.w600,
+                    ),
                     onPressed: () => _approve(context),
                   ),
                 ],
@@ -379,13 +386,11 @@ class _RequestCard extends StatelessWidget {
             const SizedBox(width: 8),
             // Wrapped in Expanded so the title can shrink/ellipsise on
             // narrow dialog widths instead of overflowing the Row.
-            Expanded(
-              child: Text(
-                'Reject Leave Request',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+            const Expanded(
+              child: AppLabel(
+                text: 'Reject Leave Request',
+                fontSize: AppFontSize.value18,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ],
@@ -415,9 +420,11 @@ class _RequestCard extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
-            child: Text(
-              'Cancel',
-              style: TextStyle(color: theme.colorScheme.outline),
+            child: AppLabel(
+              text: 'Cancel',
+              fontSize: AppFontSize.value14,
+              color: theme.colorScheme.outline,
+              fontWeight: FontWeight.w600,
             ),
           ),
           FilledButton(
@@ -434,7 +441,11 @@ class _RequestCard extends StatelessWidget {
                 Navigator.pop(dialogCtx, reason);
               }
             },
-            child: const Text('Reject'),
+            child: const AppLabel(
+              text: 'Reject',
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
@@ -499,7 +510,6 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -507,13 +517,12 @@ class _StatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.pill),
         border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
-      child: Text(
-        status.name.toUpperCase(),
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 0.5,
-        ),
+      child: AppLabel(
+        text: status.name.toUpperCase(),
+        fontSize: AppFontSize.value11,
+        color: color,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 0.5,
       ),
     );
   }

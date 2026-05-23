@@ -5,6 +5,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../core/error/failure.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -53,13 +55,12 @@ class AppLockPage extends StatelessWidget {
                         .fadeIn(duration: 400.ms)
                         .scale(begin: const Offset(0.96, 0.96), end: const Offset(1, 1)),
                     const SizedBox(height: 24),
-                    Text(
-                      'DEVICE PROTECTION',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.5,
-                      ),
+                    AppLabel(
+                      text: 'DEVICE PROTECTION',
+                      fontSize: AppFontSize.value11,
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
                     ),
                     const SizedBox(height: 12),
                     // Switches Card Container
@@ -89,8 +90,15 @@ class AppLockPage extends StatelessWidget {
                               ),
                               child: Icon(Icons.password, color: theme.colorScheme.primary, size: 20),
                             ),
-                            title: const Text('App Lock PIN', style: TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: const Text('Require a secure 4–8 digit PIN on resume'),
+                            title: const AppLabel(
+                              text: 'App Lock PIN',
+                              fontSize: AppFontSize.value14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            subtitle: const AppLabel(
+                              text: 'Require a secure 4–8 digit PIN on resume',
+                              fontSize: AppFontSize.value12,
+                            ),
                             value: settings.pinEnabled,
                             onChanged: (v) async {
                               if (v) {
@@ -127,8 +135,15 @@ class AppLockPage extends StatelessWidget {
                                 size: 20,
                               ),
                             ),
-                            title: const Text('Biometric Authentication', style: TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: const Text('Use Face ID / Fingerprint instead of entering PIN'),
+                            title: const AppLabel(
+                              text: 'Biometric Authentication',
+                              fontSize: AppFontSize.value14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            subtitle: const AppLabel(
+                              text: 'Use Face ID / Fingerprint instead of entering PIN',
+                              fontSize: AppFontSize.value12,
+                            ),
                             value: settings.biometricEnabled,
                             onChanged: settings.pinEnabled
                                 ? (v) async {
@@ -154,13 +169,12 @@ class AppLockPage extends StatelessWidget {
                       ),
                     ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.04, end: 0),
                     const SizedBox(height: 24),
-                    Text(
-                      'TIMEOUT CONFIGURATION',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.5,
-                      ),
+                    AppLabel(
+                      text: 'TIMEOUT CONFIGURATION',
+                      fontSize: AppFontSize.value11,
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
                     ),
                     const SizedBox(height: 12),
                     // Action List Tiles
@@ -197,26 +211,25 @@ class AppLockPage extends StatelessWidget {
                                 size: 20,
                               ),
                             ),
-                            title: Text(
-                              'Auto-lock Duration',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: settings.pinEnabled
-                                    ? theme.colorScheme.onSurface
-                                    : theme.colorScheme.onSurface.withValues(alpha: 0.4),
-                              ),
+                            title: AppLabel(
+                              text: 'Auto-lock Duration',
+                              fontSize: AppFontSize.value14,
+                              fontWeight: FontWeight.bold,
+                              color: settings.pinEnabled
+                                  ? theme.colorScheme.onSurface
+                                  : theme.colorScheme.onSurface.withValues(alpha: 0.4),
                             ),
-                            subtitle: Text(
-                              settings.pinEnabled
+                            subtitle: AppLabel(
+                              text: settings.pinEnabled
                                   ? (settings.autoLockMinutes == 0
                                       ? 'Lock immediately on backgrounding'
                                       : '${settings.autoLockMinutes} minutes after backgrounding')
                                   : 'Requires App Lock PIN to be enabled',
-                              style: TextStyle(
-                                color: settings.pinEnabled
-                                    ? theme.colorScheme.onSurfaceVariant
-                                    : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-                              ),
+                              fontSize: AppFontSize.value12,
+                              color: settings.pinEnabled
+                                  ? theme.colorScheme.onSurfaceVariant
+                                  : theme.colorScheme.onSurfaceVariant
+                                      .withValues(alpha: 0.4),
                             ),
                             trailing: Icon(
                               Icons.chevron_right,
@@ -235,8 +248,15 @@ class AppLockPage extends StatelessWidget {
                                 ),
                                 child: Icon(Icons.lock_reset, color: theme.colorScheme.primary, size: 20),
                               ),
-                              title: const Text('Change Lock PIN', style: TextStyle(fontWeight: FontWeight.bold)),
-                              subtitle: const Text('Replace existing security entry code'),
+                              title: const AppLabel(
+                                text: 'Change Lock PIN',
+                                fontSize: AppFontSize.value14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              subtitle: const AppLabel(
+                                text: 'Replace existing security entry code',
+                                fontSize: AppFontSize.value12,
+                              ),
                               trailing: Icon(Icons.chevron_right, color: theme.colorScheme.primary),
                               onTap: () async {
                                 final pin = await _promptForNewPin(context);
@@ -272,12 +292,12 @@ class AppLockPage extends StatelessWidget {
                           Icon(Icons.info_outline, color: theme.colorScheme.onSurfaceVariant, size: 20),
                           const SizedBox(width: 14),
                           Expanded(
-                            child: Text(
-                              'Your PIN and biometric metrics are secure. Keys are strictly kept inside the hardware OS-backed Keystore / Keychain. Uninstalling or wiping application storage resets lock settings.',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                                height: 1.3,
-                              ),
+                            child: AppLabel(
+                              text:
+                                  'Your PIN and biometric metrics are secure. Keys are strictly kept inside the hardware OS-backed Keystore / Keychain. Uninstalling or wiping application storage resets lock settings.',
+                              fontSize: AppFontSize.value12,
+                              color: theme.colorScheme.onSurfaceVariant,
+                              lineHeight: 1.3,
                             ),
                           ),
                         ],
@@ -328,19 +348,18 @@ class AppLockPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Text(
-                  'Auto-lock Duration',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.onSurface,
-                  ),
+                AppLabel(
+                  text: 'Auto-lock Duration',
+                  fontSize: AppFontSize.value16,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  'Select the inactivity grace period before the app locks',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+                AppLabel(
+                  text:
+                      'Select the inactivity grace period before the app locks',
+                  fontSize: AppFontSize.value12,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(height: 16),
                 const Divider(),
@@ -393,7 +412,11 @@ class AppLockPage extends StatelessWidget {
       context: context,
       builder: (dialogCtx) => StatefulBuilder(
         builder: (dialogCtx, setDialog) => AlertDialog(
-          title: const Text('Set Secure PIN', style: TextStyle(fontWeight: FontWeight.bold)),
+          title: const AppLabel(
+            text: 'Set Secure PIN',
+            fontSize: AppFontSize.value18,
+            fontWeight: FontWeight.bold,
+          ),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.lg)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -436,13 +459,11 @@ class AppLockPage extends StatelessWidget {
                     color: theme.colorScheme.errorContainer,
                     borderRadius: BorderRadius.circular(AppRadii.sm),
                   ),
-                  child: Text(
-                    errorMsg!,
-                    style: TextStyle(
-                      color: theme.colorScheme.onErrorContainer,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                    ),
+                  child: AppLabel(
+                    text: errorMsg!,
+                    fontSize: AppFontSize.value12,
+                    color: theme.colorScheme.onErrorContainer,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
@@ -451,7 +472,11 @@ class AppLockPage extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogCtx),
-              child: const Text('Cancel'),
+              child: const AppLabel(
+                text: 'Cancel',
+                fontSize: AppFontSize.value14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             FilledButton(
               onPressed: () {
@@ -466,7 +491,11 @@ class AppLockPage extends StatelessWidget {
                   setDialog(() => errorMsg = f.fieldErrors.values.expand((e) => e).join(', '));
                 }
               },
-              child: const Text('Save PIN', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const AppLabel(
+                text: 'Save PIN',
+                fontSize: AppFontSize.value14,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
         ),
@@ -523,21 +552,19 @@ class _SecurityHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          Text(
-            isActive ? 'App Protection Enabled' : 'App Protection Disabled',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+          AppLabel(
+            text: isActive ? 'App Protection Enabled' : 'App Protection Disabled',
+            fontSize: AppFontSize.value16,
+            fontWeight: FontWeight.bold,
           ),
           const SizedBox(height: 6),
-          Text(
-            isActive
+          AppLabel(
+            text: isActive
                 ? 'Your device settings mandate a security checkpoint upon resume.'
                 : 'Configure a security PIN below to safeguard your ERP environment data.',
+            fontSize: AppFontSize.value12,
             textAlign: TextAlign.center,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            color: theme.colorScheme.onSurfaceVariant,
           ),
         ],
       ),
@@ -594,19 +621,19 @@ class _AutoLockOption extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface,
-                    ),
+                  AppLabel(
+                    text: title,
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.bold,
+                    color: isSelected
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurface,
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
+                  AppLabel(
+                    text: subtitle,
+                    fontSize: AppFontSize.value12,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ],
               ),

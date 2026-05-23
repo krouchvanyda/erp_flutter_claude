@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/config_router.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -213,14 +215,19 @@ class _Body extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          item.name,
-                          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900, letterSpacing: -0.5),
+                        AppLabel(
+                          text: item.name,
+                          fontSize: AppFontSize.value24,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          'SKU: ${item.sku}',
-                          style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.bold, fontFeatures: const [FontFeature.tabularFigures()]),
+                        AppLabel(
+                          text: 'SKU: ${item.sku}',
+                          fontSize: AppFontSize.value12,
+                          color: theme.colorScheme.outline,
+                          fontWeight: FontWeight.bold,
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ],
                     ),
@@ -236,18 +243,32 @@ class _Body extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('CURRENT STOCK', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                        AppLabel(
+                          text: 'CURRENT STOCK',
+                          fontSize: AppFontSize.value11,
+                          color: theme.colorScheme.outline,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.5,
+                        ),
                         const SizedBox(height: 4),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.baseline,
                           textBaseline: TextBaseline.alphabetic,
                           children: [
-                            Text(
-                              item.onHandQty.toString(),
-                              style: theme.textTheme.displaySmall?.copyWith(color: statusColor, fontWeight: FontWeight.w900, fontFeatures: const [FontFeature.tabularFigures()]),
+                            AppLabel(
+                              text: item.onHandQty.toString(),
+                              fontSize: AppFontSize.value36,
+                              color: statusColor,
+                              fontWeight: FontWeight.w900,
+                              fontFeatures: const [FontFeature.tabularFigures()],
                             ),
                             const SizedBox(width: 4),
-                            Text('units', style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.w600)),
+                            AppLabel(
+                              text: 'units',
+                              fontSize: AppFontSize.value12,
+                              color: theme.colorScheme.outline,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ],
                         ),
                       ],
@@ -262,9 +283,12 @@ class _Body extends StatelessWidget {
                         children: [
                           Icon(Icons.warning_amber_rounded, size: 16, color: theme.colorScheme.error),
                           const SizedBox(width: 4),
-                          Text(
-                            l10n.inventoryReorderBadge(item.reorderPoint.toString()).toUpperCase(),
-                            style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.error, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                          AppLabel(
+                            text: l10n.inventoryReorderBadge(item.reorderPoint.toString()).toUpperCase(),
+                            fontSize: AppFontSize.value11,
+                            color: theme.colorScheme.error,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.5,
                           ),
                         ],
                       ),
@@ -289,9 +313,12 @@ class _Body extends StatelessWidget {
         const SizedBox(height: 24),
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: 12),
-          child: Text(
-            l10n.inventoryDetailMovementsHeading.toUpperCase(),
-            style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+          child: AppLabel(
+            text: l10n.inventoryDetailMovementsHeading.toUpperCase(),
+            fontSize: AppFontSize.value11,
+            color: theme.colorScheme.primary,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.5,
           ),
         ),
         if (bundle.movements.isEmpty)
@@ -306,7 +333,11 @@ class _Body extends StatelessWidget {
               children: [
                 Icon(Icons.history_rounded, size: 48, color: theme.colorScheme.outline.withValues(alpha: 0.5)),
                 const SizedBox(height: 16),
-                Text(l10n.inventoryDetailMovementsEmpty, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                AppLabel(
+                  text: l10n.inventoryDetailMovementsEmpty,
+                  fontSize: AppFontSize.value14,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ],
             ),
           ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.05, end: 0)
@@ -353,11 +384,21 @@ class _MetaItem extends StatelessWidget {
           children: [
             Icon(icon, size: 14, color: theme.colorScheme.primary),
             const SizedBox(width: 6),
-            Text(label.toUpperCase(), style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.w900, letterSpacing: 0.5, fontSize: 9)),
+            AppLabel(
+              text: label.toUpperCase(),
+              fontSize: AppFontSize.value9,
+              color: theme.colorScheme.outline,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.5,
+            ),
           ],
         ),
         const SizedBox(height: 6),
-        Text(value, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
+        AppLabel(
+          text: value,
+          fontSize: AppFontSize.value14,
+          fontWeight: FontWeight.w700,
+        ),
       ],
     );
   }
@@ -390,14 +431,21 @@ class _MovementRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  _typeLabel(l10n, movement.type).toUpperCase(),
-                  style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w900, letterSpacing: 0.5, color: theme.colorScheme.onSurface),
+                AppLabel(
+                  text: _typeLabel(l10n, movement.type).toUpperCase(),
+                  fontSize: AppFontSize.value11,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.5,
+                  color: theme.colorScheme.onSurface,
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  movement.reference == null ? stampFmt.format(movement.postedAt.toLocal()) : '${stampFmt.format(movement.postedAt.toLocal())} • REF: ${movement.reference}',
-                  style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.w500),
+                AppLabel(
+                  text: movement.reference == null
+                      ? stampFmt.format(movement.postedAt.toLocal())
+                      : '${stampFmt.format(movement.postedAt.toLocal())} • REF: ${movement.reference}',
+                  fontSize: AppFontSize.value11,
+                  color: theme.colorScheme.outline,
+                  fontWeight: FontWeight.w500,
                 ),
               ],
             ),
@@ -406,18 +454,19 @@ class _MovementRow extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                signed,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: isPositive ? theme.colorScheme.primary : theme.colorScheme.error,
-                  fontWeight: FontWeight.w900,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
+              AppLabel(
+                text: signed,
+                fontSize: AppFontSize.value16,
+                color: isPositive ? theme.colorScheme.primary : theme.colorScheme.error,
+                fontWeight: FontWeight.w900,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
               const SizedBox(height: 2),
-              Text(
-                l10n.inventoryMovementRunningLabel(movement.runningQty.toString()).toUpperCase(),
-                style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.w700, fontSize: 9),
+              AppLabel(
+                text: l10n.inventoryMovementRunningLabel(movement.runningQty.toString()).toUpperCase(),
+                fontSize: AppFontSize.value9,
+                color: theme.colorScheme.outline,
+                fontWeight: FontWeight.w700,
               ),
             ],
           ),
@@ -487,7 +536,13 @@ class _CenteredMessage extends StatelessWidget {
               child: Icon(icon ?? Icons.inventory_2_rounded, size: 64, color: theme.colorScheme.outline.withValues(alpha: 0.5)),
             ),
             const SizedBox(height: 24),
-            Text(text, textAlign: TextAlign.center, style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500)),
+            AppLabel(
+              text: text,
+              fontSize: AppFontSize.value16,
+              textAlign: TextAlign.center,
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
           ],
         ),
       ),
@@ -515,12 +570,13 @@ class _ActionLabel extends StatelessWidget {
         Icon(icon, size: 18),
         const SizedBox(width: 6),
         Flexible(
-          child: Text(
-            text.toUpperCase(),
+          child: AppLabel(
+            text: text.toUpperCase(),
+            fontSize: AppFontSize.value11,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             softWrap: false,
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11),
+            fontWeight: FontWeight.w800,
           ),
         ),
       ],

@@ -4,6 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../core/error/failure.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -17,7 +19,6 @@ class SessionsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final repo = GetIt.I<DeviceSessionsRepository>();
-    final theme = Theme.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -68,7 +69,12 @@ class SessionsPage extends StatelessWidget {
                 }
                 final sessions = snap.data!;
                 if (sessions.isEmpty) {
-                  return const Center(child: Text('No active sessions.'));
+                  return const Center(
+                    child: AppLabel(
+                      text: 'No active sessions.',
+                      fontSize: AppFontSize.value14,
+                    ),
+                  );
                 }
                 return ListView.separated(
                   padding: EdgeInsets.only(
@@ -146,11 +152,10 @@ class _SessionCard extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(
-                            session.deviceLabel,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                          child: AppLabel(
+                            text: session.deviceLabel,
+                            fontSize: AppFontSize.value14,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                         if (session.isCurrent)
@@ -160,23 +165,20 @@ class _SessionCard extends StatelessWidget {
                               color: theme.colorScheme.primary.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(AppRadii.pill),
                             ),
-                            child: Text(
-                              'This device',
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: theme.colorScheme.primary,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 10,
-                              ),
+                            child: AppLabel(
+                              text: 'This device',
+                              fontSize: AppFontSize.value10,
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                       ],
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      session.platform,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                    AppLabel(
+                      text: session.platform,
+                      fontSize: AppFontSize.value12,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ],
                 ),
@@ -205,7 +207,11 @@ class _SessionCard extends StatelessWidget {
                   ),
                 ),
                 icon: const Icon(Icons.logout, size: 16),
-                label: const Text('Revoke Access', style: TextStyle(fontWeight: FontWeight.bold)),
+                label: const AppLabel(
+                  text: 'Revoke Access',
+                  fontSize: AppFontSize.value14,
+                  fontWeight: FontWeight.bold,
+                ),
                 onPressed: () => _revoke(context),
               ),
             ),
@@ -246,21 +252,19 @@ class _SessionCard extends StatelessWidget {
         children: [
           SizedBox(
             width: 100,
-            child: Text(
-              label,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.bold,
-              ),
+            child: AppLabel(
+              text: label,
+              fontSize: AppFontSize.value12,
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.bold,
             ),
           ),
           Expanded(
-            child: Text(
-              value,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface,
-                fontWeight: FontWeight.w600,
-              ),
+            child: AppLabel(
+              text: value,
+              fontSize: AppFontSize.value12,
+              color: theme.colorScheme.onSurface,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

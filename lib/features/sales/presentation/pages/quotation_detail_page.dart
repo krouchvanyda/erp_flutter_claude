@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../data/repositories/quotations_repository.dart';
 import '../../data/repositories/sales_orders_repository.dart';
@@ -98,7 +100,13 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.salesQuotationDetailTitle)),
+      appBar: AppBar(
+        title: AppLabel(
+          text: l10n.salesQuotationDetailTitle,
+          fontSize: AppFontSize.value20,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
       body: FutureBuilder<SalesQuotation?>(
         future: _future,
         builder: (context, snap) {
@@ -108,7 +116,11 @@ class _QuotationDetailPageState extends State<QuotationDetailPage> {
           final q = snap.data;
           if (q == null) {
             return Center(
-                child: Text(l10n.salesQuotationNotFound(widget.quotationId)));
+              child: AppLabel(
+                text: l10n.salesQuotationNotFound(widget.quotationId),
+                fontSize: AppFontSize.value14,
+              ),
+            );
           }
           return _Body(quotation: q);
         },
@@ -152,7 +164,11 @@ class _ActionBar extends StatelessWidget {
           child: FilledButton.icon(
             onPressed: () => onSetStatus(QuotationStatus.sent),
             icon: const Icon(Icons.send_outlined),
-            label: Text(l10n.salesQuotationSendAction),
+            label: AppLabel(
+              text: l10n.salesQuotationSendAction,
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         );
       case QuotationStatus.sent:
@@ -164,7 +180,11 @@ class _ActionBar extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: () => onSetStatus(QuotationStatus.rejected),
                   icon: const Icon(Icons.close),
-                  label: Text(l10n.salesQuotationRejectAction),
+                  label: AppLabel(
+                    text: l10n.salesQuotationRejectAction,
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.w600,
+                  ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: theme.colorScheme.error,
                   ),
@@ -175,7 +195,11 @@ class _ActionBar extends StatelessWidget {
                 child: FilledButton.icon(
                   onPressed: () => onSetStatus(QuotationStatus.accepted),
                   icon: const Icon(Icons.check),
-                  label: Text(l10n.salesQuotationAcceptAction),
+                  label: AppLabel(
+                    text: l10n.salesQuotationAcceptAction,
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -187,7 +211,11 @@ class _ActionBar extends StatelessWidget {
           child: FilledButton.icon(
             onPressed: onConvert,
             icon: const Icon(Icons.shopping_bag_outlined),
-            label: Text(l10n.salesQuotationConvertAction),
+            label: AppLabel(
+              text: l10n.salesQuotationConvertAction,
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         );
       case QuotationStatus.rejected:
@@ -219,15 +247,20 @@ class _Body extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(quotation.number,
-                          style: theme.textTheme.titleLarge),
+                      child: AppLabel(
+                        text: quotation.number,
+                        fontSize: AppFontSize.value22,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     QuotationStatusBadge(status: quotation.status),
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text(quotation.customerName,
-                    style: theme.textTheme.bodyMedium),
+                AppLabel(
+                  text: quotation.customerName,
+                  fontSize: AppFontSize.value14,
+                ),
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 16,
@@ -254,28 +287,38 @@ class _Body extends StatelessWidget {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Text(l10n.salesQuotationDetailLinesHeading,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    )),
+                child: AppLabel(
+                  text: l10n.salesQuotationDetailLinesHeading,
+                  fontSize: AppFontSize.value12,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
               for (final line in quotation.lineItems)
                 ListTile(
                   dense: true,
-                  title: Text(line.description),
-                  subtitle: line.sku == null ? null : Text(line.sku!),
+                  title: AppLabel(
+                    text: line.description,
+                    fontSize: AppFontSize.value14,
+                  ),
+                  subtitle: line.sku == null
+                      ? null
+                      : AppLabel(
+                          text: line.sku!,
+                          fontSize: AppFontSize.value12,
+                        ),
                   trailing: Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('${line.quantity} × ${line.unitPrice}',
-                          style: theme.textTheme.labelSmall),
-                      Text(
-                        line.lineTotal,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        ),
+                      AppLabel(
+                        text: '${line.quantity} × ${line.unitPrice}',
+                        fontSize: AppFontSize.value11,
+                      ),
+                      AppLabel(
+                        text: line.lineTotal,
+                        fontSize: AppFontSize.value14,
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ],
                   ),
@@ -286,13 +329,18 @@ class _Body extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   children: [
-                    Text(l10n.salesQuotationTotalLabel,
-                        style: theme.textTheme.titleSmall),
+                    AppLabel(
+                      text: l10n.salesQuotationTotalLabel,
+                      fontSize: AppFontSize.value14,
+                      fontWeight: FontWeight.w600,
+                    ),
                     const Spacer(),
-                    Text(quotation.totalAmount,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        )),
+                    AppLabel(
+                      text: quotation.totalAmount,
+                      fontSize: AppFontSize.value14,
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
                   ],
                 ),
               ),
@@ -307,12 +355,16 @@ class _Body extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(l10n.salesQuotationNotesHeading,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      )),
+                  AppLabel(
+                    text: l10n.salesQuotationNotesHeading,
+                    fontSize: AppFontSize.value12,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                   const SizedBox(height: 6),
-                  Text(quotation.notes!),
+                  AppLabel(
+                    text: quotation.notes!,
+                    fontSize: AppFontSize.value14,
+                  ),
                 ],
               ),
             ),
@@ -334,11 +386,15 @@ class _MetaChip extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            )),
-        Text(value, style: theme.textTheme.bodyMedium),
+        AppLabel(
+          text: label,
+          fontSize: AppFontSize.value11,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+        AppLabel(
+          text: value,
+          fontSize: AppFontSize.value14,
+        ),
       ],
     );
   }

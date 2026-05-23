@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -50,18 +52,16 @@ class OrgChartPage extends StatelessWidget {
                           color: theme.colorScheme.outline,
                         ),
                         const SizedBox(height: 16),
-                        Text(
-                          'No employees found',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        const AppLabel(
+                          text: 'No employees found',
+                          fontSize: AppFontSize.value16,
+                          fontWeight: FontWeight.bold,
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          'Add employees to see the hierarchy.',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
+                        AppLabel(
+                          text: 'Add employees to see the hierarchy.',
+                          fontSize: AppFontSize.value14,
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ],
                     ),
@@ -155,28 +155,25 @@ class _OrgNodeCard extends StatelessWidget {
           backgroundColor: isTopLevel
               ? theme.colorScheme.primary.withValues(alpha: 0.2)
               : theme.colorScheme.primary.withValues(alpha: 0.08),
-          child: Text(
-            node.employee.name.isEmpty ? '?' : node.employee.name[0],
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.primary,
-            ),
-          ),
-        ),
-        title: Text(
-          node.employee.name,
-          style: theme.textTheme.titleMedium?.copyWith(
+          child: AppLabel(
+            text: node.employee.name.isEmpty ? '?' : node.employee.name[0],
+            fontSize: AppFontSize.value14,
             fontWeight: FontWeight.bold,
-            color: isTopLevel ? theme.colorScheme.primary : theme.colorScheme.onSurface,
-            fontSize: isTopLevel ? 16 : 14.5,
+            color: theme.colorScheme.primary,
           ),
         ),
-        subtitle: Text(
-          '${node.employee.position} • ${node.employee.department}',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-            fontSize: 12.5,
-          ),
+        title: AppLabel(
+          text: node.employee.name,
+          fontSize: isTopLevel ? AppFontSize.value16 : AppFontSize.value14,
+          fontWeight: FontWeight.bold,
+          color: isTopLevel
+              ? theme.colorScheme.primary
+              : theme.colorScheme.onSurface,
+        ),
+        subtitle: AppLabel(
+          text: '${node.employee.position} • ${node.employee.department}',
+          fontSize: AppFontSize.value12,
+          color: theme.colorScheme.onSurfaceVariant,
         ),
         trailing: node.reports.isNotEmpty
             ? Tooltip(
@@ -196,12 +193,11 @@ class _OrgNodeCard extends StatelessWidget {
                         color: theme.colorScheme.onPrimaryContainer,
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        '${node.reports.length}',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onPrimaryContainer,
-                        ),
+                      AppLabel(
+                        text: '${node.reports.length}',
+                        fontSize: AppFontSize.value11,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onPrimaryContainer,
                       ),
                     ],
                   ),

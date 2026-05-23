@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -47,11 +49,10 @@ class PayslipDetailPage extends StatelessWidget {
                       children: [
                         Icon(Icons.warning_amber_rounded, size: 48, color: theme.colorScheme.error),
                         const SizedBox(height: 16),
-                        Text(
-                          'No payslip with id "$payslipId".',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        AppLabel(
+                          text: 'No payslip with id "$payslipId".',
+                          fontSize: AppFontSize.value16,
+                          fontWeight: FontWeight.bold,
                         ),
                       ],
                     ),
@@ -87,12 +88,11 @@ class PayslipDetailPage extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            slip.employeeName,
-                            style: theme.textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              color: theme.colorScheme.onSurface,
-                            ),
+                          AppLabel(
+                            text: slip.employeeName,
+                            fontSize: AppFontSize.value24,
+                            fontWeight: FontWeight.w900,
+                            color: theme.colorScheme.onSurface,
                           ),
                           const SizedBox(height: 4),
                           Row(
@@ -103,12 +103,12 @@ class PayslipDetailPage extends StatelessWidget {
                                 color: theme.colorScheme.outline,
                               ),
                               const SizedBox(width: 6),
-                              Text(
-                                '${_formatDate(slip.periodStart)}   ➔   ${_formatDate(slip.periodEnd)}',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                              AppLabel(
+                                text:
+                                    '${_formatDate(slip.periodStart)}   ➔   ${_formatDate(slip.periodEnd)}',
+                                fontSize: AppFontSize.value14,
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w500,
                               ),
                             ],
                           ),
@@ -138,21 +138,19 @@ class PayslipDetailPage extends StatelessWidget {
                             ),
                             child: Column(
                               children: [
-                                Text(
-                                  'NET PAYOUT',
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.white.withValues(alpha: 0.7),
-                                    letterSpacing: 1.0,
-                                  ),
+                                AppLabel(
+                                  text: 'NET PAYOUT',
+                                  fontSize: AppFontSize.value11,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white.withValues(alpha: 0.7),
+                                  letterSpacing: 1.0,
                                 ),
                                 const SizedBox(height: 4),
-                                Text(
-                                  formatAmount(buckets.netPay),
-                                  style: theme.textTheme.headlineLarge?.copyWith(
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.white,
-                                  ),
+                                AppLabel(
+                                  text: formatAmount(buckets.netPay),
+                                  fontSize: AppFontSize.value32,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
                                 ),
                               ],
                             ),
@@ -187,14 +185,12 @@ class PayslipDetailPage extends StatelessWidget {
 
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Text(
-                        'LINE ITEM BREAKDOWN',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                          color: theme.colorScheme.primary,
-                          letterSpacing: 0.5,
-                        ),
+                      child: AppLabel(
+                        text: 'LINE ITEM BREAKDOWN',
+                        fontSize: AppFontSize.value12,
+                        fontWeight: FontWeight.w900,
+                        color: theme.colorScheme.primary,
+                        letterSpacing: 0.5,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -226,13 +222,13 @@ class PayslipDetailPage extends StatelessWidget {
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: Text(
-                              'PDF preview and download will land with the next server integration.',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                fontStyle: FontStyle.italic,
-                                color: theme.colorScheme.primary,
-                                fontWeight: FontWeight.w500,
-                              ),
+                            child: AppLabel(
+                              text:
+                                  'PDF preview and download will land with the next server integration.',
+                              fontSize: AppFontSize.value14,
+                              fontStyle: FontStyle.italic,
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ],
@@ -267,21 +263,20 @@ class PayslipDetailPage extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              label,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: bold ? FontWeight.bold : FontWeight.w500,
-                color: bold ? theme.colorScheme.onSurface : theme.colorScheme.onSurfaceVariant,
-              ),
+            child: AppLabel(
+              text: label,
+              fontSize: AppFontSize.value14,
+              fontWeight: bold ? FontWeight.bold : FontWeight.w500,
+              color: bold
+                  ? theme.colorScheme.onSurface
+                  : theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          Text(
-            value,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: bold ? FontWeight.w900 : FontWeight.bold,
-              color: displayColor,
-              fontSize: bold ? 16 : 14,
-            ),
+          AppLabel(
+            text: value,
+            fontSize: bold ? AppFontSize.value16 : AppFontSize.value14,
+            fontWeight: bold ? FontWeight.w900 : FontWeight.bold,
+            color: displayColor,
           ),
         ],
       ),
@@ -334,13 +329,12 @@ class _KindGroup extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  kind.name.toUpperCase(),
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: theme.colorScheme.onSurface,
-                    letterSpacing: 0.5,
-                  ),
+                AppLabel(
+                  text: kind.name.toUpperCase(),
+                  fontSize: AppFontSize.value12,
+                  fontWeight: FontWeight.w900,
+                  color: theme.colorScheme.onSurface,
+                  letterSpacing: 0.5,
                 ),
               ],
             ),
@@ -351,22 +345,20 @@ class _KindGroup extends StatelessWidget {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        line.label,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
+                      child: AppLabel(
+                        text: line.label,
+                        fontSize: AppFontSize.value14,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                    Text(
-                      line.amount,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14.5,
-                        color: kind == PayslipLineKind.deduction || kind == PayslipLineKind.tax
-                            ? theme.colorScheme.error
-                            : theme.colorScheme.onSurface,
-                      ),
+                    AppLabel(
+                      text: line.amount,
+                      fontSize: AppFontSize.value14,
+                      fontWeight: FontWeight.bold,
+                      color: kind == PayslipLineKind.deduction ||
+                              kind == PayslipLineKind.tax
+                          ? theme.colorScheme.error
+                          : theme.colorScheme.onSurface,
                     ),
                   ],
                 ),

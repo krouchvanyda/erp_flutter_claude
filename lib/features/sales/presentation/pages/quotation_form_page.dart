@@ -6,6 +6,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -227,7 +229,13 @@ class _QuotationFormPageState extends State<QuotationFormPage> {
                                 ),
                                 items: [
                                   for (final c in customers)
-                                    DropdownMenuItem(value: c, child: Text(c.name)),
+                                    DropdownMenuItem(
+                                      value: c,
+                                      child: AppLabel(
+                                        text: c.name,
+                                        fontSize: AppFontSize.value14,
+                                      ),
+                                    ),
                                 ],
                                 onChanged: (c) => setState(() => _customer = c),
                               ),
@@ -242,11 +250,11 @@ class _QuotationFormPageState extends State<QuotationFormPage> {
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
                                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                   ),
-                                  child: Text(
-                                    '${_validUntil.year.toString().padLeft(4, '0')}-'
-                                    '${_validUntil.month.toString().padLeft(2, '0')}-'
-                                    '${_validUntil.day.toString().padLeft(2, '0')}',
-                                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                                  child: AppLabel(
+                                    text:
+                                        '${_validUntil.year.toString().padLeft(4, '0')}-${_validUntil.month.toString().padLeft(2, '0')}-${_validUntil.day.toString().padLeft(2, '0')}',
+                                    fontSize: AppFontSize.value14,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
@@ -260,17 +268,19 @@ class _QuotationFormPageState extends State<QuotationFormPage> {
                           Icon(Icons.format_list_bulleted_outlined, color: theme.colorScheme.primary, size: 20),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: Text(
-                              l10n.salesQuotationLinesHeading,
-                              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                            child: AppLabel(
+                              text: l10n.salesQuotationLinesHeading,
+                              fontSize: AppFontSize.value16,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                           TextButton.icon(
                             onPressed: _addLine,
                             icon: const Icon(Icons.add_circle_outline, size: 18),
-                            label: Text(
-                              l10n.salesQuotationAddLineAction,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            label: AppLabel(
+                              text: l10n.salesQuotationAddLineAction,
+                              fontSize: AppFontSize.value14,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
@@ -295,9 +305,10 @@ class _QuotationFormPageState extends State<QuotationFormPage> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
                         ),
                         icon: const Icon(Icons.save_outlined),
-                        label: Text(
-                          l10n.salesQuotationSaveAction,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        label: AppLabel(
+                          text: l10n.salesQuotationSaveAction,
+                          fontSize: AppFontSize.value16,
+                          fontWeight: FontWeight.bold,
                         ),
                       ).animate().fadeIn(delay: 150.ms),
                     ],
@@ -369,12 +380,11 @@ class _LineEditor extends StatelessWidget {
                     color: theme.colorScheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(AppRadii.sm),
                   ),
-                  child: Text(
-                    l10n.salesQuotationLineHeading(index + 1),
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: AppLabel(
+                    text: l10n.salesQuotationLineHeading(index + 1),
+                    fontSize: AppFontSize.value12,
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
                 const Spacer(),

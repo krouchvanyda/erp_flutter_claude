@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../layout/responsive_breakpoint.dart';
+import '../theme/app_font_size.dart';
+import '../theme/app_label.dart';
 import '../widgets/dynamic_status_bar.dart';
 import 'route_paths.dart';
 
@@ -238,12 +240,11 @@ class _BottomNavItem extends StatelessWidget {
                   padding: isSelected 
                       ? const EdgeInsets.only(left: 8) 
                       : EdgeInsets.zero,
-                  child: Text(
-                    label,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  child: AppLabel(
+                    text: label,
+                    fontSize: AppFontSize.value12,
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w600,
                     maxLines: 1,
                     overflow: TextOverflow.clip,
                   ),

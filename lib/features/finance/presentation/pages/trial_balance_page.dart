@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/theme/app_font_size.dart';
+import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
@@ -119,10 +121,27 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
                           rows: [
                             for (final r in pageRows)
                               DataRow(cells: [
-                                DataCell(Text(r.accountCode, style: const TextStyle(fontWeight: FontWeight.bold))),
+                                DataCell(AppLabel(
+                                  text: r.accountCode,
+                                  fontSize: AppFontSize.value14,
+                                  fontWeight: FontWeight.bold,
+                                  fontFeatures: const [FontFeature.tabularFigures()],
+                                )),
                                 DataCell(Text(r.accountName)),
-                                DataCell(Text(r.debit, style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.w600))),
-                                DataCell(Text(r.credit, style: TextStyle(color: theme.colorScheme.tertiary, fontWeight: FontWeight.w600))),
+                                DataCell(AppLabel(
+                                  text: r.debit,
+                                  fontSize: AppFontSize.value14,
+                                  color: theme.colorScheme.primary,
+                                  fontWeight: FontWeight.w600,
+                                  fontFeatures: const [FontFeature.tabularFigures()],
+                                )),
+                                DataCell(AppLabel(
+                                  text: r.credit,
+                                  fontSize: AppFontSize.value14,
+                                  color: theme.colorScheme.tertiary,
+                                  fontWeight: FontWeight.w600,
+                                  fontFeatures: const [FontFeature.tabularFigures()],
+                                )),
                               ]),
                           ],
                         ),
@@ -165,9 +184,11 @@ class _Pager extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            l10n.trialBalancePageOf(pageIndex + 1, totalPages).toUpperCase(),
-            style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.bold),
+          AppLabel(
+            text: l10n.trialBalancePageOf(pageIndex + 1, totalPages).toUpperCase(),
+            fontSize: AppFontSize.value11,
+            color: theme.colorScheme.outline,
+            fontWeight: FontWeight.bold,
           ),
           Row(
             children: [
@@ -217,13 +238,12 @@ class _CenteredMessage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            Text(
-              text, 
+            AppLabel(
+              text: text,
+              fontSize: AppFontSize.value16,
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
-              ),
             ),
           ],
         ),
