@@ -8,6 +8,7 @@ import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/employees_repository.dart';
 import '../../entities/employee.dart';
@@ -23,11 +24,12 @@ class OrgChartPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: 'Organization Chart',
+        title: l10n.hrOrgChartPageTitle,
         centerTitle: true,
       ),
       body: DynamicStatusBar(
@@ -52,14 +54,14 @@ class OrgChartPage extends StatelessWidget {
                           color: theme.colorScheme.outline,
                         ),
                         const SizedBox(height: 16),
-                        const AppLabel(
-                          text: 'No employees found',
+                        AppLabel(
+                          text: l10n.hrOrgChartEmptyTitle,
                           fontSize: AppFontSize.value16,
                           fontWeight: FontWeight.bold,
                         ),
                         const SizedBox(height: 8),
                         AppLabel(
-                          text: 'Add employees to see the hierarchy.',
+                          text: l10n.hrOrgChartEmptySubtitle,
                           fontSize: AppFontSize.value14,
                           color: theme.colorScheme.onSurfaceVariant,
                         ),

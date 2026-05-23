@@ -9,6 +9,7 @@ import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/tasks_repository.dart';
 import '../../entities/task.dart';
@@ -30,11 +31,12 @@ class _ProjectBoardPageState extends State<ProjectBoardPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: const DynamicAppBar(
-        title: 'Task Board',
+      appBar: DynamicAppBar(
+        title: l10n.projectBoardPageTitle,
         centerTitle: true,
       ),
       body: DynamicStatusBar(
@@ -109,8 +111,8 @@ class _ProjectBoardPageState extends State<ProjectBoardPage> {
           TaskFormPage(projectId: widget.projectId),
         ),
         icon: const Icon(Icons.add_task_rounded),
-        label: const AppLabel(
-          text: 'New Task',
+        label: AppLabel(
+          text: l10n.projectBoardNewTaskAction,
           fontSize: AppFontSize.value14,
           fontWeight: FontWeight.w600,
         ),
@@ -153,6 +155,7 @@ class _Column extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final headerColor = _columnColor(status);
 
     return DragTarget<ProjectTask>(
@@ -230,7 +233,7 @@ class _Column extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(vertical: 32),
                         child: Center(
                           child: AppLabel(
-                            text: 'Drop tasks here',
+                            text: l10n.projectBoardDropZoneHint,
                             fontSize: AppFontSize.value12,
                             color: theme.colorScheme.outline,
                             fontWeight: FontWeight.w500,

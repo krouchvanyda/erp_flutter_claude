@@ -8,6 +8,7 @@ import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/permission_catalog.dart';
 import '../../data/repositories/admin_repositories.dart';
@@ -46,10 +47,11 @@ class _MyRolesPageState extends State<MyRolesPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: const DynamicAppBar(
-        title: 'My Roles & Permissions',
+      appBar: DynamicAppBar(
+        title: l10n.myRolesPageTitle,
         centerTitle: true,
       ),
       body: DynamicStatusBar(
@@ -163,6 +165,7 @@ class _Body extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final granted = vm.grantedSorted.where(_matchesQuery).toList();
     final notGranted = vm.notGranted.where(_matchesQuery).toList();
 
@@ -185,7 +188,7 @@ class _Body extends StatelessWidget {
         ).animate().fadeIn(delay: 60.ms),
         const SizedBox(height: 20),
         _ListSectionHeader(
-          title: 'Granted',
+          title: l10n.myRolesGrantedTitle,
           count: granted.length,
           accent: Colors.green,
           icon: Icons.check_circle,
@@ -205,7 +208,7 @@ class _Body extends StatelessWidget {
           ),
         const SizedBox(height: 20),
         _ListSectionHeader(
-          title: 'Not Granted',
+          title: l10n.myRolesNotGrantedTitle,
           count: notGranted.length,
           accent: theme.colorScheme.outline,
           icon: Icons.lock_outline,
@@ -237,6 +240,7 @@ class _RoleSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final df = DateFormat('d MMM yyyy · HH:mm');
     return Container(
       padding: const EdgeInsets.all(18),
@@ -278,7 +282,7 @@ class _RoleSummaryCard extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: AppLabel(
-                  text: 'Your assigned roles',
+                  text: l10n.myRolesAssignedRolesLabel,
                   fontSize: AppFontSize.value14,
                   color: theme.colorScheme.onPrimary,
                   fontWeight: FontWeight.w900,
@@ -361,7 +365,7 @@ class _RoleSummaryCard extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               AppLabel(
-                text: 'Synced ${df.format(vm.lastSyncedAt)}',
+                text: l10n.myRolesSyncedAtLabel(df.format(vm.lastSyncedAt)),
                 fontSize: AppFontSize.value12,
                 color: theme.colorScheme.onPrimary.withValues(alpha: 0.85),
                 fontWeight: FontWeight.w600,
@@ -396,7 +400,7 @@ class _SearchBar extends StatelessWidget {
         controller: controller,
         onChanged: onChanged,
         decoration: InputDecoration(
-          hintText: 'Search permissions…',
+          hintText: AppLocalizations.of(context).myRolesSearchHint,
           prefixIcon: Icon(
             Icons.search,
             color: theme.colorScheme.onSurfaceVariant,

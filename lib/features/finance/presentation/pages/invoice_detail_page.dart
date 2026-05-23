@@ -517,7 +517,7 @@ class _AuditCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: AppLabel(
-                text: 'Reason: ${invoice.rejectedReason!}',
+                text: l10n.invoiceDetailRejectionReasonLabel(invoice.rejectedReason!),
                 fontSize: AppFontSize.value12,
                 color: theme.colorScheme.error,
                 fontWeight: FontWeight.bold,

@@ -1769,4 +1769,1253 @@ class AppLocalizationsEn extends AppLocalizations {
   String salesAnalyticsLeaderboardAttainmentLabel(String pct, String target) {
     return '$pct% of $target';
   }
+
+  @override
+  String get errorBoundaryGenericMessage => 'Something went wrong';
+
+  @override
+  String get commonEmailLabel => 'Email';
+
+  @override
+  String get loginWelcomeSubtitle =>
+      'Welcome back! Please sign in to continue.';
+
+  @override
+  String get loginPasswordLabel => 'Password';
+
+  @override
+  String get loginForgotPasswordAction => 'Forgot Password?';
+
+  @override
+  String get loginSignInAction => 'Sign In';
+
+  @override
+  String get loginOrSecureWith => 'OR SECURE WITH';
+
+  @override
+  String get loginUseBiometricsAction => 'Use Biometrics';
+
+  @override
+  String get loginValidatorEmailRequired => 'Please enter your email';
+
+  @override
+  String get loginValidatorEmailInvalid => 'Please enter a valid email address';
+
+  @override
+  String get loginValidatorPasswordRequired => 'Please enter your password';
+
+  @override
+  String get loginValidatorPasswordTooShort =>
+      'Password must be at least 6 characters';
+
+  @override
+  String get forgotPasswordTitle => 'Forgot Password?';
+
+  @override
+  String get forgotPasswordSubtitle =>
+      'Enter your email address and we will send you a link to reset your password.';
+
+  @override
+  String get forgotPasswordValidatorEmailRequired => 'Enter email';
+
+  @override
+  String get forgotPasswordSendResetAction => 'Send Reset Link';
+
+  @override
+  String get forgotPasswordSentTitle => 'Email Sent!';
+
+  @override
+  String get forgotPasswordSentSubtitle =>
+      'Please check your inbox for instructions to reset your password.';
+
+  @override
+  String get forgotPasswordBackToLoginAction => 'Back to Login';
+
+  @override
+  String get biometricPageTitle => 'Biometric Unlock';
+
+  @override
+  String get biometricAuthenticatingTitle => 'Authenticating...';
+
+  @override
+  String get biometricHoldFingerSubtitle =>
+      'Please hold your finger on the sensor';
+
+  @override
+  String get biometricUseFingerprintSubtitle =>
+      'Use your fingerprint or face to continue';
+
+  @override
+  String get biometricUnlockNowAction => 'Unlock Now';
+
+  @override
+  String get biometricUsePasswordInsteadAction => 'Use Password Instead';
+
+  @override
+  String get otpResendCodeAction => 'Resend Code (30s)';
+
+  @override
+  String get splashTagline => 'Enterprise Excellence';
+
+  @override
+  String get dashboardGreeting => 'Good Morning,';
+
+  @override
+  String get dashboardUserNamePlaceholder => 'Demo Approver';
+
+  @override
+  String get dashboardQuickAccessSection => 'Quick Access';
+
+  @override
+  String get dashboardSimulatePushAction => 'Simulate Push';
+
+  @override
+  String get dashboardRoutedPushAction => 'Routed Push';
+
+  @override
+  String get dashboardKpiRevenueLabel => 'Revenue (MTD)';
+
+  @override
+  String get dashboardKpiOpenInvoicesLabel => 'Open invoices';
+
+  @override
+  String get dashboardKpiAvgFulfilmentLabel => 'Avg fulfilment (d)';
+
+  @override
+  String get accountDetailTransactionsHeading => 'TRANSACTIONS';
+
+  @override
+  String get accountDetailCurrentBalanceLabel => 'CURRENT BALANCE';
+
+  @override
+  String invoiceDetailRejectionReasonLabel(String reason) {
+    return 'Reason: $reason';
+  }
+
+  @override
+  String invoiceListIssuedDateLabel(String date) {
+    return 'ISSUED: $date';
+  }
+
+  @override
+  String journalEntryListReferenceLabel(String reference, String date) {
+    return 'REF: $reference · $date';
+  }
+
+  @override
+  String commonSkuLabel(String sku) {
+    return 'SKU: $sku';
+  }
+
+  @override
+  String prListCreatedDateLabel(String date) {
+    return 'CREATED: $date';
+  }
+
+  @override
+  String prListDepartmentLabel(String dept) {
+    return 'DEPT: $dept';
+  }
+
+  @override
+  String inventorySkuLocationCompound(String sku, String loc) {
+    return 'SKU: $sku · LOC: $loc';
+  }
+
+  @override
+  String inventoryWarehouseLocationLabel(String wh, String loc) {
+    return 'WH: $wh · LOC: $loc';
+  }
+
+  @override
+  String get inventoryCurrentStockLabel => 'CURRENT STOCK';
+
+  @override
+  String get inventoryAvailableToTransferLabel => 'AVAILABLE TO TRANSFER';
+
+  @override
+  String get customerFormCompanyOrPersonNameLabel => 'Company or Person Name';
+
+  @override
+  String get customerFormIndustryOptionalLabel => 'Industry (Optional)';
+
+  @override
+  String get commonPhoneNumberLabel => 'Phone Number';
+
+  @override
+  String get commonPhoneLabel => 'Phone';
+
+  @override
+  String get customerFormBillingAddressLabel => 'Billing Address';
+
+  @override
+  String get customerFormNotesRemarksOptionalLabel =>
+      'Notes / Remarks (Optional)';
+
+  @override
+  String customerFormSaveFailureSnack(String error) {
+    return 'Failed to save customer: $error';
+  }
+
+  @override
+  String get customerListNewCustomerAction => 'New Customer';
+
+  @override
+  String get commonCancelAction => 'Cancel';
+
+  @override
+  String get commonApproveAction => 'Approve';
+
+  @override
+  String get commonRejectAction => 'Reject';
+
+  @override
+  String get hrEmployeeDetailNotFoundTitle => 'Employee not found';
+
+  @override
+  String hrEmployeeDetailNotFoundBody(String employeeId) {
+    return 'No employee with ID \"$employeeId\" exists.';
+  }
+
+  @override
+  String get hrEmployeeDetailOfficeLocationLabel => 'Office Location';
+
+  @override
+  String get hrEmployeeDetailDepartmentLabel => 'Department';
+
+  @override
+  String get hrEmployeeDetailPositionTitleLabel => 'Position Title';
+
+  @override
+  String get hrEmployeeDetailHireDateLabel => 'Hire Date';
+
+  @override
+  String get hrEmployeeDetailMonthlySalaryLabel => 'Monthly Salary';
+
+  @override
+  String get hrEmployeeDetailManagerIdLabel => 'Manager ID';
+
+  @override
+  String get hrEmployeeDetailTabAttendance => 'Attendance';
+
+  @override
+  String get hrEmployeeDetailTabPayslips => 'Payslips';
+
+  @override
+  String get hrEmployeeDetailTabLeaves => 'Leaves';
+
+  @override
+  String get hrEmployeeDetailTabOrgChart => 'Org Chart';
+
+  @override
+  String get hrEmployeeListOrgChartTooltip => 'Org chart';
+
+  @override
+  String get hrEmployeeListSortTooltip => 'Sort';
+
+  @override
+  String get hrEmployeeListSortNameAz => 'Name (A–Z)';
+
+  @override
+  String get hrEmployeeListSortRecentlyHired => 'Recently hired';
+
+  @override
+  String get hrEmployeeListSortDepartment => 'Department';
+
+  @override
+  String get hrEmployeeListErrorLoading => 'Error loading directory';
+
+  @override
+  String get hrEmployeeListSearchHint => 'Search name, email, position…';
+
+  @override
+  String get hrEmployeeListEmptyTitle => 'No matching employees';
+
+  @override
+  String get hrEmployeeListEmptySubtitle =>
+      'Try refining your search query or filters';
+
+  @override
+  String get hrLeaveApprovalRejectReasonTitle => 'Reason for rejection';
+
+  @override
+  String get hrLeaveApprovalConfirmRejectionAction => 'Confirm Rejection';
+
+  @override
+  String get hrLeaveApprovalConfirmApprovalTitle =>
+      'Approve this leave request?';
+
+  @override
+  String get hrLeaveApprovalNoteHint => 'Add a note (optional)';
+
+  @override
+  String get hrLeaveApprovalNoYearlyBalance => 'No yearly balance configured';
+
+  @override
+  String get hrLeaveApprovalFromLabel => 'From';
+
+  @override
+  String get hrLeaveApprovalToLabel => 'To';
+
+  @override
+  String hrLeaveApprovalSubmittedAt(String timestamp) {
+    return 'Submitted $timestamp';
+  }
+
+  @override
+  String get hrLeaveApprovalIfApprovedLabel => 'If Approved';
+
+  @override
+  String get hrLeaveApprovalIfRejectedLabel => 'If Rejected';
+
+  @override
+  String get hrLeaveRequestsTabAll => 'All';
+
+  @override
+  String get hrLeaveRequestsTabPending => 'Pending';
+
+  @override
+  String get hrLeaveRequestsTabMine => 'Mine';
+
+  @override
+  String get hrLeaveRequestsNewRequestTooltip => 'New request';
+
+  @override
+  String get hrLeaveRequestsEmptyTitle => 'No leave requests';
+
+  @override
+  String get hrLeaveRequestsEmptySubtitle =>
+      'There are no requests matching this filter.';
+
+  @override
+  String get hrLeaveRequestsApprovedSnack => 'Leave request approved.';
+
+  @override
+  String get hrLeaveRequestsRejectDialogTitle => 'Reject Leave Request';
+
+  @override
+  String get hrLeaveRequestsRejectedSnack => 'Leave request rejected.';
+
+  @override
+  String get hrLeaveRequestsRejectionReasonRequiredSnack =>
+      'A rejection reason is required.';
+
+  @override
+  String get hrLeaveFormSubmittedSnack =>
+      'Leave request submitted successfully.';
+
+  @override
+  String get hrLeaveFormPreferencesSection => 'LEAVE PREFERENCES';
+
+  @override
+  String get hrLeaveFormDurationSection => 'DURATION SELECTOR';
+
+  @override
+  String get hrLeaveFormAttachmentsSection => 'ATTACHMENTS & EVIDENCE';
+
+  @override
+  String get hrLeaveFormJustificationSection => 'JUSTIFICATION';
+
+  @override
+  String get hrLeaveFormSubmitAction => 'Submit Leave Request';
+
+  @override
+  String get hrLeaveFormUploadingAttachment => 'Uploading attachment...';
+
+  @override
+  String get hrLeaveFormReadyToUpload => 'Ready to upload';
+
+  @override
+  String get hrLeaveFormRemoveAttachmentTooltip => 'Remove';
+
+  @override
+  String get hrLeaveFormTapToUploadDocument => 'TAP TO UPLOAD DOCUMENT';
+
+  @override
+  String get hrLeaveFormUploadSupportedFormats =>
+      'Support PDF, PNG, JPG up to 10MB (Medical Cert, etc.)';
+
+  @override
+  String get hrLeaveBalanceHistoryTooltip => 'Leave History';
+
+  @override
+  String get hrLeaveBalanceRequestLeaveTooltip => 'Request Leave';
+
+  @override
+  String get hrLeaveBalanceNoEntitlements => 'No entitlements on file';
+
+  @override
+  String get hrLeaveBalanceRemainingLabel => 'Remaining';
+
+  @override
+  String get hrLeaveBalanceTakenLabel => 'Taken';
+
+  @override
+  String get hrLeaveBalanceTotalLabel => 'Total';
+
+  @override
+  String get hrLeaveBalanceBreakdownHeading => 'ENTITLEMENT BREAKDOWN';
+
+  @override
+  String get hrAttendanceRecentEntriesHeading => 'RECENT ENTRIES';
+
+  @override
+  String get hrAttendanceEmptyMessage => 'No attendance records yet';
+
+  @override
+  String get hrPayslipsEmpty => 'No payslips on file';
+
+  @override
+  String get hrPayslipsArchiveHeading => 'PAYSLIP ARCHIVE';
+
+  @override
+  String get hrPayslipsAggregateSummaryHeading => 'Aggregate Summary';
+
+  @override
+  String hrPayslipsNetPayLabel(String amount) {
+    return 'Net: $amount';
+  }
+
+  @override
+  String hrPayslipsGrossPayLabel(String amount) {
+    return 'Gross: $amount';
+  }
+
+  @override
+  String hrPayslipDetailNotFound(String payslipId) {
+    return 'No payslip with id \"$payslipId\".';
+  }
+
+  @override
+  String get hrPayslipDetailNetPayoutLabel => 'NET PAYOUT';
+
+  @override
+  String get hrPayslipDetailBreakdownHeading => 'LINE ITEM BREAKDOWN';
+
+  @override
+  String get hrOrgChartPageTitle => 'Organization Chart';
+
+  @override
+  String get hrOrgChartEmptyTitle => 'No employees found';
+
+  @override
+  String get hrOrgChartEmptySubtitle => 'Add employees to see the hierarchy.';
+
+  @override
+  String get hrAttendancePageTitle => 'Attendance Log';
+
+  @override
+  String get hrEmployeeDetailPageTitle => 'Employee Profile';
+
+  @override
+  String get hrEmployeeDetailSectionQuickActions => 'Quick Actions';
+
+  @override
+  String get hrEmployeeDetailSectionContact => 'Contact Information';
+
+  @override
+  String get hrEmployeeDetailSectionEmployment => 'Employment Details';
+
+  @override
+  String get hrEmployeeListPageTitle => 'Employee Directory';
+
+  @override
+  String get hrLeaveApprovalPageTitle => 'Leave Request';
+
+  @override
+  String get hrLeaveBalancePageTitle => 'Leave Balance';
+
+  @override
+  String get hrLeaveRequestsPageTitle => 'Leave Requests';
+
+  @override
+  String get hrLeaveFormPageTitle => 'New Leave Request';
+
+  @override
+  String get hrPayslipsPageTitle => 'Payslips History';
+
+  @override
+  String get hrPayslipDetailPageTitle => 'Payslip Detail';
+
+  @override
+  String get projectBoardPageTitle => 'Task Board';
+
+  @override
+  String get projectBoardNewTaskAction => 'New Task';
+
+  @override
+  String get projectBoardDropZoneHint => 'Drop tasks here';
+
+  @override
+  String get projectDetailPageTitle => 'Project Details';
+
+  @override
+  String get projectDetailOpenBoardTooltip => 'Open Board';
+
+  @override
+  String get projectDetailEditProjectTooltip => 'Edit Project';
+
+  @override
+  String projectDetailNotFound(String projectId) {
+    return 'No project with id \"$projectId\".';
+  }
+
+  @override
+  String projectDetailProjectIdLabel(String code) {
+    return 'Project ID: $code';
+  }
+
+  @override
+  String get projectDetailDescriptionHeading => 'DESCRIPTION';
+
+  @override
+  String get projectDetailTasksHeading => 'PROJECT TASKS';
+
+  @override
+  String get projectDetailNoTasks => 'No tasks assigned yet.';
+
+  @override
+  String get projectFormNameLabel => 'Project name';
+
+  @override
+  String get projectFormCodeLabel => 'Project code';
+
+  @override
+  String get projectFormDescriptionLabel => 'Description';
+
+  @override
+  String get projectFormStartLabel => 'Start';
+
+  @override
+  String get projectFormEndLabel => 'End';
+
+  @override
+  String projectFormDurationLabel(String duration) {
+    return 'Duration: $duration';
+  }
+
+  @override
+  String get projectFormBudgetLabel => 'Budget (formatted)';
+
+  @override
+  String get projectFormPickEmployeeAction => 'Pick an employee';
+
+  @override
+  String get projectListPageTitle => 'Projects';
+
+  @override
+  String get projectListTimesheetsTooltip => 'Timesheets';
+
+  @override
+  String get projectListSortTooltip => 'Sort';
+
+  @override
+  String get projectListSortNameAz => 'Name (A–Z)';
+
+  @override
+  String get projectListSortRecentlyStarted => 'Recently started';
+
+  @override
+  String get projectListSortDueSoonest => 'Due soonest';
+
+  @override
+  String projectListErrorMessage(String message) {
+    return 'Error: $message';
+  }
+
+  @override
+  String get projectListViewListAction => 'List View';
+
+  @override
+  String get projectListViewGanttAction => 'Gantt Chart';
+
+  @override
+  String get projectListSearchHint => 'Search name, code, owner…';
+
+  @override
+  String get projectListEmpty => 'No projects match.';
+
+  @override
+  String get projectListNewProjectAction => 'New Project';
+
+  @override
+  String projectListCodeOwnerSubtitle(String code, String owner) {
+    return 'Code: $code • Owner: $owner';
+  }
+
+  @override
+  String get taskAssignPageTitle => 'Assign Task';
+
+  @override
+  String get taskAssignErrorLoading => 'Could not load employees';
+
+  @override
+  String taskAssignSuccessSnack(String name) {
+    return 'Assigned to $name';
+  }
+
+  @override
+  String taskAssignFailureSnack(String error) {
+    return 'Assign failed: $error';
+  }
+
+  @override
+  String get taskAssignCurrentlyLabel => 'Currently: ';
+
+  @override
+  String get taskAssignSearchHint => 'Search by name, role or department…';
+
+  @override
+  String get taskAssignClearTooltip => 'Clear';
+
+  @override
+  String get taskAssignNoteHint =>
+      'Add a note to the assignee… (e.g. \"context in #project-alpha\")';
+
+  @override
+  String get taskAssignEmpty => 'No employees match that search.';
+
+  @override
+  String get taskDetailPageTitle => 'Task Details';
+
+  @override
+  String get taskDetailMoreTooltip => 'More';
+
+  @override
+  String get taskDetailEditTaskAction => 'Edit task';
+
+  @override
+  String get taskDetailReassignAction => 'Reassign';
+
+  @override
+  String taskDetailNotFound(String taskId) {
+    return 'No task with id \"$taskId\".';
+  }
+
+  @override
+  String get taskDetailDescriptionHeading => 'DESCRIPTION';
+
+  @override
+  String get taskDetailCommentsHeading => 'COMMENTS';
+
+  @override
+  String get taskDetailNoComments => 'No comments yet.';
+
+  @override
+  String get taskDetailAddCommentHint => 'Add a comment…';
+
+  @override
+  String get taskFormPageTitleEdit => 'Edit Task';
+
+  @override
+  String get taskFormPageTitleNew => 'New Task';
+
+  @override
+  String get taskFormTitleRequiredValidator => 'Title is required';
+
+  @override
+  String get taskFormTitleHint => 'What needs to be done?';
+
+  @override
+  String get taskFormDescriptionHint => 'Add a description…';
+
+  @override
+  String get taskFormStatusLabel => 'Status';
+
+  @override
+  String get taskFormPriorityLabel => 'Priority';
+
+  @override
+  String get taskFormAssigneeLabel => 'Assignee';
+
+  @override
+  String get taskFormUnassignedLabel => 'Unassigned';
+
+  @override
+  String get taskFormDueDateLabel => 'Due Date';
+
+  @override
+  String get taskFormClearDueDateTooltip => 'Clear due date';
+
+  @override
+  String get taskFormAddDueDateAction => 'Add due date';
+
+  @override
+  String get taskFormAssignToAction => 'Assign to…';
+
+  @override
+  String get taskFormUnassignAction => 'Unassign';
+
+  @override
+  String get timesheetsPageTitle => 'Timesheets';
+
+  @override
+  String get timesheetsUtilizationTooltip => 'Utilization';
+
+  @override
+  String get timesheetsTabMine => 'Mine';
+
+  @override
+  String get timesheetsTabApprovals => 'Approvals';
+
+  @override
+  String get timesheetsTabAll => 'All';
+
+  @override
+  String get timesheetsEmpty => 'No timesheet entries found.';
+
+  @override
+  String get timesheetsLogTimeAction => 'Log time';
+
+  @override
+  String timesheetsTaskLabel(String title) {
+    return 'Task: $title';
+  }
+
+  @override
+  String timesheetsRejectionNoteLabel(String note) {
+    return 'Rejection Note: $note';
+  }
+
+  @override
+  String get timesheetsSubmitForApprovalAction => 'Submit for Approval';
+
+  @override
+  String get timesheetsReopenAsDraftAction => 'Re-open as Draft';
+
+  @override
+  String get timesheetsApprovedSnack => 'Timesheet approved.';
+
+  @override
+  String get timesheetsRejectDialogTitle => 'Reject timesheet';
+
+  @override
+  String get timesheetsRejectedSnack => 'Timesheet rejected.';
+
+  @override
+  String get timesheetsReasonRequiredSnack => 'A reason is required.';
+
+  @override
+  String get timesheetsSubmittedSnack => 'Submitted for approval.';
+
+  @override
+  String get timesheetsReopenedSnack => 'Reopened as draft.';
+
+  @override
+  String get timesheetFormPageTitle => 'Log Time';
+
+  @override
+  String get timesheetFormSubmitToggleLabel =>
+      'Submit for approval immediately';
+
+  @override
+  String get timesheetFormSubmitToggleHint =>
+      'Otherwise it lands as a draft you can edit later.';
+
+  @override
+  String get timesheetFormSaveAction => 'Save Timesheet';
+
+  @override
+  String get utilizationPageTitle => 'Utilization';
+
+  @override
+  String get utilizationThisWeekToggle => 'This week';
+
+  @override
+  String get utilizationThisMonthToggle => 'This month';
+
+  @override
+  String get utilizationApprovedHoursHeading => 'APPROVED HOURS VS TARGET';
+
+  @override
+  String get utilizationNoHoursInWindow => 'No approved hours in this window.';
+
+  @override
+  String get ganttChartNoProjects => 'No projects in this window.';
+
+  @override
+  String get settingsHomePageTitle => 'Settings';
+
+  @override
+  String get settingsHomeAccountSection => 'Account';
+
+  @override
+  String get settingsHomeMyProfileTitle => 'My profile';
+
+  @override
+  String get settingsHomeMyProfileSubtitle => 'Contact, personal, security';
+
+  @override
+  String get settingsHomeMyRolesTitle => 'My roles & permissions';
+
+  @override
+  String get settingsHomeMyRolesSubtitle => 'What you can do in the app';
+
+  @override
+  String get settingsHomePreferencesSection => 'Preferences';
+
+  @override
+  String get settingsHomeAppearanceTitle => 'Appearance';
+
+  @override
+  String get settingsHomeAppearanceSubtitle => 'Light, dark, or follow system';
+
+  @override
+  String get settingsHomeLanguageTitle => 'Language';
+
+  @override
+  String get settingsHomeLanguageSubtitle => 'English / ខ្មែរ';
+
+  @override
+  String get settingsHomeNotificationsTitle => 'Notifications';
+
+  @override
+  String get settingsHomeNotificationsSubtitle => 'Push + email per category';
+
+  @override
+  String get settingsHomeSecuritySection => 'Security & Access';
+
+  @override
+  String get settingsHomeActiveDevicesTitle => 'Active devices';
+
+  @override
+  String get settingsHomeActiveDevicesSubtitle => 'Sessions you can revoke';
+
+  @override
+  String get settingsHomeAuditLogTitle => 'Audit log';
+
+  @override
+  String get settingsHomeAuditLogSubtitle => 'Who did what, when';
+
+  @override
+  String get settingsHomeAppLockTitle => 'App lock';
+
+  @override
+  String get settingsHomeAppLockSubtitle => 'PIN + biometric re-auth';
+
+  @override
+  String get settingsHomeAdminSection => 'Administration';
+
+  @override
+  String get settingsHomeUserMgmtTitle => 'User management';
+
+  @override
+  String get settingsHomeUserMgmtSubtitle => 'Invite, suspend, assign roles';
+
+  @override
+  String get settingsHomeRolesPermsTitle => 'Roles & permissions';
+
+  @override
+  String get settingsHomeRolesPermsSubtitle => 'Editor for custom roles';
+
+  @override
+  String get settingsHomeApiConfigTitle => 'API configuration';
+
+  @override
+  String get settingsHomeApiConfigSubtitle => 'Switch environment / tenant';
+
+  @override
+  String get settingsHomeSignOutAction => 'Sign out';
+
+  @override
+  String get appearancePageTitle => 'Appearance';
+
+  @override
+  String get appearanceChooseThemeHeading => 'CHOOSE THEME MODE';
+
+  @override
+  String get appearanceModeSystem => 'System default';
+
+  @override
+  String get appearanceModeLight => 'Light Mode';
+
+  @override
+  String get appearanceModeDark => 'Dark Mode';
+
+  @override
+  String get appearanceSubtitleSystem => 'Follow the OS appearance setting';
+
+  @override
+  String get appearanceSubtitleLight => 'Always use the light palette';
+
+  @override
+  String get appearanceSubtitleDark => 'Always use the dark palette';
+
+  @override
+  String get languagePageTitle => 'Language';
+
+  @override
+  String get languageSelectPreferredHeading => 'SELECT PREFERRED LANGUAGE';
+
+  @override
+  String get languageDemoLaunchNote =>
+      'Language change applies on next app launch in this demo build.';
+
+  @override
+  String get languageEnglishLabel => 'English';
+
+  @override
+  String get languageKhmerLabel => 'Khmer';
+
+  @override
+  String get languageEnglishNative => 'United Kingdom';
+
+  @override
+  String get languageKhmerNative => 'ភាសាខ្មែរ';
+
+  @override
+  String get notificationPrefsPageTitle => 'Notifications';
+
+  @override
+  String get notificationPrefsChannelsHeading => 'NOTIFICATION CHANNELS';
+
+  @override
+  String get notificationPrefsPushTitle => 'Push Notifications';
+
+  @override
+  String get notificationPrefsEmailTitle => 'Email Updates';
+
+  @override
+  String get sessionsPageTitle => 'Active devices';
+
+  @override
+  String get sessionsSignOutOthersSnack => 'Other devices signed out.';
+
+  @override
+  String get sessionsSignOutOthersAction => 'Sign out all other devices';
+
+  @override
+  String get sessionsEmpty => 'No active sessions.';
+
+  @override
+  String get sessionsThisDeviceLabel => 'This device';
+
+  @override
+  String get sessionsRevokeAccessAction => 'Revoke Access';
+
+  @override
+  String get sessionsLastActiveLabel => 'Last active';
+
+  @override
+  String get sessionsSignedInLabel => 'Signed in';
+
+  @override
+  String get sessionsLocationLabel => 'Location';
+
+  @override
+  String get sessionsIpAddressLabel => 'IP Address';
+
+  @override
+  String sessionsRevokedSnack(String device) {
+    return '$device signed out.';
+  }
+
+  @override
+  String get auditLogPageTitle => 'Audit Log';
+
+  @override
+  String get auditLogSearchHint => 'Search actor, target, or details…';
+
+  @override
+  String get auditLogEmpty => 'No log entries match your filters.';
+
+  @override
+  String get auditLogDetailDialogTitle => 'Audit Entry Details';
+
+  @override
+  String get auditLogAdditionalMetadataLabel => 'Additional Metadata:';
+
+  @override
+  String get auditLogCloseAction => 'Close';
+
+  @override
+  String get auditLogActorIdLabel => 'Actor ID';
+
+  @override
+  String get auditLogActorNameLabel => 'Actor Name';
+
+  @override
+  String get auditLogActionVerbLabel => 'Action Verb';
+
+  @override
+  String get auditLogTargetTypeLabel => 'Target Type';
+
+  @override
+  String get auditLogTargetIdLabel => 'Target ID';
+
+  @override
+  String get auditLogTargetLabelLabel => 'Target Label';
+
+  @override
+  String get auditLogTimestampLabel => 'Timestamp';
+
+  @override
+  String get appLockPageTitle => 'App Lock Settings';
+
+  @override
+  String get appLockDeviceProtectionHeading => 'DEVICE PROTECTION';
+
+  @override
+  String get appLockPinTitle => 'App Lock PIN';
+
+  @override
+  String get appLockPinSubtitle => 'Require a secure 4–8 digit PIN on resume';
+
+  @override
+  String get appLockBiometricTitle => 'Biometric Authentication';
+
+  @override
+  String get appLockBiometricSubtitle =>
+      'Use Face ID / Fingerprint instead of entering PIN';
+
+  @override
+  String get appLockTimeoutHeading => 'TIMEOUT CONFIGURATION';
+
+  @override
+  String get appLockAutoLockDurationTitle => 'Auto-lock Duration';
+
+  @override
+  String get appLockChangePinTitle => 'Change Lock PIN';
+
+  @override
+  String get appLockChangePinSubtitle => 'Replace existing security entry code';
+
+  @override
+  String get appLockPinUpdatedSnack => 'PIN updated successfully.';
+
+  @override
+  String get appLockSetSecurePinAction => 'Set Secure PIN';
+
+  @override
+  String get appLockSavePinAction => 'Save PIN';
+
+  @override
+  String get apiConfigPageTitle => 'API Configuration';
+
+  @override
+  String get apiConfigClustersHeading => 'AVAILABLE ENVIRONMENT CLUSTERS';
+
+  @override
+  String apiConfigSwitchedSnack(String name) {
+    return 'Switched environment cluster to \"$name\".';
+  }
+
+  @override
+  String get apiConfigAddClusterAction => 'Add Cluster';
+
+  @override
+  String get apiConfigAddCustomClusterTitle => 'Add Custom Cluster';
+
+  @override
+  String get apiConfigBuiltInBadge => 'BUILT-IN';
+
+  @override
+  String apiConfigDeletedSnack(String name) {
+    return 'Deleted environment cluster \"$name\".';
+  }
+
+  @override
+  String get apiConfigClusterNameLabel => 'Cluster Name';
+
+  @override
+  String get apiConfigClusterNameHint => 'e.g. Asia Pacific Staging';
+
+  @override
+  String get apiConfigBaseUrlLabel => 'Base URL';
+
+  @override
+  String get apiConfigBaseUrlHint => 'https://api-apac.tenant.example.com';
+
+  @override
+  String get roleEditorPageTitle => 'Roles & Permissions';
+
+  @override
+  String get roleEditorNewRoleAction => 'New Role';
+
+  @override
+  String get roleEditorCreateCustomRoleTitle => 'Create Custom Role';
+
+  @override
+  String get roleEditorRoleNameLabel => 'Role Name (e.g. Finance Admin)';
+
+  @override
+  String get roleEditorDescriptionLabel => 'Description';
+
+  @override
+  String get roleEditorAssignScopesHeading => 'Assign Permission Scopes';
+
+  @override
+  String get roleEditorCreateRoleAction => 'Create Role';
+
+  @override
+  String get roleEditorSystemBadge => 'SYSTEM';
+
+  @override
+  String get roleEditorPermissionScopesHeading => 'PERMISSION SCOPES';
+
+  @override
+  String get roleEditorDeleteRoleAction => 'Delete Role';
+
+  @override
+  String roleEditorUpdateFailedSnack(String error) {
+    return 'Cannot update permissions: $error';
+  }
+
+  @override
+  String roleEditorDeleteConfirmTitle(String name) {
+    return 'Delete \"$name\"?';
+  }
+
+  @override
+  String get roleEditorDeleteAction => 'Delete';
+
+  @override
+  String get userMgmtPageTitle => 'User Managements';
+
+  @override
+  String get userMgmtEmpty => 'No users match the selected status.';
+
+  @override
+  String get userMgmtInviteUserAction => 'Invite User';
+
+  @override
+  String get userMgmtInviteSheetTitle => 'Invite a new user';
+
+  @override
+  String get userMgmtAssignRolesLabel => 'Assign Roles';
+
+  @override
+  String userMgmtInvitedSnack(String email) {
+    return 'Invited $email';
+  }
+
+  @override
+  String get userMgmtSendInvitationAction => 'Send Invitation';
+
+  @override
+  String get userMgmtYouBadge => 'You';
+
+  @override
+  String get userMgmtActivateUserAction => 'Activate User';
+
+  @override
+  String get userMgmtSuspendUserAction => 'Suspend User';
+
+  @override
+  String userMgmtStatusSetSnack(String status) {
+    return 'Status set to $status.';
+  }
+
+  @override
+  String get myRolesPageTitle => 'My Roles & Permissions';
+
+  @override
+  String get myRolesGrantedTitle => 'Granted';
+
+  @override
+  String get myRolesNotGrantedTitle => 'Not Granted';
+
+  @override
+  String get myRolesAssignedRolesLabel => 'Your assigned roles';
+
+  @override
+  String myRolesSyncedAtLabel(String timestamp) {
+    return 'Synced $timestamp';
+  }
+
+  @override
+  String get myRolesSearchHint => 'Search permissions…';
+
+  @override
+  String get myProfilePageTitle => 'My Profile';
+
+  @override
+  String get myProfileUpdatedSnack => 'Profile updated.';
+
+  @override
+  String get myProfileEditAction => 'Edit';
+
+  @override
+  String get myProfileContactSection => 'Contact';
+
+  @override
+  String get myProfilePersonalSection => 'Personal';
+
+  @override
+  String get myProfileAccountSecuritySection => 'Account Security';
+
+  @override
+  String get myProfilePhotoLocalSheetSubtitle =>
+      'Photo only changes on this device.';
+
+  @override
+  String get myProfileImageReadErrorSnack =>
+      'Could not read the selected image.';
+
+  @override
+  String myProfileImagePickErrorSnack(String error) {
+    return 'Could not pick image: $error';
+  }
+
+  @override
+  String get myProfileEmployeeRowLabel => 'Employee';
+
+  @override
+  String get myProfileTenureRowLabel => 'Tenure';
+
+  @override
+  String get myProfileLastLoginRowLabel => 'Last login';
+
+  @override
+  String get myProfileEmployeeIdLabel => 'Employee ID';
+
+  @override
+  String get myProfileHireDateLabel => 'Hire date';
+
+  @override
+  String get myProfileBirthdateLabel => 'Birthdate';
+
+  @override
+  String get myProfileAddressLabel => 'Address';
+
+  @override
+  String get myProfileEmergencyContactLabel => 'Emergency contact';
+
+  @override
+  String get myProfileEmergencyPhoneLabel => 'Emergency phone';
+
+  @override
+  String get myProfileFullNameLabel => 'Full name';
+
+  @override
+  String get myProfileSaveChangesAction => 'Save changes';
+
+  @override
+  String get myProfileChangePasswordTitle => 'Change password';
+
+  @override
+  String get myProfileChangePasswordSubtitle => 'Requires current password';
+
+  @override
+  String get myProfileChangePinTitle => 'Change PIN';
+
+  @override
+  String get myProfileChangePinSubtitle => 'Set or replace your unlock PIN';
+
+  @override
+  String get myProfileEnableBiometricTitle => 'Enable biometric';
+
+  @override
+  String myProfileLastLoginAtLabel(String date) {
+    return 'Last login: $date';
+  }
+
+  @override
+  String get myProfileReAuthBadge => 'RE-AUTH';
+
+  @override
+  String get myProfileBiometricUnlockTitle => 'Biometric unlock';
+
+  @override
+  String get myProfileConfirmAction => 'Confirm';
 }

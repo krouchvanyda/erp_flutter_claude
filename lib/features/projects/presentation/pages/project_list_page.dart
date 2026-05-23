@@ -9,6 +9,7 @@ import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/projects_repository.dart';
 import '../../entities/project.dart';
@@ -49,44 +50,45 @@ class _ProjectListViewState extends State<_ProjectListView> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: 'Projects',
+        title: l10n.projectListPageTitle,
         centerTitle: true,
         actions: [
           IconButton(
-            tooltip: 'Timesheets',
+            tooltip: l10n.projectListTimesheetsTooltip,
             icon: const Icon(Icons.schedule),
             onPressed: () =>
                 ConfigRouter.pushPageAnimation(context, const TimesheetsListPage()),
           ),
           PopupMenuButton<ProjectSort>(
-            tooltip: 'Sort',
+            tooltip: l10n.projectListSortTooltip,
             icon: const Icon(Icons.sort),
             onSelected: (s) => context
                 .read<ProjectListBloc>()
                 .add(ProjectListSortChanged(s)),
-            itemBuilder: (_) => const [
+            itemBuilder: (_) => [
               PopupMenuItem(
                 value: ProjectSort.nameAsc,
                 child: AppLabel(
-                  text: 'Name (A–Z)',
+                  text: l10n.projectListSortNameAz,
                   fontSize: AppFontSize.value14,
                 ),
               ),
               PopupMenuItem(
                 value: ProjectSort.recentlyStarted,
                 child: AppLabel(
-                  text: 'Recently started',
+                  text: l10n.projectListSortRecentlyStarted,
                   fontSize: AppFontSize.value14,
                 ),
               ),
               PopupMenuItem(
                 value: ProjectSort.dueSoonest,
                 child: AppLabel(
-                  text: 'Due soonest',
+                  text: l10n.projectListSortDueSoonest,
                   fontSize: AppFontSize.value14,
                 ),
               ),
@@ -106,7 +108,7 @@ class _ProjectListViewState extends State<_ProjectListView> {
                 if (state.errorMessage != null) {
                   return Center(
                     child: AppLabel(
-                      text: 'Error: ${state.errorMessage}',
+                      text: l10n.projectListErrorMessage(state.errorMessage!),
                       fontSize: AppFontSize.value14,
                       color: theme.colorScheme.error,
                     ),
@@ -140,20 +142,20 @@ class _ProjectListViewState extends State<_ProjectListView> {
                               style: const ButtonStyle(
                                 visualDensity: VisualDensity.compact,
                               ),
-                              segments: const [
+                              segments: [
                                 ButtonSegment(
                                   value: _Mode.list,
-                                  icon: Icon(Icons.list_rounded),
+                                  icon: const Icon(Icons.list_rounded),
                                   label: AppLabel(
-                                    text: 'List View',
+                                    text: l10n.projectListViewListAction,
                                     fontSize: AppFontSize.value13,
                                   ),
                                 ),
                                 ButtonSegment(
                                   value: _Mode.gantt,
-                                  icon: Icon(Icons.analytics_outlined),
+                                  icon: const Icon(Icons.analytics_outlined),
                                   label: AppLabel(
-                                    text: 'Gantt Chart',
+                                    text: l10n.projectListViewGanttAction,
                                     fontSize: AppFontSize.value13,
                                   ),
                                 ),
@@ -168,7 +170,7 @@ class _ProjectListViewState extends State<_ProjectListView> {
                                   .read<ProjectListBloc>()
                                   .add(ProjectListSearchChanged(q)),
                               decoration: InputDecoration(
-                                hintText: 'Search name, code, owner…',
+                                hintText: l10n.projectListSearchHint,
                                 prefixIcon: const Icon(Icons.search_rounded),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(AppRadii.md),
@@ -223,10 +225,10 @@ class _ProjectListViewState extends State<_ProjectListView> {
                     ).animate().fadeIn(delay: 50.ms),
                     const SizedBox(height: 12),
                     if (state.visible.isEmpty)
-                      const Expanded(
+                      Expanded(
                         child: Center(
                           child: AppLabel(
-                            text: 'No projects match.',
+                            text: l10n.projectListEmpty,
                             fontSize: AppFontSize.value14,
                             fontWeight: FontWeight.w500,
                           ),
@@ -251,8 +253,8 @@ class _ProjectListViewState extends State<_ProjectListView> {
           const ProjectFormPage(),
         ),
         icon: const Icon(Icons.add_rounded),
-        label: const AppLabel(
-          text: 'New Project',
+        label: AppLabel(
+          text: l10n.projectListNewProjectAction,
           fontSize: AppFontSize.value14,
           fontWeight: FontWeight.w600,
         ),
@@ -301,6 +303,7 @@ class _ProjectRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final statusColor = _statusColor(project.status);
 
     return Container(
@@ -368,7 +371,7 @@ class _ProjectRow extends StatelessWidget {
                             ),
                             const SizedBox(height: 2),
                             AppLabel(
-                              text: 'Code: ${project.code} • Owner: ${project.ownerName}',
+                              text: l10n.projectListCodeOwnerSubtitle(project.code, project.ownerName),
                               fontSize: AppFontSize.value12,
                               color: theme.colorScheme.onSurfaceVariant,
                               fontWeight: FontWeight.w500,

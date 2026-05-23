@@ -10,6 +10,7 @@ import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../features/hr/data/repositories/employees_repository.dart';
 import '../../../../features/hr/entities/employee.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/tasks_repository.dart';
 import '../../entities/task.dart';
@@ -76,10 +77,11 @@ class _TaskFormPageState extends State<TaskFormPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: _isEdit ? 'Edit Task' : 'New Task',
+        title: _isEdit ? l10n.taskFormPageTitleEdit : l10n.taskFormPageTitleNew,
         centerTitle: true,
       ),
       body: DynamicStatusBar(
@@ -118,7 +120,7 @@ class _TaskFormPageState extends State<TaskFormPage> {
                           height: 1.2,
                         ),
                         decoration: InputDecoration(
-                          hintText: 'What needs to be done?',
+                          hintText: l10n.taskFormTitleHint,
                           hintStyle: theme.textTheme.headlineSmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant
                                 .withValues(alpha: 0.55),
@@ -129,7 +131,7 @@ class _TaskFormPageState extends State<TaskFormPage> {
                               horizontal: 12, vertical: 8),
                         ),
                         validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Title is required' : null,
+                            (v == null || v.trim().isEmpty) ? l10n.taskFormTitleRequiredValidator : null,
                       ).animate().fadeIn().slideY(begin: 0.04, end: 0),
                       const SizedBox(height: 16),
                       _SectionLabel('Details'),
@@ -168,7 +170,7 @@ class _TaskFormPageState extends State<TaskFormPage> {
                           maxLines: 5,
                           minLines: 4,
                           decoration: InputDecoration(
-                            hintText: 'Add a description…',
+                            hintText: l10n.taskFormDescriptionHint,
                             hintStyle: TextStyle(
                               color: theme.colorScheme.onSurfaceVariant
                                   .withValues(alpha: 0.6),
@@ -317,6 +319,7 @@ class _DetailsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -330,13 +333,13 @@ class _DetailsCard extends StatelessWidget {
         children: [
           _Row(
             icon: Icons.radio_button_checked_rounded,
-            label: 'Status',
+            label: l10n.taskFormStatusLabel,
             child: _StatusChips(current: status, onChanged: onStatusChanged),
           ),
           const _Spacer(),
           _Row(
             icon: Icons.flag_rounded,
-            label: 'Priority',
+            label: l10n.taskFormPriorityLabel,
             child: _PriorityChips(current: priority, onChanged: onPriorityChanged),
           ),
           const _Spacer(),
@@ -345,7 +348,7 @@ class _DetailsCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppRadii.sm),
             child: _Row(
               icon: Icons.person_rounded,
-              label: 'Assignee',
+              label: l10n.taskFormAssigneeLabel,
               child: Row(
                 children: [
                   if (assignee != null) ...[
@@ -370,7 +373,7 @@ class _DetailsCard extends StatelessWidget {
                     ),
                   ] else
                     AppLabel(
-                      text: 'Unassigned',
+                      text: l10n.taskFormUnassignedLabel,
                       fontSize: AppFontSize.value14,
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -384,7 +387,7 @@ class _DetailsCard extends StatelessWidget {
           const _Spacer(),
           _Row(
             icon: Icons.event_rounded,
-            label: 'Due Date',
+            label: l10n.taskFormDueDateLabel,
             child: Row(
               children: [
                 if (dueDate != null) ...[
@@ -400,14 +403,14 @@ class _DetailsCard extends StatelessWidget {
                   IconButton(
                     icon: const Icon(Icons.close_rounded, size: 18),
                     onPressed: onClearDue,
-                    tooltip: 'Clear due date',
+                    tooltip: l10n.taskFormClearDueDateTooltip,
                   ),
                 ] else
                   TextButton.icon(
                     onPressed: onDueDateTap,
                     icon: const Icon(Icons.add_rounded, size: 14),
-                    label: const AppLabel(
-                      text: 'Add due date',
+                    label: AppLabel(
+                      text: l10n.taskFormAddDueDateAction,
                       fontSize: AppFontSize.value13,
                       fontWeight: FontWeight.w600,
                     ),
@@ -641,6 +644,7 @@ Future<Employee?> _showEmployeeSheet(
     ),
     builder: (ctx) {
       final theme = Theme.of(ctx);
+      final l10n = AppLocalizations.of(ctx);
       return SafeArea(
         top: false,
         child: ConstrainedBox(
@@ -663,7 +667,7 @@ Future<Employee?> _showEmployeeSheet(
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: AppLabel(
-                    text: 'Assign to…',
+                    text: l10n.taskFormAssignToAction,
                     fontSize: AppFontSize.value22,
                     fontWeight: FontWeight.w700,
                   ),
@@ -673,8 +677,8 @@ Future<Employee?> _showEmployeeSheet(
               if (current != null)
                 ListTile(
                   leading: const Icon(Icons.person_off_outlined),
-                  title: const AppLabel(
-                    text: 'Unassign',
+                  title: AppLabel(
+                    text: l10n.taskFormUnassignAction,
                     fontSize: AppFontSize.value14,
                   ),
                   onTap: () {

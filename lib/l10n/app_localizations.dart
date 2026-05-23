@@ -3265,6 +3265,2328 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{pct}% of {target}'**
   String salesAnalyticsLeaderboardAttainmentLabel(String pct, String target);
+
+  /// Top-line message shown by ErrorBoundaryWidget when any widget's build() throws. Falls back to hardcoded English if Localizations are not in scope (which happens when the error fires before MaterialApp mounts).
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong'**
+  String get errorBoundaryGenericMessage;
+
+  /// Form field label for email address; shared across login + forgot-password.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get commonEmailLabel;
+
+  /// No description provided for @loginWelcomeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome back! Please sign in to continue.'**
+  String get loginWelcomeSubtitle;
+
+  /// No description provided for @loginPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get loginPasswordLabel;
+
+  /// No description provided for @loginForgotPasswordAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot Password?'**
+  String get loginForgotPasswordAction;
+
+  /// No description provided for @loginSignInAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign In'**
+  String get loginSignInAction;
+
+  /// No description provided for @loginOrSecureWith.
+  ///
+  /// In en, this message translates to:
+  /// **'OR SECURE WITH'**
+  String get loginOrSecureWith;
+
+  /// No description provided for @loginUseBiometricsAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Use Biometrics'**
+  String get loginUseBiometricsAction;
+
+  /// No description provided for @loginValidatorEmailRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter your email'**
+  String get loginValidatorEmailRequired;
+
+  /// No description provided for @loginValidatorEmailInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid email address'**
+  String get loginValidatorEmailInvalid;
+
+  /// No description provided for @loginValidatorPasswordRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter your password'**
+  String get loginValidatorPasswordRequired;
+
+  /// No description provided for @loginValidatorPasswordTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Password must be at least 6 characters'**
+  String get loginValidatorPasswordTooShort;
+
+  /// No description provided for @forgotPasswordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot Password?'**
+  String get forgotPasswordTitle;
+
+  /// No description provided for @forgotPasswordSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your email address and we will send you a link to reset your password.'**
+  String get forgotPasswordSubtitle;
+
+  /// No description provided for @forgotPasswordValidatorEmailRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter email'**
+  String get forgotPasswordValidatorEmailRequired;
+
+  /// No description provided for @forgotPasswordSendResetAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Send Reset Link'**
+  String get forgotPasswordSendResetAction;
+
+  /// No description provided for @forgotPasswordSentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Email Sent!'**
+  String get forgotPasswordSentTitle;
+
+  /// No description provided for @forgotPasswordSentSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Please check your inbox for instructions to reset your password.'**
+  String get forgotPasswordSentSubtitle;
+
+  /// No description provided for @forgotPasswordBackToLoginAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to Login'**
+  String get forgotPasswordBackToLoginAction;
+
+  /// No description provided for @biometricPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Biometric Unlock'**
+  String get biometricPageTitle;
+
+  /// No description provided for @biometricAuthenticatingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Authenticating...'**
+  String get biometricAuthenticatingTitle;
+
+  /// No description provided for @biometricHoldFingerSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Please hold your finger on the sensor'**
+  String get biometricHoldFingerSubtitle;
+
+  /// No description provided for @biometricUseFingerprintSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Use your fingerprint or face to continue'**
+  String get biometricUseFingerprintSubtitle;
+
+  /// No description provided for @biometricUnlockNowAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock Now'**
+  String get biometricUnlockNowAction;
+
+  /// No description provided for @biometricUsePasswordInsteadAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Use Password Instead'**
+  String get biometricUsePasswordInsteadAction;
+
+  /// No description provided for @otpResendCodeAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend Code (30s)'**
+  String get otpResendCodeAction;
+
+  /// No description provided for @splashTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'Enterprise Excellence'**
+  String get splashTagline;
+
+  /// No description provided for @dashboardGreeting.
+  ///
+  /// In en, this message translates to:
+  /// **'Good Morning,'**
+  String get dashboardGreeting;
+
+  /// Placeholder name shown on the dashboard hero until real auth user name is wired through. Should still translate so the demo reads natively in any locale.
+  ///
+  /// In en, this message translates to:
+  /// **'Demo Approver'**
+  String get dashboardUserNamePlaceholder;
+
+  /// No description provided for @dashboardQuickAccessSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick Access'**
+  String get dashboardQuickAccessSection;
+
+  /// No description provided for @dashboardSimulatePushAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Simulate Push'**
+  String get dashboardSimulatePushAction;
+
+  /// No description provided for @dashboardRoutedPushAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Routed Push'**
+  String get dashboardRoutedPushAction;
+
+  /// No description provided for @dashboardKpiRevenueLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Revenue (MTD)'**
+  String get dashboardKpiRevenueLabel;
+
+  /// No description provided for @dashboardKpiOpenInvoicesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Open invoices'**
+  String get dashboardKpiOpenInvoicesLabel;
+
+  /// No description provided for @dashboardKpiAvgFulfilmentLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Avg fulfilment (d)'**
+  String get dashboardKpiAvgFulfilmentLabel;
+
+  /// No description provided for @accountDetailTransactionsHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'TRANSACTIONS'**
+  String get accountDetailTransactionsHeading;
+
+  /// No description provided for @accountDetailCurrentBalanceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'CURRENT BALANCE'**
+  String get accountDetailCurrentBalanceLabel;
+
+  /// Banner on rejected invoice detail showing the rejection reason
+  ///
+  /// In en, this message translates to:
+  /// **'Reason: {reason}'**
+  String invoiceDetailRejectionReasonLabel(String reason);
+
+  /// Issued-date pill on invoice list tile
+  ///
+  /// In en, this message translates to:
+  /// **'ISSUED: {date}'**
+  String invoiceListIssuedDateLabel(String date);
+
+  /// Reference + posted-date subtitle on journal entry tile
+  ///
+  /// In en, this message translates to:
+  /// **'REF: {reference} · {date}'**
+  String journalEntryListReferenceLabel(String reference, String date);
+
+  /// Generic 'SKU: {value}' label shared across procurement (PO, PR, goods receipt) and inventory (item list, item detail, stock movement, stock transfer)
+  ///
+  /// In en, this message translates to:
+  /// **'SKU: {sku}'**
+  String commonSkuLabel(String sku);
+
+  /// Created-date pill on purchase request list tile
+  ///
+  /// In en, this message translates to:
+  /// **'CREATED: {date}'**
+  String prListCreatedDateLabel(String date);
+
+  /// Department/cost-center pill on purchase request list tile
+  ///
+  /// In en, this message translates to:
+  /// **'DEPT: {dept}'**
+  String prListDepartmentLabel(String dept);
+
+  /// Compound SKU + location label on cycle count rows
+  ///
+  /// In en, this message translates to:
+  /// **'SKU: {sku} · LOC: {loc}'**
+  String inventorySkuLocationCompound(String sku, String loc);
+
+  /// Warehouse + location label on item list tile
+  ///
+  /// In en, this message translates to:
+  /// **'WH: {wh} · LOC: {loc}'**
+  String inventoryWarehouseLocationLabel(String wh, String loc);
+
+  /// No description provided for @inventoryCurrentStockLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'CURRENT STOCK'**
+  String get inventoryCurrentStockLabel;
+
+  /// No description provided for @inventoryAvailableToTransferLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'AVAILABLE TO TRANSFER'**
+  String get inventoryAvailableToTransferLabel;
+
+  /// No description provided for @customerFormCompanyOrPersonNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Company or Person Name'**
+  String get customerFormCompanyOrPersonNameLabel;
+
+  /// No description provided for @customerFormIndustryOptionalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Industry (Optional)'**
+  String get customerFormIndustryOptionalLabel;
+
+  /// Generic phone-number form field label shared across customer form (sales) and employee detail (hr).
+  ///
+  /// In en, this message translates to:
+  /// **'Phone Number'**
+  String get commonPhoneNumberLabel;
+
+  /// Short 'Phone' label used in compact contact info rows (e.g. my-profile). Distinct from commonPhoneNumberLabel which is for form fields.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone'**
+  String get commonPhoneLabel;
+
+  /// No description provided for @customerFormBillingAddressLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Billing Address'**
+  String get customerFormBillingAddressLabel;
+
+  /// No description provided for @customerFormNotesRemarksOptionalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes / Remarks (Optional)'**
+  String get customerFormNotesRemarksOptionalLabel;
+
+  /// SnackBar shown when saving a customer throws
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to save customer: {error}'**
+  String customerFormSaveFailureSnack(String error);
+
+  /// No description provided for @customerListNewCustomerAction.
+  ///
+  /// In en, this message translates to:
+  /// **'New Customer'**
+  String get customerListNewCustomerAction;
+
+  /// No description provided for @commonCancelAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get commonCancelAction;
+
+  /// No description provided for @commonApproveAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get commonApproveAction;
+
+  /// No description provided for @commonRejectAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject'**
+  String get commonRejectAction;
+
+  /// No description provided for @hrEmployeeDetailNotFoundTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Employee not found'**
+  String get hrEmployeeDetailNotFoundTitle;
+
+  /// No description provided for @hrEmployeeDetailNotFoundBody.
+  ///
+  /// In en, this message translates to:
+  /// **'No employee with ID \"{employeeId}\" exists.'**
+  String hrEmployeeDetailNotFoundBody(String employeeId);
+
+  /// No description provided for @hrEmployeeDetailOfficeLocationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Office Location'**
+  String get hrEmployeeDetailOfficeLocationLabel;
+
+  /// No description provided for @hrEmployeeDetailDepartmentLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Department'**
+  String get hrEmployeeDetailDepartmentLabel;
+
+  /// No description provided for @hrEmployeeDetailPositionTitleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Position Title'**
+  String get hrEmployeeDetailPositionTitleLabel;
+
+  /// No description provided for @hrEmployeeDetailHireDateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Hire Date'**
+  String get hrEmployeeDetailHireDateLabel;
+
+  /// No description provided for @hrEmployeeDetailMonthlySalaryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly Salary'**
+  String get hrEmployeeDetailMonthlySalaryLabel;
+
+  /// No description provided for @hrEmployeeDetailManagerIdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Manager ID'**
+  String get hrEmployeeDetailManagerIdLabel;
+
+  /// No description provided for @hrEmployeeDetailTabAttendance.
+  ///
+  /// In en, this message translates to:
+  /// **'Attendance'**
+  String get hrEmployeeDetailTabAttendance;
+
+  /// No description provided for @hrEmployeeDetailTabPayslips.
+  ///
+  /// In en, this message translates to:
+  /// **'Payslips'**
+  String get hrEmployeeDetailTabPayslips;
+
+  /// No description provided for @hrEmployeeDetailTabLeaves.
+  ///
+  /// In en, this message translates to:
+  /// **'Leaves'**
+  String get hrEmployeeDetailTabLeaves;
+
+  /// No description provided for @hrEmployeeDetailTabOrgChart.
+  ///
+  /// In en, this message translates to:
+  /// **'Org Chart'**
+  String get hrEmployeeDetailTabOrgChart;
+
+  /// No description provided for @hrEmployeeListOrgChartTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Org chart'**
+  String get hrEmployeeListOrgChartTooltip;
+
+  /// No description provided for @hrEmployeeListSortTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort'**
+  String get hrEmployeeListSortTooltip;
+
+  /// No description provided for @hrEmployeeListSortNameAz.
+  ///
+  /// In en, this message translates to:
+  /// **'Name (A–Z)'**
+  String get hrEmployeeListSortNameAz;
+
+  /// No description provided for @hrEmployeeListSortRecentlyHired.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently hired'**
+  String get hrEmployeeListSortRecentlyHired;
+
+  /// No description provided for @hrEmployeeListSortDepartment.
+  ///
+  /// In en, this message translates to:
+  /// **'Department'**
+  String get hrEmployeeListSortDepartment;
+
+  /// No description provided for @hrEmployeeListErrorLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading directory'**
+  String get hrEmployeeListErrorLoading;
+
+  /// No description provided for @hrEmployeeListSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search name, email, position…'**
+  String get hrEmployeeListSearchHint;
+
+  /// No description provided for @hrEmployeeListEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching employees'**
+  String get hrEmployeeListEmptyTitle;
+
+  /// No description provided for @hrEmployeeListEmptySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Try refining your search query or filters'**
+  String get hrEmployeeListEmptySubtitle;
+
+  /// No description provided for @hrLeaveApprovalRejectReasonTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason for rejection'**
+  String get hrLeaveApprovalRejectReasonTitle;
+
+  /// No description provided for @hrLeaveApprovalConfirmRejectionAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Rejection'**
+  String get hrLeaveApprovalConfirmRejectionAction;
+
+  /// No description provided for @hrLeaveApprovalConfirmApprovalTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve this leave request?'**
+  String get hrLeaveApprovalConfirmApprovalTitle;
+
+  /// No description provided for @hrLeaveApprovalNoteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a note (optional)'**
+  String get hrLeaveApprovalNoteHint;
+
+  /// No description provided for @hrLeaveApprovalNoYearlyBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'No yearly balance configured'**
+  String get hrLeaveApprovalNoYearlyBalance;
+
+  /// No description provided for @hrLeaveApprovalFromLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get hrLeaveApprovalFromLabel;
+
+  /// No description provided for @hrLeaveApprovalToLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get hrLeaveApprovalToLabel;
+
+  /// No description provided for @hrLeaveApprovalSubmittedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitted {timestamp}'**
+  String hrLeaveApprovalSubmittedAt(String timestamp);
+
+  /// No description provided for @hrLeaveApprovalIfApprovedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'If Approved'**
+  String get hrLeaveApprovalIfApprovedLabel;
+
+  /// No description provided for @hrLeaveApprovalIfRejectedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'If Rejected'**
+  String get hrLeaveApprovalIfRejectedLabel;
+
+  /// No description provided for @hrLeaveRequestsTabAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get hrLeaveRequestsTabAll;
+
+  /// No description provided for @hrLeaveRequestsTabPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get hrLeaveRequestsTabPending;
+
+  /// No description provided for @hrLeaveRequestsTabMine.
+  ///
+  /// In en, this message translates to:
+  /// **'Mine'**
+  String get hrLeaveRequestsTabMine;
+
+  /// No description provided for @hrLeaveRequestsNewRequestTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'New request'**
+  String get hrLeaveRequestsNewRequestTooltip;
+
+  /// No description provided for @hrLeaveRequestsEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No leave requests'**
+  String get hrLeaveRequestsEmptyTitle;
+
+  /// No description provided for @hrLeaveRequestsEmptySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no requests matching this filter.'**
+  String get hrLeaveRequestsEmptySubtitle;
+
+  /// No description provided for @hrLeaveRequestsApprovedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave request approved.'**
+  String get hrLeaveRequestsApprovedSnack;
+
+  /// No description provided for @hrLeaveRequestsRejectDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject Leave Request'**
+  String get hrLeaveRequestsRejectDialogTitle;
+
+  /// No description provided for @hrLeaveRequestsRejectedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave request rejected.'**
+  String get hrLeaveRequestsRejectedSnack;
+
+  /// No description provided for @hrLeaveRequestsRejectionReasonRequiredSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'A rejection reason is required.'**
+  String get hrLeaveRequestsRejectionReasonRequiredSnack;
+
+  /// No description provided for @hrLeaveFormSubmittedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave request submitted successfully.'**
+  String get hrLeaveFormSubmittedSnack;
+
+  /// No description provided for @hrLeaveFormPreferencesSection.
+  ///
+  /// In en, this message translates to:
+  /// **'LEAVE PREFERENCES'**
+  String get hrLeaveFormPreferencesSection;
+
+  /// No description provided for @hrLeaveFormDurationSection.
+  ///
+  /// In en, this message translates to:
+  /// **'DURATION SELECTOR'**
+  String get hrLeaveFormDurationSection;
+
+  /// No description provided for @hrLeaveFormAttachmentsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'ATTACHMENTS & EVIDENCE'**
+  String get hrLeaveFormAttachmentsSection;
+
+  /// No description provided for @hrLeaveFormJustificationSection.
+  ///
+  /// In en, this message translates to:
+  /// **'JUSTIFICATION'**
+  String get hrLeaveFormJustificationSection;
+
+  /// No description provided for @hrLeaveFormSubmitAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit Leave Request'**
+  String get hrLeaveFormSubmitAction;
+
+  /// No description provided for @hrLeaveFormUploadingAttachment.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading attachment...'**
+  String get hrLeaveFormUploadingAttachment;
+
+  /// No description provided for @hrLeaveFormReadyToUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to upload'**
+  String get hrLeaveFormReadyToUpload;
+
+  /// No description provided for @hrLeaveFormRemoveAttachmentTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get hrLeaveFormRemoveAttachmentTooltip;
+
+  /// No description provided for @hrLeaveFormTapToUploadDocument.
+  ///
+  /// In en, this message translates to:
+  /// **'TAP TO UPLOAD DOCUMENT'**
+  String get hrLeaveFormTapToUploadDocument;
+
+  /// No description provided for @hrLeaveFormUploadSupportedFormats.
+  ///
+  /// In en, this message translates to:
+  /// **'Support PDF, PNG, JPG up to 10MB (Medical Cert, etc.)'**
+  String get hrLeaveFormUploadSupportedFormats;
+
+  /// No description provided for @hrLeaveBalanceHistoryTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave History'**
+  String get hrLeaveBalanceHistoryTooltip;
+
+  /// No description provided for @hrLeaveBalanceRequestLeaveTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Request Leave'**
+  String get hrLeaveBalanceRequestLeaveTooltip;
+
+  /// No description provided for @hrLeaveBalanceNoEntitlements.
+  ///
+  /// In en, this message translates to:
+  /// **'No entitlements on file'**
+  String get hrLeaveBalanceNoEntitlements;
+
+  /// No description provided for @hrLeaveBalanceRemainingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Remaining'**
+  String get hrLeaveBalanceRemainingLabel;
+
+  /// No description provided for @hrLeaveBalanceTakenLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Taken'**
+  String get hrLeaveBalanceTakenLabel;
+
+  /// No description provided for @hrLeaveBalanceTotalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get hrLeaveBalanceTotalLabel;
+
+  /// No description provided for @hrLeaveBalanceBreakdownHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'ENTITLEMENT BREAKDOWN'**
+  String get hrLeaveBalanceBreakdownHeading;
+
+  /// No description provided for @hrAttendanceRecentEntriesHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'RECENT ENTRIES'**
+  String get hrAttendanceRecentEntriesHeading;
+
+  /// No description provided for @hrAttendanceEmptyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'No attendance records yet'**
+  String get hrAttendanceEmptyMessage;
+
+  /// No description provided for @hrPayslipsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No payslips on file'**
+  String get hrPayslipsEmpty;
+
+  /// No description provided for @hrPayslipsArchiveHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'PAYSLIP ARCHIVE'**
+  String get hrPayslipsArchiveHeading;
+
+  /// No description provided for @hrPayslipsAggregateSummaryHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Aggregate Summary'**
+  String get hrPayslipsAggregateSummaryHeading;
+
+  /// No description provided for @hrPayslipsNetPayLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Net: {amount}'**
+  String hrPayslipsNetPayLabel(String amount);
+
+  /// No description provided for @hrPayslipsGrossPayLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Gross: {amount}'**
+  String hrPayslipsGrossPayLabel(String amount);
+
+  /// No description provided for @hrPayslipDetailNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No payslip with id \"{payslipId}\".'**
+  String hrPayslipDetailNotFound(String payslipId);
+
+  /// No description provided for @hrPayslipDetailNetPayoutLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'NET PAYOUT'**
+  String get hrPayslipDetailNetPayoutLabel;
+
+  /// No description provided for @hrPayslipDetailBreakdownHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'LINE ITEM BREAKDOWN'**
+  String get hrPayslipDetailBreakdownHeading;
+
+  /// No description provided for @hrOrgChartPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Organization Chart'**
+  String get hrOrgChartPageTitle;
+
+  /// No description provided for @hrOrgChartEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No employees found'**
+  String get hrOrgChartEmptyTitle;
+
+  /// No description provided for @hrOrgChartEmptySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add employees to see the hierarchy.'**
+  String get hrOrgChartEmptySubtitle;
+
+  /// No description provided for @hrAttendancePageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Attendance Log'**
+  String get hrAttendancePageTitle;
+
+  /// No description provided for @hrEmployeeDetailPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Employee Profile'**
+  String get hrEmployeeDetailPageTitle;
+
+  /// No description provided for @hrEmployeeDetailSectionQuickActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick Actions'**
+  String get hrEmployeeDetailSectionQuickActions;
+
+  /// No description provided for @hrEmployeeDetailSectionContact.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact Information'**
+  String get hrEmployeeDetailSectionContact;
+
+  /// No description provided for @hrEmployeeDetailSectionEmployment.
+  ///
+  /// In en, this message translates to:
+  /// **'Employment Details'**
+  String get hrEmployeeDetailSectionEmployment;
+
+  /// No description provided for @hrEmployeeListPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Employee Directory'**
+  String get hrEmployeeListPageTitle;
+
+  /// No description provided for @hrLeaveApprovalPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave Request'**
+  String get hrLeaveApprovalPageTitle;
+
+  /// No description provided for @hrLeaveBalancePageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave Balance'**
+  String get hrLeaveBalancePageTitle;
+
+  /// No description provided for @hrLeaveRequestsPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave Requests'**
+  String get hrLeaveRequestsPageTitle;
+
+  /// No description provided for @hrLeaveFormPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New Leave Request'**
+  String get hrLeaveFormPageTitle;
+
+  /// No description provided for @hrPayslipsPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Payslips History'**
+  String get hrPayslipsPageTitle;
+
+  /// No description provided for @hrPayslipDetailPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Payslip Detail'**
+  String get hrPayslipDetailPageTitle;
+
+  /// No description provided for @projectBoardPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Task Board'**
+  String get projectBoardPageTitle;
+
+  /// No description provided for @projectBoardNewTaskAction.
+  ///
+  /// In en, this message translates to:
+  /// **'New Task'**
+  String get projectBoardNewTaskAction;
+
+  /// No description provided for @projectBoardDropZoneHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop tasks here'**
+  String get projectBoardDropZoneHint;
+
+  /// No description provided for @projectDetailPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Project Details'**
+  String get projectDetailPageTitle;
+
+  /// No description provided for @projectDetailOpenBoardTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Board'**
+  String get projectDetailOpenBoardTooltip;
+
+  /// No description provided for @projectDetailEditProjectTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Project'**
+  String get projectDetailEditProjectTooltip;
+
+  /// No description provided for @projectDetailNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No project with id \"{projectId}\".'**
+  String projectDetailNotFound(String projectId);
+
+  /// No description provided for @projectDetailProjectIdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Project ID: {code}'**
+  String projectDetailProjectIdLabel(String code);
+
+  /// No description provided for @projectDetailDescriptionHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'DESCRIPTION'**
+  String get projectDetailDescriptionHeading;
+
+  /// No description provided for @projectDetailTasksHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'PROJECT TASKS'**
+  String get projectDetailTasksHeading;
+
+  /// No description provided for @projectDetailNoTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'No tasks assigned yet.'**
+  String get projectDetailNoTasks;
+
+  /// No description provided for @projectFormNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Project name'**
+  String get projectFormNameLabel;
+
+  /// No description provided for @projectFormCodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Project code'**
+  String get projectFormCodeLabel;
+
+  /// No description provided for @projectFormDescriptionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get projectFormDescriptionLabel;
+
+  /// No description provided for @projectFormStartLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get projectFormStartLabel;
+
+  /// No description provided for @projectFormEndLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'End'**
+  String get projectFormEndLabel;
+
+  /// No description provided for @projectFormDurationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration: {duration}'**
+  String projectFormDurationLabel(String duration);
+
+  /// No description provided for @projectFormBudgetLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget (formatted)'**
+  String get projectFormBudgetLabel;
+
+  /// No description provided for @projectFormPickEmployeeAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick an employee'**
+  String get projectFormPickEmployeeAction;
+
+  /// No description provided for @projectListPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Projects'**
+  String get projectListPageTitle;
+
+  /// No description provided for @projectListTimesheetsTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Timesheets'**
+  String get projectListTimesheetsTooltip;
+
+  /// No description provided for @projectListSortTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort'**
+  String get projectListSortTooltip;
+
+  /// No description provided for @projectListSortNameAz.
+  ///
+  /// In en, this message translates to:
+  /// **'Name (A–Z)'**
+  String get projectListSortNameAz;
+
+  /// No description provided for @projectListSortRecentlyStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently started'**
+  String get projectListSortRecentlyStarted;
+
+  /// No description provided for @projectListSortDueSoonest.
+  ///
+  /// In en, this message translates to:
+  /// **'Due soonest'**
+  String get projectListSortDueSoonest;
+
+  /// No description provided for @projectListErrorMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Error: {message}'**
+  String projectListErrorMessage(String message);
+
+  /// No description provided for @projectListViewListAction.
+  ///
+  /// In en, this message translates to:
+  /// **'List View'**
+  String get projectListViewListAction;
+
+  /// No description provided for @projectListViewGanttAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Gantt Chart'**
+  String get projectListViewGanttAction;
+
+  /// No description provided for @projectListSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search name, code, owner…'**
+  String get projectListSearchHint;
+
+  /// No description provided for @projectListEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No projects match.'**
+  String get projectListEmpty;
+
+  /// No description provided for @projectListNewProjectAction.
+  ///
+  /// In en, this message translates to:
+  /// **'New Project'**
+  String get projectListNewProjectAction;
+
+  /// No description provided for @projectListCodeOwnerSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Code: {code} • Owner: {owner}'**
+  String projectListCodeOwnerSubtitle(String code, String owner);
+
+  /// No description provided for @taskAssignPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign Task'**
+  String get taskAssignPageTitle;
+
+  /// No description provided for @taskAssignErrorLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load employees'**
+  String get taskAssignErrorLoading;
+
+  /// No description provided for @taskAssignSuccessSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned to {name}'**
+  String taskAssignSuccessSnack(String name);
+
+  /// No description provided for @taskAssignFailureSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign failed: {error}'**
+  String taskAssignFailureSnack(String error);
+
+  /// No description provided for @taskAssignCurrentlyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Currently: '**
+  String get taskAssignCurrentlyLabel;
+
+  /// No description provided for @taskAssignSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by name, role or department…'**
+  String get taskAssignSearchHint;
+
+  /// No description provided for @taskAssignClearTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get taskAssignClearTooltip;
+
+  /// No description provided for @taskAssignNoteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a note to the assignee… (e.g. \"context in #project-alpha\")'**
+  String get taskAssignNoteHint;
+
+  /// No description provided for @taskAssignEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No employees match that search.'**
+  String get taskAssignEmpty;
+
+  /// No description provided for @taskDetailPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Task Details'**
+  String get taskDetailPageTitle;
+
+  /// No description provided for @taskDetailMoreTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get taskDetailMoreTooltip;
+
+  /// No description provided for @taskDetailEditTaskAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit task'**
+  String get taskDetailEditTaskAction;
+
+  /// No description provided for @taskDetailReassignAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Reassign'**
+  String get taskDetailReassignAction;
+
+  /// No description provided for @taskDetailNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No task with id \"{taskId}\".'**
+  String taskDetailNotFound(String taskId);
+
+  /// No description provided for @taskDetailDescriptionHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'DESCRIPTION'**
+  String get taskDetailDescriptionHeading;
+
+  /// No description provided for @taskDetailCommentsHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'COMMENTS'**
+  String get taskDetailCommentsHeading;
+
+  /// No description provided for @taskDetailNoComments.
+  ///
+  /// In en, this message translates to:
+  /// **'No comments yet.'**
+  String get taskDetailNoComments;
+
+  /// No description provided for @taskDetailAddCommentHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a comment…'**
+  String get taskDetailAddCommentHint;
+
+  /// No description provided for @taskFormPageTitleEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Task'**
+  String get taskFormPageTitleEdit;
+
+  /// No description provided for @taskFormPageTitleNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New Task'**
+  String get taskFormPageTitleNew;
+
+  /// No description provided for @taskFormTitleRequiredValidator.
+  ///
+  /// In en, this message translates to:
+  /// **'Title is required'**
+  String get taskFormTitleRequiredValidator;
+
+  /// No description provided for @taskFormTitleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What needs to be done?'**
+  String get taskFormTitleHint;
+
+  /// No description provided for @taskFormDescriptionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a description…'**
+  String get taskFormDescriptionHint;
+
+  /// No description provided for @taskFormStatusLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get taskFormStatusLabel;
+
+  /// No description provided for @taskFormPriorityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Priority'**
+  String get taskFormPriorityLabel;
+
+  /// No description provided for @taskFormAssigneeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Assignee'**
+  String get taskFormAssigneeLabel;
+
+  /// No description provided for @taskFormUnassignedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Unassigned'**
+  String get taskFormUnassignedLabel;
+
+  /// No description provided for @taskFormDueDateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Due Date'**
+  String get taskFormDueDateLabel;
+
+  /// No description provided for @taskFormClearDueDateTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear due date'**
+  String get taskFormClearDueDateTooltip;
+
+  /// No description provided for @taskFormAddDueDateAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Add due date'**
+  String get taskFormAddDueDateAction;
+
+  /// No description provided for @taskFormAssignToAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign to…'**
+  String get taskFormAssignToAction;
+
+  /// No description provided for @taskFormUnassignAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Unassign'**
+  String get taskFormUnassignAction;
+
+  /// No description provided for @timesheetsPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Timesheets'**
+  String get timesheetsPageTitle;
+
+  /// No description provided for @timesheetsUtilizationTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Utilization'**
+  String get timesheetsUtilizationTooltip;
+
+  /// No description provided for @timesheetsTabMine.
+  ///
+  /// In en, this message translates to:
+  /// **'Mine'**
+  String get timesheetsTabMine;
+
+  /// No description provided for @timesheetsTabApprovals.
+  ///
+  /// In en, this message translates to:
+  /// **'Approvals'**
+  String get timesheetsTabApprovals;
+
+  /// No description provided for @timesheetsTabAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get timesheetsTabAll;
+
+  /// No description provided for @timesheetsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No timesheet entries found.'**
+  String get timesheetsEmpty;
+
+  /// No description provided for @timesheetsLogTimeAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Log time'**
+  String get timesheetsLogTimeAction;
+
+  /// No description provided for @timesheetsTaskLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Task: {title}'**
+  String timesheetsTaskLabel(String title);
+
+  /// No description provided for @timesheetsRejectionNoteLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejection Note: {note}'**
+  String timesheetsRejectionNoteLabel(String note);
+
+  /// No description provided for @timesheetsSubmitForApprovalAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit for Approval'**
+  String get timesheetsSubmitForApprovalAction;
+
+  /// No description provided for @timesheetsReopenAsDraftAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-open as Draft'**
+  String get timesheetsReopenAsDraftAction;
+
+  /// No description provided for @timesheetsApprovedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Timesheet approved.'**
+  String get timesheetsApprovedSnack;
+
+  /// No description provided for @timesheetsRejectDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject timesheet'**
+  String get timesheetsRejectDialogTitle;
+
+  /// No description provided for @timesheetsRejectedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Timesheet rejected.'**
+  String get timesheetsRejectedSnack;
+
+  /// No description provided for @timesheetsReasonRequiredSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'A reason is required.'**
+  String get timesheetsReasonRequiredSnack;
+
+  /// No description provided for @timesheetsSubmittedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitted for approval.'**
+  String get timesheetsSubmittedSnack;
+
+  /// No description provided for @timesheetsReopenedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopened as draft.'**
+  String get timesheetsReopenedSnack;
+
+  /// No description provided for @timesheetFormPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Log Time'**
+  String get timesheetFormPageTitle;
+
+  /// No description provided for @timesheetFormSubmitToggleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit for approval immediately'**
+  String get timesheetFormSubmitToggleLabel;
+
+  /// No description provided for @timesheetFormSubmitToggleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Otherwise it lands as a draft you can edit later.'**
+  String get timesheetFormSubmitToggleHint;
+
+  /// No description provided for @timesheetFormSaveAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Timesheet'**
+  String get timesheetFormSaveAction;
+
+  /// No description provided for @utilizationPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Utilization'**
+  String get utilizationPageTitle;
+
+  /// No description provided for @utilizationThisWeekToggle.
+  ///
+  /// In en, this message translates to:
+  /// **'This week'**
+  String get utilizationThisWeekToggle;
+
+  /// No description provided for @utilizationThisMonthToggle.
+  ///
+  /// In en, this message translates to:
+  /// **'This month'**
+  String get utilizationThisMonthToggle;
+
+  /// No description provided for @utilizationApprovedHoursHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'APPROVED HOURS VS TARGET'**
+  String get utilizationApprovedHoursHeading;
+
+  /// No description provided for @utilizationNoHoursInWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'No approved hours in this window.'**
+  String get utilizationNoHoursInWindow;
+
+  /// No description provided for @ganttChartNoProjects.
+  ///
+  /// In en, this message translates to:
+  /// **'No projects in this window.'**
+  String get ganttChartNoProjects;
+
+  /// No description provided for @settingsHomePageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settingsHomePageTitle;
+
+  /// No description provided for @settingsHomeAccountSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get settingsHomeAccountSection;
+
+  /// No description provided for @settingsHomeMyProfileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My profile'**
+  String get settingsHomeMyProfileTitle;
+
+  /// No description provided for @settingsHomeMyProfileSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact, personal, security'**
+  String get settingsHomeMyProfileSubtitle;
+
+  /// No description provided for @settingsHomeMyRolesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My roles & permissions'**
+  String get settingsHomeMyRolesTitle;
+
+  /// No description provided for @settingsHomeMyRolesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What you can do in the app'**
+  String get settingsHomeMyRolesSubtitle;
+
+  /// No description provided for @settingsHomePreferencesSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferences'**
+  String get settingsHomePreferencesSection;
+
+  /// No description provided for @settingsHomeAppearanceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Appearance'**
+  String get settingsHomeAppearanceTitle;
+
+  /// No description provided for @settingsHomeAppearanceSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Light, dark, or follow system'**
+  String get settingsHomeAppearanceSubtitle;
+
+  /// No description provided for @settingsHomeLanguageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get settingsHomeLanguageTitle;
+
+  /// No description provided for @settingsHomeLanguageSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'English / ខ្មែរ'**
+  String get settingsHomeLanguageSubtitle;
+
+  /// No description provided for @settingsHomeNotificationsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get settingsHomeNotificationsTitle;
+
+  /// No description provided for @settingsHomeNotificationsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Push + email per category'**
+  String get settingsHomeNotificationsSubtitle;
+
+  /// No description provided for @settingsHomeSecuritySection.
+  ///
+  /// In en, this message translates to:
+  /// **'Security & Access'**
+  String get settingsHomeSecuritySection;
+
+  /// No description provided for @settingsHomeActiveDevicesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Active devices'**
+  String get settingsHomeActiveDevicesTitle;
+
+  /// No description provided for @settingsHomeActiveDevicesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sessions you can revoke'**
+  String get settingsHomeActiveDevicesSubtitle;
+
+  /// No description provided for @settingsHomeAuditLogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Audit log'**
+  String get settingsHomeAuditLogTitle;
+
+  /// No description provided for @settingsHomeAuditLogSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Who did what, when'**
+  String get settingsHomeAuditLogSubtitle;
+
+  /// No description provided for @settingsHomeAppLockTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'App lock'**
+  String get settingsHomeAppLockTitle;
+
+  /// No description provided for @settingsHomeAppLockSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'PIN + biometric re-auth'**
+  String get settingsHomeAppLockSubtitle;
+
+  /// No description provided for @settingsHomeAdminSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Administration'**
+  String get settingsHomeAdminSection;
+
+  /// No description provided for @settingsHomeUserMgmtTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'User management'**
+  String get settingsHomeUserMgmtTitle;
+
+  /// No description provided for @settingsHomeUserMgmtSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite, suspend, assign roles'**
+  String get settingsHomeUserMgmtSubtitle;
+
+  /// No description provided for @settingsHomeRolesPermsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Roles & permissions'**
+  String get settingsHomeRolesPermsTitle;
+
+  /// No description provided for @settingsHomeRolesPermsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Editor for custom roles'**
+  String get settingsHomeRolesPermsSubtitle;
+
+  /// No description provided for @settingsHomeApiConfigTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'API configuration'**
+  String get settingsHomeApiConfigTitle;
+
+  /// No description provided for @settingsHomeApiConfigSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch environment / tenant'**
+  String get settingsHomeApiConfigSubtitle;
+
+  /// No description provided for @settingsHomeSignOutAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get settingsHomeSignOutAction;
+
+  /// No description provided for @appearancePageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Appearance'**
+  String get appearancePageTitle;
+
+  /// No description provided for @appearanceChooseThemeHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'CHOOSE THEME MODE'**
+  String get appearanceChooseThemeHeading;
+
+  /// No description provided for @appearanceModeSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System default'**
+  String get appearanceModeSystem;
+
+  /// No description provided for @appearanceModeLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light Mode'**
+  String get appearanceModeLight;
+
+  /// No description provided for @appearanceModeDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark Mode'**
+  String get appearanceModeDark;
+
+  /// No description provided for @appearanceSubtitleSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow the OS appearance setting'**
+  String get appearanceSubtitleSystem;
+
+  /// No description provided for @appearanceSubtitleLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Always use the light palette'**
+  String get appearanceSubtitleLight;
+
+  /// No description provided for @appearanceSubtitleDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Always use the dark palette'**
+  String get appearanceSubtitleDark;
+
+  /// No description provided for @languagePageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get languagePageTitle;
+
+  /// No description provided for @languageSelectPreferredHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'SELECT PREFERRED LANGUAGE'**
+  String get languageSelectPreferredHeading;
+
+  /// No description provided for @languageDemoLaunchNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Language change applies on next app launch in this demo build.'**
+  String get languageDemoLaunchNote;
+
+  /// No description provided for @languageEnglishLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'English'**
+  String get languageEnglishLabel;
+
+  /// No description provided for @languageKhmerLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Khmer'**
+  String get languageKhmerLabel;
+
+  /// No description provided for @languageEnglishNative.
+  ///
+  /// In en, this message translates to:
+  /// **'United Kingdom'**
+  String get languageEnglishNative;
+
+  /// No description provided for @languageKhmerNative.
+  ///
+  /// In en, this message translates to:
+  /// **'ភាសាខ្មែរ'**
+  String get languageKhmerNative;
+
+  /// No description provided for @notificationPrefsPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get notificationPrefsPageTitle;
+
+  /// No description provided for @notificationPrefsChannelsHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'NOTIFICATION CHANNELS'**
+  String get notificationPrefsChannelsHeading;
+
+  /// No description provided for @notificationPrefsPushTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Push Notifications'**
+  String get notificationPrefsPushTitle;
+
+  /// No description provided for @notificationPrefsEmailTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Email Updates'**
+  String get notificationPrefsEmailTitle;
+
+  /// No description provided for @sessionsPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Active devices'**
+  String get sessionsPageTitle;
+
+  /// No description provided for @sessionsSignOutOthersSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Other devices signed out.'**
+  String get sessionsSignOutOthersSnack;
+
+  /// No description provided for @sessionsSignOutOthersAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out all other devices'**
+  String get sessionsSignOutOthersAction;
+
+  /// No description provided for @sessionsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No active sessions.'**
+  String get sessionsEmpty;
+
+  /// No description provided for @sessionsThisDeviceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'This device'**
+  String get sessionsThisDeviceLabel;
+
+  /// No description provided for @sessionsRevokeAccessAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke Access'**
+  String get sessionsRevokeAccessAction;
+
+  /// No description provided for @sessionsLastActiveLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Last active'**
+  String get sessionsLastActiveLabel;
+
+  /// No description provided for @sessionsSignedInLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in'**
+  String get sessionsSignedInLabel;
+
+  /// No description provided for @sessionsLocationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Location'**
+  String get sessionsLocationLabel;
+
+  /// No description provided for @sessionsIpAddressLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'IP Address'**
+  String get sessionsIpAddressLabel;
+
+  /// No description provided for @sessionsRevokedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'{device} signed out.'**
+  String sessionsRevokedSnack(String device);
+
+  /// No description provided for @auditLogPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Audit Log'**
+  String get auditLogPageTitle;
+
+  /// No description provided for @auditLogSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search actor, target, or details…'**
+  String get auditLogSearchHint;
+
+  /// No description provided for @auditLogEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No log entries match your filters.'**
+  String get auditLogEmpty;
+
+  /// No description provided for @auditLogDetailDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Audit Entry Details'**
+  String get auditLogDetailDialogTitle;
+
+  /// No description provided for @auditLogAdditionalMetadataLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Additional Metadata:'**
+  String get auditLogAdditionalMetadataLabel;
+
+  /// No description provided for @auditLogCloseAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get auditLogCloseAction;
+
+  /// No description provided for @auditLogActorIdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Actor ID'**
+  String get auditLogActorIdLabel;
+
+  /// No description provided for @auditLogActorNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Actor Name'**
+  String get auditLogActorNameLabel;
+
+  /// No description provided for @auditLogActionVerbLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Action Verb'**
+  String get auditLogActionVerbLabel;
+
+  /// No description provided for @auditLogTargetTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Target Type'**
+  String get auditLogTargetTypeLabel;
+
+  /// No description provided for @auditLogTargetIdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Target ID'**
+  String get auditLogTargetIdLabel;
+
+  /// No description provided for @auditLogTargetLabelLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Target Label'**
+  String get auditLogTargetLabelLabel;
+
+  /// No description provided for @auditLogTimestampLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Timestamp'**
+  String get auditLogTimestampLabel;
+
+  /// No description provided for @appLockPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'App Lock Settings'**
+  String get appLockPageTitle;
+
+  /// No description provided for @appLockDeviceProtectionHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'DEVICE PROTECTION'**
+  String get appLockDeviceProtectionHeading;
+
+  /// No description provided for @appLockPinTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'App Lock PIN'**
+  String get appLockPinTitle;
+
+  /// No description provided for @appLockPinSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Require a secure 4–8 digit PIN on resume'**
+  String get appLockPinSubtitle;
+
+  /// No description provided for @appLockBiometricTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Biometric Authentication'**
+  String get appLockBiometricTitle;
+
+  /// No description provided for @appLockBiometricSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Use Face ID / Fingerprint instead of entering PIN'**
+  String get appLockBiometricSubtitle;
+
+  /// No description provided for @appLockTimeoutHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'TIMEOUT CONFIGURATION'**
+  String get appLockTimeoutHeading;
+
+  /// No description provided for @appLockAutoLockDurationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-lock Duration'**
+  String get appLockAutoLockDurationTitle;
+
+  /// No description provided for @appLockChangePinTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Lock PIN'**
+  String get appLockChangePinTitle;
+
+  /// No description provided for @appLockChangePinSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace existing security entry code'**
+  String get appLockChangePinSubtitle;
+
+  /// No description provided for @appLockPinUpdatedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'PIN updated successfully.'**
+  String get appLockPinUpdatedSnack;
+
+  /// No description provided for @appLockSetSecurePinAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Set Secure PIN'**
+  String get appLockSetSecurePinAction;
+
+  /// No description provided for @appLockSavePinAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Save PIN'**
+  String get appLockSavePinAction;
+
+  /// No description provided for @apiConfigPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'API Configuration'**
+  String get apiConfigPageTitle;
+
+  /// No description provided for @apiConfigClustersHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'AVAILABLE ENVIRONMENT CLUSTERS'**
+  String get apiConfigClustersHeading;
+
+  /// No description provided for @apiConfigSwitchedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Switched environment cluster to \"{name}\".'**
+  String apiConfigSwitchedSnack(String name);
+
+  /// No description provided for @apiConfigAddClusterAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Cluster'**
+  String get apiConfigAddClusterAction;
+
+  /// No description provided for @apiConfigAddCustomClusterTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Custom Cluster'**
+  String get apiConfigAddCustomClusterTitle;
+
+  /// No description provided for @apiConfigBuiltInBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'BUILT-IN'**
+  String get apiConfigBuiltInBadge;
+
+  /// No description provided for @apiConfigDeletedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted environment cluster \"{name}\".'**
+  String apiConfigDeletedSnack(String name);
+
+  /// No description provided for @apiConfigClusterNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cluster Name'**
+  String get apiConfigClusterNameLabel;
+
+  /// No description provided for @apiConfigClusterNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Asia Pacific Staging'**
+  String get apiConfigClusterNameHint;
+
+  /// No description provided for @apiConfigBaseUrlLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Base URL'**
+  String get apiConfigBaseUrlLabel;
+
+  /// No description provided for @apiConfigBaseUrlHint.
+  ///
+  /// In en, this message translates to:
+  /// **'https://api-apac.tenant.example.com'**
+  String get apiConfigBaseUrlHint;
+
+  /// No description provided for @roleEditorPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Roles & Permissions'**
+  String get roleEditorPageTitle;
+
+  /// No description provided for @roleEditorNewRoleAction.
+  ///
+  /// In en, this message translates to:
+  /// **'New Role'**
+  String get roleEditorNewRoleAction;
+
+  /// No description provided for @roleEditorCreateCustomRoleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Custom Role'**
+  String get roleEditorCreateCustomRoleTitle;
+
+  /// No description provided for @roleEditorRoleNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Role Name (e.g. Finance Admin)'**
+  String get roleEditorRoleNameLabel;
+
+  /// No description provided for @roleEditorDescriptionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get roleEditorDescriptionLabel;
+
+  /// No description provided for @roleEditorAssignScopesHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign Permission Scopes'**
+  String get roleEditorAssignScopesHeading;
+
+  /// No description provided for @roleEditorCreateRoleAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Role'**
+  String get roleEditorCreateRoleAction;
+
+  /// No description provided for @roleEditorSystemBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'SYSTEM'**
+  String get roleEditorSystemBadge;
+
+  /// No description provided for @roleEditorPermissionScopesHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'PERMISSION SCOPES'**
+  String get roleEditorPermissionScopesHeading;
+
+  /// No description provided for @roleEditorDeleteRoleAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Role'**
+  String get roleEditorDeleteRoleAction;
+
+  /// No description provided for @roleEditorUpdateFailedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot update permissions: {error}'**
+  String roleEditorUpdateFailedSnack(String error);
+
+  /// No description provided for @roleEditorDeleteConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete \"{name}\"?'**
+  String roleEditorDeleteConfirmTitle(String name);
+
+  /// No description provided for @roleEditorDeleteAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get roleEditorDeleteAction;
+
+  /// No description provided for @userMgmtPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'User Managements'**
+  String get userMgmtPageTitle;
+
+  /// No description provided for @userMgmtEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No users match the selected status.'**
+  String get userMgmtEmpty;
+
+  /// No description provided for @userMgmtInviteUserAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite User'**
+  String get userMgmtInviteUserAction;
+
+  /// No description provided for @userMgmtInviteSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite a new user'**
+  String get userMgmtInviteSheetTitle;
+
+  /// No description provided for @userMgmtAssignRolesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign Roles'**
+  String get userMgmtAssignRolesLabel;
+
+  /// No description provided for @userMgmtInvitedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Invited {email}'**
+  String userMgmtInvitedSnack(String email);
+
+  /// No description provided for @userMgmtSendInvitationAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Send Invitation'**
+  String get userMgmtSendInvitationAction;
+
+  /// No description provided for @userMgmtYouBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get userMgmtYouBadge;
+
+  /// No description provided for @userMgmtActivateUserAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Activate User'**
+  String get userMgmtActivateUserAction;
+
+  /// No description provided for @userMgmtSuspendUserAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Suspend User'**
+  String get userMgmtSuspendUserAction;
+
+  /// No description provided for @userMgmtStatusSetSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Status set to {status}.'**
+  String userMgmtStatusSetSnack(String status);
+
+  /// No description provided for @myRolesPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My Roles & Permissions'**
+  String get myRolesPageTitle;
+
+  /// No description provided for @myRolesGrantedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Granted'**
+  String get myRolesGrantedTitle;
+
+  /// No description provided for @myRolesNotGrantedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Not Granted'**
+  String get myRolesNotGrantedTitle;
+
+  /// No description provided for @myRolesAssignedRolesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Your assigned roles'**
+  String get myRolesAssignedRolesLabel;
+
+  /// No description provided for @myRolesSyncedAtLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Synced {timestamp}'**
+  String myRolesSyncedAtLabel(String timestamp);
+
+  /// No description provided for @myRolesSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search permissions…'**
+  String get myRolesSearchHint;
+
+  /// No description provided for @myProfilePageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My Profile'**
+  String get myProfilePageTitle;
+
+  /// No description provided for @myProfileUpdatedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile updated.'**
+  String get myProfileUpdatedSnack;
+
+  /// No description provided for @myProfileEditAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get myProfileEditAction;
+
+  /// No description provided for @myProfileContactSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact'**
+  String get myProfileContactSection;
+
+  /// No description provided for @myProfilePersonalSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal'**
+  String get myProfilePersonalSection;
+
+  /// No description provided for @myProfileAccountSecuritySection.
+  ///
+  /// In en, this message translates to:
+  /// **'Account Security'**
+  String get myProfileAccountSecuritySection;
+
+  /// No description provided for @myProfilePhotoLocalSheetSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo only changes on this device.'**
+  String get myProfilePhotoLocalSheetSubtitle;
+
+  /// No description provided for @myProfileImageReadErrorSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read the selected image.'**
+  String get myProfileImageReadErrorSnack;
+
+  /// No description provided for @myProfileImagePickErrorSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not pick image: {error}'**
+  String myProfileImagePickErrorSnack(String error);
+
+  /// No description provided for @myProfileEmployeeRowLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Employee'**
+  String get myProfileEmployeeRowLabel;
+
+  /// No description provided for @myProfileTenureRowLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Tenure'**
+  String get myProfileTenureRowLabel;
+
+  /// No description provided for @myProfileLastLoginRowLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Last login'**
+  String get myProfileLastLoginRowLabel;
+
+  /// No description provided for @myProfileEmployeeIdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Employee ID'**
+  String get myProfileEmployeeIdLabel;
+
+  /// No description provided for @myProfileHireDateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Hire date'**
+  String get myProfileHireDateLabel;
+
+  /// No description provided for @myProfileBirthdateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Birthdate'**
+  String get myProfileBirthdateLabel;
+
+  /// No description provided for @myProfileAddressLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Address'**
+  String get myProfileAddressLabel;
+
+  /// No description provided for @myProfileEmergencyContactLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Emergency contact'**
+  String get myProfileEmergencyContactLabel;
+
+  /// No description provided for @myProfileEmergencyPhoneLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Emergency phone'**
+  String get myProfileEmergencyPhoneLabel;
+
+  /// No description provided for @myProfileFullNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Full name'**
+  String get myProfileFullNameLabel;
+
+  /// No description provided for @myProfileSaveChangesAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Save changes'**
+  String get myProfileSaveChangesAction;
+
+  /// No description provided for @myProfileChangePasswordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Change password'**
+  String get myProfileChangePasswordTitle;
+
+  /// No description provided for @myProfileChangePasswordSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Requires current password'**
+  String get myProfileChangePasswordSubtitle;
+
+  /// No description provided for @myProfileChangePinTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Change PIN'**
+  String get myProfileChangePinTitle;
+
+  /// No description provided for @myProfileChangePinSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set or replace your unlock PIN'**
+  String get myProfileChangePinSubtitle;
+
+  /// No description provided for @myProfileEnableBiometricTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable biometric'**
+  String get myProfileEnableBiometricTitle;
+
+  /// No description provided for @myProfileLastLoginAtLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Last login: {date}'**
+  String myProfileLastLoginAtLabel(String date);
+
+  /// No description provided for @myProfileReAuthBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'RE-AUTH'**
+  String get myProfileReAuthBadge;
+
+  /// No description provided for @myProfileBiometricUnlockTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Biometric unlock'**
+  String get myProfileBiometricUnlockTitle;
+
+  /// No description provided for @myProfileConfirmAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get myProfileConfirmAction;
 }
 
 class _AppLocalizationsDelegate

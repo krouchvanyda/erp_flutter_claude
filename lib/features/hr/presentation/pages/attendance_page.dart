@@ -9,6 +9,7 @@ import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/attendance_repository.dart';
 import '../../entities/attendance_entry.dart';
@@ -64,12 +65,13 @@ class _AttendancePageState extends State<AttendancePage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final repo = GetIt.I<AttendanceRepository>();
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: 'Attendance Log',
+        title: l10n.hrAttendancePageTitle,
         centerTitle: true,
       ),
       body: DynamicStatusBar(
@@ -217,7 +219,7 @@ class _AttendancePageState extends State<AttendancePage> {
                       ),
                       const SizedBox(width: 8),
                       AppLabel(
-                        text: 'RECENT ENTRIES',
+                        text: l10n.hrAttendanceRecentEntriesHeading,
                         fontSize: AppFontSize.value12,
                         fontWeight: FontWeight.w900,
                         color: theme.colorScheme.primary,
@@ -249,7 +251,7 @@ class _AttendancePageState extends State<AttendancePage> {
                               ),
                               const SizedBox(height: 12),
                               AppLabel(
-                                text: 'No attendance records yet',
+                                text: l10n.hrAttendanceEmptyMessage,
                                 fontSize: AppFontSize.value14,
                                 fontWeight: FontWeight.w600,
                                 color: theme.colorScheme.outline,

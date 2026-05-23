@@ -10,6 +10,7 @@ import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/leave_requests_repository.dart';
 import '../../entities/leave_request.dart';
@@ -35,35 +36,36 @@ class _LeaveRequestsListPageState extends State<LeaveRequestsListPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: 'Leave Requests',
+        title: l10n.hrLeaveRequestsPageTitle,
         centerTitle: true,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(56),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: SegmentedButton<_Filter>(
-              segments: const [
+              segments: [
                 ButtonSegment(
                   value: _Filter.all,
-                  label: AppLabel(text: 'All', fontSize: AppFontSize.value13),
-                  icon: Icon(Icons.list_alt_rounded),
+                  label: AppLabel(text: l10n.hrLeaveRequestsTabAll, fontSize: AppFontSize.value13),
+                  icon: const Icon(Icons.list_alt_rounded),
                 ),
                 ButtonSegment(
                   value: _Filter.pending,
                   label: AppLabel(
-                    text: 'Pending',
+                    text: l10n.hrLeaveRequestsTabPending,
                     fontSize: AppFontSize.value13,
                   ),
-                  icon: Icon(Icons.hourglass_empty_rounded),
+                  icon: const Icon(Icons.hourglass_empty_rounded),
                 ),
                 ButtonSegment(
                   value: _Filter.mine,
-                  label: AppLabel(text: 'Mine', fontSize: AppFontSize.value13),
-                  icon: Icon(Icons.person_outline_rounded),
+                  label: AppLabel(text: l10n.hrLeaveRequestsTabMine, fontSize: AppFontSize.value13),
+                  icon: const Icon(Icons.person_outline_rounded),
                 ),
               ],
               selected: {_filter},
@@ -81,7 +83,7 @@ class _LeaveRequestsListPageState extends State<LeaveRequestsListPage> {
         ),
         actions: [
           IconButton(
-            tooltip: 'New request',
+            tooltip: l10n.hrLeaveRequestsNewRequestTooltip,
             icon: const Icon(Icons.add_circle_outline_rounded, size: 26),
             onPressed: () =>
                 ConfigRouter.pushPageAnimation(context, const LeaveRequestFormPage()),
@@ -119,14 +121,14 @@ class _LeaveRequestsListPageState extends State<LeaveRequestsListPage> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        const AppLabel(
-                          text: 'No leave requests',
+                        AppLabel(
+                          text: l10n.hrLeaveRequestsEmptyTitle,
                           fontSize: AppFontSize.value16,
                           fontWeight: FontWeight.bold,
                         ),
                         const SizedBox(height: 4),
                         AppLabel(
-                          text: 'There are no requests matching this filter.',
+                          text: l10n.hrLeaveRequestsEmptySubtitle,
                           fontSize: AppFontSize.value14,
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -184,6 +186,7 @@ class _RequestCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final canAct = request.status == LeaveRequestStatus.pending;
     final statusColor = _statusColor(theme, request.status);
 
@@ -308,8 +311,8 @@ class _RequestCard extends StatelessWidget {
                       ),
                     ),
                     icon: const Icon(Icons.close_rounded, size: 16),
-                    label: const AppLabel(
-                      text: 'Reject',
+                    label: AppLabel(
+                      text: l10n.commonRejectAction,
                       fontSize: AppFontSize.value13,
                       fontWeight: FontWeight.w600,
                     ),
@@ -325,8 +328,8 @@ class _RequestCard extends StatelessWidget {
                       ),
                     ),
                     icon: const Icon(Icons.check_rounded, size: 16),
-                    label: const AppLabel(
-                      text: 'Approve',
+                    label: AppLabel(
+                      text: l10n.commonApproveAction,
                       fontSize: AppFontSize.value13,
                       fontWeight: FontWeight.w600,
                     ),
@@ -343,6 +346,8 @@ class _RequestCard extends StatelessWidget {
   }
 
   Future<void> _approve(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
     final repo = GetIt.I<LeaveRequestsRepository>();
     try {
       final updated = repo.approve(
@@ -351,28 +356,26 @@ class _RequestCard extends StatelessWidget {
         now: DateTime.now(),
       );
       await repo.update(updated);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Leave request approved.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(l10n.hrLeaveRequestsApprovedSnack),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } on ConflictFailure catch (f) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(f.message ?? 'Cannot approve.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(f.message ?? 'Cannot approve.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
   Future<void> _reject(BuildContext context) async {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
     final reasonCtrl = TextEditingController();
     final reason = await showDialog<String>(
       context: context,
@@ -386,9 +389,9 @@ class _RequestCard extends StatelessWidget {
             const SizedBox(width: 8),
             // Wrapped in Expanded so the title can shrink/ellipsise on
             // narrow dialog widths instead of overflowing the Row.
-            const Expanded(
+            Expanded(
               child: AppLabel(
-                text: 'Reject Leave Request',
+                text: l10n.hrLeaveRequestsRejectDialogTitle,
                 fontSize: AppFontSize.value18,
                 fontWeight: FontWeight.bold,
               ),
@@ -400,7 +403,7 @@ class _RequestCard extends StatelessWidget {
           autofocus: true,
           maxLines: 3,
           decoration: InputDecoration(
-            labelText: 'Reason for rejection (required)',
+            labelText: l10n.hrLeaveApprovalRejectReasonTitle,
             alignLabelWithHint: true,
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppRadii.md),
@@ -421,7 +424,7 @@ class _RequestCard extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
             child: AppLabel(
-              text: 'Cancel',
+              text: l10n.commonCancelAction,
               fontSize: AppFontSize.value14,
               color: theme.colorScheme.outline,
               fontWeight: FontWeight.w600,
@@ -441,8 +444,8 @@ class _RequestCard extends StatelessWidget {
                 Navigator.pop(dialogCtx, reason);
               }
             },
-            child: const AppLabel(
-              text: 'Reject',
+            child: AppLabel(
+              text: l10n.commonRejectAction,
               fontSize: AppFontSize.value14,
               fontWeight: FontWeight.bold,
             ),
@@ -460,32 +463,26 @@ class _RequestCard extends StatelessWidget {
         reason: reason,
       );
       await repo.update(updated);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Leave request rejected.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(l10n.hrLeaveRequestsRejectedSnack),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } on ValidationFailure {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('A rejection reason is required.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(l10n.hrLeaveRequestsRejectionReasonRequiredSnack),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } on ConflictFailure catch (f) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(f.message ?? 'Cannot reject.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(f.message ?? 'Cannot reject.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 

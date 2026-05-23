@@ -8,6 +8,7 @@ import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/timesheets_repository.dart';
 import '../../entities/timesheet_entry.dart';
@@ -44,11 +45,12 @@ class _UtilizationPageState extends State<UtilizationPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: const DynamicAppBar(
-        title: 'Utilization',
+      appBar: DynamicAppBar(
+        title: l10n.utilizationPageTitle,
         centerTitle: true,
       ),
       body: DynamicStatusBar(
@@ -80,18 +82,18 @@ class _UtilizationPageState extends State<UtilizationPage> {
                       style: const ButtonStyle(
                         visualDensity: VisualDensity.compact,
                       ),
-                      segments: const [
+                      segments: [
                         ButtonSegment(
                           value: _Window.week,
                           label: AppLabel(
-                            text: 'This week',
+                            text: l10n.utilizationThisWeekToggle,
                             fontSize: AppFontSize.value13,
                           ),
                         ),
                         ButtonSegment(
                           value: _Window.month,
                           label: AppLabel(
-                            text: 'This month',
+                            text: l10n.utilizationThisMonthToggle,
                             fontSize: AppFontSize.value13,
                           ),
                         ),
@@ -121,7 +123,7 @@ class _UtilizationPageState extends State<UtilizationPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           AppLabel(
-                            text: 'APPROVED HOURS VS TARGET',
+                            text: l10n.utilizationApprovedHoursHeading,
                             fontSize: AppFontSize.value11,
                             color: theme.colorScheme.primary,
                             fontWeight: FontWeight.w900,
@@ -141,7 +143,7 @@ class _UtilizationPageState extends State<UtilizationPage> {
                               padding: const EdgeInsets.symmetric(vertical: 40),
                               child: Center(
                                 child: AppLabel(
-                                  text: 'No approved hours in this window.',
+                                  text: l10n.utilizationNoHoursInWindow,
                                   fontSize: AppFontSize.value14,
                                   color: theme.colorScheme.outline,
                                   fontWeight: FontWeight.w500,

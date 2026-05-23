@@ -60,8 +60,8 @@ class _ListView extends StatelessWidget {
           const CustomerFormPage(),
         ),
         icon: const Icon(Icons.add),
-        label: const AppLabel(
-          text: 'New Customer',
+        label: AppLabel(
+          text: l10n.customerListNewCustomerAction,
           fontSize: AppFontSize.value14,
           fontWeight: FontWeight.bold,
         ),

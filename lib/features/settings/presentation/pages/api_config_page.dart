@@ -9,6 +9,7 @@ import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../data/repositories/admin_repositories.dart';
 import '../../entities/api_environment.dart';
 
@@ -20,11 +21,12 @@ class ApiConfigPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final repo = GetIt.I<ApiEnvironmentsRepository>();
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: const DynamicAppBar(
-        title: 'API Configuration',
+      appBar: DynamicAppBar(
+        title: l10n.apiConfigPageTitle,
         centerTitle: true,
       ),
       body: DynamicStatusBar(
@@ -57,7 +59,7 @@ class ApiConfigPage extends StatelessWidget {
                             .slideY(begin: -0.05, end: 0),
                         const SizedBox(height: 16),
                         AppLabel(
-                          text: 'AVAILABLE ENVIRONMENT CLUSTERS',
+                          text: l10n.apiConfigClustersHeading,
                           fontSize: AppFontSize.value11,
                           color: theme.colorScheme.primary,
                           fontWeight: FontWeight.w900,
@@ -69,15 +71,14 @@ class ApiConfigPage extends StatelessWidget {
                             env: envs[idx],
                             currentId: currentId,
                             onTap: () async {
+                              final messenger = ScaffoldMessenger.of(context);
                               await repo.setCurrent(envs[idx].id);
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Switched environment cluster to "${envs[idx].name}".'),
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                              }
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(l10n.apiConfigSwitchedSnack(envs[idx].name)),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
                             },
                           )
                               .animate()
@@ -98,8 +99,8 @@ class ApiConfigPage extends StatelessWidget {
         onPressed: () => _showAddSheet(context),
         elevation: 4,
         icon: const Icon(Icons.add),
-        label: const AppLabel(
-          text: 'Add Cluster',
+        label: AppLabel(
+          text: l10n.apiConfigAddClusterAction,
           fontSize: AppFontSize.value14,
           fontWeight: FontWeight.bold,
         ),
@@ -112,6 +113,7 @@ class ApiConfigPage extends StatelessWidget {
     final urlCtrl = TextEditingController();
     Map<String, List<String>> errors = const {};
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     await showModalBottomSheet<void>(
       context: context,
@@ -142,8 +144,8 @@ class ApiConfigPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              const AppLabel(
-                text: 'Add Custom Cluster',
+              AppLabel(
+                text: l10n.apiConfigAddCustomClusterTitle,
                 fontSize: AppFontSize.value16,
                 fontWeight: FontWeight.bold,
               ),
@@ -151,8 +153,8 @@ class ApiConfigPage extends StatelessWidget {
               TextField(
                 controller: nameCtrl,
                 decoration: InputDecoration(
-                  labelText: 'Cluster Name',
-                  hintText: 'e.g. Asia Pacific Staging',
+                  labelText: l10n.apiConfigClusterNameLabel,
+                  hintText: l10n.apiConfigClusterNameHint,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
                   errorText: errors['name']?.firstOrNull,
                 ),
@@ -161,8 +163,8 @@ class ApiConfigPage extends StatelessWidget {
               TextField(
                 controller: urlCtrl,
                 decoration: InputDecoration(
-                  labelText: 'Base URL',
-                  hintText: 'https://api-apac.tenant.example.com',
+                  labelText: l10n.apiConfigBaseUrlLabel,
+                  hintText: l10n.apiConfigBaseUrlHint,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
                   errorText: errors['baseUrl']?.firstOrNull,
                 ),
@@ -182,8 +184,8 @@ class ApiConfigPage extends StatelessWidget {
                       setSheet(() => errors = f.fieldErrors);
                     }
                   },
-                  child: const AppLabel(
-                    text: 'Add Cluster',
+                  child: AppLabel(
+                    text: l10n.apiConfigAddClusterAction,
                     fontSize: AppFontSize.value14,
                     fontWeight: FontWeight.bold,
                   ),

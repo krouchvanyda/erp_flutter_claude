@@ -8,6 +8,7 @@ import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../data/repositories/security_repositories.dart';
 import '../../entities/audit_log_entry.dart';
 
@@ -27,11 +28,12 @@ class _AuditLogPageState extends State<AuditLogPage> {
   Widget build(BuildContext context) {
     final repo = GetIt.I<AuditLogRepository>();
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: const DynamicAppBar(
-        title: 'Audit Log',
+      appBar: DynamicAppBar(
+        title: l10n.auditLogPageTitle,
         centerTitle: true,
       ),
       body: DynamicStatusBar(
@@ -76,7 +78,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
                         child: TextField(
                           onChanged: (q) => setState(() => _searchQuery = q),
                           decoration: InputDecoration(
-                            hintText: 'Search actor, target, or details…',
+                            hintText: l10n.auditLogSearchHint,
                             prefixIcon: Icon(Icons.search, color: theme.colorScheme.primary),
                             border: InputBorder.none,
                             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -130,10 +132,10 @@ class _AuditLogPageState extends State<AuditLogPage> {
                     const SizedBox(height: 8),
                     // List view
                     if (visible.isEmpty)
-                      const Expanded(
+                      Expanded(
                         child: Center(
                           child: AppLabel(
-                            text: 'No log entries match your filters.',
+                            text: l10n.auditLogEmpty,
                             fontSize: AppFontSize.value14,
                             fontWeight: FontWeight.w500,
                           ),
@@ -290,6 +292,7 @@ class _LogEntryTile extends StatelessWidget {
 
   void _showDetailsSheet(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -313,23 +316,23 @@ class _LogEntryTile extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            const AppLabel(
-              text: 'Audit Entry Details',
+            AppLabel(
+              text: l10n.auditLogDetailDialogTitle,
               fontSize: AppFontSize.value16,
               fontWeight: FontWeight.bold,
             ),
             const SizedBox(height: 16),
-            _metaRow(context, 'Actor ID', entry.actorId),
-            _metaRow(context, 'Actor Name', entry.actorName),
-            _metaRow(context, 'Action Verb', _actionVerb(entry.action).toUpperCase()),
-            _metaRow(context, 'Target Type', entry.targetType),
-            _metaRow(context, 'Target ID', entry.targetId),
-            _metaRow(context, 'Target Label', entry.targetLabel),
-            _metaRow(context, 'Timestamp', entry.occurredAt.toIso8601String()),
+            _metaRow(context, l10n.auditLogActorIdLabel, entry.actorId),
+            _metaRow(context, l10n.auditLogActorNameLabel, entry.actorName),
+            _metaRow(context, l10n.auditLogActionVerbLabel, _actionVerb(entry.action).toUpperCase()),
+            _metaRow(context, l10n.auditLogTargetTypeLabel, entry.targetType),
+            _metaRow(context, l10n.auditLogTargetIdLabel, entry.targetId),
+            _metaRow(context, l10n.auditLogTargetLabelLabel, entry.targetLabel),
+            _metaRow(context, l10n.auditLogTimestampLabel, entry.occurredAt.toIso8601String()),
             if (entry.detail != null) ...[
               const SizedBox(height: 8),
-              const AppLabel(
-                text: 'Additional Metadata:',
+              AppLabel(
+                text: l10n.auditLogAdditionalMetadataLabel,
                 fontSize: AppFontSize.value12,
                 fontWeight: FontWeight.bold,
               ),
@@ -354,8 +357,8 @@ class _LogEntryTile extends StatelessWidget {
               width: double.infinity,
               child: FilledButton(
                 onPressed: () => Navigator.pop(sheetCtx),
-                child: const AppLabel(
-                  text: 'Close',
+                child: AppLabel(
+                  text: l10n.auditLogCloseAction,
                   fontSize: AppFontSize.value14,
                   fontWeight: FontWeight.w600,
                 ),

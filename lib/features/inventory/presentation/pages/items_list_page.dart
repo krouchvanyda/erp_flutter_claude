@@ -269,7 +269,7 @@ class _ItemCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     AppLabel(
-                      text: 'SKU: ${item.sku}',
+                      text: l10n.commonSkuLabel(item.sku),
                       fontSize: AppFontSize.value11,
                       color: theme.colorScheme.outline,
                       fontWeight: FontWeight.bold,
@@ -277,7 +277,7 @@ class _ItemCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     AppLabel(
-                      text: 'WH: ${item.warehouseCode} · LOC: ${item.locationCode}',
+                      text: l10n.inventoryWarehouseLocationLabel(item.warehouseCode, item.locationCode),
                       fontSize: AppFontSize.value11,
                       color: theme.colorScheme.onSurfaceVariant,
                     ),

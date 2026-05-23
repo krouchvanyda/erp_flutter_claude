@@ -110,7 +110,7 @@ class _BiometricUnlockPageState extends State<BiometricUnlockPage> {
                       const SizedBox(height: 48),
                       
                       AppLabel(
-                        text: _isAuthenticating ? 'Authenticating...' : 'Biometric Unlock',
+                        text: _isAuthenticating ? l10n.biometricAuthenticatingTitle : l10n.biometricPageTitle,
                         fontSize: AppFontSize.value22,
                         fontWeight: FontWeight.bold,
                       ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2, end: 0),
@@ -119,8 +119,8 @@ class _BiometricUnlockPageState extends State<BiometricUnlockPage> {
 
                       AppLabel(
                         text: _isAuthenticating
-                          ? 'Please hold your finger on the sensor'
-                          : 'Use your fingerprint or face to continue',
+                          ? l10n.biometricHoldFingerSubtitle
+                          : l10n.biometricUseFingerprintSubtitle,
                         fontSize: AppFontSize.value16,
                         color: theme.colorScheme.onSurfaceVariant,
                         textAlign: TextAlign.center,
@@ -137,11 +137,11 @@ class _BiometricUnlockPageState extends State<BiometricUnlockPage> {
                             children: [
                               FilledButton(
                                 onPressed: _simulateAuth,
-                                child: const Text('Unlock Now'),
+                                child: Text(l10n.biometricUnlockNowAction),
                               ).animate().fadeIn(delay: 800.ms).slideY(begin: 0.5, end: 0),
-                              
+
                               const SizedBox(height: 16),
-                              
+
                               TextButton(
                                 // This page is pushed onto the root
                                 // Navigator from LoginPage via
@@ -150,7 +150,7 @@ class _BiometricUnlockPageState extends State<BiometricUnlockPage> {
                                 // is a no-op. Pop instead — reveals
                                 // the LoginPage that pushed us here.
                                 onPressed: () => Navigator.pop(context),
-                                child: const Text('Use Password Instead'),
+                                child: Text(l10n.biometricUsePasswordInsteadAction),
                               ).animate().fadeIn(delay: 1000.ms),
                             ],
                           ),

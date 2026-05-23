@@ -9,6 +9,7 @@ import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/payslips_repository.dart';
 import '../../entities/payslip.dart';
@@ -24,11 +25,12 @@ class PayslipsListPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: 'Payslips History',
+        title: l10n.hrPayslipsPageTitle,
         centerTitle: true,
       ),
       body: DynamicStatusBar(
@@ -53,8 +55,8 @@ class PayslipsListPage extends StatelessWidget {
                           color: theme.colorScheme.outline,
                         ),
                         const SizedBox(height: 16),
-                        const AppLabel(
-                          text: 'No payslips on file',
+                        AppLabel(
+                          text: l10n.hrPayslipsEmpty,
                           fontSize: AppFontSize.value16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -80,7 +82,7 @@ class PayslipsListPage extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: AppLabel(
-                        text: 'PAYSLIP ARCHIVE',
+                        text: l10n.hrPayslipsArchiveHeading,
                         fontSize: AppFontSize.value12,
                         fontWeight: FontWeight.w900,
                         color: theme.colorScheme.primary,
@@ -115,6 +117,7 @@ class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -138,8 +141,8 @@ class _SummaryCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const AppLabel(
-                text: 'Aggregate Summary',
+              AppLabel(
+                text: l10n.hrPayslipsAggregateSummaryHeading,
                 fontSize: AppFontSize.value16,
                 fontWeight: FontWeight.bold,
               ),
@@ -235,6 +238,7 @@ class _PayslipRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Container(
       decoration: BoxDecoration(
@@ -283,7 +287,7 @@ class _PayslipRow extends StatelessWidget {
                   border: Border.all(color: Colors.teal.withValues(alpha: 0.15)),
                 ),
                 child: AppLabel(
-                  text: 'Net: ${slip.netPay}',
+                  text: l10n.hrPayslipsNetPayLabel(slip.netPay),
                   fontSize: AppFontSize.value11,
                   color: Colors.teal,
                   fontWeight: FontWeight.bold,
@@ -291,7 +295,7 @@ class _PayslipRow extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               AppLabel(
-                text: 'Gross: ${slip.grossPay}',
+                text: l10n.hrPayslipsGrossPayLabel(slip.grossPay),
                 fontSize: AppFontSize.value11,
                 color: theme.colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w500,

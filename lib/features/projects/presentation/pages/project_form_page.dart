@@ -10,6 +10,7 @@ import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../features/hr/data/repositories/employees_repository.dart';
 import '../../../../features/hr/entities/employee.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../data/repositories/projects_repository.dart';
@@ -330,19 +331,20 @@ class _BasicInfoCard extends StatelessWidget {
   final TextEditingController descCtrl;
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return _Card(
       child: Column(
         children: [
           AppTextField(
             controller: nameCtrl,
-            label: 'Project name',
+            label: l10n.projectFormNameLabel,
             icon: Icons.folder_special_rounded,
             validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
           ),
           const SizedBox(height: 12),
           AppTextField(
             controller: codeCtrl,
-            label: 'Project code',
+            label: l10n.projectFormCodeLabel,
             icon: Icons.qr_code_2_rounded,
             textCapitalization: TextCapitalization.characters,
             validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
@@ -350,7 +352,7 @@ class _BasicInfoCard extends StatelessWidget {
           const SizedBox(height: 12),
           AppTextField(
             controller: descCtrl,
-            label: 'Description',
+            label: l10n.projectFormDescriptionLabel,
             icon: Icons.notes_rounded,
             maxLines: 3,
           ),
@@ -378,6 +380,7 @@ class _TimelineCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return _Card(
       child: Column(
         children: [
@@ -385,7 +388,7 @@ class _TimelineCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _DateBox(
-                  label: 'Start',
+                  label: l10n.projectFormStartLabel,
                   value: dateFormat.format(startDate),
                   onTap: onPickStart,
                 ),
@@ -393,7 +396,7 @@ class _TimelineCard extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: _DateBox(
-                  label: 'End',
+                  label: l10n.projectFormEndLabel,
                   value: dateFormat.format(endDate),
                   onTap: onPickEnd,
                 ),
@@ -414,7 +417,7 @@ class _TimelineCard extends StatelessWidget {
                 Icon(Icons.timelapse_rounded, color: theme.colorScheme.primary, size: 18),
                 const SizedBox(width: 8),
                 AppLabel(
-                  text: 'Duration: $durationLabel',
+                  text: l10n.projectFormDurationLabel(durationLabel),
                   fontSize: AppFontSize.value14,
                   color: theme.colorScheme.primary,
                   fontWeight: FontWeight.w800,
@@ -479,10 +482,11 @@ class _BudgetCard extends StatelessWidget {
   final TextEditingController controller;
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return _Card(
       child: AppTextField(
         controller: controller,
-        label: 'Budget (formatted)',
+        label: l10n.projectFormBudgetLabel,
         icon: Icons.attach_money_rounded,
         keyboardType: TextInputType.number,
         textCapitalization: TextCapitalization.none,
@@ -685,6 +689,7 @@ Future<Employee?> _showEmployeeSheet(
     ),
     builder: (ctx) {
       final theme = Theme.of(ctx);
+      final l10n = AppLocalizations.of(ctx);
       return SafeArea(
         top: false,
         child: ConstrainedBox(
@@ -707,7 +712,7 @@ Future<Employee?> _showEmployeeSheet(
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: AppLabel(
-                    text: 'Pick an employee',
+                    text: l10n.projectFormPickEmployeeAction,
                     fontSize: AppFontSize.value22,
                     fontWeight: FontWeight.w700,
                   ),

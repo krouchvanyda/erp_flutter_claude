@@ -666,6 +666,7 @@ class _LineRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Container(
       decoration: BoxDecoration(border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3)))),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -684,7 +685,7 @@ class _LineRow extends StatelessWidget {
                 if (line.sku != null) ...[
                   const SizedBox(height: 4),
                   AppLabel(
-                    text: 'SKU: ${line.sku}',
+                    text: l10n.commonSkuLabel(line.sku!),
                     fontSize: AppFontSize.value11,
                     color: theme.colorScheme.outline,
                   ),

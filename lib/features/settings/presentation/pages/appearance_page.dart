@@ -7,6 +7,7 @@ import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/preferences_repository.dart';
 import '../../entities/user_preferences.dart';
@@ -19,11 +20,12 @@ class AppearancePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final repo = GetIt.I<PreferencesRepository>();
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: const DynamicAppBar(
-        title: 'Appearance',
+      appBar: DynamicAppBar(
+        title: l10n.appearancePageTitle,
         centerTitle: true,
       ),
       body: DynamicStatusBar(
@@ -46,7 +48,7 @@ class AppearancePage extends StatelessWidget {
                   ),
                   children: [
                     AppLabel(
-                      text: 'CHOOSE THEME MODE',
+                      text: l10n.appearanceChooseThemeHeading,
                       fontSize: AppFontSize.value11,
                       color: theme.colorScheme.primary,
                       fontWeight: FontWeight.w900,
@@ -86,6 +88,7 @@ class _ThemeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return InkWell(
       onTap: onTap,
@@ -171,13 +174,13 @@ class _ThemeCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   AppLabel(
-                    text: _label(mode),
+                    text: _label(l10n, mode),
                     fontSize: AppFontSize.value14,
                     fontWeight: FontWeight.bold,
                   ),
                   const SizedBox(height: 2),
                   AppLabel(
-                    text: _subtitle(mode),
+                    text: _subtitle(l10n, mode),
                     fontSize: AppFontSize.value12,
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -245,25 +248,25 @@ class _ThemeCard extends StatelessWidget {
     }
   }
 
-  String _label(AppThemeMode m) {
+  String _label(AppLocalizations l10n, AppThemeMode m) {
     switch (m) {
       case AppThemeMode.system:
-        return 'System default';
+        return l10n.appearanceModeSystem;
       case AppThemeMode.light:
-        return 'Light Mode';
+        return l10n.appearanceModeLight;
       case AppThemeMode.dark:
-        return 'Dark Mode';
+        return l10n.appearanceModeDark;
     }
   }
 
-  String _subtitle(AppThemeMode m) {
+  String _subtitle(AppLocalizations l10n, AppThemeMode m) {
     switch (m) {
       case AppThemeMode.system:
-        return 'Follow the OS appearance setting';
+        return l10n.appearanceSubtitleSystem;
       case AppThemeMode.light:
-        return 'Always use the light palette';
+        return l10n.appearanceSubtitleLight;
       case AppThemeMode.dark:
-        return 'Always use the dark palette';
+        return l10n.appearanceSubtitleDark;
     }
   }
 }

@@ -9,6 +9,7 @@ import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/employees_repository.dart';
 import '../../entities/employee.dart';
@@ -25,11 +26,12 @@ class EmployeeDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: 'Employee Profile',
+        title: l10n.hrEmployeeDetailPageTitle,
         centerTitle: true,
       ),
       body: DynamicStatusBar(
@@ -56,14 +58,14 @@ class EmployeeDetailPage extends StatelessWidget {
                             color: theme.colorScheme.outline,
                           ),
                           const SizedBox(height: 16),
-                          const AppLabel(
-                            text: 'Employee not found',
+                          AppLabel(
+                            text: l10n.hrEmployeeDetailNotFoundTitle,
                             fontSize: AppFontSize.value16,
                             fontWeight: FontWeight.bold,
                           ),
                           const SizedBox(height: 8),
                           AppLabel(
-                            text: 'No employee with ID "$employeeId" exists.',
+                            text: l10n.hrEmployeeDetailNotFoundBody(employeeId),
                             fontSize: AppFontSize.value14,
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -91,7 +93,7 @@ class EmployeeDetailPage extends StatelessWidget {
                     const SizedBox(height: 20),
 
                     // Quick Actions
-                    _SectionHeading(title: 'Quick Actions'),
+                    _SectionHeading(title: l10n.hrEmployeeDetailSectionQuickActions),
                     const SizedBox(height: 10),
                     _QuickActionsRow(employeeId: emp.id)
                         .animate()
@@ -99,57 +101,57 @@ class EmployeeDetailPage extends StatelessWidget {
                     const SizedBox(height: 24),
 
                     // Categorized Details
-                    _SectionHeading(title: 'Contact Information'),
+                    _SectionHeading(title: l10n.hrEmployeeDetailSectionContact),
                     const SizedBox(height: 10),
                     _DetailsCard(
                       items: [
                         _DetailItem(
                           icon: Icons.email_outlined,
-                          label: 'Email Address',
+                          label: l10n.commonEmailLabel,
                           value: emp.email,
                         ),
                         _DetailItem(
                           icon: Icons.phone_outlined,
-                          label: 'Phone Number',
+                          label: l10n.commonPhoneNumberLabel,
                           value: emp.phone,
                         ),
                         _DetailItem(
                           icon: Icons.location_on_outlined,
-                          label: 'Office Location',
+                          label: l10n.hrEmployeeDetailOfficeLocationLabel,
                           value: emp.location ?? 'Remote / Not Specified',
                         ),
                       ],
                     ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.05, end: 0),
                     const SizedBox(height: 24),
 
-                    _SectionHeading(title: 'Employment Details'),
+                    _SectionHeading(title: l10n.hrEmployeeDetailSectionEmployment),
                     const SizedBox(height: 10),
                     _DetailsCard(
                       items: [
                         _DetailItem(
                           icon: Icons.business_center_outlined,
-                          label: 'Department',
+                          label: l10n.hrEmployeeDetailDepartmentLabel,
                           value: emp.department,
                         ),
                         _DetailItem(
                           icon: Icons.badge_outlined,
-                          label: 'Position Title',
+                          label: l10n.hrEmployeeDetailPositionTitleLabel,
                           value: emp.position,
                         ),
                         _DetailItem(
                           icon: Icons.calendar_today_outlined,
-                          label: 'Hire Date',
+                          label: l10n.hrEmployeeDetailHireDateLabel,
                           value: emp.hiredAt.toIso8601String().split('T').first,
                         ),
                         _DetailItem(
                           icon: Icons.payments_outlined,
-                          label: 'Monthly Salary',
+                          label: l10n.hrEmployeeDetailMonthlySalaryLabel,
                           value: emp.monthlySalary,
                         ),
                         if (emp.managerId != null)
                           _DetailItem(
                             icon: Icons.supervisor_account_outlined,
-                            label: 'Manager ID',
+                            label: l10n.hrEmployeeDetailManagerIdLabel,
                             value: emp.managerId!,
                           ),
                       ],
@@ -298,6 +300,7 @@ class _QuickActionsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         final double width = (constraints.maxWidth - 24) / 4;
@@ -306,28 +309,28 @@ class _QuickActionsRow extends StatelessWidget {
           children: [
             _ActionButton(
               icon: Icons.timer_outlined,
-              label: 'Attendance',
+              label: l10n.hrEmployeeDetailTabAttendance,
               color: Colors.teal,
               width: width,
               onTap: () => ConfigRouter.pushPageAnimation(context, const AttendancePage()),
             ),
             _ActionButton(
               icon: Icons.receipt_long_outlined,
-              label: 'Payslips',
+              label: l10n.hrEmployeeDetailTabPayslips,
               color: Colors.indigo,
               width: width,
               onTap: () => ConfigRouter.pushPageAnimation(context, const PayslipsListPage()),
             ),
             _ActionButton(
               icon: Icons.event_available_outlined,
-              label: 'Leaves',
+              label: l10n.hrEmployeeDetailTabLeaves,
               color: Colors.orange,
               width: width,
               onTap: () => ConfigRouter.pushPageAnimation(context, const LeaveBalancePage()),
             ),
             _ActionButton(
               icon: Icons.account_tree_outlined,
-              label: 'Org Chart',
+              label: l10n.hrEmployeeDetailTabOrgChart,
               color: Colors.blueGrey,
               width: width,
               onTap: () => ConfigRouter.pushPageAnimation(context, const OrgChartPage()),

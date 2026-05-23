@@ -89,34 +89,34 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   static DashboardLayout _buildDefaultLayout(AppLocalizations l10n) => [
-        const KpiDashboardWidget(
+        KpiDashboardWidget(
           id: 'revenue-mtd',
           data: KpiData(
-            label: 'Revenue (MTD)',
+            label: l10n.dashboardKpiRevenueLabel,
             value: r'$84,210',
             trend: KpiTrend.up,
             trendDelta: '+12.4%',
-            sparkline: [62, 58, 65, 71, 70, 78, 84],
+            sparkline: const [62, 58, 65, 71, 70, 78, 84],
           ),
         ),
-        const KpiDashboardWidget(
+        KpiDashboardWidget(
           id: 'open-invoices',
           data: KpiData(
-            label: 'Open invoices',
+            label: l10n.dashboardKpiOpenInvoicesLabel,
             value: '47',
             trend: KpiTrend.down,
             trendDelta: '-6 vs prior',
-            sparkline: [70, 66, 62, 58, 53, 50, 47],
+            sparkline: const [70, 66, 62, 58, 53, 50, 47],
           ),
         ),
-        const KpiDashboardWidget(
+        KpiDashboardWidget(
           id: 'avg-fulfilment',
           data: KpiData(
-            label: 'Avg fulfilment (d)',
+            label: l10n.dashboardKpiAvgFulfilmentLabel,
             value: '3.2',
             trend: KpiTrend.flat,
             trendDelta: '~0',
-            sparkline: [3.1, 3.3, 3.2, 3.2, 3.1, 3.2, 3.2],
+            sparkline: const [3.1, 3.3, 3.2, 3.2, 3.1, 3.2, 3.2],
           ),
           colSpan: 2,
         ),
@@ -192,12 +192,12 @@ class _DashboardPageState extends State<DashboardPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       AppLabel(
-                        text: 'Good Morning,',
+                        text: l10n.dashboardGreeting,
                         fontSize: AppFontSize.value16,
                         color: theme.colorScheme.onSurfaceVariant,
                       ).animate().fadeIn(duration: 600.ms).slideX(begin: -0.2, end: 0),
                       AppLabel(
-                        text: 'Demo Approver',
+                        text: l10n.dashboardUserNamePlaceholder,
                         fontSize: AppFontSize.value22,
                         fontWeight: FontWeight.w900,
                         color: theme.colorScheme.onSurface,
@@ -214,7 +214,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   const SizedBox(height: 40),
                   
                   // Quick Actions & Demo section
-                  _SectionHeader(title: 'Quick Access', icon: Icons.bolt_rounded),
+                  _SectionHeader(title: l10n.dashboardQuickAccessSection, icon: Icons.bolt_rounded),
                   const SizedBox(height: 16),
                   
                   Wrap(
@@ -233,12 +233,12 @@ class _DashboardPageState extends State<DashboardPage> {
                       // ),
                       if (_pushService is LocalPushSimulator) ...[
                         _QuickActionChip(
-                          label: 'Simulate Push',
+                          label: l10n.dashboardSimulatePushAction,
                           icon: Icons.notifications_active_outlined,
                           onTap: () => _simulatePush(),
                         ),
                         _QuickActionChip(
-                          label: 'Routed Push',
+                          label: l10n.dashboardRoutedPushAction,
                           icon: Icons.open_in_new_rounded,
                           onTap: () => _simulatePush(routeName: RoutePaths.adminDemoName),
                         ),

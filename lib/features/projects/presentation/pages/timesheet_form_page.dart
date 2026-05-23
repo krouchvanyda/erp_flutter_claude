@@ -8,6 +8,7 @@ import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/projects_repository.dart';
 import '../../data/repositories/timesheets_repository.dart';
@@ -104,11 +105,12 @@ class _TimesheetFormPageState extends State<TimesheetFormPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: const DynamicAppBar(
-        title: 'Log Time',
+      appBar: DynamicAppBar(
+        title: l10n.timesheetFormPageTitle,
         centerTitle: true,
       ),
       body: DynamicStatusBar(
@@ -242,13 +244,13 @@ class _TimesheetFormPageState extends State<TimesheetFormPage> {
                           const SizedBox(height: 16),
                           SwitchListTile(
                             contentPadding: EdgeInsets.zero,
-                            title: const AppLabel(
-                              text: 'Submit for approval immediately',
+                            title: AppLabel(
+                              text: l10n.timesheetFormSubmitToggleLabel,
                               fontSize: AppFontSize.value14,
                               fontWeight: FontWeight.bold,
                             ),
                             subtitle: AppLabel(
-                              text: 'Otherwise it lands as a draft you can edit later.',
+                              text: l10n.timesheetFormSubmitToggleHint,
                               fontSize: AppFontSize.value12,
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
@@ -286,8 +288,8 @@ class _TimesheetFormPageState extends State<TimesheetFormPage> {
                                       width: 20,
                                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                     )
-                                  : const AppLabel(
-                                      text: 'Save Timesheet',
+                                  : AppLabel(
+                                      text: l10n.timesheetFormSaveAction,
                                       fontSize: AppFontSize.value14,
                                       fontWeight: FontWeight.bold,
                                     ),

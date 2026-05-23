@@ -257,7 +257,7 @@ class _Body extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           AppLabel(
-                            text: 'SKU: ${source.sku}',
+                            text: l10n.commonSkuLabel(source.sku),
                             fontSize: AppFontSize.value11,
                             color: theme.colorScheme.outline,
                             fontWeight: FontWeight.bold,
@@ -277,7 +277,7 @@ class _Body extends StatelessWidget {
                       Icon(Icons.stacked_bar_chart_rounded, size: 20, color: theme.colorScheme.onSurfaceVariant),
                       const SizedBox(width: 12),
                       AppLabel(
-                        text: 'AVAILABLE TO TRANSFER',
+                        text: l10n.inventoryAvailableToTransferLabel,
                         fontSize: AppFontSize.value11,
                         color: theme.colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w900,

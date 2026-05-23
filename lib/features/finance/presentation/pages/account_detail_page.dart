@@ -94,7 +94,7 @@ class _LoadedBody extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
             child: AppLabel(
-              text: 'TRANSACTIONS',
+              text: AppLocalizations.of(context).accountDetailTransactionsHeading,
               fontSize: AppFontSize.value11,
               color: Theme.of(context).colorScheme.primary,
               fontWeight: FontWeight.bold,
@@ -205,7 +205,7 @@ class _AccountHeaderCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   AppLabel(
-                    text: 'CURRENT BALANCE',
+                    text: l10n.accountDetailCurrentBalanceLabel,
                     fontSize: AppFontSize.value11,
                     color: Colors.white.withValues(alpha: 0.6),
                     fontWeight: FontWeight.bold,

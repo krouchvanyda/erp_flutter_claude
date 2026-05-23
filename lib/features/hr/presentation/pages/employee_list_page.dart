@@ -10,6 +10,7 @@ import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../entities/employee.dart';
 import '../bloc/employee_list_bloc.dart';
@@ -41,19 +42,20 @@ class _EmployeeListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: 'Employee Directory',
+        title: l10n.hrEmployeeListPageTitle,
         centerTitle: true,
         actions: [
           IconButton(
-            tooltip: 'Org chart',
+            tooltip: l10n.hrEmployeeListOrgChartTooltip,
             icon: const Icon(Icons.account_tree_rounded),
             onPressed: () => ConfigRouter.pushPageAnimation(context, const OrgChartPage()),
           ),
           PopupMenuButton<EmployeeSort>(
-            tooltip: 'Sort',
+            tooltip: l10n.hrEmployeeListSortTooltip,
             icon: const Icon(Icons.sort_rounded),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppRadii.md),
@@ -61,25 +63,25 @@ class _EmployeeListView extends StatelessWidget {
             onSelected: (s) => context
                 .read<EmployeeListBloc>()
                 .add(EmployeeListSortChanged(s)),
-            itemBuilder: (_) => const [
+            itemBuilder: (_) => [
               PopupMenuItem(
                 value: EmployeeSort.nameAsc,
                 child: AppLabel(
-                  text: 'Name (A–Z)',
+                  text: l10n.hrEmployeeListSortNameAz,
                   fontSize: AppFontSize.value14,
                 ),
               ),
               PopupMenuItem(
                 value: EmployeeSort.recentlyHired,
                 child: AppLabel(
-                  text: 'Recently hired',
+                  text: l10n.hrEmployeeListSortRecentlyHired,
                   fontSize: AppFontSize.value14,
                 ),
               ),
               PopupMenuItem(
                 value: EmployeeSort.departmentAsc,
                 child: AppLabel(
-                  text: 'Department',
+                  text: l10n.hrEmployeeListSortDepartment,
                   fontSize: AppFontSize.value14,
                 ),
               ),
@@ -109,8 +111,8 @@ class _EmployeeListView extends StatelessWidget {
                             color: theme.colorScheme.error,
                           ),
                           const SizedBox(height: 16),
-                          const AppLabel(
-                            text: 'Error loading directory',
+                          AppLabel(
+                            text: l10n.hrEmployeeListErrorLoading,
                             fontSize: AppFontSize.value16,
                             fontWeight: FontWeight.bold,
                           ),
@@ -140,7 +142,7 @@ class _EmployeeListView extends StatelessWidget {
                                 .read<EmployeeListBloc>()
                                 .add(EmployeeListSearchChanged(q)),
                             decoration: InputDecoration(
-                              hintText: 'Search name, email, position…',
+                              hintText: l10n.hrEmployeeListSearchHint,
                               prefixIcon: const Icon(Icons.search_rounded),
                               filled: true,
                               fillColor: theme.colorScheme.surface.withValues(alpha: 0.8),
@@ -221,14 +223,14 @@ class _EmployeeListView extends StatelessWidget {
                               ),
                               const SizedBox(height: 16),
                               AppLabel(
-                                text: 'No matching employees',
+                                text: l10n.hrEmployeeListEmptyTitle,
                                 fontSize: AppFontSize.value16,
                                 color: theme.colorScheme.onSurfaceVariant,
                                 fontWeight: FontWeight.bold,
                               ),
                               const SizedBox(height: 4),
                               AppLabel(
-                                text: 'Try refining your search query or filters',
+                                text: l10n.hrEmployeeListEmptySubtitle,
                                 fontSize: AppFontSize.value14,
                                 color: theme.colorScheme.outline,
                               ),

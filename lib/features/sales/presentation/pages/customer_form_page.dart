@@ -75,6 +75,7 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
 
   Future<void> _submit() async {
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context);
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     final repo = getIt<CustomersRepository>();
@@ -121,7 +122,7 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
         ..hideCurrentSnackBar()
         ..showSnackBar(
           SnackBar(
-            content: Text('Failed to save customer: $e'),
+            content: Text(l10n.customerFormSaveFailureSnack(e.toString())),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -209,7 +210,7 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
                               const SizedBox(height: 16),
                               AppTextField(
                                 controller: _name,
-                                label: 'Company or Person Name',
+                                label: l10n.customerFormCompanyOrPersonNameLabel,
                                 icon: Icons.person_outline,
                                 validator: (v) => _resolve(
                                   l10n,
@@ -219,7 +220,7 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
                               const SizedBox(height: 16),
                               AppTextField(
                                 controller: _industry,
-                                label: 'Industry (Optional)',
+                                label: l10n.customerFormIndustryOptionalLabel,
                                 icon: Icons.domain_outlined,
                               ),
                             ],
@@ -261,7 +262,7 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
                         children: [
                           AppTextField(
                             controller: _email,
-                            label: 'Email Address',
+                            label: l10n.commonEmailLabel,
                             icon: Icons.email_outlined,
                             keyboardType: TextInputType.emailAddress,
                             textCapitalization: TextCapitalization.none,
@@ -273,7 +274,7 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
                           const SizedBox(height: 16),
                           AppTextField(
                             controller: _phone,
-                            label: 'Phone Number',
+                            label: l10n.commonPhoneNumberLabel,
                             icon: Icons.phone_outlined,
                             keyboardType: TextInputType.phone,
                             validator: (v) => _resolve(
@@ -284,7 +285,7 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
                           const SizedBox(height: 16),
                           AppTextField(
                             controller: _billingAddress,
-                            label: 'Billing Address',
+                            label: l10n.customerFormBillingAddressLabel,
                             icon: Icons.place_outlined,
                             maxLines: 3,
                             validator: (v) => _resolve(
@@ -387,7 +388,7 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
                           const SizedBox(height: 16),
                           AppTextField(
                             controller: _notes,
-                            label: 'Notes / Remarks (Optional)',
+                            label: l10n.customerFormNotesRemarksOptionalLabel,
                             icon: Icons.notes_outlined,
                             maxLines: 3,
                           ),

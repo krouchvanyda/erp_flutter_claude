@@ -7,6 +7,7 @@ import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/preferences_repository.dart';
 import '../../entities/user_preferences.dart';
@@ -19,11 +20,12 @@ class NotificationPreferencesPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final repo = GetIt.I<PreferencesRepository>();
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: const DynamicAppBar(
-        title: 'Notifications',
+      appBar: DynamicAppBar(
+        title: l10n.notificationPrefsPageTitle,
         centerTitle: true,
       ),
       body: DynamicStatusBar(
@@ -46,7 +48,7 @@ class NotificationPreferencesPage extends StatelessWidget {
                   ),
                   children: [
                     AppLabel(
-                      text: 'NOTIFICATION CHANNELS',
+                      text: l10n.notificationPrefsChannelsHeading,
                       fontSize: AppFontSize.value11,
                       color: theme.colorScheme.primary,
                       fontWeight: FontWeight.w900,
@@ -109,6 +111,7 @@ class _ChannelCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final isSystem = pref.channel == NotificationChannel.systemAlerts;
 
     return Container(
@@ -172,8 +175,8 @@ class _ChannelCard extends StatelessWidget {
             dense: true,
             activeColor: theme.colorScheme.primary,
             contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-            title: const AppLabel(
-              text: 'Push Notifications',
+            title: AppLabel(
+              text: l10n.notificationPrefsPushTitle,
               fontSize: AppFontSize.value14,
               fontWeight: FontWeight.w500,
             ),
@@ -188,8 +191,8 @@ class _ChannelCard extends StatelessWidget {
             dense: true,
             activeColor: theme.colorScheme.primary,
             contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-            title: const AppLabel(
-              text: 'Email Updates',
+            title: AppLabel(
+              text: l10n.notificationPrefsEmailTitle,
               fontSize: AppFontSize.value14,
               fontWeight: FontWeight.w500,
             ),

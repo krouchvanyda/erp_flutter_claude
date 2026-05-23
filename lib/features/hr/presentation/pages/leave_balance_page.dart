@@ -9,6 +9,7 @@ import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/leave_requests_repository.dart';
 import '../../entities/leave_request.dart';
@@ -28,22 +29,23 @@ class LeaveBalancePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final balanceRepo = GetIt.I<LeaveBalancesRepository>();
     final reqRepo = GetIt.I<LeaveRequestsRepository>();
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: 'Leave Balance',
+        title: l10n.hrLeaveBalancePageTitle,
         centerTitle: true,
         actions: [
           IconButton(
-            tooltip: 'Leave History',
+            tooltip: l10n.hrLeaveBalanceHistoryTooltip,
             icon: const Icon(Icons.history_rounded, size: 24),
             onPressed: () => ConfigRouter.pushPageAnimation(context, const LeaveRequestsListPage()),
           ),
           IconButton(
-            tooltip: 'Request Leave',
+            tooltip: l10n.hrLeaveBalanceRequestLeaveTooltip,
             icon: const Icon(Icons.add_circle_outline_rounded, size: 24),
             onPressed: () => ConfigRouter.pushPageAnimation(context, const LeaveRequestFormPage()),
           ),
@@ -71,8 +73,8 @@ class LeaveBalancePage extends StatelessWidget {
                           color: theme.colorScheme.outline,
                         ),
                         const SizedBox(height: 16),
-                        const AppLabel(
-                          text: 'No entitlements on file',
+                        AppLabel(
+                          text: l10n.hrLeaveBalanceNoEntitlements,
                           fontSize: AppFontSize.value16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -132,7 +134,7 @@ class LeaveBalancePage extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
                               _SummaryStat(
-                                label: 'Remaining',
+                                label: l10n.hrLeaveBalanceRemainingLabel,
                                 count: '$totalRemaining',
                                 color: theme.colorScheme.onPrimary,
                               ),
@@ -142,7 +144,7 @@ class LeaveBalancePage extends StatelessWidget {
                                 color: theme.colorScheme.onPrimary.withValues(alpha: 0.2),
                               ),
                               _SummaryStat(
-                                label: 'Taken',
+                                label: l10n.hrLeaveBalanceTakenLabel,
                                 count: '$totalUsed',
                                 color: theme.colorScheme.onPrimary.withValues(alpha: 0.7),
                               ),
@@ -152,7 +154,7 @@ class LeaveBalancePage extends StatelessWidget {
                                 color: theme.colorScheme.onPrimary.withValues(alpha: 0.2),
                               ),
                               _SummaryStat(
-                                label: 'Total',
+                                label: l10n.hrLeaveBalanceTotalLabel,
                                 count: '$totalDays',
                                 color: theme.colorScheme.onPrimary.withValues(alpha: 0.7),
                               ),
@@ -163,7 +165,7 @@ class LeaveBalancePage extends StatelessWidget {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 4),
                           child: AppLabel(
-                            text: 'ENTITLEMENT BREAKDOWN',
+                            text: l10n.hrLeaveBalanceBreakdownHeading,
                             fontSize: AppFontSize.value12,
                             fontWeight: FontWeight.w900,
                             color: theme.colorScheme.primary,

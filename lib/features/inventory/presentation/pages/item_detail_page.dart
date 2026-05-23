@@ -223,7 +223,7 @@ class _Body extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         AppLabel(
-                          text: 'SKU: ${item.sku}',
+                          text: l10n.commonSkuLabel(item.sku),
                           fontSize: AppFontSize.value12,
                           color: theme.colorScheme.outline,
                           fontWeight: FontWeight.bold,
@@ -244,7 +244,7 @@ class _Body extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         AppLabel(
-                          text: 'CURRENT STOCK',
+                          text: l10n.inventoryCurrentStockLabel,
                           fontSize: AppFontSize.value11,
                           color: theme.colorScheme.outline,
                           fontWeight: FontWeight.w900,

@@ -131,7 +131,7 @@ class _LoginPageState extends State<LoginPage> {
                         const SizedBox(height: 8),
 
                         AppLabel(
-                          text: 'Welcome back! Please sign in to continue.',
+                          text: l10n.loginWelcomeSubtitle,
                           fontSize: AppFontSize.value14,
                           color: theme.colorScheme.onSurfaceVariant,
                           textAlign: TextAlign.center,
@@ -167,18 +167,18 @@ class _LoginPageState extends State<LoginPage> {
                                   children: [
                                     AppTextField(
                                       controller: _emailController,
-                                      label: 'Email',
+                                      label: l10n.commonEmailLabel,
                                       icon: Icons.email_outlined,
                                       hintText: 'name@company.com',
                                       keyboardType: TextInputType.emailAddress,
                                       textCapitalization: TextCapitalization.none,
                                       validator: (value) {
                                         if (value == null || value.isEmpty) {
-                                          return 'Please enter your email';
+                                          return l10n.loginValidatorEmailRequired;
                                         }
                                         final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
                                         if (!emailRegex.hasMatch(value)) {
-                                          return 'Please enter a valid email address';
+                                          return l10n.loginValidatorEmailInvalid;
                                         }
                                         return null;
                                       },
@@ -188,7 +188,7 @@ class _LoginPageState extends State<LoginPage> {
 
                                     AppTextField(
                                       controller: _passwordController,
-                                      label: 'Password',
+                                      label: l10n.loginPasswordLabel,
                                       icon: Icons.lock_outline_rounded,
                                       obscureText: _obscurePassword,
                                       textCapitalization: TextCapitalization.none,
@@ -203,23 +203,23 @@ class _LoginPageState extends State<LoginPage> {
                                       ),
                                       validator: (value) {
                                         if (value == null || value.isEmpty) {
-                                          return 'Please enter your password';
+                                          return l10n.loginValidatorPasswordRequired;
                                         }
                                         if (value.length < 6) {
-                                          return 'Password must be at least 6 characters';
+                                          return l10n.loginValidatorPasswordTooShort;
                                         }
                                         return null;
                                       },
                                     ),
-                                    
+
                                     Align(
                                       alignment: Alignment.centerRight,
                                       child: TextButton(
                                         onPressed: () => ConfigRouter.pushPageAnimation(context, const ForgotPasswordPage()),
-                                        child: const Text('Forgot Password?'),
+                                        child: Text(l10n.loginForgotPasswordAction),
                                       ),
                                     ),
-                                    
+
                                     const SizedBox(height: 24),
 
                                     SizedBox(
@@ -231,7 +231,7 @@ class _LoginPageState extends State<LoginPage> {
                                             borderRadius: BorderRadius.circular(AppRadii.md),
                                           ),
                                         ),
-                                        child: const Text('Sign In'),
+                                        child: Text(l10n.loginSignInAction),
                                       ),
                                     ).animate().shimmer(delay: 2000.ms, duration: 1500.ms),
 
@@ -247,7 +247,7 @@ class _LoginPageState extends State<LoginPage> {
                                         Padding(
                                           padding: const EdgeInsets.symmetric(horizontal: 12),
                                           child: AppLabel(
-                                            text: 'OR SECURE WITH',
+                                            text: l10n.loginOrSecureWith,
                                             fontSize: AppFontSize.value11,
                                             color: theme.colorScheme.onSurfaceVariant,
                                             fontWeight: FontWeight.w700,
@@ -280,7 +280,7 @@ class _LoginPageState extends State<LoginPage> {
                                           Icons.fingerprint_rounded,
                                           color: theme.colorScheme.primary,
                                         ),
-                                        label: const Text('Use Biometrics'),
+                                        label: Text(l10n.loginUseBiometricsAction),
                                       ),
                                     ),
                                   ],

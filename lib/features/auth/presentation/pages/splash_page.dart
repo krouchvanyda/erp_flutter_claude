@@ -127,7 +127,7 @@ class _SplashPageState extends State<SplashPage> {
 
                   // Subtle Tagline
                   AppLabel(
-                    text: 'Enterprise Excellence',
+                    text: l10n.splashTagline,
                     fontSize: AppFontSize.value14,
                     color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
                     letterSpacing: 2,

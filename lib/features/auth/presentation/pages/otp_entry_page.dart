@@ -219,7 +219,7 @@ class _OtpEntryView extends StatelessWidget {
                                             
                                             TextButton(
                                               onPressed: () {}, // Resend logic
-                                              child: const Text('Resend Code (30s)'),
+                                              child: Text(l10n.otpResendCodeAction),
                                             ),
                                           ],
                                         ),

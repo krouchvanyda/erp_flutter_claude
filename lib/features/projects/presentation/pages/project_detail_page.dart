@@ -8,6 +8,7 @@ import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/projects_repository.dart';
 import '../../data/repositories/tasks_repository.dart';
@@ -24,15 +25,16 @@ class ProjectDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: 'Project Details',
+        title: l10n.projectDetailPageTitle,
         centerTitle: true,
         actions: [
           IconButton(
-            tooltip: 'Open Board',
+            tooltip: l10n.projectDetailOpenBoardTooltip,
             icon: const Icon(Icons.view_kanban_outlined),
             onPressed: () => ConfigRouter.pushPageAnimation(
               context,
@@ -40,7 +42,7 @@ class ProjectDetailPage extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'Edit Project',
+            tooltip: l10n.projectDetailEditProjectTooltip,
             icon: const Icon(Icons.edit_outlined),
             onPressed: () async {
               // Fetch fresh so the form opens with the latest state if
@@ -69,7 +71,7 @@ class ProjectDetailPage extends StatelessWidget {
                 if (project == null) {
                   return Center(
                     child: AppLabel(
-                      text: 'No project with id "$projectId".',
+                      text: l10n.projectDetailNotFound(projectId),
                       fontSize: AppFontSize.value14,
                     ),
                   );
@@ -135,7 +137,7 @@ class ProjectDetailPage extends StatelessWidget {
                                     ),
                                     const SizedBox(height: 2),
                                     AppLabel(
-                                      text: 'Project ID: ${project.code}',
+                                      text: l10n.projectDetailProjectIdLabel(project.code),
                                       fontSize: AppFontSize.value12,
                                       color: theme.colorScheme.onSurfaceVariant,
                                       fontWeight: FontWeight.w600,
@@ -168,7 +170,7 @@ class ProjectDetailPage extends StatelessWidget {
                           _row(theme, 'Budget', project.budget, Icons.monetization_on_outlined),
                           const SizedBox(height: 16),
                           AppLabel(
-                            text: 'DESCRIPTION',
+                            text: l10n.projectDetailDescriptionHeading,
                             fontSize: AppFontSize.value11,
                             color: theme.colorScheme.primary,
                             fontWeight: FontWeight.w900,
@@ -186,7 +188,7 @@ class ProjectDetailPage extends StatelessWidget {
                     ).animate().fadeIn().slideY(begin: 0.05, end: 0, duration: 300.ms),
                     const SizedBox(height: 24),
                     AppLabel(
-                      text: 'PROJECT TASKS',
+                      text: l10n.projectDetailTasksHeading,
                       fontSize: AppFontSize.value12,
                       color: theme.colorScheme.onSurface,
                       fontWeight: FontWeight.w800,
@@ -203,7 +205,7 @@ class ProjectDetailPage extends StatelessWidget {
                             padding: const EdgeInsets.all(24),
                             child: Center(
                               child: AppLabel(
-                                text: 'No tasks assigned yet.',
+                                text: l10n.projectDetailNoTasks,
                                 fontSize: AppFontSize.value14,
                                 color: theme.colorScheme.outline,
                                 fontWeight: FontWeight.w500,

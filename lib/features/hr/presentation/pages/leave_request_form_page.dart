@@ -9,6 +9,7 @@ import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/leave_requests_repository.dart';
 import '../../entities/leave_request.dart';
@@ -115,6 +116,9 @@ class _LeaveRequestFormPageState extends State<LeaveRequestFormPage> {
   }
 
   Future<void> _submit() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context);
+    final navigator = Navigator.of(context);
     setState(() {
       _isSubmitting = true;
       _topError = null;
@@ -133,13 +137,13 @@ class _LeaveRequestFormPageState extends State<LeaveRequestFormPage> {
       );
       await repo.create(draft);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Leave request submitted successfully.'),
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(l10n.hrLeaveFormSubmittedSnack),
           behavior: SnackBarBehavior.floating,
         ),
       );
-      Navigator.of(context).pop();
+      navigator.pop();
     } on ValidationFailure catch (f) {
       setState(() => _fieldErrors = f.fieldErrors);
     } catch (e) {
@@ -158,6 +162,7 @@ class _LeaveRequestFormPageState extends State<LeaveRequestFormPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final balanceRepo = GetIt.I<LeaveBalancesRepository>();
 
     String fmt(DateTime? d) =>
@@ -174,7 +179,7 @@ class _LeaveRequestFormPageState extends State<LeaveRequestFormPage> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: 'New Leave Request',
+        title: l10n.hrLeaveFormPageTitle,
         centerTitle: true,
       ),
       body: DynamicStatusBar(
@@ -212,7 +217,7 @@ class _LeaveRequestFormPageState extends State<LeaveRequestFormPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       AppLabel(
-                        text: 'LEAVE PREFERENCES',
+                        text: l10n.hrLeaveFormPreferencesSection,
                         fontSize: AppFontSize.value11,
                         color: theme.colorScheme.primary,
                         fontWeight: FontWeight.w900,
@@ -305,7 +310,7 @@ class _LeaveRequestFormPageState extends State<LeaveRequestFormPage> {
                       const Divider(height: 36),
 
                       AppLabel(
-                        text: 'DURATION SELECTOR',
+                        text: l10n.hrLeaveFormDurationSection,
                         fontSize: AppFontSize.value11,
                         color: theme.colorScheme.primary,
                         fontWeight: FontWeight.w900,
@@ -385,7 +390,7 @@ class _LeaveRequestFormPageState extends State<LeaveRequestFormPage> {
                       const Divider(height: 36),
 
                       AppLabel(
-                        text: 'ATTACHMENTS & EVIDENCE',
+                        text: l10n.hrLeaveFormAttachmentsSection,
                         fontSize: AppFontSize.value11,
                         color: theme.colorScheme.primary,
                         fontWeight: FontWeight.w900,
@@ -405,7 +410,7 @@ class _LeaveRequestFormPageState extends State<LeaveRequestFormPage> {
                       const Divider(height: 36),
 
                       AppLabel(
-                        text: 'JUSTIFICATION',
+                        text: l10n.hrLeaveFormJustificationSection,
                         fontSize: AppFontSize.value11,
                         color: theme.colorScheme.primary,
                         fontWeight: FontWeight.w900,
@@ -525,8 +530,8 @@ class _LeaveRequestFormPageState extends State<LeaveRequestFormPage> {
                           valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       )
-                    : const AppLabel(
-                        text: 'Submit Leave Request',
+                    : AppLabel(
+                        text: l10n.hrLeaveFormSubmitAction,
                         fontSize: AppFontSize.value16,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.2,
@@ -662,6 +667,7 @@ class _FileAttachmentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final isAttached = fileName != null;
 
     return Container(
@@ -686,7 +692,7 @@ class _FileAttachmentCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   AppLabel(
-                    text: 'Uploading attachment...',
+                    text: l10n.hrLeaveFormUploadingAttachment,
                     fontSize: AppFontSize.value14,
                     fontWeight: FontWeight.bold,
                     color: theme.colorScheme.primary,
@@ -734,8 +740,8 @@ class _FileAttachmentCard extends StatelessWidget {
                                 const SizedBox(width: 8),
                                 const CircleAvatar(radius: 2, backgroundColor: Colors.green),
                                 const SizedBox(width: 4),
-                                const AppLabel(
-                                  text: 'Ready to upload',
+                                AppLabel(
+                                  text: l10n.hrLeaveFormReadyToUpload,
                                   fontSize: AppFontSize.value11,
                                   color: Colors.green,
                                   fontWeight: FontWeight.bold,
@@ -746,7 +752,7 @@ class _FileAttachmentCard extends StatelessWidget {
                         ),
                       ),
                       IconButton(
-                        tooltip: 'Remove',
+                        tooltip: l10n.hrLeaveFormRemoveAttachmentTooltip,
                         icon: Icon(Icons.cancel_rounded, color: theme.colorScheme.outline),
                         onPressed: onRemove,
                       ),
@@ -769,7 +775,7 @@ class _FileAttachmentCard extends StatelessWidget {
                           ),
                           const SizedBox(height: 12),
                           AppLabel(
-                            text: 'TAP TO UPLOAD DOCUMENT',
+                            text: l10n.hrLeaveFormTapToUploadDocument,
                             fontSize: AppFontSize.value11,
                             fontWeight: FontWeight.w900,
                             color: theme.colorScheme.primary,
@@ -777,7 +783,7 @@ class _FileAttachmentCard extends StatelessWidget {
                           ),
                           const SizedBox(height: 6),
                           AppLabel(
-                            text: 'Support PDF, PNG, JPG up to 10MB (Medical Cert, etc.)',
+                            text: l10n.hrLeaveFormUploadSupportedFormats,
                             fontSize: AppFontSize.value12,
                             color: theme.colorScheme.outline,
                             textAlign: TextAlign.center,

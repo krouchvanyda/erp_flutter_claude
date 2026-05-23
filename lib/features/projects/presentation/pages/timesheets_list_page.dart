@@ -9,6 +9,7 @@ import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/timesheets_repository.dart';
 import '../../entities/timesheet_entry.dart';
@@ -32,15 +33,16 @@ class _TimesheetsListPageState extends State<TimesheetsListPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: 'Timesheets',
+        title: l10n.timesheetsPageTitle,
         centerTitle: true,
         actions: [
           IconButton(
-            tooltip: 'Utilization',
+            tooltip: l10n.timesheetsUtilizationTooltip,
             icon: const Icon(Icons.analytics_outlined),
             onPressed: () =>
                 ConfigRouter.pushPageAnimation(context, const UtilizationPage()),
@@ -54,21 +56,21 @@ class _TimesheetsListPageState extends State<TimesheetsListPage> {
               style: const ButtonStyle(
                 visualDensity: VisualDensity.compact,
               ),
-              segments: const [
+              segments: [
                 ButtonSegment(
                   value: _TsFilter.mine,
-                  label: AppLabel(text: 'Mine', fontSize: AppFontSize.value13),
+                  label: AppLabel(text: l10n.timesheetsTabMine, fontSize: AppFontSize.value13),
                 ),
                 ButtonSegment(
                   value: _TsFilter.approvals,
                   label: AppLabel(
-                    text: 'Approvals',
+                    text: l10n.timesheetsTabApprovals,
                     fontSize: AppFontSize.value13,
                   ),
                 ),
                 ButtonSegment(
                   value: _TsFilter.all,
-                  label: AppLabel(text: 'All', fontSize: AppFontSize.value13),
+                  label: AppLabel(text: l10n.timesheetsTabAll, fontSize: AppFontSize.value13),
                 ),
               ],
               selected: {_filter},
@@ -103,7 +105,7 @@ class _TimesheetsListPageState extends State<TimesheetsListPage> {
                         ),
                         const SizedBox(height: 12),
                         AppLabel(
-                          text: 'No timesheet entries found.',
+                          text: l10n.timesheetsEmpty,
                           fontSize: AppFontSize.value14,
                           color: theme.colorScheme.outline,
                           fontWeight: FontWeight.w500,
@@ -134,8 +136,8 @@ class _TimesheetsListPageState extends State<TimesheetsListPage> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => ConfigRouter.pushPageAnimation(context, const TimesheetFormPage()),
         icon: const Icon(Icons.add_rounded),
-        label: const AppLabel(
-          text: 'Log time',
+        label: AppLabel(
+          text: l10n.timesheetsLogTimeAction,
           fontSize: AppFontSize.value14,
           fontWeight: FontWeight.w600,
         ),
@@ -169,6 +171,7 @@ class _EntryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final statusColor = _statusColor(entry.status);
 
     final canApprove = filter != _TsFilter.mine &&
@@ -295,7 +298,7 @@ class _EntryCard extends StatelessWidget {
                       Icon(Icons.assignment_outlined, size: 12, color: theme.colorScheme.primary),
                       const SizedBox(width: 6),
                       AppLabel(
-                        text: 'Task: ${entry.taskTitle}',
+                        text: l10n.timesheetsTaskLabel(entry.taskTitle!),
                         fontSize: AppFontSize.value12,
                         color: theme.colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.bold,
@@ -324,7 +327,7 @@ class _EntryCard extends StatelessWidget {
                     ),
                   ),
                   child: AppLabel(
-                    text: 'Rejection Note: ${entry.decisionNote}',
+                    text: l10n.timesheetsRejectionNoteLabel(entry.decisionNote!),
                     fontSize: AppFontSize.value12,
                     fontStyle: FontStyle.italic,
                     color: theme.colorScheme.error,
@@ -342,8 +345,8 @@ class _EntryCard extends StatelessWidget {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
                       ),
                       onPressed: () => _reject(context),
-                      child: const AppLabel(
-                        text: 'Reject',
+                      child: AppLabel(
+                        text: l10n.commonRejectAction,
                         fontSize: AppFontSize.value14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -354,8 +357,8 @@ class _EntryCard extends StatelessWidget {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
                       ),
                       onPressed: () => _approve(context),
-                      child: const AppLabel(
-                        text: 'Approve',
+                      child: AppLabel(
+                        text: l10n.commonApproveAction,
                         fontSize: AppFontSize.value14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -373,8 +376,8 @@ class _EntryCard extends StatelessWidget {
                       ),
                       icon: const Icon(Icons.send_rounded, size: 14),
                       onPressed: () => _submit(context),
-                      label: const AppLabel(
-                        text: 'Submit for Approval',
+                      label: AppLabel(
+                        text: l10n.timesheetsSubmitForApprovalAction,
                         fontSize: AppFontSize.value14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -392,8 +395,8 @@ class _EntryCard extends StatelessWidget {
                       ),
                       icon: const Icon(Icons.replay_rounded, size: 14),
                       onPressed: () => _reopen(context),
-                      label: const AppLabel(
-                        text: 'Re-open as Draft',
+                      label: AppLabel(
+                        text: l10n.timesheetsReopenAsDraftAction,
                         fontSize: AppFontSize.value14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -409,6 +412,8 @@ class _EntryCard extends StatelessWidget {
   }
 
   Future<void> _approve(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context);
     try {
       final repo = GetIt.I<TimesheetsRepository>();
       final updated = repo.approve(
@@ -417,27 +422,25 @@ class _EntryCard extends StatelessWidget {
         now: DateTime.now(),
       );
       await repo.update(updated);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Timesheet approved.')),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n.timesheetsApprovedSnack)),
+      );
     } on ConflictFailure catch (f) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(f.message ?? 'Cannot approve.')),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(content: Text(f.message ?? 'Cannot approve.')),
+      );
     }
   }
 
   Future<void> _reject(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context);
     final reasonCtrl = TextEditingController();
     final reason = await showDialog<String>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        title: const AppLabel(
-          text: 'Reject timesheet',
+        title: AppLabel(
+          text: l10n.timesheetsRejectDialogTitle,
           fontSize: AppFontSize.value18,
           fontWeight: FontWeight.bold,
         ),
@@ -453,16 +456,16 @@ class _EntryCard extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
-            child: const AppLabel(
-              text: 'Cancel',
+            child: AppLabel(
+              text: l10n.commonCancelAction,
               fontSize: AppFontSize.value14,
               fontWeight: FontWeight.w600,
             ),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogCtx, reasonCtrl.text),
-            child: const AppLabel(
-              text: 'Reject',
+            child: AppLabel(
+              text: l10n.commonRejectAction,
               fontSize: AppFontSize.value14,
               fontWeight: FontWeight.bold,
             ),
@@ -480,61 +483,51 @@ class _EntryCard extends StatelessWidget {
         reason: reason,
       );
       await repo.update(updated);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Timesheet rejected.')),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n.timesheetsRejectedSnack)),
+      );
     } on ValidationFailure {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('A reason is required.')),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n.timesheetsReasonRequiredSnack)),
+      );
     } on ConflictFailure catch (f) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(f.message ?? 'Cannot reject.')),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(content: Text(f.message ?? 'Cannot reject.')),
+      );
     }
   }
 
   Future<void> _submit(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context);
     try {
       final repo = GetIt.I<TimesheetsRepository>();
       final updated = repo.submit(entry);
       await repo.update(updated);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Submitted for approval.')),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n.timesheetsSubmittedSnack)),
+      );
     } on ConflictFailure catch (f) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(f.message ?? 'Cannot submit.')),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(content: Text(f.message ?? 'Cannot submit.')),
+      );
     }
   }
 
   Future<void> _reopen(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context);
     try {
       final repo = GetIt.I<TimesheetsRepository>();
       final updated = repo.reopenRejected(entry);
       await repo.update(updated);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Reopened as draft.')),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n.timesheetsReopenedSnack)),
+      );
     } on ConflictFailure catch (f) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(f.message ?? 'Cannot reopen.')),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(content: Text(f.message ?? 'Cannot reopen.')),
+      );
     }
   }
 

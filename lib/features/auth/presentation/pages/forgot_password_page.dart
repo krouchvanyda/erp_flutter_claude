@@ -84,12 +84,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                               opacity: animation,
                               child: ScaleTransition(scale: animation, child: child),
                             ),
-                            child: _isSent 
-                              ? _SuccessView(theme: theme) 
+                            child: _isSent
+                              ? const _SuccessView()
                               : _FormView(
                                   formKey: _formKey,
                                   emailController: _emailController,
-                                  theme: theme,
                                   onReset: _handleReset,
                                 ),
                           ),
@@ -111,17 +110,17 @@ class _FormView extends StatelessWidget {
   const _FormView({
     required this.formKey,
     required this.emailController,
-    required this.theme,
     required this.onReset,
   });
 
   final GlobalKey<FormState> formKey;
   final TextEditingController emailController;
-  final ThemeData theme;
   final VoidCallback onReset;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Column(
       key: const ValueKey('form'),
       mainAxisAlignment: MainAxisAlignment.center,
@@ -132,11 +131,11 @@ class _FormView extends StatelessWidget {
           size: 80,
           color: theme.colorScheme.primary,
         ).animate().fadeIn().scale(),
-        
+
         const SizedBox(height: 32),
-        
+
         AppLabel(
-          text: 'Forgot Password?',
+          text: l10n.forgotPasswordTitle,
           fontSize: AppFontSize.value22,
           fontWeight: FontWeight.bold,
           textAlign: TextAlign.center,
@@ -145,7 +144,7 @@ class _FormView extends StatelessWidget {
         const SizedBox(height: 16),
 
         AppLabel(
-          text: 'Enter your email address and we will send you a link to reset your password.',
+          text: l10n.forgotPasswordSubtitle,
           fontSize: AppFontSize.value16,
           color: theme.colorScheme.onSurfaceVariant,
           textAlign: TextAlign.center,
@@ -173,20 +172,22 @@ class _FormView extends StatelessWidget {
                   children: [
                     AppTextField(
                       controller: emailController,
-                      label: 'Email',
+                      label: l10n.commonEmailLabel,
                       icon: Icons.email_outlined,
                       hintText: 'name@company.com',
                       keyboardType: TextInputType.emailAddress,
                       textCapitalization: TextCapitalization.none,
                       validator: (value) {
-                        if (value == null || value.isEmpty) return 'Enter email';
+                        if (value == null || value.isEmpty) {
+                          return l10n.forgotPasswordValidatorEmailRequired;
+                        }
                         return null;
                       },
                     ),
                     const SizedBox(height: 32),
                     FilledButton(
                       onPressed: onReset,
-                      child: const Text('Send Reset Link'),
+                      child: Text(l10n.forgotPasswordSendResetAction),
                     ),
                   ],
                 ),
@@ -200,12 +201,12 @@ class _FormView extends StatelessWidget {
 }
 
 class _SuccessView extends StatelessWidget {
-  const _SuccessView({required this.theme});
-
-  final ThemeData theme;
+  const _SuccessView();
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Column(
       key: const ValueKey('success'),
       mainAxisAlignment: MainAxisAlignment.center,
@@ -222,11 +223,11 @@ class _SuccessView extends StatelessWidget {
             color: theme.colorScheme.primary,
           ),
         ).animate().scale(duration: 600.ms, curve: Curves.easeOutBack),
-        
+
         const SizedBox(height: 32),
-        
+
         AppLabel(
-          text: 'Email Sent!',
+          text: l10n.forgotPasswordSentTitle,
           fontSize: AppFontSize.value22,
           fontWeight: FontWeight.bold,
         ),
@@ -234,17 +235,17 @@ class _SuccessView extends StatelessWidget {
         const SizedBox(height: 16),
 
         AppLabel(
-          text: 'Please check your inbox for instructions to reset your password.',
+          text: l10n.forgotPasswordSentSubtitle,
           fontSize: AppFontSize.value16,
           color: theme.colorScheme.onSurfaceVariant,
           textAlign: TextAlign.center,
         ),
-        
+
         const SizedBox(height: 48),
-        
+
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Back to Login'),
+          child: Text(l10n.forgotPasswordBackToLoginAction),
         ),
       ],
     );

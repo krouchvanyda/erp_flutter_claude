@@ -10,6 +10,7 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../features/auth/entities/permission.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../../../shared/widgets/permission_guard.dart';
 import '../../data/repositories/leave_requests_repository.dart';
@@ -57,11 +58,12 @@ class _LeaveApprovalDetailPageState extends State<LeaveApprovalDetailPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: 'Leave Request',
+        title: l10n.hrLeaveApprovalPageTitle,
         centerTitle: true,
       ),
       body: DynamicStatusBar(
@@ -217,6 +219,7 @@ class _LeaveApprovalDetailPageState extends State<LeaveApprovalDetailPage> {
 
   Future<String?> _showRejectSheet() async {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final ctrl = TextEditingController();
     final maxLen = 240;
     return showModalBottomSheet<String>(
@@ -249,8 +252,8 @@ class _LeaveApprovalDetailPageState extends State<LeaveApprovalDetailPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const AppLabel(
-                    text: 'Reason for rejection',
+                  AppLabel(
+                    text: l10n.hrLeaveApprovalRejectReasonTitle,
                     fontSize: AppFontSize.value22,
                     fontWeight: FontWeight.w700,
                   ),
@@ -300,8 +303,8 @@ class _LeaveApprovalDetailPageState extends State<LeaveApprovalDetailPage> {
                               borderRadius: BorderRadius.circular(AppRadii.md),
                             ),
                           ),
-                          child: const AppLabel(
-                            text: 'Cancel',
+                          child: AppLabel(
+                            text: l10n.commonCancelAction,
                             fontSize: AppFontSize.value14,
                             fontWeight: FontWeight.w600,
                           ),
@@ -315,8 +318,8 @@ class _LeaveApprovalDetailPageState extends State<LeaveApprovalDetailPage> {
                               ? null
                               : () => Navigator.pop(sheetCtx, ctrl.text.trim()),
                           icon: const Icon(Icons.close_rounded, size: 18),
-                          label: const AppLabel(
-                            text: 'Confirm Rejection',
+                          label: AppLabel(
+                            text: l10n.hrLeaveApprovalConfirmRejectionAction,
                             fontSize: AppFontSize.value14,
                             fontWeight: FontWeight.w600,
                           ),
@@ -343,6 +346,7 @@ class _LeaveApprovalDetailPageState extends State<LeaveApprovalDetailPage> {
 
   Future<String?> _showApproveSheet() async {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final ctrl = TextEditingController();
     return showModalBottomSheet<String>(
       context: context,
@@ -384,9 +388,9 @@ class _LeaveApprovalDetailPageState extends State<LeaveApprovalDetailPage> {
                         color: Colors.green, size: 24),
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: AppLabel(
-                      text: 'Approve this leave request?',
+                      text: l10n.hrLeaveApprovalConfirmApprovalTitle,
                       fontSize: AppFontSize.value22,
                       fontWeight: FontWeight.w700,
                     ),
@@ -428,7 +432,7 @@ class _LeaveApprovalDetailPageState extends State<LeaveApprovalDetailPage> {
                 controller: ctrl,
                 maxLines: 2,
                 decoration: InputDecoration(
-                  hintText: 'Add a note (optional)',
+                  hintText: l10n.hrLeaveApprovalNoteHint,
                   filled: true,
                   fillColor: theme.colorScheme.surfaceContainerHighest
                       .withValues(alpha: 0.4),
@@ -460,8 +464,8 @@ class _LeaveApprovalDetailPageState extends State<LeaveApprovalDetailPage> {
                           borderRadius: BorderRadius.circular(AppRadii.md),
                         ),
                       ),
-                      child: const AppLabel(
-                        text: 'Cancel',
+                      child: AppLabel(
+                        text: l10n.commonCancelAction,
                         fontSize: AppFontSize.value14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -473,8 +477,8 @@ class _LeaveApprovalDetailPageState extends State<LeaveApprovalDetailPage> {
                     child: FilledButton.icon(
                       onPressed: () => Navigator.pop(sheetCtx, ctrl.text.trim()),
                       icon: const Icon(Icons.check_rounded, size: 18),
-                      label: const AppLabel(
-                        text: 'Approve',
+                      label: AppLabel(
+                        text: l10n.commonApproveAction,
                         fontSize: AppFontSize.value14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -535,6 +539,7 @@ class _EmployeeContextCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final initials = _initials(request.employeeName);
     return Container(
       padding: const EdgeInsets.all(20),
@@ -619,7 +624,7 @@ class _EmployeeContextCard extends StatelessWidget {
                   )
                 else
                   AppLabel(
-                    text: 'No yearly balance configured',
+                    text: l10n.hrLeaveApprovalNoYearlyBalance,
                     fontSize: AppFontSize.value12,
                     color: theme.colorScheme.onSurfaceVariant,
                     fontStyle: FontStyle.italic,
@@ -656,6 +661,7 @@ class _RequestDetailCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -677,13 +683,13 @@ class _RequestDetailCard extends StatelessWidget {
           Row(
             children: [
               _InfoCell(
-                label: 'From',
+                label: l10n.hrLeaveApprovalFromLabel,
                 value: dateFormat.format(request.fromDate),
                 icon: Icons.calendar_today_rounded,
               ),
               const SizedBox(width: 16),
               _InfoCell(
-                label: 'To',
+                label: l10n.hrLeaveApprovalToLabel,
                 value: dateFormat.format(request.toDate),
                 icon: Icons.event_rounded,
               ),
@@ -720,7 +726,7 @@ class _RequestDetailCard extends StatelessWidget {
                   size: 14, color: theme.colorScheme.onSurfaceVariant),
               const SizedBox(width: 6),
               AppLabel(
-                text: 'Submitted ${stampFormat.format(request.requestedAt)}',
+                text: l10n.hrLeaveApprovalSubmittedAt(stampFormat.format(request.requestedAt)),
                 fontSize: AppFontSize.value12,
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -806,6 +812,7 @@ class _BalancePreviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final remaining = balance.remainingDays;
     final ifApproved = (remaining - request.days).clamp(0, balance.totalDays);
     final ifRejected = remaining;
@@ -846,7 +853,7 @@ class _BalancePreviewCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _BalanceCell(
-                  label: 'If Approved',
+                  label: l10n.hrLeaveApprovalIfApprovedLabel,
                   value: '$ifApproved days',
                   color: Colors.green.shade700,
                   icon: Icons.check_circle_outline_rounded,
@@ -855,7 +862,7 @@ class _BalancePreviewCard extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: _BalanceCell(
-                  label: 'If Rejected',
+                  label: l10n.hrLeaveApprovalIfRejectedLabel,
                   value: '$ifRejected days',
                   color: theme.colorScheme.onSurfaceVariant,
                   icon: Icons.cancel_outlined,
@@ -1017,6 +1024,7 @@ class _ActionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: EdgeInsets.fromLTRB(
           16, 12, 16, MediaQuery.of(context).padding.bottom + 16),
@@ -1043,8 +1051,8 @@ class _ActionBar extends StatelessWidget {
               child: OutlinedButton.icon(
                 onPressed: onReject,
                 icon: const Icon(Icons.close_rounded, size: 18),
-                label: const AppLabel(
-                  text: 'Reject',
+                label: AppLabel(
+                  text: l10n.commonRejectAction,
                   fontSize: AppFontSize.value14,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1065,8 +1073,8 @@ class _ActionBar extends StatelessWidget {
               child: FilledButton.icon(
                 onPressed: onApprove,
                 icon: const Icon(Icons.check_rounded, size: 18),
-                label: const AppLabel(
-                  text: 'Approve',
+                label: AppLabel(
+                  text: l10n.commonApproveAction,
                   fontSize: AppFontSize.value14,
                   fontWeight: FontWeight.w600,
                 ),

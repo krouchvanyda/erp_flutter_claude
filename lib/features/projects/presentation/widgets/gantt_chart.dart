@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../data/repositories/projects_repository.dart';
 import '../../entities/project.dart';
 
@@ -33,9 +34,9 @@ class GanttChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (rows.isEmpty) {
-      return const Center(
+      return Center(
         child: AppLabel(
-          text: 'No projects in this window.',
+          text: AppLocalizations.of(context).ganttChartNoProjects,
           fontSize: AppFontSize.value14,
         ),
       );

@@ -368,7 +368,7 @@ class _LineRow extends StatelessWidget {
                     if (line.sku != null) ...[
                       const SizedBox(height: 4),
                       AppLabel(
-                        text: 'SKU: ${line.sku}',
+                        text: l10n.commonSkuLabel(line.sku!),
                         fontSize: AppFontSize.value11,
                         color: theme.colorScheme.outline,
                       ),

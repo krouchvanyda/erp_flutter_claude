@@ -1764,4 +1764,1254 @@ class AppLocalizationsKm extends AppLocalizations {
   String salesAnalyticsLeaderboardAttainmentLabel(String pct, String target) {
     return '$pct% នៃ $target';
   }
+
+  @override
+  String get errorBoundaryGenericMessage => 'មានបញ្ហាមួយបានកើតឡើង';
+
+  @override
+  String get commonEmailLabel => 'អ៊ីមែល';
+
+  @override
+  String get loginWelcomeSubtitle => 'សូមស្វាគមន៍មកវិញ! សូមចូលគណនីដើម្បីបន្ត។';
+
+  @override
+  String get loginPasswordLabel => 'ពាក្យសម្ងាត់';
+
+  @override
+  String get loginForgotPasswordAction => 'ភ្លេចពាក្យសម្ងាត់?';
+
+  @override
+  String get loginSignInAction => 'ចូលគណនី';
+
+  @override
+  String get loginOrSecureWith => 'ឬចូលដោយសុវត្ថិភាព';
+
+  @override
+  String get loginUseBiometricsAction => 'ប្រើជីវមាត្រ';
+
+  @override
+  String get loginValidatorEmailRequired => 'សូមបញ្ចូលអ៊ីមែលរបស់អ្នក';
+
+  @override
+  String get loginValidatorEmailInvalid => 'សូមបញ្ចូលអ៊ីមែលដែលត្រឹមត្រូវ';
+
+  @override
+  String get loginValidatorPasswordRequired => 'សូមបញ្ចូលពាក្យសម្ងាត់របស់អ្នក';
+
+  @override
+  String get loginValidatorPasswordTooShort =>
+      'ពាក្យសម្ងាត់ត្រូវមានយ៉ាងតិច ៦ តួអក្សរ';
+
+  @override
+  String get forgotPasswordTitle => 'ភ្លេចពាក្យសម្ងាត់?';
+
+  @override
+  String get forgotPasswordSubtitle =>
+      'បញ្ចូលអាសយដ្ឋានអ៊ីមែលរបស់អ្នក រួចយើងនឹងផ្ញើតំណភ្ជាប់ដើម្បីកំណត់ពាក្យសម្ងាត់ឡើងវិញ។';
+
+  @override
+  String get forgotPasswordValidatorEmailRequired => 'បញ្ចូលអ៊ីមែល';
+
+  @override
+  String get forgotPasswordSendResetAction => 'ផ្ញើតំណកំណត់ឡើងវិញ';
+
+  @override
+  String get forgotPasswordSentTitle => 'បានផ្ញើអ៊ីមែលហើយ!';
+
+  @override
+  String get forgotPasswordSentSubtitle =>
+      'សូមពិនិត្យប្រអប់សំបុត្ររបស់អ្នកសម្រាប់ការណែនាំក្នុងការកំណត់ពាក្យសម្ងាត់ឡើងវិញ។';
+
+  @override
+  String get forgotPasswordBackToLoginAction => 'ត្រឡប់ទៅចូលគណនី';
+
+  @override
+  String get biometricPageTitle => 'ដោះសោដោយជីវមាត្រ';
+
+  @override
+  String get biometricAuthenticatingTitle => 'កំពុងផ្ទៀងផ្ទាត់...';
+
+  @override
+  String get biometricHoldFingerSubtitle =>
+      'សូមដាក់ម្រាមដៃរបស់អ្នកលើឧបករណ៍ចាប់';
+
+  @override
+  String get biometricUseFingerprintSubtitle =>
+      'ប្រើស្នាមម្រាមដៃ ឬមុខរបស់អ្នកដើម្បីបន្ត';
+
+  @override
+  String get biometricUnlockNowAction => 'ដោះសោឥឡូវនេះ';
+
+  @override
+  String get biometricUsePasswordInsteadAction => 'ប្រើពាក្យសម្ងាត់ជំនួសវិញ';
+
+  @override
+  String get otpResendCodeAction => 'ផ្ញើកូដម្តងទៀត (៣០វិ)';
+
+  @override
+  String get splashTagline => 'ឧត្តមភាពអាជីវកម្ម';
+
+  @override
+  String get dashboardGreeting => 'អរុណសួស្តី,';
+
+  @override
+  String get dashboardUserNamePlaceholder => 'អ្នកអនុម័តសាកល្បង';
+
+  @override
+  String get dashboardQuickAccessSection => 'ចូលដំណើរការរហ័ស';
+
+  @override
+  String get dashboardSimulatePushAction => 'សាកល្បងផ្ញើព័ត៌មាន';
+
+  @override
+  String get dashboardRoutedPushAction => 'ផ្ញើដោយផ្លូវ';
+
+  @override
+  String get dashboardKpiRevenueLabel => 'ចំណូល (ខែនេះ)';
+
+  @override
+  String get dashboardKpiOpenInvoicesLabel => 'វិក្កយបត្របើក';
+
+  @override
+  String get dashboardKpiAvgFulfilmentLabel => 'មធ្យមបំពេញ (ថ្ងៃ)';
+
+  @override
+  String get accountDetailTransactionsHeading => 'ប្រតិបត្តិការ';
+
+  @override
+  String get accountDetailCurrentBalanceLabel => 'សមតុល្យបច្ចុប្បន្ន';
+
+  @override
+  String invoiceDetailRejectionReasonLabel(String reason) {
+    return 'មូលហេតុ៖ $reason';
+  }
+
+  @override
+  String invoiceListIssuedDateLabel(String date) {
+    return 'ចេញ៖ $date';
+  }
+
+  @override
+  String journalEntryListReferenceLabel(String reference, String date) {
+    return 'យោង៖ $reference · $date';
+  }
+
+  @override
+  String commonSkuLabel(String sku) {
+    return 'កូដផលិតផល៖ $sku';
+  }
+
+  @override
+  String prListCreatedDateLabel(String date) {
+    return 'បានបង្កើត៖ $date';
+  }
+
+  @override
+  String prListDepartmentLabel(String dept) {
+    return 'នាយកដ្ឋាន៖ $dept';
+  }
+
+  @override
+  String inventorySkuLocationCompound(String sku, String loc) {
+    return 'កូដផលិតផល៖ $sku · ទីតាំង៖ $loc';
+  }
+
+  @override
+  String inventoryWarehouseLocationLabel(String wh, String loc) {
+    return 'ឃ្លាំង៖ $wh · ទីតាំង៖ $loc';
+  }
+
+  @override
+  String get inventoryCurrentStockLabel => 'ស្តុកបច្ចុប្បន្ន';
+
+  @override
+  String get inventoryAvailableToTransferLabel => 'បរិមាណអាចផ្ទេរ';
+
+  @override
+  String get customerFormCompanyOrPersonNameLabel => 'ឈ្មោះក្រុមហ៊ុន ឬបុគ្គល';
+
+  @override
+  String get customerFormIndustryOptionalLabel => 'ឧស្សាហកម្ម (ស្រេចចិត្ត)';
+
+  @override
+  String get commonPhoneNumberLabel => 'លេខទូរស័ព្ទ';
+
+  @override
+  String get commonPhoneLabel => 'ទូរស័ព្ទ';
+
+  @override
+  String get customerFormBillingAddressLabel => 'អាសយដ្ឋានវិក្កយបត្រ';
+
+  @override
+  String get customerFormNotesRemarksOptionalLabel => 'កំណត់ចំណាំ (ស្រេចចិត្ត)';
+
+  @override
+  String customerFormSaveFailureSnack(String error) {
+    return 'បរាជ័យក្នុងការរក្សាទុកអតិថិជន៖ $error';
+  }
+
+  @override
+  String get customerListNewCustomerAction => 'អតិថិជនថ្មី';
+
+  @override
+  String get commonCancelAction => 'បោះបង់';
+
+  @override
+  String get commonApproveAction => 'អនុម័ត';
+
+  @override
+  String get commonRejectAction => 'បដិសេធ';
+
+  @override
+  String get hrEmployeeDetailNotFoundTitle => 'រកមិនឃើញនិយោជិក';
+
+  @override
+  String hrEmployeeDetailNotFoundBody(String employeeId) {
+    return 'មិនមាននិយោជិកដែលមាន ID \"$employeeId\" ទេ។';
+  }
+
+  @override
+  String get hrEmployeeDetailOfficeLocationLabel => 'ទីតាំងការិយាល័យ';
+
+  @override
+  String get hrEmployeeDetailDepartmentLabel => 'នាយកដ្ឋាន';
+
+  @override
+  String get hrEmployeeDetailPositionTitleLabel => 'មុខតំណែង';
+
+  @override
+  String get hrEmployeeDetailHireDateLabel => 'កាលបរិច្ឆេទចូលបម្រើការ';
+
+  @override
+  String get hrEmployeeDetailMonthlySalaryLabel => 'ប្រាក់ខែ';
+
+  @override
+  String get hrEmployeeDetailManagerIdLabel => 'ID អ្នកគ្រប់គ្រង';
+
+  @override
+  String get hrEmployeeDetailTabAttendance => 'វត្តមាន';
+
+  @override
+  String get hrEmployeeDetailTabPayslips => 'ប័ណ្ណប្រាក់ខែ';
+
+  @override
+  String get hrEmployeeDetailTabLeaves => 'ការឈប់សម្រាក';
+
+  @override
+  String get hrEmployeeDetailTabOrgChart => 'តារាងស្ថាប័ន';
+
+  @override
+  String get hrEmployeeListOrgChartTooltip => 'តារាងស្ថាប័ន';
+
+  @override
+  String get hrEmployeeListSortTooltip => 'តម្រៀប';
+
+  @override
+  String get hrEmployeeListSortNameAz => 'ឈ្មោះ (ក-អ)';
+
+  @override
+  String get hrEmployeeListSortRecentlyHired => 'ទើបជួលថ្មីៗ';
+
+  @override
+  String get hrEmployeeListSortDepartment => 'នាយកដ្ឋាន';
+
+  @override
+  String get hrEmployeeListErrorLoading => 'មានបញ្ហាក្នុងការផ្ទុកបញ្ជី';
+
+  @override
+  String get hrEmployeeListSearchHint => 'ស្វែងរកឈ្មោះ អ៊ីមែល មុខតំណែង...';
+
+  @override
+  String get hrEmployeeListEmptyTitle => 'មិនមាននិយោជិកដែលស្របគ្នាទេ';
+
+  @override
+  String get hrEmployeeListEmptySubtitle =>
+      'សូមកែសម្រួលលក្ខណៈស្វែងរក ឬតម្រងរបស់អ្នក';
+
+  @override
+  String get hrLeaveApprovalRejectReasonTitle => 'មូលហេតុនៃការបដិសេធ';
+
+  @override
+  String get hrLeaveApprovalConfirmRejectionAction => 'បញ្ជាក់ការបដិសេធ';
+
+  @override
+  String get hrLeaveApprovalConfirmApprovalTitle => 'អនុម័តសំណើឈប់សម្រាកនេះ?';
+
+  @override
+  String get hrLeaveApprovalNoteHint => 'បន្ថែមកំណត់ចំណាំ (ស្រេចចិត្ត)';
+
+  @override
+  String get hrLeaveApprovalNoYearlyBalance => 'មិនមានសមតុល្យប្រចាំឆ្នាំទេ';
+
+  @override
+  String get hrLeaveApprovalFromLabel => 'ចាប់ពី';
+
+  @override
+  String get hrLeaveApprovalToLabel => 'ដល់';
+
+  @override
+  String hrLeaveApprovalSubmittedAt(String timestamp) {
+    return 'បានដាក់ស្នើ $timestamp';
+  }
+
+  @override
+  String get hrLeaveApprovalIfApprovedLabel => 'បើអនុម័ត';
+
+  @override
+  String get hrLeaveApprovalIfRejectedLabel => 'បើបដិសេធ';
+
+  @override
+  String get hrLeaveRequestsTabAll => 'ទាំងអស់';
+
+  @override
+  String get hrLeaveRequestsTabPending => 'កំពុងរង់ចាំ';
+
+  @override
+  String get hrLeaveRequestsTabMine => 'របស់ខ្ញុំ';
+
+  @override
+  String get hrLeaveRequestsNewRequestTooltip => 'សំណើថ្មី';
+
+  @override
+  String get hrLeaveRequestsEmptyTitle => 'មិនមានសំណើឈប់សម្រាកទេ';
+
+  @override
+  String get hrLeaveRequestsEmptySubtitle => 'មិនមានសំណើដែលស្របនឹងតម្រងនេះទេ។';
+
+  @override
+  String get hrLeaveRequestsApprovedSnack => 'សំណើឈប់សម្រាកត្រូវបានអនុម័ត។';
+
+  @override
+  String get hrLeaveRequestsRejectDialogTitle => 'បដិសេធសំណើឈប់សម្រាក';
+
+  @override
+  String get hrLeaveRequestsRejectedSnack => 'សំណើឈប់សម្រាកត្រូវបានបដិសេធ។';
+
+  @override
+  String get hrLeaveRequestsRejectionReasonRequiredSnack =>
+      'ត្រូវផ្តល់មូលហេតុនៃការបដិសេធ។';
+
+  @override
+  String get hrLeaveFormSubmittedSnack =>
+      'សំណើឈប់សម្រាកត្រូវបានដាក់ស្នើដោយជោគជ័យ។';
+
+  @override
+  String get hrLeaveFormPreferencesSection => 'ចំណូលចិត្តការឈប់សម្រាក';
+
+  @override
+  String get hrLeaveFormDurationSection => 'ជ្រើសរើសរយៈពេល';
+
+  @override
+  String get hrLeaveFormAttachmentsSection => 'ឯកសារភ្ជាប់ និងភស្តុតាង';
+
+  @override
+  String get hrLeaveFormJustificationSection => 'មូលហេតុ';
+
+  @override
+  String get hrLeaveFormSubmitAction => 'ដាក់ស្នើសំណើឈប់សម្រាក';
+
+  @override
+  String get hrLeaveFormUploadingAttachment => 'កំពុងផ្ទុកឯកសារភ្ជាប់...';
+
+  @override
+  String get hrLeaveFormReadyToUpload => 'ត្រៀមបង្ហោះ';
+
+  @override
+  String get hrLeaveFormRemoveAttachmentTooltip => 'លុបចេញ';
+
+  @override
+  String get hrLeaveFormTapToUploadDocument => 'ចុចដើម្បីបង្ហោះឯកសារ';
+
+  @override
+  String get hrLeaveFormUploadSupportedFormats =>
+      'គាំទ្រ PDF, PNG, JPG រហូតដល់ 10MB (វិញ្ញាបនបត្រវេជ្ជសាស្ត្រ ។ល។)';
+
+  @override
+  String get hrLeaveBalanceHistoryTooltip => 'ប្រវត្តិការឈប់សម្រាក';
+
+  @override
+  String get hrLeaveBalanceRequestLeaveTooltip => 'ស្នើសុំឈប់សម្រាក';
+
+  @override
+  String get hrLeaveBalanceNoEntitlements => 'មិនមានសិទ្ធិទេ';
+
+  @override
+  String get hrLeaveBalanceRemainingLabel => 'នៅសល់';
+
+  @override
+  String get hrLeaveBalanceTakenLabel => 'បានយក';
+
+  @override
+  String get hrLeaveBalanceTotalLabel => 'សរុប';
+
+  @override
+  String get hrLeaveBalanceBreakdownHeading => 'បំបែកសិទ្ធិ';
+
+  @override
+  String get hrAttendanceRecentEntriesHeading => 'ការចូលថ្មីៗ';
+
+  @override
+  String get hrAttendanceEmptyMessage => 'មិនទាន់មានកំណត់ត្រាវត្តមានទេ';
+
+  @override
+  String get hrPayslipsEmpty => 'មិនមានប័ណ្ណប្រាក់ខែទេ';
+
+  @override
+  String get hrPayslipsArchiveHeading => 'បណ្ណាល័យប័ណ្ណប្រាក់ខែ';
+
+  @override
+  String get hrPayslipsAggregateSummaryHeading => 'សេចក្តីសង្ខេបសរុប';
+
+  @override
+  String hrPayslipsNetPayLabel(String amount) {
+    return 'សុទ្ធ៖ $amount';
+  }
+
+  @override
+  String hrPayslipsGrossPayLabel(String amount) {
+    return 'សរុប៖ $amount';
+  }
+
+  @override
+  String hrPayslipDetailNotFound(String payslipId) {
+    return 'មិនមានប័ណ្ណប្រាក់ខែដែលមាន ID \"$payslipId\" ទេ។';
+  }
+
+  @override
+  String get hrPayslipDetailNetPayoutLabel => 'ប្រាក់សុទ្ធ';
+
+  @override
+  String get hrPayslipDetailBreakdownHeading => 'បំបែកធាតុ';
+
+  @override
+  String get hrOrgChartPageTitle => 'តារាងស្ថាប័ន';
+
+  @override
+  String get hrOrgChartEmptyTitle => 'រកមិនឃើញនិយោជិកទេ';
+
+  @override
+  String get hrOrgChartEmptySubtitle => 'បន្ថែមនិយោជិកដើម្បីមើលឋានានុក្រម។';
+
+  @override
+  String get hrAttendancePageTitle => 'កំណត់ត្រាវត្តមាន';
+
+  @override
+  String get hrEmployeeDetailPageTitle => 'ប្រវត្តិរូបនិយោជិក';
+
+  @override
+  String get hrEmployeeDetailSectionQuickActions => 'សកម្មភាពរហ័ស';
+
+  @override
+  String get hrEmployeeDetailSectionContact => 'ព័ត៌មានទំនាក់ទំនង';
+
+  @override
+  String get hrEmployeeDetailSectionEmployment => 'ព័ត៌មានការងារ';
+
+  @override
+  String get hrEmployeeListPageTitle => 'បញ្ជីនិយោជិក';
+
+  @override
+  String get hrLeaveApprovalPageTitle => 'សំណើឈប់សម្រាក';
+
+  @override
+  String get hrLeaveBalancePageTitle => 'សមតុល្យឈប់សម្រាក';
+
+  @override
+  String get hrLeaveRequestsPageTitle => 'សំណើឈប់សម្រាក';
+
+  @override
+  String get hrLeaveFormPageTitle => 'សំណើឈប់សម្រាកថ្មី';
+
+  @override
+  String get hrPayslipsPageTitle => 'ប្រវត្តិប័ណ្ណប្រាក់ខែ';
+
+  @override
+  String get hrPayslipDetailPageTitle => 'ព័ត៌មានលម្អិតប័ណ្ណប្រាក់ខែ';
+
+  @override
+  String get projectBoardPageTitle => 'ក្ដារកិច្ចការ';
+
+  @override
+  String get projectBoardNewTaskAction => 'កិច្ចការថ្មី';
+
+  @override
+  String get projectBoardDropZoneHint => 'ទម្លាក់កិច្ចការនៅទីនេះ';
+
+  @override
+  String get projectDetailPageTitle => 'ព័ត៌មានគម្រោង';
+
+  @override
+  String get projectDetailOpenBoardTooltip => 'បើកក្ដារ';
+
+  @override
+  String get projectDetailEditProjectTooltip => 'កែសម្រួលគម្រោង';
+
+  @override
+  String projectDetailNotFound(String projectId) {
+    return 'មិនមានគម្រោងដែលមាន ID \"$projectId\" ទេ។';
+  }
+
+  @override
+  String projectDetailProjectIdLabel(String code) {
+    return 'ID គម្រោង៖ $code';
+  }
+
+  @override
+  String get projectDetailDescriptionHeading => 'ការពិពណ៌នា';
+
+  @override
+  String get projectDetailTasksHeading => 'កិច្ចការគម្រោង';
+
+  @override
+  String get projectDetailNoTasks => 'មិនទាន់មានកិច្ចការដែលបានកំណត់ទេ។';
+
+  @override
+  String get projectFormNameLabel => 'ឈ្មោះគម្រោង';
+
+  @override
+  String get projectFormCodeLabel => 'កូដគម្រោង';
+
+  @override
+  String get projectFormDescriptionLabel => 'ការពិពណ៌នា';
+
+  @override
+  String get projectFormStartLabel => 'ចាប់ផ្ដើម';
+
+  @override
+  String get projectFormEndLabel => 'បញ្ចប់';
+
+  @override
+  String projectFormDurationLabel(String duration) {
+    return 'រយៈពេល៖ $duration';
+  }
+
+  @override
+  String get projectFormBudgetLabel => 'ថវិកា (ទម្រង់)';
+
+  @override
+  String get projectFormPickEmployeeAction => 'ជ្រើសរើសនិយោជិក';
+
+  @override
+  String get projectListPageTitle => 'គម្រោង';
+
+  @override
+  String get projectListTimesheetsTooltip => 'តារាងម៉ោងធ្វើការ';
+
+  @override
+  String get projectListSortTooltip => 'តម្រៀប';
+
+  @override
+  String get projectListSortNameAz => 'ឈ្មោះ (ក-អ)';
+
+  @override
+  String get projectListSortRecentlyStarted => 'ទើបចាប់ផ្ដើមថ្មីៗ';
+
+  @override
+  String get projectListSortDueSoonest => 'ផុតកំណត់ឆាប់ៗ';
+
+  @override
+  String projectListErrorMessage(String message) {
+    return 'បញ្ហា៖ $message';
+  }
+
+  @override
+  String get projectListViewListAction => 'ទិដ្ឋភាពបញ្ជី';
+
+  @override
+  String get projectListViewGanttAction => 'តារាង Gantt';
+
+  @override
+  String get projectListSearchHint => 'ស្វែងរកឈ្មោះ កូដ ម្ចាស់...';
+
+  @override
+  String get projectListEmpty => 'មិនមានគម្រោងស្របទេ។';
+
+  @override
+  String get projectListNewProjectAction => 'គម្រោងថ្មី';
+
+  @override
+  String projectListCodeOwnerSubtitle(String code, String owner) {
+    return 'កូដ៖ $code • ម្ចាស់៖ $owner';
+  }
+
+  @override
+  String get taskAssignPageTitle => 'ផ្ដល់កិច្ចការ';
+
+  @override
+  String get taskAssignErrorLoading => 'មិនអាចផ្ទុកនិយោជិកបានទេ';
+
+  @override
+  String taskAssignSuccessSnack(String name) {
+    return 'បានផ្ដល់ទៅ $name';
+  }
+
+  @override
+  String taskAssignFailureSnack(String error) {
+    return 'ការផ្ដល់បរាជ័យ៖ $error';
+  }
+
+  @override
+  String get taskAssignCurrentlyLabel => 'បច្ចុប្បន្ន៖ ';
+
+  @override
+  String get taskAssignSearchHint => 'ស្វែងរកតាមឈ្មោះ តួនាទី ឬនាយកដ្ឋាន...';
+
+  @override
+  String get taskAssignClearTooltip => 'សម្អាត';
+
+  @override
+  String get taskAssignNoteHint =>
+      'បន្ថែមកំណត់ចំណាំទៅអ្នកទទួល… (ឧ. \"បរិបទនៅ #project-alpha\")';
+
+  @override
+  String get taskAssignEmpty => 'មិនមាននិយោជិកស្របនឹងការស្វែងរកនេះទេ។';
+
+  @override
+  String get taskDetailPageTitle => 'ព័ត៌មានកិច្ចការ';
+
+  @override
+  String get taskDetailMoreTooltip => 'បន្ថែម';
+
+  @override
+  String get taskDetailEditTaskAction => 'កែសម្រួលកិច្ចការ';
+
+  @override
+  String get taskDetailReassignAction => 'ផ្ដល់ឡើងវិញ';
+
+  @override
+  String taskDetailNotFound(String taskId) {
+    return 'មិនមានកិច្ចការដែលមាន ID \"$taskId\" ទេ។';
+  }
+
+  @override
+  String get taskDetailDescriptionHeading => 'ការពិពណ៌នា';
+
+  @override
+  String get taskDetailCommentsHeading => 'មតិយោបល់';
+
+  @override
+  String get taskDetailNoComments => 'មិនទាន់មានមតិយោបល់ទេ។';
+
+  @override
+  String get taskDetailAddCommentHint => 'បន្ថែមមតិយោបល់...';
+
+  @override
+  String get taskFormPageTitleEdit => 'កែសម្រួលកិច្ចការ';
+
+  @override
+  String get taskFormPageTitleNew => 'កិច្ចការថ្មី';
+
+  @override
+  String get taskFormTitleRequiredValidator => 'ត្រូវការចំណងជើង';
+
+  @override
+  String get taskFormTitleHint => 'តើត្រូវធ្វើអ្វី?';
+
+  @override
+  String get taskFormDescriptionHint => 'បន្ថែមការពិពណ៌នា...';
+
+  @override
+  String get taskFormStatusLabel => 'ស្ថានភាព';
+
+  @override
+  String get taskFormPriorityLabel => 'អាទិភាព';
+
+  @override
+  String get taskFormAssigneeLabel => 'អ្នកទទួល';
+
+  @override
+  String get taskFormUnassignedLabel => 'មិនបានផ្ដល់';
+
+  @override
+  String get taskFormDueDateLabel => 'កាលបរិច្ឆេទផុតកំណត់';
+
+  @override
+  String get taskFormClearDueDateTooltip => 'សម្អាតកាលបរិច្ឆេទផុតកំណត់';
+
+  @override
+  String get taskFormAddDueDateAction => 'បន្ថែមកាលបរិច្ឆេទផុតកំណត់';
+
+  @override
+  String get taskFormAssignToAction => 'ផ្ដល់ទៅ...';
+
+  @override
+  String get taskFormUnassignAction => 'ដក​ការ​ផ្ដល់';
+
+  @override
+  String get timesheetsPageTitle => 'តារាងម៉ោងធ្វើការ';
+
+  @override
+  String get timesheetsUtilizationTooltip => 'ការប្រើប្រាស់';
+
+  @override
+  String get timesheetsTabMine => 'របស់ខ្ញុំ';
+
+  @override
+  String get timesheetsTabApprovals => 'ការអនុម័ត';
+
+  @override
+  String get timesheetsTabAll => 'ទាំងអស់';
+
+  @override
+  String get timesheetsEmpty => 'មិនមានធាតុតារាងម៉ោងធ្វើការទេ។';
+
+  @override
+  String get timesheetsLogTimeAction => 'កត់ត្រាម៉ោង';
+
+  @override
+  String timesheetsTaskLabel(String title) {
+    return 'កិច្ចការ៖ $title';
+  }
+
+  @override
+  String timesheetsRejectionNoteLabel(String note) {
+    return 'កំណត់ចំណាំបដិសេធ៖ $note';
+  }
+
+  @override
+  String get timesheetsSubmitForApprovalAction => 'ដាក់ស្នើដើម្បីអនុម័ត';
+
+  @override
+  String get timesheetsReopenAsDraftAction => 'បើកឡើងវិញជាសេចក្ដីព្រាង';
+
+  @override
+  String get timesheetsApprovedSnack => 'តារាងម៉ោងបានអនុម័ត។';
+
+  @override
+  String get timesheetsRejectDialogTitle => 'បដិសេធតារាងម៉ោង';
+
+  @override
+  String get timesheetsRejectedSnack => 'តារាងម៉ោងត្រូវបានបដិសេធ។';
+
+  @override
+  String get timesheetsReasonRequiredSnack => 'ត្រូវផ្ដល់មូលហេតុ។';
+
+  @override
+  String get timesheetsSubmittedSnack => 'បានដាក់ស្នើដើម្បីអនុម័ត។';
+
+  @override
+  String get timesheetsReopenedSnack => 'បានបើកឡើងវិញជាសេចក្ដីព្រាង។';
+
+  @override
+  String get timesheetFormPageTitle => 'កត់ត្រាម៉ោង';
+
+  @override
+  String get timesheetFormSubmitToggleLabel => 'ដាក់ស្នើដើម្បីអនុម័តភ្លាមៗ';
+
+  @override
+  String get timesheetFormSubmitToggleHint =>
+      'បើមិនបាន វានឹងត្រូវរក្សាទុកជាសេចក្ដីព្រាងដែលអ្នកអាចកែសម្រួលក្រោយ។';
+
+  @override
+  String get timesheetFormSaveAction => 'រក្សាទុកតារាងម៉ោង';
+
+  @override
+  String get utilizationPageTitle => 'ការប្រើប្រាស់';
+
+  @override
+  String get utilizationThisWeekToggle => 'សប្ដាហ៍នេះ';
+
+  @override
+  String get utilizationThisMonthToggle => 'ខែនេះ';
+
+  @override
+  String get utilizationApprovedHoursHeading => 'ម៉ោងបានអនុម័តធៀបនឹងគោលដៅ';
+
+  @override
+  String get utilizationNoHoursInWindow =>
+      'មិនមានម៉ោងបានអនុម័តក្នុងរយៈពេលនេះទេ។';
+
+  @override
+  String get ganttChartNoProjects => 'មិនមានគម្រោងក្នុងរយៈពេលនេះទេ។';
+
+  @override
+  String get settingsHomePageTitle => 'ការកំណត់';
+
+  @override
+  String get settingsHomeAccountSection => 'គណនី';
+
+  @override
+  String get settingsHomeMyProfileTitle => 'ប្រវត្តិរូបរបស់ខ្ញុំ';
+
+  @override
+  String get settingsHomeMyProfileSubtitle =>
+      'ទំនាក់ទំនង ផ្ទាល់ខ្លួន សុវត្ថិភាព';
+
+  @override
+  String get settingsHomeMyRolesTitle => 'តួនាទី និងសិទ្ធិរបស់ខ្ញុំ';
+
+  @override
+  String get settingsHomeMyRolesSubtitle =>
+      'អ្វីដែលអ្នកអាចធ្វើបាននៅក្នុងកម្មវិធី';
+
+  @override
+  String get settingsHomePreferencesSection => 'ចំណូលចិត្ត';
+
+  @override
+  String get settingsHomeAppearanceTitle => 'រូបរាង';
+
+  @override
+  String get settingsHomeAppearanceSubtitle => 'ភ្លឺ ងងឹត ឬតាមប្រព័ន្ធ';
+
+  @override
+  String get settingsHomeLanguageTitle => 'ភាសា';
+
+  @override
+  String get settingsHomeLanguageSubtitle => 'English / ខ្មែរ';
+
+  @override
+  String get settingsHomeNotificationsTitle => 'ការជូនដំណឹង';
+
+  @override
+  String get settingsHomeNotificationsSubtitle => 'ផ្ញើ + អ៊ីមែលតាមប្រភេទ';
+
+  @override
+  String get settingsHomeSecuritySection => 'សុវត្ថិភាព និងការចូលប្រើ';
+
+  @override
+  String get settingsHomeActiveDevicesTitle => 'ឧបករណ៍សកម្ម';
+
+  @override
+  String get settingsHomeActiveDevicesSubtitle => 'សម័យដែលអ្នកអាចលុបបាន';
+
+  @override
+  String get settingsHomeAuditLogTitle => 'កំណត់ហេតុសវនកម្ម';
+
+  @override
+  String get settingsHomeAuditLogSubtitle => 'អ្នកណាបានធ្វើអ្វី និងពេលណា';
+
+  @override
+  String get settingsHomeAppLockTitle => 'ការចាក់សោកម្មវិធី';
+
+  @override
+  String get settingsHomeAppLockSubtitle => 'PIN + ការផ្ទៀងផ្ទាត់ជីវមាត្រ';
+
+  @override
+  String get settingsHomeAdminSection => 'រដ្ឋបាល';
+
+  @override
+  String get settingsHomeUserMgmtTitle => 'ការគ្រប់គ្រងអ្នកប្រើ';
+
+  @override
+  String get settingsHomeUserMgmtSubtitle => 'អញ្ជើញ ផ្អាក ផ្ដល់តួនាទី';
+
+  @override
+  String get settingsHomeRolesPermsTitle => 'តួនាទី និងសិទ្ធិ';
+
+  @override
+  String get settingsHomeRolesPermsSubtitle =>
+      'កម្មវិធីកែសម្រួលសម្រាប់តួនាទីតាមតម្រូវការ';
+
+  @override
+  String get settingsHomeApiConfigTitle => 'ការកំណត់រចនាសម្ព័ន្ធ API';
+
+  @override
+  String get settingsHomeApiConfigSubtitle => 'ប្ដូរបរិស្ថាន / អ្នកជួល';
+
+  @override
+  String get settingsHomeSignOutAction => 'ចេញ';
+
+  @override
+  String get appearancePageTitle => 'រូបរាង';
+
+  @override
+  String get appearanceChooseThemeHeading => 'ជ្រើសរើសរបៀបស្បែក';
+
+  @override
+  String get appearanceModeSystem => 'តាមប្រព័ន្ធ';
+
+  @override
+  String get appearanceModeLight => 'របៀបភ្លឺ';
+
+  @override
+  String get appearanceModeDark => 'របៀបងងឹត';
+
+  @override
+  String get appearanceSubtitleSystem => 'តាមការកំណត់រូបរាងរបស់ប្រព័ន្ធ';
+
+  @override
+  String get appearanceSubtitleLight => 'តែងតែប្រើពណ៌ភ្លឺ';
+
+  @override
+  String get appearanceSubtitleDark => 'តែងតែប្រើពណ៌ងងឹត';
+
+  @override
+  String get languagePageTitle => 'ភាសា';
+
+  @override
+  String get languageSelectPreferredHeading => 'ជ្រើសរើសភាសាដែលពេញចិត្ត';
+
+  @override
+  String get languageDemoLaunchNote =>
+      'ការផ្លាស់ប្ដូរភាសានឹងមានប្រសិទ្ធភាពនៅពេលបើកកម្មវិធីបន្ទាប់ក្នុងកំណែសាកល្បងនេះ។';
+
+  @override
+  String get languageEnglishLabel => 'អង់គ្លេស';
+
+  @override
+  String get languageKhmerLabel => 'ខ្មែរ';
+
+  @override
+  String get languageEnglishNative => 'United Kingdom';
+
+  @override
+  String get languageKhmerNative => 'ភាសាខ្មែរ';
+
+  @override
+  String get notificationPrefsPageTitle => 'ការជូនដំណឹង';
+
+  @override
+  String get notificationPrefsChannelsHeading => 'ប៉ុស្តិ៍ជូនដំណឹង';
+
+  @override
+  String get notificationPrefsPushTitle => 'ការផ្ញើព័ត៌មាន';
+
+  @override
+  String get notificationPrefsEmailTitle => 'បច្ចុប្បន្នភាពអ៊ីមែល';
+
+  @override
+  String get sessionsPageTitle => 'ឧបករណ៍សកម្ម';
+
+  @override
+  String get sessionsSignOutOthersSnack => 'ឧបករណ៍ផ្សេងទៀតបានចេញ។';
+
+  @override
+  String get sessionsSignOutOthersAction => 'ចេញពីឧបករណ៍ផ្សេងទៀតទាំងអស់';
+
+  @override
+  String get sessionsEmpty => 'មិនមានសម័យសកម្មទេ។';
+
+  @override
+  String get sessionsThisDeviceLabel => 'ឧបករណ៍នេះ';
+
+  @override
+  String get sessionsRevokeAccessAction => 'ដកសិទ្ធិចូលប្រើ';
+
+  @override
+  String get sessionsLastActiveLabel => 'សកម្មចុងក្រោយ';
+
+  @override
+  String get sessionsSignedInLabel => 'បានចូល';
+
+  @override
+  String get sessionsLocationLabel => 'ទីតាំង';
+
+  @override
+  String get sessionsIpAddressLabel => 'អាសយដ្ឋាន IP';
+
+  @override
+  String sessionsRevokedSnack(String device) {
+    return '$device បានចេញ។';
+  }
+
+  @override
+  String get auditLogPageTitle => 'កំណត់ហេតុសវនកម្ម';
+
+  @override
+  String get auditLogSearchHint => 'ស្វែងរកអ្នកធ្វើ គោលដៅ ឬព័ត៌មានលម្អិត...';
+
+  @override
+  String get auditLogEmpty => 'មិនមានកំណត់ត្រាស្របនឹងតម្រងទេ។';
+
+  @override
+  String get auditLogDetailDialogTitle => 'ព័ត៌មានលម្អិតកំណត់ហេតុ';
+
+  @override
+  String get auditLogAdditionalMetadataLabel => 'មេតាដាតាបន្ថែម៖';
+
+  @override
+  String get auditLogCloseAction => 'បិទ';
+
+  @override
+  String get auditLogActorIdLabel => 'ID អ្នកធ្វើ';
+
+  @override
+  String get auditLogActorNameLabel => 'ឈ្មោះអ្នកធ្វើ';
+
+  @override
+  String get auditLogActionVerbLabel => 'សកម្មភាព';
+
+  @override
+  String get auditLogTargetTypeLabel => 'ប្រភេទគោលដៅ';
+
+  @override
+  String get auditLogTargetIdLabel => 'ID គោលដៅ';
+
+  @override
+  String get auditLogTargetLabelLabel => 'ស្លាកគោលដៅ';
+
+  @override
+  String get auditLogTimestampLabel => 'ពេលវេលា';
+
+  @override
+  String get appLockPageTitle => 'ការកំណត់ការចាក់សោកម្មវិធី';
+
+  @override
+  String get appLockDeviceProtectionHeading => 'ការការពារឧបករណ៍';
+
+  @override
+  String get appLockPinTitle => 'PIN ចាក់សោកម្មវិធី';
+
+  @override
+  String get appLockPinSubtitle => 'ត្រូវការ PIN សុវត្ថិភាព ៤–៨ ខ្ទង់នៅពេលបន្ត';
+
+  @override
+  String get appLockBiometricTitle => 'ការផ្ទៀងផ្ទាត់ជីវមាត្រ';
+
+  @override
+  String get appLockBiometricSubtitle =>
+      'ប្រើ Face ID / ស្នាមម្រាមដៃជំនួសការបញ្ចូល PIN';
+
+  @override
+  String get appLockTimeoutHeading => 'ការកំណត់រយៈពេលផុតកំណត់';
+
+  @override
+  String get appLockAutoLockDurationTitle => 'រយៈពេលចាក់សោដោយស្វ័យប្រវត្តិ';
+
+  @override
+  String get appLockChangePinTitle => 'ផ្លាស់ប្ដូរ PIN ចាក់សោ';
+
+  @override
+  String get appLockChangePinSubtitle => 'ជំនួសកូដចូលសុវត្ថិភាពដែលមានស្រាប់';
+
+  @override
+  String get appLockPinUpdatedSnack => 'PIN បានធ្វើបច្ចុប្បន្នភាពដោយជោគជ័យ។';
+
+  @override
+  String get appLockSetSecurePinAction => 'កំណត់ PIN សុវត្ថិភាព';
+
+  @override
+  String get appLockSavePinAction => 'រក្សាទុក PIN';
+
+  @override
+  String get apiConfigPageTitle => 'ការកំណត់រចនាសម្ព័ន្ធ API';
+
+  @override
+  String get apiConfigClustersHeading => 'ក្រុមបរិស្ថានដែលអាចប្រើបាន';
+
+  @override
+  String apiConfigSwitchedSnack(String name) {
+    return 'បានប្ដូរក្រុមបរិស្ថានទៅ \"$name\"។';
+  }
+
+  @override
+  String get apiConfigAddClusterAction => 'បន្ថែមក្រុម';
+
+  @override
+  String get apiConfigAddCustomClusterTitle => 'បន្ថែមក្រុមតាមតម្រូវការ';
+
+  @override
+  String get apiConfigBuiltInBadge => 'មានស្រាប់';
+
+  @override
+  String apiConfigDeletedSnack(String name) {
+    return 'បានលុបក្រុមបរិស្ថាន \"$name\"។';
+  }
+
+  @override
+  String get apiConfigClusterNameLabel => 'ឈ្មោះក្រុម';
+
+  @override
+  String get apiConfigClusterNameHint => 'ឧ. Asia Pacific Staging';
+
+  @override
+  String get apiConfigBaseUrlLabel => 'URL មូលដ្ឋាន';
+
+  @override
+  String get apiConfigBaseUrlHint => 'https://api-apac.tenant.example.com';
+
+  @override
+  String get roleEditorPageTitle => 'តួនាទី និងសិទ្ធិ';
+
+  @override
+  String get roleEditorNewRoleAction => 'តួនាទីថ្មី';
+
+  @override
+  String get roleEditorCreateCustomRoleTitle => 'បង្កើតតួនាទីតាមតម្រូវការ';
+
+  @override
+  String get roleEditorRoleNameLabel =>
+      'ឈ្មោះតួនាទី (ឧ. អ្នកគ្រប់គ្រងហិរញ្ញវត្ថុ)';
+
+  @override
+  String get roleEditorDescriptionLabel => 'ការពិពណ៌នា';
+
+  @override
+  String get roleEditorAssignScopesHeading => 'ផ្ដល់វិសាលភាពសិទ្ធិ';
+
+  @override
+  String get roleEditorCreateRoleAction => 'បង្កើតតួនាទី';
+
+  @override
+  String get roleEditorSystemBadge => 'ប្រព័ន្ធ';
+
+  @override
+  String get roleEditorPermissionScopesHeading => 'វិសាលភាពសិទ្ធិ';
+
+  @override
+  String get roleEditorDeleteRoleAction => 'លុបតួនាទី';
+
+  @override
+  String roleEditorUpdateFailedSnack(String error) {
+    return 'មិនអាចធ្វើបច្ចុប្បន្នភាពសិទ្ធិបានទេ៖ $error';
+  }
+
+  @override
+  String roleEditorDeleteConfirmTitle(String name) {
+    return 'លុប \"$name\"?';
+  }
+
+  @override
+  String get roleEditorDeleteAction => 'លុប';
+
+  @override
+  String get userMgmtPageTitle => 'ការគ្រប់គ្រងអ្នកប្រើ';
+
+  @override
+  String get userMgmtEmpty => 'មិនមានអ្នកប្រើស្របនឹងស្ថានភាពដែលជ្រើសរើសទេ។';
+
+  @override
+  String get userMgmtInviteUserAction => 'អញ្ជើញអ្នកប្រើ';
+
+  @override
+  String get userMgmtInviteSheetTitle => 'អញ្ជើញអ្នកប្រើថ្មី';
+
+  @override
+  String get userMgmtAssignRolesLabel => 'ផ្ដល់តួនាទី';
+
+  @override
+  String userMgmtInvitedSnack(String email) {
+    return 'បានអញ្ជើញ $email';
+  }
+
+  @override
+  String get userMgmtSendInvitationAction => 'ផ្ញើការអញ្ជើញ';
+
+  @override
+  String get userMgmtYouBadge => 'អ្នក';
+
+  @override
+  String get userMgmtActivateUserAction => 'ធ្វើឱ្យសកម្ម';
+
+  @override
+  String get userMgmtSuspendUserAction => 'ផ្អាកអ្នកប្រើ';
+
+  @override
+  String userMgmtStatusSetSnack(String status) {
+    return 'ស្ថានភាពត្រូវបានកំណត់ទៅ $status។';
+  }
+
+  @override
+  String get myRolesPageTitle => 'តួនាទី និងសិទ្ធិរបស់ខ្ញុំ';
+
+  @override
+  String get myRolesGrantedTitle => 'បានផ្ដល់';
+
+  @override
+  String get myRolesNotGrantedTitle => 'មិនបានផ្ដល់';
+
+  @override
+  String get myRolesAssignedRolesLabel => 'តួនាទីដែលបានផ្ដល់';
+
+  @override
+  String myRolesSyncedAtLabel(String timestamp) {
+    return 'ធ្វើសមកាលកម្ម $timestamp';
+  }
+
+  @override
+  String get myRolesSearchHint => 'ស្វែងរកសិទ្ធិ...';
+
+  @override
+  String get myProfilePageTitle => 'ប្រវត្តិរូបរបស់ខ្ញុំ';
+
+  @override
+  String get myProfileUpdatedSnack => 'ប្រវត្តិរូបបានធ្វើបច្ចុប្បន្នភាព។';
+
+  @override
+  String get myProfileEditAction => 'កែសម្រួល';
+
+  @override
+  String get myProfileContactSection => 'ទំនាក់ទំនង';
+
+  @override
+  String get myProfilePersonalSection => 'ផ្ទាល់ខ្លួន';
+
+  @override
+  String get myProfileAccountSecuritySection => 'សុវត្ថិភាពគណនី';
+
+  @override
+  String get myProfilePhotoLocalSheetSubtitle =>
+      'រូបថតផ្លាស់ប្ដូរតែលើឧបករណ៍នេះប៉ុណ្ណោះ។';
+
+  @override
+  String get myProfileImageReadErrorSnack =>
+      'មិនអាចអានរូបភាពដែលបានជ្រើសរើសបានទេ។';
+
+  @override
+  String myProfileImagePickErrorSnack(String error) {
+    return 'មិនអាចជ្រើសរូបបាន៖ $error';
+  }
+
+  @override
+  String get myProfileEmployeeRowLabel => 'និយោជិក';
+
+  @override
+  String get myProfileTenureRowLabel => 'រយៈពេលបម្រើការ';
+
+  @override
+  String get myProfileLastLoginRowLabel => 'ការចូលចុងក្រោយ';
+
+  @override
+  String get myProfileEmployeeIdLabel => 'ID និយោជិក';
+
+  @override
+  String get myProfileHireDateLabel => 'កាលបរិច្ឆេទចូលបម្រើការ';
+
+  @override
+  String get myProfileBirthdateLabel => 'ថ្ងៃខែឆ្នាំកំណើត';
+
+  @override
+  String get myProfileAddressLabel => 'អាសយដ្ឋាន';
+
+  @override
+  String get myProfileEmergencyContactLabel => 'ទំនាក់ទំនងបន្ទាន់';
+
+  @override
+  String get myProfileEmergencyPhoneLabel => 'ទូរស័ព្ទបន្ទាន់';
+
+  @override
+  String get myProfileFullNameLabel => 'ឈ្មោះពេញ';
+
+  @override
+  String get myProfileSaveChangesAction => 'រក្សាទុកការផ្លាស់ប្ដូរ';
+
+  @override
+  String get myProfileChangePasswordTitle => 'ផ្លាស់ប្ដូរពាក្យសម្ងាត់';
+
+  @override
+  String get myProfileChangePasswordSubtitle =>
+      'ត្រូវការពាក្យសម្ងាត់បច្ចុប្បន្ន';
+
+  @override
+  String get myProfileChangePinTitle => 'ផ្លាស់ប្ដូរ PIN';
+
+  @override
+  String get myProfileChangePinSubtitle => 'កំណត់ ឬជំនួស PIN ដោះសោរបស់អ្នក';
+
+  @override
+  String get myProfileEnableBiometricTitle => 'បើកជីវមាត្រ';
+
+  @override
+  String myProfileLastLoginAtLabel(String date) {
+    return 'ការចូលចុងក្រោយ៖ $date';
+  }
+
+  @override
+  String get myProfileReAuthBadge => 'ផ្ទៀងផ្ទាត់ឡើងវិញ';
+
+  @override
+  String get myProfileBiometricUnlockTitle => 'ដោះសោជីវមាត្រ';
+
+  @override
+  String get myProfileConfirmAction => 'បញ្ជាក់';
 }

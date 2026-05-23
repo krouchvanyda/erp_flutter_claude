@@ -303,7 +303,7 @@ class _CycleLine extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 AppLabel(
-                  text: 'SKU: ${item.sku} · LOC: ${item.locationCode}',
+                  text: l10n.inventorySkuLocationCompound(item.sku, item.locationCode),
                   fontSize: AppFontSize.value11,
                   color: theme.colorScheme.outline,
                   fontWeight: FontWeight.bold,

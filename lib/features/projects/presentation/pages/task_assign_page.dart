@@ -10,6 +10,7 @@ import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../features/hr/data/repositories/employees_repository.dart';
 import '../../../../features/hr/entities/employee.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/tasks_repository.dart';
 import '../../entities/task.dart';
@@ -84,10 +85,11 @@ class _TaskAssignPageState extends State<TaskAssignPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: 'Assign Task',
+        title: l10n.taskAssignPageTitle,
         centerTitle: true,
       ),
       body: DynamicStatusBar(
@@ -102,9 +104,9 @@ class _TaskAssignPageState extends State<TaskAssignPage> {
                 }
                 final ctx = snap.data;
                 if (ctx == null) {
-                  return const Center(
+                  return Center(
                     child: AppLabel(
-                      text: 'Could not load employees',
+                      text: l10n.taskAssignErrorLoading,
                       fontSize: AppFontSize.value14,
                     ),
                   );
@@ -199,6 +201,9 @@ class _TaskAssignPageState extends State<TaskAssignPage> {
 
   Future<void> _assign() async {
     if (_selected == null) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context);
+    final navigator = Navigator.of(context);
     setState(() => _saving = true);
     try {
       final repo = GetIt.I<TasksRepository>();
@@ -222,18 +227,18 @@ class _TaskAssignPageState extends State<TaskAssignPage> {
       // notifications module exposes a fire-from-feature API. The note
       // text in _noteCtrl will travel with that notification.
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
-          content: Text('Assigned to ${_selected!.name}'),
+          content: Text(l10n.taskAssignSuccessSnack(_selected!.name)),
           behavior: SnackBarBehavior.floating,
         ),
       );
-      if (Navigator.canPop(context)) Navigator.pop(context);
+      if (navigator.canPop()) navigator.pop();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
-            content: Text('Assign failed: $e'),
+            content: Text(l10n.taskAssignFailureSnack(e.toString())),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -285,6 +290,7 @@ class _TaskContextCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final overdue = task.isOverdue;
     return Container(
       padding: const EdgeInsets.all(16),
@@ -332,7 +338,7 @@ class _TaskContextCard extends StatelessWidget {
               Icon(Icons.person_pin_rounded, size: 14, color: theme.colorScheme.outline),
               const SizedBox(width: 4),
               AppLabel(
-                text: 'Currently: ',
+                text: l10n.taskAssignCurrentlyLabel,
                 fontSize: AppFontSize.value12,
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -356,11 +362,12 @@ class _SearchField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return TextField(
       controller: controller,
       onChanged: onChanged,
       decoration: InputDecoration(
-        hintText: 'Search by name, role or department…',
+        hintText: l10n.taskAssignSearchHint,
         prefixIcon: Icon(Icons.search_rounded, color: theme.colorScheme.primary),
         filled: true,
         fillColor: theme.colorScheme.surface,
@@ -546,7 +553,7 @@ class _DueDateCard extends StatelessWidget {
           ),
           if (dueDate != null)
             IconButton(
-              tooltip: 'Clear',
+              tooltip: AppLocalizations.of(context).taskAssignClearTooltip,
               icon: const Icon(Icons.close_rounded, size: 18),
               onPressed: onClear,
             ),
@@ -582,7 +589,7 @@ class _NoteCard extends StatelessWidget {
         maxLines: 3,
         minLines: 2,
         decoration: InputDecoration(
-          hintText: 'Add a note to the assignee… (e.g. "context in #project-alpha")',
+          hintText: AppLocalizations.of(context).taskAssignNoteHint,
           hintStyle: TextStyle(
             color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
           ),
@@ -663,7 +670,7 @@ class _Empty extends StatelessWidget {
           Icon(Icons.search_off_rounded, size: 48, color: theme.colorScheme.outline),
           const SizedBox(height: 8),
           AppLabel(
-            text: 'No employees match that search.',
+            text: AppLocalizations.of(context).taskAssignEmpty,
             fontSize: AppFontSize.value14,
             color: theme.colorScheme.onSurfaceVariant,
           ),

@@ -301,7 +301,7 @@ class _InvoiceCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       AppLabel(
-                        text: 'ISSUED: ${_date.format(invoice.issuedAt)}',
+                        text: l10n.invoiceListIssuedDateLabel(_date.format(invoice.issuedAt)),
                         fontSize: AppFontSize.value11,
                         color: theme.colorScheme.outline,
                         fontWeight: FontWeight.bold,

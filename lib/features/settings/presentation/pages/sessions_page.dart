@@ -9,6 +9,7 @@ import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../data/repositories/security_repositories.dart';
 import '../../entities/device_session.dart';
 
@@ -19,36 +20,36 @@ class SessionsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final repo = GetIt.I<DeviceSessionsRepository>();
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: 'Active devices',
+        title: l10n.sessionsPageTitle,
         centerTitle: true,
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             onSelected: (action) async {
+              final messenger = ScaffoldMessenger.of(context);
               if (action == 'revoke-others') {
                 await repo.revokeAllOthers();
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Other devices signed out.'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                }
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(l10n.sessionsSignOutOthersSnack),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
               }
             },
-            itemBuilder: (_) => const [
+            itemBuilder: (_) => [
               PopupMenuItem(
                 value: 'revoke-others',
                 child: Row(
                   children: [
-                    Icon(Icons.logout, size: 18),
-                    SizedBox(width: 8),
-                    Text('Sign out all other devices'),
+                    const Icon(Icons.logout, size: 18),
+                    const SizedBox(width: 8),
+                    Text(l10n.sessionsSignOutOthersAction),
                   ],
                 ),
               ),
@@ -69,9 +70,9 @@ class SessionsPage extends StatelessWidget {
                 }
                 final sessions = snap.data!;
                 if (sessions.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: AppLabel(
-                      text: 'No active sessions.',
+                      text: l10n.sessionsEmpty,
                       fontSize: AppFontSize.value14,
                     ),
                   );
@@ -106,6 +107,7 @@ class _SessionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Container(
       decoration: BoxDecoration(
@@ -166,7 +168,7 @@ class _SessionCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(AppRadii.pill),
                             ),
                             child: AppLabel(
-                              text: 'This device',
+                              text: l10n.sessionsThisDeviceLabel,
                               fontSize: AppFontSize.value10,
                               color: theme.colorScheme.primary,
                               fontWeight: FontWeight.bold,
@@ -188,11 +190,11 @@ class _SessionCard extends StatelessWidget {
           const SizedBox(height: 16),
           const Divider(height: 1),
           const SizedBox(height: 12),
-          _kv(context, 'Last active', _fmt(session.lastActiveAt, withTime: true)),
-          _kv(context, 'Signed in', _fmt(session.signedInAt)),
-          _kv(context, 'Location', session.location),
+          _kv(context, l10n.sessionsLastActiveLabel, _fmt(session.lastActiveAt, withTime: true)),
+          _kv(context, l10n.sessionsSignedInLabel, _fmt(session.signedInAt)),
+          _kv(context, l10n.sessionsLocationLabel, session.location),
           if (session.ipAddress != null)
-            _kv(context, 'IP Address', session.ipAddress!),
+            _kv(context, l10n.sessionsIpAddressLabel, session.ipAddress!),
           if (!session.isCurrent) ...[
             const SizedBox(height: 8),
             Align(
@@ -207,8 +209,8 @@ class _SessionCard extends StatelessWidget {
                   ),
                 ),
                 icon: const Icon(Icons.logout, size: 16),
-                label: const AppLabel(
-                  text: 'Revoke Access',
+                label: AppLabel(
+                  text: l10n.sessionsRevokeAccessAction,
                   fontSize: AppFontSize.value14,
                   fontWeight: FontWeight.bold,
                 ),
@@ -222,25 +224,23 @@ class _SessionCard extends StatelessWidget {
   }
 
   Future<void> _revoke(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context);
     try {
       await GetIt.I<DeviceSessionsRepository>().revokeGuarded(session);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${session.deviceLabel} signed out.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(l10n.sessionsRevokedSnack(session.deviceLabel)),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } on ConflictFailure catch (f) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(f.message ?? 'Cannot revoke.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(f.message ?? 'Cannot revoke.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 

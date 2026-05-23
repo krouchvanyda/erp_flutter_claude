@@ -231,8 +231,9 @@ class _PurchaseRequestCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final statusColor = prStatusColor(theme, pr.status);
-    
+
     return Container(
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
@@ -300,13 +301,13 @@ class _PurchaseRequestCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       AppLabel(
-                        text: 'CREATED: ${_date.format(pr.createdAt)}',
+                        text: l10n.prListCreatedDateLabel(_date.format(pr.createdAt)),
                         fontSize: AppFontSize.value11,
                         color: theme.colorScheme.outline,
                         fontWeight: FontWeight.bold,
                       ),
                       AppLabel(
-                        text: 'DEPT: ${pr.costCenter.toUpperCase()}',
+                        text: l10n.prListDepartmentLabel(pr.costCenter.toUpperCase()),
                         fontSize: AppFontSize.value11,
                         color: theme.colorScheme.outline,
                       ),

@@ -74,7 +74,8 @@ class _JournalCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+    final l10n = AppLocalizations.of(context);
+
     return Container(
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
@@ -123,7 +124,10 @@ class _JournalCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     AppLabel(
-                      text: 'REF: ${entry.reference} · ${_date.format(entry.postedAt)}',
+                      text: l10n.journalEntryListReferenceLabel(
+                        entry.reference,
+                        _date.format(entry.postedAt),
+                      ),
                       fontSize: AppFontSize.value12,
                       color: theme.colorScheme.onSurfaceVariant,
                       letterSpacing: 0.5,

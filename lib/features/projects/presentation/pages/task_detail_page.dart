@@ -8,6 +8,7 @@ import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/tasks_repository.dart';
 import '../../entities/task.dart';
@@ -76,15 +77,16 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: 'Task Details',
+        title: l10n.taskDetailPageTitle,
         centerTitle: true,
         actions: [
           PopupMenuButton<String>(
-            tooltip: 'More',
+            tooltip: l10n.taskDetailMoreTooltip,
             icon: const Icon(Icons.more_vert_rounded),
             onSelected: (value) async {
               // Fetch fresh so the form / assign sheet always opens
@@ -104,13 +106,13 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                   );
               }
             },
-            itemBuilder: (_) => const [
+            itemBuilder: (_) => [
               PopupMenuItem(
                 value: 'edit',
                 child: ListTile(
-                  leading: Icon(Icons.edit_outlined),
+                  leading: const Icon(Icons.edit_outlined),
                   title: AppLabel(
-                    text: 'Edit task',
+                    text: l10n.taskDetailEditTaskAction,
                     fontSize: AppFontSize.value14,
                   ),
                   contentPadding: EdgeInsets.zero,
@@ -119,9 +121,9 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
               PopupMenuItem(
                 value: 'assign',
                 child: ListTile(
-                  leading: Icon(Icons.assignment_ind_outlined),
+                  leading: const Icon(Icons.assignment_ind_outlined),
                   title: AppLabel(
-                    text: 'Reassign',
+                    text: l10n.taskDetailReassignAction,
                     fontSize: AppFontSize.value14,
                   ),
                   contentPadding: EdgeInsets.zero,
@@ -145,7 +147,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                 if (task == null) {
                   return Center(
                     child: AppLabel(
-                      text: 'No task with id "${widget.taskId}".',
+                      text: l10n.taskDetailNotFound(widget.taskId),
                       fontSize: AppFontSize.value14,
                     ),
                   );
@@ -312,7 +314,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                                 if (task.description.isNotEmpty) ...[
                                   const Divider(height: 32, thickness: 0.5),
                                   AppLabel(
-                                    text: 'DESCRIPTION',
+                                    text: l10n.taskDetailDescriptionHeading,
                                     fontSize: AppFontSize.value11,
                                     color: theme.colorScheme.primary,
                                     fontWeight: FontWeight.w900,
@@ -331,7 +333,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                           ).animate().fadeIn().slideY(begin: 0.05, end: 0, duration: 300.ms),
                           const SizedBox(height: 24),
                           AppLabel(
-                            text: 'COMMENTS',
+                            text: l10n.taskDetailCommentsHeading,
                             fontSize: AppFontSize.value12,
                             color: theme.colorScheme.onSurface,
                             fontWeight: FontWeight.w800,
@@ -349,7 +351,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                                   padding: const EdgeInsets.symmetric(vertical: 24),
                                   child: Center(
                                     child: AppLabel(
-                                      text: 'No comments yet.',
+                                      text: l10n.taskDetailNoComments,
                                       fontSize: AppFontSize.value14,
                                       color: theme.colorScheme.outline,
                                       fontWeight: FontWeight.w500,
@@ -393,7 +395,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                                 minLines: 1,
                                 maxLines: 4,
                                 decoration: InputDecoration(
-                                  hintText: 'Add a comment…',
+                                  hintText: l10n.taskDetailAddCommentHint,
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(AppRadii.lg),
                                     borderSide: BorderSide(

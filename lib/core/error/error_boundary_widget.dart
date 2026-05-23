@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../theme/app_font_size.dart';
 import '../theme/app_label.dart';
 import '../theme/app_radii.dart';
@@ -21,6 +22,12 @@ class ErrorBoundaryWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final showDetails = !kReleaseMode;
+    // Nullable lookup — ErrorBoundaryWidget can mount in a context that
+    // has no Localizations ancestor (e.g. when build() throws before
+    // MaterialApp is mounted). Falling back to hardcoded English keeps
+    // the error display itself crash-proof.
+    final l10n = Localizations.of<AppLocalizations>(context, AppLocalizations);
+    final headline = l10n?.errorBoundaryGenericMessage ?? 'Something went wrong';
 
     final body = Padding(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -35,7 +42,7 @@ class ErrorBoundaryWidget extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: AppLabel(
-                  text: 'Something went wrong',
+                  text: headline,
                   fontSize: AppFontSize.value16,
                   fontWeight: FontWeight.w600,
                   overflow: TextOverflow.ellipsis,

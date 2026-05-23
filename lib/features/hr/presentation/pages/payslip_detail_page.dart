@@ -8,6 +8,7 @@ import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/repositories/payslips_repository.dart';
 import '../../entities/payslip.dart';
@@ -24,11 +25,12 @@ class PayslipDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: 'Payslip Detail',
+        title: l10n.hrPayslipDetailPageTitle,
         centerTitle: true,
       ),
       body: DynamicStatusBar(
@@ -50,7 +52,7 @@ class PayslipDetailPage extends StatelessWidget {
                         Icon(Icons.warning_amber_rounded, size: 48, color: theme.colorScheme.error),
                         const SizedBox(height: 16),
                         AppLabel(
-                          text: 'No payslip with id "$payslipId".',
+                          text: l10n.hrPayslipDetailNotFound(payslipId),
                           fontSize: AppFontSize.value16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -139,7 +141,7 @@ class PayslipDetailPage extends StatelessWidget {
                             child: Column(
                               children: [
                                 AppLabel(
-                                  text: 'NET PAYOUT',
+                                  text: l10n.hrPayslipDetailNetPayoutLabel,
                                   fontSize: AppFontSize.value11,
                                   fontWeight: FontWeight.w900,
                                   color: Colors.white.withValues(alpha: 0.7),
@@ -186,7 +188,7 @@ class PayslipDetailPage extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: AppLabel(
-                        text: 'LINE ITEM BREAKDOWN',
+                        text: l10n.hrPayslipDetailBreakdownHeading,
                         fontSize: AppFontSize.value12,
                         fontWeight: FontWeight.w900,
                         color: theme.colorScheme.primary,
