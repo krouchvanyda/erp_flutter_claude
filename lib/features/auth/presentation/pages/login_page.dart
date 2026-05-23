@@ -12,7 +12,6 @@ import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import 'biometric_unlock_page.dart';
 import 'forgot_password_page.dart';
-import 'otp_entry_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key, this.onSimulatedLogin});
@@ -58,23 +57,31 @@ class _LoginPageState extends State<LoginPage> {
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
                   colors: [
-                    theme.colorScheme.primaryContainer.withOpacity(0.8),
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.8),
                     theme.colorScheme.surface,
-                    theme.colorScheme.secondaryContainer.withOpacity(0.3),
+                    theme.colorScheme.secondaryContainer.withValues(alpha: 0.3),
                   ],
                 ),
               ),
             ),
-            
-            // Decorative Circles
+
+            // Decorative Circles — paired for compositional balance
             Positioned(
               top: -100,
               right: -100,
               child: CircleAvatar(
                 radius: 150,
-                backgroundColor: theme.colorScheme.primary.withOpacity(0.05),
+                backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.05),
               ),
             ).animate().fadeIn(duration: 1200.ms).scale(begin: const Offset(0.5, 0.5)),
+            Positioned(
+              bottom: -120,
+              left: -120,
+              child: CircleAvatar(
+                radius: 170,
+                backgroundColor: theme.colorScheme.secondary.withValues(alpha: 0.04),
+              ),
+            ).animate().fadeIn(duration: 1400.ms).scale(begin: const Offset(0.5, 0.5)),
             
             SafeArea(
               child: Center(
@@ -87,11 +94,29 @@ class _LoginPageState extends State<LoginPage> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         // Logo and Welcome Text
-                        Icon(
-                          Icons.business_center_rounded,
-                          size: 64,
-                          color: theme.colorScheme.primary,
-                        ).animate().fadeIn(duration: 600.ms).scale(),
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                                blurRadius: 32,
+                                spreadRadius: 4,
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            Icons.business_center_rounded,
+                            size: 56,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ).animate().fadeIn(duration: 600.ms).scale(
+                          delay: 100.ms,
+                          duration: 700.ms,
+                          curve: Curves.easeOutBack,
+                        ),
                         
                         const SizedBox(height: 16),
                         
@@ -129,9 +154,9 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
-                                    blurRadius: 20,
-                                    offset: const Offset(0, 10),
+                                    color: theme.colorScheme.shadow.withValues(alpha: 0.06),
+                                    blurRadius: 24,
+                                    offset: const Offset(0, 12),
                                   ),
                                 ],
                               ),
@@ -196,21 +221,67 @@ class _LoginPageState extends State<LoginPage> {
                                     ),
                                     
                                     const SizedBox(height: 24),
-                                    
-                                    FilledButton(
-                                      onPressed: _handleLogin,
-                                      child: const Text('Sign In'),
-                                    ).animate().shimmer(delay: 2000.ms, duration: 1500.ms),
-                                    
-                                    const SizedBox(height: 16),
-                                    
-                                    OutlinedButton.icon(
-                                      onPressed: () => ConfigRouter.pushPageAnimation(context, const BiometricUnlockPage()),
-                                      icon: Icon(
-                                        Icons.fingerprint_rounded,
-                                        color: theme.colorScheme.primary,
+
+                                    SizedBox(
+                                      height: 54,
+                                      child: FilledButton(
+                                        onPressed: _handleLogin,
+                                        style: FilledButton.styleFrom(
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(AppRadii.md),
+                                          ),
+                                        ),
+                                        child: const Text('Sign In'),
                                       ),
-                                      label: const Text('Use Biometrics'),
+                                    ).animate().shimmer(delay: 2000.ms, duration: 1500.ms),
+
+                                    const SizedBox(height: 20),
+
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Divider(
+                                            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                                          child: AppLabel(
+                                            text: 'OR SECURE WITH',
+                                            fontSize: AppFontSize.value11,
+                                            color: theme.colorScheme.onSurfaceVariant,
+                                            fontWeight: FontWeight.w700,
+                                            letterSpacing: 1.5,
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: Divider(
+                                            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+
+                                    const SizedBox(height: 20),
+
+                                    SizedBox(
+                                      height: 54,
+                                      child: OutlinedButton.icon(
+                                        onPressed: () => ConfigRouter.pushPageAnimation(context, const BiometricUnlockPage()),
+                                        style: OutlinedButton.styleFrom(
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(AppRadii.md),
+                                          ),
+                                          side: BorderSide(
+                                            color: theme.colorScheme.outlineVariant,
+                                          ),
+                                        ),
+                                        icon: Icon(
+                                          Icons.fingerprint_rounded,
+                                          color: theme.colorScheme.primary,
+                                        ),
+                                        label: const Text('Use Biometrics'),
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -222,10 +293,10 @@ class _LoginPageState extends State<LoginPage> {
                         const SizedBox(height: 32),
                         
                         // Demo Link
-                        TextButton(
-                          onPressed: () => ConfigRouter.pushPageAnimation(context, const OtpEntryPage()),
-                          child: Text(l10n.loginOtpDemoLink),
-                        ).animate().fadeIn(delay: 800.ms),
+                        // TextButton(
+                        //   onPressed: () => ConfigRouter.pushPageAnimation(context, const OtpEntryPage()),
+                        //   child: Text(l10n.loginOtpDemoLink),
+                        // ).animate().fadeIn(delay: 800.ms),
                       ],
                     ),
                   ),

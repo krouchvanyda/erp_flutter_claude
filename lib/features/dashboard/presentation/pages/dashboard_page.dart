@@ -165,7 +165,8 @@ class _DashboardPageState extends State<DashboardPage> {
       appBar: DynamicAppBar(
         title: l10n.dashboardTitle,
         actions: const [
-          RealtimeStatusIndicator(),
+          /// checking in with a realtime status (online or offline) here felt natural given the dashboard context, but can easily be moved to a more global position like the main app bar if desired
+          // RealtimeStatusIndicator(),
           NotificationsBadge(),
           GlobalSearchAnchor(),
         ],
