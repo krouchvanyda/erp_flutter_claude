@@ -4946,6 +4946,54 @@ abstract class AppLocalizations {
   /// **'Email Updates'**
   String get notificationPrefsEmailTitle;
 
+  /// No description provided for @notificationPrefsChannelApprovals.
+  ///
+  /// In en, this message translates to:
+  /// **'Approvals'**
+  String get notificationPrefsChannelApprovals;
+
+  /// No description provided for @notificationPrefsChannelMentions.
+  ///
+  /// In en, this message translates to:
+  /// **'Mentions & comments'**
+  String get notificationPrefsChannelMentions;
+
+  /// No description provided for @notificationPrefsChannelSystemAlerts.
+  ///
+  /// In en, this message translates to:
+  /// **'System alerts'**
+  String get notificationPrefsChannelSystemAlerts;
+
+  /// No description provided for @notificationPrefsChannelMarketing.
+  ///
+  /// In en, this message translates to:
+  /// **'Marketing & tips'**
+  String get notificationPrefsChannelMarketing;
+
+  /// No description provided for @notificationPrefsChannelApprovalsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoices, leave requests, timesheets pending action'**
+  String get notificationPrefsChannelApprovalsDescription;
+
+  /// No description provided for @notificationPrefsChannelMentionsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Someone @-mentioned you on a task or comment'**
+  String get notificationPrefsChannelMentionsDescription;
+
+  /// No description provided for @notificationPrefsChannelSystemAlertsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync failures, downtime windows, security events'**
+  String get notificationPrefsChannelSystemAlertsDescription;
+
+  /// No description provided for @notificationPrefsChannelMarketingDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Product news, tips, and feature announcements'**
+  String get notificationPrefsChannelMarketingDescription;
+
   /// No description provided for @sessionsPageTitle.
   ///
   /// In en, this message translates to:
@@ -5168,6 +5216,114 @@ abstract class AppLocalizations {
   /// **'Save PIN'**
   String get appLockSavePinAction;
 
+  /// No description provided for @appLockCannotEnableFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot enable.'**
+  String get appLockCannotEnableFallback;
+
+  /// No description provided for @appLockLockImmediatelySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock immediately on backgrounding'**
+  String get appLockLockImmediatelySubtitle;
+
+  /// No description provided for @appLockMinutesAfterBackgroundSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} minutes after backgrounding'**
+  String appLockMinutesAfterBackgroundSubtitle(int count);
+
+  /// No description provided for @appLockRequiresPinSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Requires App Lock PIN to be enabled'**
+  String get appLockRequiresPinSubtitle;
+
+  /// No description provided for @appLockFootnote.
+  ///
+  /// In en, this message translates to:
+  /// **'Your PIN and biometric metrics are secure. Keys are strictly kept inside the hardware OS-backed Keystore / Keychain. Uninstalling or wiping application storage resets lock settings.'**
+  String get appLockFootnote;
+
+  /// No description provided for @appLockAutoLockSheetSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Select the inactivity grace period before the app locks'**
+  String get appLockAutoLockSheetSubtitle;
+
+  /// No description provided for @appLockHeaderEnabledTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'App Protection Enabled'**
+  String get appLockHeaderEnabledTitle;
+
+  /// No description provided for @appLockHeaderDisabledTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'App Protection Disabled'**
+  String get appLockHeaderDisabledTitle;
+
+  /// No description provided for @appLockHeaderEnabledSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your device settings mandate a security checkpoint upon resume.'**
+  String get appLockHeaderEnabledSubtitle;
+
+  /// No description provided for @appLockHeaderDisabledSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure a security PIN below to safeguard your ERP environment data.'**
+  String get appLockHeaderDisabledSubtitle;
+
+  /// No description provided for @appLockOptionImmediately.
+  ///
+  /// In en, this message translates to:
+  /// **'Immediately'**
+  String get appLockOptionImmediately;
+
+  /// No description provided for @appLockOptionMinute.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} minute'**
+  String appLockOptionMinute(int count);
+
+  /// No description provided for @appLockOptionMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} minutes'**
+  String appLockOptionMinutes(int count);
+
+  /// No description provided for @appLockOptionImmediatelySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock the app the instant it goes to background'**
+  String get appLockOptionImmediatelySubtitle;
+
+  /// No description provided for @appLockOptionMinuteSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock the app after {count} minute in background'**
+  String appLockOptionMinuteSubtitle(int count);
+
+  /// No description provided for @appLockOptionMinutesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock the app after {count} minutes in background'**
+  String appLockOptionMinutesSubtitle(int count);
+
+  /// No description provided for @appLockPinFieldLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'PIN (4–8 digits)'**
+  String get appLockPinFieldLabel;
+
+  /// No description provided for @appLockConfirmPinLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm PIN'**
+  String get appLockConfirmPinLabel;
+
   /// No description provided for @apiConfigPageTitle.
   ///
   /// In en, this message translates to:
@@ -5233,6 +5389,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'https://api-apac.tenant.example.com'**
   String get apiConfigBaseUrlHint;
+
+  /// No description provided for @apiConfigBannerWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Switching environment clusters signs you out of the current tenant session to prevent cross-contamination of credentials.'**
+  String get apiConfigBannerWarning;
+
+  /// No description provided for @apiConfigCannotDeleteFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot delete.'**
+  String get apiConfigCannotDeleteFallback;
 
   /// No description provided for @roleEditorPageTitle.
   ///
@@ -5306,6 +5474,18 @@ abstract class AppLocalizations {
   /// **'Delete \"{name}\"?'**
   String roleEditorDeleteConfirmTitle(String name);
 
+  /// No description provided for @roleEditorDeleteConfirmMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This action cannot be undone and will strip permissions from all assigned users.'**
+  String get roleEditorDeleteConfirmMessage;
+
+  /// No description provided for @roleEditorCannotDeleteFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot delete.'**
+  String get roleEditorCannotDeleteFallback;
+
   /// No description provided for @roleEditorDeleteAction.
   ///
   /// In en, this message translates to:
@@ -5377,6 +5557,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Status set to {status}.'**
   String userMgmtStatusSetSnack(String status);
+
+  /// No description provided for @userMgmtFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get userMgmtFilterAll;
+
+  /// No description provided for @userMgmtFilterActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get userMgmtFilterActive;
+
+  /// No description provided for @userMgmtFilterInvited.
+  ///
+  /// In en, this message translates to:
+  /// **'Invited'**
+  String get userMgmtFilterInvited;
+
+  /// No description provided for @userMgmtFilterSuspended.
+  ///
+  /// In en, this message translates to:
+  /// **'Suspended'**
+  String get userMgmtFilterSuspended;
+
+  /// No description provided for @userMgmtNewUserPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'New User'**
+  String get userMgmtNewUserPlaceholder;
+
+  /// No description provided for @userMgmtEmailAddressLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Email Address'**
+  String get userMgmtEmailAddressLabel;
+
+  /// No description provided for @userMgmtFullNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Full Name'**
+  String get userMgmtFullNameLabel;
+
+  /// No description provided for @userMgmtCannotApplyFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot apply.'**
+  String get userMgmtCannotApplyFallback;
+
+  /// No description provided for @userMgmtStatusActive.
+  ///
+  /// In en, this message translates to:
+  /// **'ACTIVE'**
+  String get userMgmtStatusActive;
+
+  /// No description provided for @userMgmtStatusInvited.
+  ///
+  /// In en, this message translates to:
+  /// **'INVITED'**
+  String get userMgmtStatusInvited;
+
+  /// No description provided for @userMgmtStatusSuspended.
+  ///
+  /// In en, this message translates to:
+  /// **'SUSPENDED'**
+  String get userMgmtStatusSuspended;
 
   /// No description provided for @myRolesPageTitle.
   ///
@@ -5587,6 +5833,174 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Confirm'**
   String get myProfileConfirmAction;
+
+  /// No description provided for @myProfileSaveErrorSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save changes: {error}'**
+  String myProfileSaveErrorSnack(String error);
+
+  /// No description provided for @myProfileChangePhotoSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Change profile photo'**
+  String get myProfileChangePhotoSheetTitle;
+
+  /// No description provided for @myProfileAddPhotoSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a profile photo'**
+  String get myProfileAddPhotoSheetTitle;
+
+  /// No description provided for @myProfileEmailRequiresVerificationHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Requires verification on the new address'**
+  String get myProfileEmailRequiresVerificationHelper;
+
+  /// No description provided for @myProfilePhoneRequiresVerificationHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Requires SMS verification on the new number'**
+  String get myProfilePhoneRequiresVerificationHelper;
+
+  /// No description provided for @myProfileManagedByHrBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Managed by HR'**
+  String get myProfileManagedByHrBadge;
+
+  /// No description provided for @myProfileChangePasswordReAuthMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-enter your current password to confirm this change.'**
+  String get myProfileChangePasswordReAuthMessage;
+
+  /// No description provided for @myProfileChangePinReAuthMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-authenticate before changing your PIN.'**
+  String get myProfileChangePinReAuthMessage;
+
+  /// No description provided for @myProfileEnableBiometricReAuthMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-authenticate to bind your device biometric to this app.'**
+  String get myProfileEnableBiometricReAuthMessage;
+
+  /// No description provided for @myProfileCannotToggleBiometricFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot toggle biometric'**
+  String get myProfileCannotToggleBiometricFallback;
+
+  /// No description provided for @myProfilePasswordChangeStubSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Password change flow would open here.'**
+  String get myProfilePasswordChangeStubSnack;
+
+  /// No description provided for @myProfileCurrentPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Current password'**
+  String get myProfileCurrentPasswordLabel;
+
+  /// No description provided for @myProfileBiometricEnabledSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to disable — re-auth not required'**
+  String get myProfileBiometricEnabledSubtitle;
+
+  /// No description provided for @myProfileBiometricDisabledSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-auth required to enable'**
+  String get myProfileBiometricDisabledSubtitle;
+
+  /// No description provided for @myProfileNameFieldHumanLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get myProfileNameFieldHumanLabel;
+
+  /// No description provided for @myProfileEmailFieldHumanLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get myProfileEmailFieldHumanLabel;
+
+  /// No description provided for @myProfilePhoneFieldHumanLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone'**
+  String get myProfilePhoneFieldHumanLabel;
+
+  /// No description provided for @myProfileRelativeToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get myProfileRelativeToday;
+
+  /// No description provided for @myProfileRelativeYesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get myProfileRelativeYesterday;
+
+  /// No description provided for @myProfileRelativeDaysAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}d ago'**
+  String myProfileRelativeDaysAgo(int count);
+
+  /// No description provided for @myProfileRelativeWeeksAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}w ago'**
+  String myProfileRelativeWeeksAgo(int count);
+
+  /// No description provided for @myProfileRelativeMonthsAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}mo ago'**
+  String myProfileRelativeMonthsAgo(int count);
+
+  /// No description provided for @myProfileRelativeYearsAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}y ago'**
+  String myProfileRelativeYearsAgo(int count);
+
+  /// No description provided for @myProfileTenureLessThanMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'<1 mo'**
+  String get myProfileTenureLessThanMonth;
+
+  /// No description provided for @myProfileTenureMonths.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} mo'**
+  String myProfileTenureMonths(int count);
+
+  /// No description provided for @myProfileTenureYear.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} yr'**
+  String myProfileTenureYear(int count);
+
+  /// No description provided for @myProfileTenureYears.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} yrs'**
+  String myProfileTenureYears(int count);
+
+  /// No description provided for @myProfileTenureYearsMonths.
+  ///
+  /// In en, this message translates to:
+  /// **'{years}y {months}m'**
+  String myProfileTenureYearsMonths(int years, int months);
 }
 
 class _AppLocalizationsDelegate

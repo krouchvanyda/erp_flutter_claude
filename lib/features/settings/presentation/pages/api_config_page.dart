@@ -205,6 +205,7 @@ class _Banner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -233,8 +234,7 @@ class _Banner extends StatelessWidget {
           const SizedBox(width: 14),
           Expanded(
             child: AppLabel(
-              text:
-                  'Switching environment clusters signs you out of the current tenant session to prevent cross-contamination of credentials.',
+              text: l10n.apiConfigBannerWarning,
               fontSize: AppFontSize.value12,
               fontWeight: FontWeight.w500,
               color: theme.colorScheme.onSurface,
@@ -260,6 +260,7 @@ class _EnvTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final isSelected = env.id == currentId;
 
     return InkWell(
@@ -334,7 +335,7 @@ class _EnvTile extends StatelessWidget {
                             borderRadius: BorderRadius.circular(AppRadii.pill),
                           ),
                           child: AppLabel(
-                            text: 'BUILT-IN',
+                            text: l10n.apiConfigBuiltInBadge,
                             fontSize: AppFontSize.value8,
                             fontWeight: FontWeight.bold,
                             color: theme.colorScheme.onSurfaceVariant,
@@ -399,28 +400,26 @@ class _EnvTile extends StatelessWidget {
   }
 
   Future<void> _deleteEnv(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context);
     try {
       await GetIt.I<ApiEnvironmentsRepository>().deleteGuarded(
         env: env,
         currentEnvironmentId: currentId,
       );
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Deleted environment cluster "${env.name}".'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(l10n.apiConfigDeletedSnack(env.name)),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } on ConflictFailure catch (f) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(f.message ?? 'Cannot delete.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(f.message ?? l10n.apiConfigCannotDeleteFallback),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 }

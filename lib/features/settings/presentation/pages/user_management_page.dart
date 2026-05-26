@@ -9,6 +9,7 @@ import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../data/repositories/admin_repositories.dart';
 import '../../entities/managed_user.dart';
 
@@ -28,11 +29,12 @@ class _UserManagementPageState extends State<UserManagementPage> {
   Widget build(BuildContext context) {
     final usersRepo = GetIt.I<ManagedUsersRepository>();
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: const DynamicAppBar(
-        title: 'User Managements',
+      appBar: DynamicAppBar(
+        title: l10n.userMgmtPageTitle,
         centerTitle: true,
       ),
       body: DynamicStatusBar(
@@ -59,10 +61,10 @@ class _UserManagementPageState extends State<UserManagementPage> {
                       scrollDirection: Axis.horizontal,
                       child: Row(
                         children: [
-                          _filterTab('All', null),
-                          _filterTab('Active', ManagedUserStatus.active),
-                          _filterTab('Invited', ManagedUserStatus.invited),
-                          _filterTab('Suspended', ManagedUserStatus.suspended),
+                          _filterTab(l10n.userMgmtFilterAll, null),
+                          _filterTab(l10n.userMgmtFilterActive, ManagedUserStatus.active),
+                          _filterTab(l10n.userMgmtFilterInvited, ManagedUserStatus.invited),
+                          _filterTab(l10n.userMgmtFilterSuspended, ManagedUserStatus.suspended),
                         ],
                       ),
                     ),
@@ -81,9 +83,9 @@ class _UserManagementPageState extends State<UserManagementPage> {
                           .where((u) => _filter == null || u.status == _filter)
                           .toList();
                       if (users.isEmpty) {
-                        return const Center(
+                        return Center(
                           child: AppLabel(
-                            text: 'No users match the selected status.',
+                            text: l10n.userMgmtEmpty,
                             fontSize: AppFontSize.value14,
                             fontWeight: FontWeight.w500,
                           ),
@@ -114,8 +116,8 @@ class _UserManagementPageState extends State<UserManagementPage> {
         onPressed: _showInviteSheet,
         elevation: 4,
         icon: const Icon(Icons.person_add),
-        label: const AppLabel(
-          text: 'Invite User',
+        label: AppLabel(
+          text: l10n.userMgmtInviteUserAction,
           fontSize: AppFontSize.value14,
           fontWeight: FontWeight.bold,
         ),
@@ -163,9 +165,11 @@ class _UserManagementPageState extends State<UserManagementPage> {
     String? errorMsg;
     final rolesRepo = GetIt.I<RolesRepository>();
     final allRoles = await rolesRepo.getAll();
-    final theme = Theme.of(context);
-
     if (!mounted) return;
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -195,8 +199,8 @@ class _UserManagementPageState extends State<UserManagementPage> {
                 ),
               ),
               const SizedBox(height: 16),
-              const AppLabel(
-                text: 'Invite a new user',
+              AppLabel(
+                text: l10n.userMgmtInviteSheetTitle,
                 fontSize: AppFontSize.value16,
                 fontWeight: FontWeight.bold,
               ),
@@ -204,7 +208,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
               TextField(
                 controller: emailCtrl,
                 decoration: InputDecoration(
-                  labelText: 'Email Address',
+                  labelText: l10n.userMgmtEmailAddressLabel,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
                   prefixIcon: const Icon(Icons.email_outlined),
                 ),
@@ -213,14 +217,14 @@ class _UserManagementPageState extends State<UserManagementPage> {
               TextField(
                 controller: nameCtrl,
                 decoration: InputDecoration(
-                  labelText: 'Full Name',
+                  labelText: l10n.userMgmtFullNameLabel,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
                   prefixIcon: const Icon(Icons.person_outline),
                 ),
               ),
               const SizedBox(height: 16),
-              const AppLabel(
-                text: 'Assign Roles',
+              AppLabel(
+                text: l10n.userMgmtAssignRolesLabel,
                 fontSize: AppFontSize.value14,
                 fontWeight: FontWeight.bold,
               ),
@@ -288,22 +292,20 @@ class _UserManagementPageState extends State<UserManagementPage> {
                       if (sheetCtx.mounted) {
                         Navigator.pop(sheetCtx);
                       }
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Invited ${emailCtrl.text.trim()}'),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      }
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text(l10n.userMgmtInvitedSnack(emailCtrl.text.trim())),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
                     } on ValidationFailure catch (f) {
                       setSheet(() => errorMsg = f.fieldErrors.entries
                           .map((e) => '${e.key}: ${e.value.join(', ')}')
                           .join('\n'));
                     }
                   },
-                  child: const AppLabel(
-                    text: 'Send Invitation',
+                  child: AppLabel(
+                    text: l10n.userMgmtSendInvitationAction,
                     fontSize: AppFontSize.value14,
                     fontWeight: FontWeight.bold,
                   ),
@@ -326,6 +328,7 @@ class _UserRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final isMe = user.id == currentUserId;
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Container(
       decoration: BoxDecoration(
@@ -365,7 +368,7 @@ class _UserRow extends StatelessWidget {
                   children: [
                     Expanded(
                       child: AppLabel(
-                        text: user.name.isEmpty ? 'New User' : user.name,
+                        text: user.name.isEmpty ? l10n.userMgmtNewUserPlaceholder : user.name,
                         fontSize: AppFontSize.value14,
                         fontWeight: FontWeight.bold,
                       ),
@@ -379,14 +382,14 @@ class _UserRow extends StatelessWidget {
                           borderRadius: BorderRadius.circular(AppRadii.pill),
                         ),
                         child: AppLabel(
-                          text: 'You',
+                          text: l10n.userMgmtYouBadge,
                           fontSize: AppFontSize.value9,
                           color: theme.colorScheme.primary,
                           fontWeight: FontWeight.bold,
                         ),
                       )
                     else
-                      _statusBadge(user.status, theme),
+                      _statusBadge(user.status, theme, l10n),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -427,24 +430,24 @@ class _UserRow extends StatelessWidget {
             onSelected: (action) => _runAction(context, action),
             itemBuilder: (_) => [
               if (user.status != ManagedUserStatus.active)
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'activate',
                   child: Row(
                     children: [
-                      Icon(Icons.check_circle_outline, size: 18, color: Colors.green),
-                      SizedBox(width: 8),
-                      Text('Activate User'),
+                      const Icon(Icons.check_circle_outline, size: 18, color: Colors.green),
+                      const SizedBox(width: 8),
+                      Text(l10n.userMgmtActivateUserAction),
                     ],
                   ),
                 ),
               if (user.status == ManagedUserStatus.active)
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'suspend',
                   child: Row(
                     children: [
-                      Icon(Icons.block_flipped, size: 18, color: Colors.red),
-                      SizedBox(width: 8),
-                      Text('Suspend User'),
+                      const Icon(Icons.block_flipped, size: 18, color: Colors.red),
+                      const SizedBox(width: 8),
+                      Text(l10n.userMgmtSuspendUserAction),
                     ],
                   ),
                 ),
@@ -456,6 +459,8 @@ class _UserRow extends StatelessWidget {
   }
 
   Future<void> _runAction(BuildContext context, String action) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context);
     final repo = GetIt.I<ManagedUsersRepository>();
     try {
       final next = await repo.changeStatus(
@@ -465,23 +470,30 @@ class _UserRow extends StatelessWidget {
             : ManagedUserStatus.active,
         currentUserId: currentUserId,
       );
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Status set to ${next.status.name}.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(l10n.userMgmtStatusSetSnack(_localizedStatusName(next.status, l10n))),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } on ConflictFailure catch (f) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(f.message ?? 'Cannot apply.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(f.message ?? l10n.userMgmtCannotApplyFallback),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  String _localizedStatusName(ManagedUserStatus s, AppLocalizations l10n) {
+    switch (s) {
+      case ManagedUserStatus.active:
+        return l10n.userMgmtFilterActive;
+      case ManagedUserStatus.invited:
+        return l10n.userMgmtFilterInvited;
+      case ManagedUserStatus.suspended:
+        return l10n.userMgmtFilterSuspended;
     }
   }
 
@@ -507,7 +519,7 @@ class _UserRow extends StatelessWidget {
     }
   }
 
-  Widget _statusBadge(ManagedUserStatus s, ThemeData theme) {
+  Widget _statusBadge(ManagedUserStatus s, ThemeData theme, AppLocalizations l10n) {
     final bg = _avatarColor(s, theme);
     final text = _textColor(s, theme);
 
@@ -518,11 +530,22 @@ class _UserRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.pill),
       ),
       child: AppLabel(
-        text: s.name.toUpperCase(),
+        text: _badgeLabel(s, l10n),
         fontSize: AppFontSize.value9,
         color: text,
         fontWeight: FontWeight.bold,
       ),
     );
+  }
+
+  String _badgeLabel(ManagedUserStatus s, AppLocalizations l10n) {
+    switch (s) {
+      case ManagedUserStatus.active:
+        return l10n.userMgmtStatusActive;
+      case ManagedUserStatus.invited:
+        return l10n.userMgmtStatusInvited;
+      case ManagedUserStatus.suspended:
+        return l10n.userMgmtStatusSuspended;
+    }
   }
 }

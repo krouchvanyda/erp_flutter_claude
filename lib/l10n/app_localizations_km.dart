@@ -2670,6 +2670,34 @@ class AppLocalizationsKm extends AppLocalizations {
   String get notificationPrefsEmailTitle => 'បច្ចុប្បន្នភាពអ៊ីមែល';
 
   @override
+  String get notificationPrefsChannelApprovals => 'ការអនុម័ត';
+
+  @override
+  String get notificationPrefsChannelMentions => 'ការនិយាយឈ្មោះ និងមតិយោបល់';
+
+  @override
+  String get notificationPrefsChannelSystemAlerts => 'ការជូនដំណឹងពីប្រព័ន្ធ';
+
+  @override
+  String get notificationPrefsChannelMarketing => 'ការផ្សព្វផ្សាយ និងព័ត៌មាន';
+
+  @override
+  String get notificationPrefsChannelApprovalsDescription =>
+      'វិក្កយបត្រ សំណើច្បាប់ឈប់ ឈ្នួលរង់ចាំសកម្មភាព';
+
+  @override
+  String get notificationPrefsChannelMentionsDescription =>
+      'មាននរណាម្នាក់បាន @ឈ្មោះអ្នកនៅលើកិច្ចការ ឬមតិយោបល់';
+
+  @override
+  String get notificationPrefsChannelSystemAlertsDescription =>
+      'បរាជ័យធ្វើសមកាលកម្ម រយៈពេលផ្អាក ព្រឹត្តិការណ៍សុវត្ថិភាព';
+
+  @override
+  String get notificationPrefsChannelMarketingDescription =>
+      'ព័ត៌មានផលិតផល ការណែនាំ និងការប្រកាសមុខងារ';
+
+  @override
   String get sessionsPageTitle => 'ឧបករណ៍សកម្ម';
 
   @override
@@ -2784,6 +2812,76 @@ class AppLocalizationsKm extends AppLocalizations {
   String get appLockSavePinAction => 'រក្សាទុក PIN';
 
   @override
+  String get appLockCannotEnableFallback => 'មិនអាចបើកដំណើរការបានទេ។';
+
+  @override
+  String get appLockLockImmediatelySubtitle => 'ចាក់សោភ្លាមៗពេលបិទផ្ទៃ';
+
+  @override
+  String appLockMinutesAfterBackgroundSubtitle(int count) {
+    return '$count នាទីបន្ទាប់ពីបិទផ្ទៃ';
+  }
+
+  @override
+  String get appLockRequiresPinSubtitle =>
+      'ត្រូវការ App Lock PIN ឱ្យបើកដំណើរការ';
+
+  @override
+  String get appLockFootnote =>
+      'PIN និងព័ត៌មានជីវមាត្ររបស់អ្នកមានសុវត្ថិភាព។ កូនសោត្រូវបានរក្សាទុកនៅក្នុង Keystore / Keychain ដែលគាំទ្រដោយផ្នែករឹង OS។ ការដកកម្មវិធី ឬលុបទិន្នន័យ នឹងកំណត់ឡើងវិញនូវការកំណត់ការចាក់សោ។';
+
+  @override
+  String get appLockAutoLockSheetSubtitle =>
+      'ជ្រើសរើសរយៈពេលអនុគ្រោះមុនពេលកម្មវិធីចាក់សោ';
+
+  @override
+  String get appLockHeaderEnabledTitle => 'ការការពារកម្មវិធីបានបើក';
+
+  @override
+  String get appLockHeaderDisabledTitle => 'ការការពារកម្មវិធីបានបិទ';
+
+  @override
+  String get appLockHeaderEnabledSubtitle =>
+      'ការកំណត់ឧបករណ៍របស់អ្នកតម្រូវឱ្យមានចំណុចត្រួតពិនិត្យសុវត្ថិភាពពេលចាប់ផ្ដើមឡើងវិញ។';
+
+  @override
+  String get appLockHeaderDisabledSubtitle =>
+      'កំណត់ PIN សុវត្ថិភាពខាងក្រោម ដើម្បីការពារទិន្នន័យបរិស្ថាន ERP របស់អ្នក។';
+
+  @override
+  String get appLockOptionImmediately => 'ភ្លាមៗ';
+
+  @override
+  String appLockOptionMinute(int count) {
+    return '$count នាទី';
+  }
+
+  @override
+  String appLockOptionMinutes(int count) {
+    return '$count នាទី';
+  }
+
+  @override
+  String get appLockOptionImmediatelySubtitle =>
+      'ចាក់សោកម្មវិធីភ្លាមៗពេលផ្លាស់ទៅផ្ទៃខាងក្រោយ';
+
+  @override
+  String appLockOptionMinuteSubtitle(int count) {
+    return 'ចាក់សោកម្មវិធីបន្ទាប់ពី $count នាទីនៅផ្ទៃខាងក្រោយ';
+  }
+
+  @override
+  String appLockOptionMinutesSubtitle(int count) {
+    return 'ចាក់សោកម្មវិធីបន្ទាប់ពី $count នាទីនៅផ្ទៃខាងក្រោយ';
+  }
+
+  @override
+  String get appLockPinFieldLabel => 'PIN (4–8 ខ្ទង់)';
+
+  @override
+  String get appLockConfirmPinLabel => 'បញ្ជាក់ PIN';
+
+  @override
   String get apiConfigPageTitle => 'ការកំណត់រចនាសម្ព័ន្ធ API';
 
   @override
@@ -2819,6 +2917,13 @@ class AppLocalizationsKm extends AppLocalizations {
 
   @override
   String get apiConfigBaseUrlHint => 'https://api-apac.tenant.example.com';
+
+  @override
+  String get apiConfigBannerWarning =>
+      'ការប្ដូរក្រុមបរិស្ថាននឹងចាកចេញពីសម័យអ្នកជួលបច្ចុប្បន្ន ដើម្បីការពារកុំឱ្យបញ្ជាក់សិទ្ធិចូលឆ្លងគ្នា។';
+
+  @override
+  String get apiConfigCannotDeleteFallback => 'មិនអាចលុបបានទេ។';
 
   @override
   String get roleEditorPageTitle => 'តួនាទី និងសិទ្ធិ';
@@ -2862,6 +2967,13 @@ class AppLocalizationsKm extends AppLocalizations {
   }
 
   @override
+  String get roleEditorDeleteConfirmMessage =>
+      'សកម្មភាពនេះមិនអាចត្រឡប់វិញបានទេ ហើយនឹងដកសិទ្ធិចេញពីអ្នកប្រើដែលបានកំណត់ទាំងអស់។';
+
+  @override
+  String get roleEditorCannotDeleteFallback => 'មិនអាចលុបបានទេ។';
+
+  @override
   String get roleEditorDeleteAction => 'លុប';
 
   @override
@@ -2900,6 +3012,39 @@ class AppLocalizationsKm extends AppLocalizations {
   String userMgmtStatusSetSnack(String status) {
     return 'ស្ថានភាពត្រូវបានកំណត់ទៅ $status។';
   }
+
+  @override
+  String get userMgmtFilterAll => 'ទាំងអស់';
+
+  @override
+  String get userMgmtFilterActive => 'សកម្ម';
+
+  @override
+  String get userMgmtFilterInvited => 'បានអញ្ជើញ';
+
+  @override
+  String get userMgmtFilterSuspended => 'ត្រូវបានផ្អាក';
+
+  @override
+  String get userMgmtNewUserPlaceholder => 'អ្នកប្រើថ្មី';
+
+  @override
+  String get userMgmtEmailAddressLabel => 'អាសយដ្ឋានអ៊ីមែល';
+
+  @override
+  String get userMgmtFullNameLabel => 'ឈ្មោះពេញ';
+
+  @override
+  String get userMgmtCannotApplyFallback => 'មិនអាចអនុវត្តបានទេ។';
+
+  @override
+  String get userMgmtStatusActive => 'សកម្ម';
+
+  @override
+  String get userMgmtStatusInvited => 'បានអញ្ជើញ';
+
+  @override
+  String get userMgmtStatusSuspended => 'ត្រូវបានផ្អាក';
 
   @override
   String get myRolesPageTitle => 'តួនាទី និងសិទ្ធិរបស់ខ្ញុំ';
@@ -3014,4 +3159,115 @@ class AppLocalizationsKm extends AppLocalizations {
 
   @override
   String get myProfileConfirmAction => 'បញ្ជាក់';
+
+  @override
+  String myProfileSaveErrorSnack(String error) {
+    return 'មិនអាចរក្សាទុកការផ្លាស់ប្ដូរបានទេ៖ $error';
+  }
+
+  @override
+  String get myProfileChangePhotoSheetTitle => 'ផ្លាស់ប្ដូររូបប្រវត្តិរូប';
+
+  @override
+  String get myProfileAddPhotoSheetTitle => 'បន្ថែមរូបប្រវត្តិរូប';
+
+  @override
+  String get myProfileEmailRequiresVerificationHelper =>
+      'ត្រូវការការផ្ទៀងផ្ទាត់នៅអាសយដ្ឋានថ្មី';
+
+  @override
+  String get myProfilePhoneRequiresVerificationHelper =>
+      'ត្រូវការការផ្ទៀងផ្ទាត់តាម SMS នៅលេខថ្មី';
+
+  @override
+  String get myProfileManagedByHrBadge => 'គ្រប់គ្រងដោយ HR';
+
+  @override
+  String get myProfileChangePasswordReAuthMessage =>
+      'បញ្ចូលពាក្យសម្ងាត់បច្ចុប្បន្នឡើងវិញ ដើម្បីបញ្ជាក់ការផ្លាស់ប្ដូរនេះ។';
+
+  @override
+  String get myProfileChangePinReAuthMessage =>
+      'ផ្ទៀងផ្ទាត់ឡើងវិញ មុនពេលផ្លាស់ប្ដូរ PIN។';
+
+  @override
+  String get myProfileEnableBiometricReAuthMessage =>
+      'ផ្ទៀងផ្ទាត់ឡើងវិញ ដើម្បីភ្ជាប់ជីវមាត្ររបស់ឧបករណ៍ទៅកម្មវិធីនេះ។';
+
+  @override
+  String get myProfileCannotToggleBiometricFallback =>
+      'មិនអាចបិទ-បើកជីវមាត្របានទេ';
+
+  @override
+  String get myProfilePasswordChangeStubSnack =>
+      'ដំណើរការផ្លាស់ប្ដូរពាក្យសម្ងាត់នឹងបើកនៅទីនេះ។';
+
+  @override
+  String get myProfileCurrentPasswordLabel => 'ពាក្យសម្ងាត់បច្ចុប្បន្ន';
+
+  @override
+  String get myProfileBiometricEnabledSubtitle =>
+      'ប៉ះដើម្បីបិទ — មិនត្រូវការផ្ទៀងផ្ទាត់ឡើងវិញទេ';
+
+  @override
+  String get myProfileBiometricDisabledSubtitle =>
+      'ត្រូវការផ្ទៀងផ្ទាត់ឡើងវិញដើម្បីបើក';
+
+  @override
+  String get myProfileNameFieldHumanLabel => 'ឈ្មោះ';
+
+  @override
+  String get myProfileEmailFieldHumanLabel => 'អ៊ីមែល';
+
+  @override
+  String get myProfilePhoneFieldHumanLabel => 'ទូរស័ព្ទ';
+
+  @override
+  String get myProfileRelativeToday => 'ថ្ងៃនេះ';
+
+  @override
+  String get myProfileRelativeYesterday => 'ម្សិលមិញ';
+
+  @override
+  String myProfileRelativeDaysAgo(int count) {
+    return '$countថ្ងៃមុន';
+  }
+
+  @override
+  String myProfileRelativeWeeksAgo(int count) {
+    return '$countសប្ដាហ៍មុន';
+  }
+
+  @override
+  String myProfileRelativeMonthsAgo(int count) {
+    return '$countខែមុន';
+  }
+
+  @override
+  String myProfileRelativeYearsAgo(int count) {
+    return '$countឆ្នាំមុន';
+  }
+
+  @override
+  String get myProfileTenureLessThanMonth => '<1 ខែ';
+
+  @override
+  String myProfileTenureMonths(int count) {
+    return '$count ខែ';
+  }
+
+  @override
+  String myProfileTenureYear(int count) {
+    return '$count ឆ្នាំ';
+  }
+
+  @override
+  String myProfileTenureYears(int count) {
+    return '$count ឆ្នាំ';
+  }
+
+  @override
+  String myProfileTenureYearsMonths(int years, int months) {
+    return '$yearsឆ្នាំ $monthsខែ';
+  }
 }

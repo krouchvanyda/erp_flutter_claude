@@ -153,13 +153,13 @@ class _ChannelCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     AppLabel(
-                      text: _label(pref.channel),
+                      text: _label(pref.channel, l10n),
                       fontSize: AppFontSize.value14,
                       fontWeight: FontWeight.bold,
                     ),
                     const SizedBox(height: 2),
                     AppLabel(
-                      text: _description(pref.channel),
+                      text: _description(pref.channel, l10n),
                       fontSize: AppFontSize.value12,
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -234,29 +234,29 @@ class _ChannelCard extends StatelessWidget {
     }
   }
 
-  String _label(NotificationChannel c) {
+  String _label(NotificationChannel c, AppLocalizations l10n) {
     switch (c) {
       case NotificationChannel.approvals:
-        return 'Approvals';
+        return l10n.notificationPrefsChannelApprovals;
       case NotificationChannel.mentions:
-        return 'Mentions & comments';
+        return l10n.notificationPrefsChannelMentions;
       case NotificationChannel.systemAlerts:
-        return 'System alerts';
+        return l10n.notificationPrefsChannelSystemAlerts;
       case NotificationChannel.marketing:
-        return 'Marketing & tips';
+        return l10n.notificationPrefsChannelMarketing;
     }
   }
 
-  String _description(NotificationChannel c) {
+  String _description(NotificationChannel c, AppLocalizations l10n) {
     switch (c) {
       case NotificationChannel.approvals:
-        return 'Invoices, leave requests, timesheets pending action';
+        return l10n.notificationPrefsChannelApprovalsDescription;
       case NotificationChannel.mentions:
-        return 'Someone @-mentioned you on a task or comment';
+        return l10n.notificationPrefsChannelMentionsDescription;
       case NotificationChannel.systemAlerts:
-        return 'Sync failures, downtime windows, security events';
+        return l10n.notificationPrefsChannelSystemAlertsDescription;
       case NotificationChannel.marketing:
-        return 'Product news, tips, and feature announcements';
+        return l10n.notificationPrefsChannelMarketingDescription;
     }
   }
 }

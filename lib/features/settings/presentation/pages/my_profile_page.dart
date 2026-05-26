@@ -13,6 +13,7 @@ import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../../../shared/widgets/avatar_picker_sheet.dart';
 import '../../data/repositories/my_profile_repository.dart';
@@ -94,6 +95,8 @@ class _MyProfilePageState extends State<MyProfilePage> {
 
   Future<void> _save() async {
     if (_draft == null) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context);
     setState(() {
       _saving = true;
       _errorMessage = null;
@@ -109,9 +112,9 @@ class _MyProfilePageState extends State<MyProfilePage> {
       );
       await _profileRepo.update(next);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profile updated.'),
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(l10n.myProfileUpdatedSnack),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -120,25 +123,25 @@ class _MyProfilePageState extends State<MyProfilePage> {
       setState(() {
         _saving = false;
         _errorMessage = f.fieldErrors.entries
-            .map((e) => '${_humanField(e.key)}: ${e.value.join(', ')}')
+            .map((e) => '${_humanField(e.key, l10n)}: ${e.value.join(', ')}')
             .join('\n');
       });
     } catch (e) {
       setState(() {
         _saving = false;
-        _errorMessage = 'Could not save changes: $e';
+        _errorMessage = l10n.myProfileSaveErrorSnack(e.toString());
       });
     }
   }
 
-  String _humanField(String key) {
+  String _humanField(String key, AppLocalizations l10n) {
     switch (key) {
       case 'name':
-        return 'Name';
+        return l10n.myProfileNameFieldHumanLabel;
       case 'email':
-        return 'Email';
+        return l10n.myProfileEmailFieldHumanLabel;
       case 'phone':
-        return 'Phone';
+        return l10n.myProfilePhoneFieldHumanLabel;
       default:
         return key;
     }
@@ -152,11 +155,12 @@ class _MyProfilePageState extends State<MyProfilePage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: 'My Profile',
+        title: l10n.myProfilePageTitle,
         centerTitle: true,
         actions: [
           if (!_editing)
@@ -167,7 +171,7 @@ class _MyProfilePageState extends State<MyProfilePage> {
                 return TextButton(
                   onPressed: enabled ? () => _enterEdit(snap.data!) : null,
                   child: AppLabel(
-                    text: 'Edit',
+                    text: l10n.myProfileEditAction,
                     fontSize: AppFontSize.value14,
                     color: enabled
                         ? theme.colorScheme.primary
@@ -181,7 +185,7 @@ class _MyProfilePageState extends State<MyProfilePage> {
             TextButton(
               onPressed: _saving ? null : _cancelEdit,
               child: AppLabel(
-                text: 'Cancel',
+                text: l10n.commonCancelAction,
                 fontSize: AppFontSize.value14,
                 color: theme.colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.bold,
@@ -225,7 +229,7 @@ class _MyProfilePageState extends State<MyProfilePage> {
                               .fadeIn(duration: 350.ms)
                               .slideY(begin: 0.04, end: 0, duration: 350.ms),
                           const SizedBox(height: 24),
-                          _SectionLabel(text: 'Contact'),
+                          _SectionLabel(text: l10n.myProfileContactSection),
                           const SizedBox(height: 8),
                           _editing
                               ? _ContactEditCard(
@@ -247,7 +251,7 @@ class _MyProfilePageState extends State<MyProfilePage> {
                                     duration: 320.ms,
                                   ),
                           const SizedBox(height: 20),
-                          _SectionLabel(text: 'Personal'),
+                          _SectionLabel(text: l10n.myProfilePersonalSection),
                           const SizedBox(height: 8),
                           _editing
                               ? _PersonalEditCard(
@@ -268,7 +272,7 @@ class _MyProfilePageState extends State<MyProfilePage> {
                                   ),
                           if (!_editing) ...[
                             const SizedBox(height: 20),
-                            _SectionLabel(text: 'Account Security'),
+                            _SectionLabel(text: l10n.myProfileAccountSecuritySection),
                             const SizedBox(height: 8),
                             _SecurityCard(profile: view)
                                 .animate()
@@ -331,11 +335,12 @@ class _MyProfilePageState extends State<MyProfilePage> {
     // checking the local copies would always report "no photo".
     final current = await _profileRepo.get();
     if (!mounted) return;
+    final l10n = AppLocalizations.of(context);
     final hasPhoto = (current.avatarFilePath ?? '').isNotEmpty;
     final choice = await AvatarPickerSheet.show(
       context: context,
-      title: hasPhoto ? 'Change profile photo' : 'Add a profile photo',
-      subtitle: 'Photo only changes on this device.',
+      title: hasPhoto ? l10n.myProfileChangePhotoSheetTitle : l10n.myProfileAddPhotoSheetTitle,
+      subtitle: l10n.myProfilePhotoLocalSheetSubtitle,
       allowRemove: hasPhoto,
     );
     if (!mounted || choice == null) return;
@@ -350,6 +355,8 @@ class _MyProfilePageState extends State<MyProfilePage> {
   }
 
   Future<void> _pickImage(ImageSource source) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context);
     try {
       final picker = ImagePicker();
       final picked = await picker.pickImage(
@@ -366,10 +373,9 @@ class _MyProfilePageState extends State<MyProfilePage> {
       // app no longer has access to once the picker activity closes.
       final file = File(picked.path);
       if (!await file.exists()) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not read the selected image.'),
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(l10n.myProfileImageReadErrorSnack),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -377,10 +383,9 @@ class _MyProfilePageState extends State<MyProfilePage> {
       }
       await _profileRepo.setAvatarPath(picked.path);
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
-          content: Text('Could not pick image: $e'),
+          content: Text(l10n.myProfileImagePickErrorSnack(e.toString())),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -388,12 +393,13 @@ class _MyProfilePageState extends State<MyProfilePage> {
   }
 
   Future<void> _pickBirthdate(DateTime current) async {
+    final l10n = AppLocalizations.of(context);
     final picked = await showDatePicker(
       context: context,
       initialDate: current,
       firstDate: DateTime(1940),
       lastDate: DateTime.now(),
-      helpText: 'Birthdate',
+      helpText: l10n.myProfileBirthdateLabel,
     );
     if (picked == null) return;
     setState(() {
@@ -424,6 +430,7 @@ class _HeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppRadii.xl),
       child: Container(
@@ -543,7 +550,7 @@ class _HeroCard extends StatelessWidget {
                           Expanded(
                             child: _MiniStat(
                               icon: Icons.badge_outlined,
-                              label: 'Employee',
+                              label: l10n.myProfileEmployeeRowLabel,
                               value: profile.employeeId,
                             ),
                           ),
@@ -551,16 +558,16 @@ class _HeroCard extends StatelessWidget {
                           Expanded(
                             child: _MiniStat(
                               icon: Icons.workspace_premium_outlined,
-                              label: 'Tenure',
-                              value: _tenureFor(profile.hiredAt),
+                              label: l10n.myProfileTenureRowLabel,
+                              value: _tenureFor(profile.hiredAt, l10n),
                             ),
                           ),
                           _StatDivider(),
                           Expanded(
                             child: _MiniStat(
                               icon: Icons.schedule_rounded,
-                              label: 'Last login',
-                              value: _relativeDay(profile.lastLoginAt),
+                              label: l10n.myProfileLastLoginRowLabel,
+                              value: _relativeDay(profile.lastLoginAt, l10n),
                             ),
                           ),
                         ],
@@ -576,28 +583,30 @@ class _HeroCard extends StatelessWidget {
     );
   }
 
-  static String _tenureFor(DateTime hiredAt) {
+  static String _tenureFor(DateTime hiredAt, AppLocalizations l10n) {
     final now = DateTime.now();
     final months = (now.year - hiredAt.year) * 12 + (now.month - hiredAt.month);
-    if (months < 1) return '<1 mo';
-    if (months < 12) return '$months mo';
+    if (months < 1) return l10n.myProfileTenureLessThanMonth;
+    if (months < 12) return l10n.myProfileTenureMonths(months);
     final years = months ~/ 12;
     final remMonths = months % 12;
-    if (remMonths == 0) return '$years yr${years == 1 ? '' : 's'}';
-    return '${years}y ${remMonths}m';
+    if (remMonths == 0) {
+      return years == 1 ? l10n.myProfileTenureYear(years) : l10n.myProfileTenureYears(years);
+    }
+    return l10n.myProfileTenureYearsMonths(years, remMonths);
   }
 
-  static String _relativeDay(DateTime when) {
+  static String _relativeDay(DateTime when, AppLocalizations l10n) {
     final now = DateTime.now();
     final whenDay = DateTime(when.year, when.month, when.day);
     final today = DateTime(now.year, now.month, now.day);
     final diff = today.difference(whenDay).inDays;
-    if (diff <= 0) return 'Today';
-    if (diff == 1) return 'Yesterday';
-    if (diff < 7) return '${diff}d ago';
-    if (diff < 30) return '${(diff / 7).floor()}w ago';
-    if (diff < 365) return '${(diff / 30).floor()}mo ago';
-    return '${(diff / 365).floor()}y ago';
+    if (diff <= 0) return l10n.myProfileRelativeToday;
+    if (diff == 1) return l10n.myProfileRelativeYesterday;
+    if (diff < 7) return l10n.myProfileRelativeDaysAgo(diff);
+    if (diff < 30) return l10n.myProfileRelativeWeeksAgo((diff / 7).floor());
+    if (diff < 365) return l10n.myProfileRelativeMonthsAgo((diff / 30).floor());
+    return l10n.myProfileRelativeYearsAgo((diff / 365).floor());
   }
 }
 
@@ -941,34 +950,35 @@ class _ContactViewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final df = DateFormat('d MMM yyyy');
     return _Card(
       child: Column(
         children: [
           _InfoRow(
             icon: Icons.mail_outline,
-            label: 'Email',
+            label: l10n.commonEmailLabel,
             value: profile.email,
             iconColor: Colors.blue,
           ),
           const Divider(height: 1, indent: 52),
           _InfoRow(
             icon: Icons.phone_outlined,
-            label: 'Phone',
+            label: l10n.commonPhoneLabel,
             value: profile.phone,
             iconColor: Colors.green,
           ),
           const Divider(height: 1, indent: 52),
           _InfoRow(
             icon: Icons.badge_outlined,
-            label: 'Employee ID',
+            label: l10n.myProfileEmployeeIdLabel,
             value: profile.employeeId,
             iconColor: Colors.deepPurple,
           ),
           const Divider(height: 1, indent: 52),
           _InfoRow(
             icon: Icons.event_available_outlined,
-            label: 'Hire date',
+            label: l10n.myProfileHireDateLabel,
             value: df.format(profile.hiredAt),
             iconColor: Colors.teal,
           ),
@@ -984,34 +994,35 @@ class _PersonalViewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final df = DateFormat('d MMM yyyy');
     return _Card(
       child: Column(
         children: [
           _InfoRow(
             icon: Icons.cake_outlined,
-            label: 'Birthdate',
+            label: l10n.myProfileBirthdateLabel,
             value: df.format(profile.birthdate),
             iconColor: Colors.pink,
           ),
           const Divider(height: 1, indent: 52),
           _InfoRow(
             icon: Icons.location_on_outlined,
-            label: 'Address',
+            label: l10n.myProfileAddressLabel,
             value: profile.address,
             iconColor: Colors.orange.shade700,
           ),
           const Divider(height: 1, indent: 52),
           _InfoRow(
             icon: Icons.person_outline,
-            label: 'Emergency contact',
+            label: l10n.myProfileEmergencyContactLabel,
             value: profile.emergencyContactName,
             iconColor: Colors.red,
           ),
           const Divider(height: 1, indent: 52),
           _InfoRow(
             icon: Icons.phone_in_talk_outlined,
-            label: 'Emergency phone',
+            label: l10n.myProfileEmergencyPhoneLabel,
             value: profile.emergencyContactPhone,
             iconColor: Colors.red.shade700,
           ),
@@ -1124,6 +1135,7 @@ class _ContactEditCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final df = DateFormat('d MMM yyyy');
     return _Card(
       child: Padding(
@@ -1132,45 +1144,43 @@ class _ContactEditCard extends StatelessWidget {
           children: [
             _EditField(
               controller: nameCtrl,
-              label: 'Full name',
+              label: l10n.myProfileFullNameLabel,
               icon: Icons.person_outline,
               onChanged: (_) => onAnyChange(),
             ),
             const SizedBox(height: 12),
             _EditField(
               controller: emailCtrl,
-              label: 'Email',
+              label: l10n.commonEmailLabel,
               icon: Icons.mail_outline,
               keyboardType: TextInputType.emailAddress,
-              helper:
-                  emailDirty ? 'Requires verification on the new address' : null,
+              helper: emailDirty ? l10n.myProfileEmailRequiresVerificationHelper : null,
               helperTone: _HelperTone.warning,
               onChanged: (_) => onAnyChange(),
             ),
             const SizedBox(height: 12),
             _EditField(
               controller: phoneCtrl,
-              label: 'Phone',
+              label: l10n.commonPhoneLabel,
               icon: Icons.phone_outlined,
               keyboardType: TextInputType.phone,
-              helper:
-                  phoneDirty ? 'Requires SMS verification on the new number' : null,
+              helper: phoneDirty ? l10n.myProfilePhoneRequiresVerificationHelper : null,
               helperTone: _HelperTone.warning,
               onChanged: (_) => onAnyChange(),
             ),
             const SizedBox(height: 12),
             _ReadOnlyField(
               icon: Icons.badge_outlined,
-              label: 'Employee ID',
+              label: l10n.myProfileEmployeeIdLabel,
               value: employeeId,
-              hint: 'Managed by HR',
+              hint: l10n.myProfileManagedByHrBadge,
             ),
             const SizedBox(height: 12),
             _ReadOnlyField(
               icon: Icons.event_available_outlined,
-              label: 'Hire date',
+              label: l10n.myProfileHireDateLabel,
               value: df.format(hiredAt),
-              hint: 'Managed by HR',
+              hint: l10n.myProfileManagedByHrBadge,
             ),
           ],
         ),
@@ -1197,6 +1207,7 @@ class _PersonalEditCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final df = DateFormat('d MMM yyyy');
     return _Card(
       child: Padding(
@@ -1231,7 +1242,7 @@ class _PersonalEditCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           AppLabel(
-                            text: 'Birthdate',
+                            text: l10n.myProfileBirthdateLabel,
                             fontSize: AppFontSize.value12,
                             color: theme.colorScheme.onSurfaceVariant,
                             fontWeight: FontWeight.w600,
@@ -1256,7 +1267,7 @@ class _PersonalEditCard extends StatelessWidget {
             const SizedBox(height: 12),
             _EditField(
               controller: addressCtrl,
-              label: 'Address',
+              label: l10n.myProfileAddressLabel,
               icon: Icons.location_on_outlined,
               minLines: 2,
               maxLines: 3,
@@ -1264,13 +1275,13 @@ class _PersonalEditCard extends StatelessWidget {
             const SizedBox(height: 12),
             _EditField(
               controller: emergencyNameCtrl,
-              label: 'Emergency contact',
+              label: l10n.myProfileEmergencyContactLabel,
               icon: Icons.person_outline,
             ),
             const SizedBox(height: 12),
             _EditField(
               controller: emergencyPhoneCtrl,
-              label: 'Emergency phone',
+              label: l10n.myProfileEmergencyPhoneLabel,
               icon: Icons.phone_in_talk_outlined,
               keyboardType: TextInputType.phone,
             ),
@@ -1365,6 +1376,7 @@ class _SaveBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return SafeArea(
       top: false,
       child: Container(
@@ -1395,8 +1407,8 @@ class _SaveBar extends StatelessWidget {
                     borderRadius: BorderRadius.circular(AppRadii.md),
                   ),
                 ),
-                child: const AppLabel(
-                  text: 'Cancel',
+                child: AppLabel(
+                  text: l10n.commonCancelAction,
                   fontSize: AppFontSize.value14,
                   fontWeight: FontWeight.bold,
                 ),
@@ -1422,8 +1434,8 @@ class _SaveBar extends StatelessWidget {
                           color: Colors.white,
                         ),
                       )
-                    : const AppLabel(
-                        text: 'Save changes',
+                    : AppLabel(
+                        text: l10n.myProfileSaveChangesAction,
                         fontSize: AppFontSize.value14,
                         fontWeight: FontWeight.bold,
                       ),
@@ -1452,6 +1464,7 @@ class _SecurityCardState extends State<_SecurityCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final df = DateFormat('d MMM yyyy · HH:mm');
     return _Card(
       child: Column(
@@ -1459,27 +1472,26 @@ class _SecurityCardState extends State<_SecurityCard> {
           _SecurityRow(
             icon: Icons.password_rounded,
             iconColor: Colors.blue,
-            title: 'Change password',
-            subtitle: 'Requires current password',
+            title: l10n.myProfileChangePasswordTitle,
+            subtitle: l10n.myProfileChangePasswordSubtitle,
             onTap: () => _confirmReAuth(
               context,
-              title: 'Change password',
-              message:
-                  'Re-enter your current password to confirm this change.',
+              title: l10n.myProfileChangePasswordTitle,
+              message: l10n.myProfileChangePasswordReAuthMessage,
               onConfirmed: () =>
-                  _showStub(context, 'Password change flow would open here.'),
+                  _showStub(context, l10n.myProfilePasswordChangeStubSnack),
             ),
           ),
           const Divider(height: 1, indent: 52),
           _SecurityRow(
             icon: Icons.pin_outlined,
             iconColor: Colors.deepPurple,
-            title: 'Change PIN',
-            subtitle: 'Set or replace your unlock PIN',
+            title: l10n.myProfileChangePinTitle,
+            subtitle: l10n.myProfileChangePinSubtitle,
             onTap: () => _confirmReAuth(
               context,
-              title: 'Change PIN',
-              message: 'Re-authenticate before changing your PIN.',
+              title: l10n.myProfileChangePinTitle,
+              message: l10n.myProfileChangePinReAuthMessage,
               onConfirmed: () =>
                   ConfigRouter.pushPageAnimation(context, const AppLockPage()),
             ),
@@ -1492,12 +1504,12 @@ class _SecurityCardState extends State<_SecurityCard> {
               return _BiometricSwitchRow(
                 enabled: settings.biometricEnabled,
                 onChanged: (next) async {
+                  final messenger = ScaffoldMessenger.of(context);
                   if (next) {
                     final ok = await _confirmReAuth(
                       context,
-                      title: 'Enable biometric',
-                      message:
-                          'Re-authenticate to bind your device biometric to this app.',
+                      title: l10n.myProfileEnableBiometricTitle,
+                      message: l10n.myProfileEnableBiometricReAuthMessage,
                     );
                     if (!ok || !context.mounted) return;
                   }
@@ -1507,10 +1519,9 @@ class _SecurityCardState extends State<_SecurityCard> {
                       enabled: next,
                     );
                   } on ConflictFailure catch (f) {
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    messenger.showSnackBar(
                       SnackBar(
-                        content: Text(f.message ?? 'Cannot toggle biometric'),
+                        content: Text(f.message ?? l10n.myProfileCannotToggleBiometricFallback),
                         behavior: SnackBarBehavior.floating,
                       ),
                     );
@@ -1532,7 +1543,7 @@ class _SecurityCardState extends State<_SecurityCard> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: AppLabel(
-                    text: 'Last login: ${df.format(widget.profile.lastLoginAt)}',
+                    text: l10n.myProfileLastLoginAtLabel(df.format(widget.profile.lastLoginAt)),
                     fontSize: AppFontSize.value12,
                     color: theme.colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w600,
@@ -1584,6 +1595,7 @@ class _SecurityRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadii.md),
@@ -1625,7 +1637,7 @@ class _SecurityRow extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppRadii.pill),
               ),
               child: AppLabel(
-                text: 'RE-AUTH',
+                text: l10n.myProfileReAuthBadge,
                 fontSize: AppFontSize.value9,
                 color: theme.colorScheme.onTertiaryContainer,
                 fontWeight: FontWeight.w900,
@@ -1655,6 +1667,7 @@ class _BiometricSwitchRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
       child: Row(
@@ -1677,14 +1690,14 @@ class _BiometricSwitchRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 AppLabel(
-                  text: 'Biometric unlock',
+                  text: l10n.myProfileBiometricUnlockTitle,
                   fontSize: AppFontSize.value14,
                   fontWeight: FontWeight.w700,
                 ),
                 AppLabel(
                   text: enabled
-                      ? 'Tap to disable — re-auth not required'
-                      : 'Re-auth required to enable',
+                      ? l10n.myProfileBiometricEnabledSubtitle
+                      : l10n.myProfileBiometricDisabledSubtitle,
                   fontSize: AppFontSize.value12,
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -1746,6 +1759,7 @@ class _ReAuthSheetState extends State<_ReAuthSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: EdgeInsets.only(
         left: 20,
@@ -1805,7 +1819,7 @@ class _ReAuthSheetState extends State<_ReAuthSheet> {
             autofocus: true,
             obscureText: true,
             decoration: InputDecoration(
-              labelText: 'Current password',
+              labelText: l10n.myProfileCurrentPasswordLabel,
               prefixIcon: const Icon(Icons.lock_outline, size: 20),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppRadii.md),
@@ -1825,8 +1839,8 @@ class _ReAuthSheetState extends State<_ReAuthSheet> {
                       borderRadius: BorderRadius.circular(AppRadii.md),
                     ),
                   ),
-                  child: const AppLabel(
-                    text: 'Cancel',
+                  child: AppLabel(
+                    text: l10n.commonCancelAction,
                     fontSize: AppFontSize.value14,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1846,8 +1860,8 @@ class _ReAuthSheetState extends State<_ReAuthSheet> {
                       borderRadius: BorderRadius.circular(AppRadii.md),
                     ),
                   ),
-                  child: const AppLabel(
-                    text: 'Confirm',
+                  child: AppLabel(
+                    text: l10n.myProfileConfirmAction,
                     fontSize: AppFontSize.value14,
                     fontWeight: FontWeight.bold,
                   ),

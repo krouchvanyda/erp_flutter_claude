@@ -8,6 +8,7 @@ import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../l10n/app_localizations.dart';
 import 'api_config_page.dart';
 import 'app_lock_page.dart';
 import 'appearance_page.dart';
@@ -30,10 +31,11 @@ class SettingsHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: const DynamicAppBar(title: 'Settings', centerTitle: true),
+      appBar: DynamicAppBar(title: l10n.settingsHomePageTitle, centerTitle: true),
       body: DynamicStatusBar(
         child: Stack(
           children: [
@@ -50,20 +52,20 @@ class SettingsHomePage extends StatelessWidget {
 
                 // Account Group — Slices 9.1.4 / 9.1.5.
                 _Section(
-                  title: 'Account',
+                  title: l10n.settingsHomeAccountSection,
                   children: [
                     _Tile(
                       icon: Icons.person_outline,
-                      title: 'My profile',
-                      subtitle: 'Contact, personal, security',
+                      title: l10n.settingsHomeMyProfileTitle,
+                      subtitle: l10n.settingsHomeMyProfileSubtitle,
                       page: const MyProfilePage(),
                       color: Colors.deepPurple,
                     ),
                     const Divider(height: 1, indent: 56),
                     _Tile(
                       icon: Icons.shield_outlined,
-                      title: 'My roles & permissions',
-                      subtitle: 'What you can do in the app',
+                      title: l10n.settingsHomeMyRolesTitle,
+                      subtitle: l10n.settingsHomeMyRolesSubtitle,
                       page: const MyRolesPage(),
                       color: Colors.cyan.shade700,
                     ),
@@ -77,28 +79,28 @@ class SettingsHomePage extends StatelessWidget {
 
                 // Preferences Group
                 _Section(
-                      title: 'Preferences',
+                      title: l10n.settingsHomePreferencesSection,
                       children: [
                         _Tile(
                           icon: Icons.brightness_6_outlined,
-                          title: 'Appearance',
-                          subtitle: 'Light, dark, or follow system',
+                          title: l10n.settingsHomeAppearanceTitle,
+                          subtitle: l10n.settingsHomeAppearanceSubtitle,
                           page: const AppearancePage(),
                           color: Colors.blue,
                         ),
                         const Divider(height: 1, indent: 56),
                         _Tile(
                           icon: Icons.language_outlined,
-                          title: 'Language',
-                          subtitle: 'English / ខ្មែរ',
+                          title: l10n.settingsHomeLanguageTitle,
+                          subtitle: l10n.settingsHomeLanguageSubtitle,
                           page: const LanguagePage(),
                           color: Colors.indigo,
                         ),
                         const Divider(height: 1, indent: 56),
                         _Tile(
                           icon: Icons.notifications_outlined,
-                          title: 'Notifications',
-                          subtitle: 'Push + email per category',
+                          title: l10n.settingsHomeNotificationsTitle,
+                          subtitle: l10n.settingsHomeNotificationsSubtitle,
                           page: const NotificationPreferencesPage(),
                           color: Colors.amber.shade800,
                         ),
@@ -112,28 +114,28 @@ class SettingsHomePage extends StatelessWidget {
 
                 // Security Group
                 _Section(
-                      title: 'Security & Access',
+                      title: l10n.settingsHomeSecuritySection,
                       children: [
                         _Tile(
                           icon: Icons.devices_other_outlined,
-                          title: 'Active devices',
-                          subtitle: 'Sessions you can revoke',
+                          title: l10n.settingsHomeActiveDevicesTitle,
+                          subtitle: l10n.settingsHomeActiveDevicesSubtitle,
                           page: const SessionsPage(),
                           color: Colors.teal,
                         ),
                         const Divider(height: 1, indent: 56),
                         _Tile(
                           icon: Icons.history_edu_outlined,
-                          title: 'Audit log',
-                          subtitle: 'Who did what, when',
+                          title: l10n.settingsHomeAuditLogTitle,
+                          subtitle: l10n.settingsHomeAuditLogSubtitle,
                           page: const AuditLogPage(),
                           color: Colors.deepPurple,
                         ),
                         const Divider(height: 1, indent: 56),
                         _Tile(
                           icon: Icons.lock_outline,
-                          title: 'App lock',
-                          subtitle: 'PIN + biometric re-auth',
+                          title: l10n.settingsHomeAppLockTitle,
+                          subtitle: l10n.settingsHomeAppLockSubtitle,
                           page: const AppLockPage(),
                           color: Colors.pink,
                         ),
@@ -147,28 +149,28 @@ class SettingsHomePage extends StatelessWidget {
 
                 // Administration Group
                 _Section(
-                      title: 'Administration',
+                      title: l10n.settingsHomeAdminSection,
                       children: [
                         _Tile(
                           icon: Icons.people_alt_outlined,
-                          title: 'User management',
-                          subtitle: 'Invite, suspend, assign roles',
+                          title: l10n.settingsHomeUserMgmtTitle,
+                          subtitle: l10n.settingsHomeUserMgmtSubtitle,
                           page: const UserManagementPage(),
                           color: Colors.orange.shade700,
                         ),
                         const Divider(height: 1, indent: 56),
                         _Tile(
                           icon: Icons.shield_outlined,
-                          title: 'Roles & permissions',
-                          subtitle: 'Editor for custom roles',
+                          title: l10n.settingsHomeRolesPermsTitle,
+                          subtitle: l10n.settingsHomeRolesPermsSubtitle,
                           page: const RoleEditorPage(),
                           color: Colors.cyan.shade700,
                         ),
                         const Divider(height: 1, indent: 56),
                         _Tile(
                           icon: Icons.cloud_outlined,
-                          title: 'API configuration',
-                          subtitle: 'Switch environment / tenant',
+                          title: l10n.settingsHomeApiConfigTitle,
+                          subtitle: l10n.settingsHomeApiConfigSubtitle,
                           page: const ApiConfigPage(),
                           color: Colors.blueGrey,
                         ),
@@ -192,8 +194,8 @@ class SettingsHomePage extends StatelessWidget {
                       ),
                       onPressed: onSignOut,
                       icon: const Icon(Icons.logout_rounded),
-                      label: const AppLabel(
-                        text: 'Sign out',
+                      label: AppLabel(
+                        text: l10n.settingsHomeSignOutAction,
                         fontSize: AppFontSize.value14,
                         fontWeight: FontWeight.w600,
                       ),

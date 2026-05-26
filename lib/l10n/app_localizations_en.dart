@@ -2676,6 +2676,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationPrefsEmailTitle => 'Email Updates';
 
   @override
+  String get notificationPrefsChannelApprovals => 'Approvals';
+
+  @override
+  String get notificationPrefsChannelMentions => 'Mentions & comments';
+
+  @override
+  String get notificationPrefsChannelSystemAlerts => 'System alerts';
+
+  @override
+  String get notificationPrefsChannelMarketing => 'Marketing & tips';
+
+  @override
+  String get notificationPrefsChannelApprovalsDescription =>
+      'Invoices, leave requests, timesheets pending action';
+
+  @override
+  String get notificationPrefsChannelMentionsDescription =>
+      'Someone @-mentioned you on a task or comment';
+
+  @override
+  String get notificationPrefsChannelSystemAlertsDescription =>
+      'Sync failures, downtime windows, security events';
+
+  @override
+  String get notificationPrefsChannelMarketingDescription =>
+      'Product news, tips, and feature announcements';
+
+  @override
   String get sessionsPageTitle => 'Active devices';
 
   @override
@@ -2790,6 +2818,77 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appLockSavePinAction => 'Save PIN';
 
   @override
+  String get appLockCannotEnableFallback => 'Cannot enable.';
+
+  @override
+  String get appLockLockImmediatelySubtitle =>
+      'Lock immediately on backgrounding';
+
+  @override
+  String appLockMinutesAfterBackgroundSubtitle(int count) {
+    return '$count minutes after backgrounding';
+  }
+
+  @override
+  String get appLockRequiresPinSubtitle =>
+      'Requires App Lock PIN to be enabled';
+
+  @override
+  String get appLockFootnote =>
+      'Your PIN and biometric metrics are secure. Keys are strictly kept inside the hardware OS-backed Keystore / Keychain. Uninstalling or wiping application storage resets lock settings.';
+
+  @override
+  String get appLockAutoLockSheetSubtitle =>
+      'Select the inactivity grace period before the app locks';
+
+  @override
+  String get appLockHeaderEnabledTitle => 'App Protection Enabled';
+
+  @override
+  String get appLockHeaderDisabledTitle => 'App Protection Disabled';
+
+  @override
+  String get appLockHeaderEnabledSubtitle =>
+      'Your device settings mandate a security checkpoint upon resume.';
+
+  @override
+  String get appLockHeaderDisabledSubtitle =>
+      'Configure a security PIN below to safeguard your ERP environment data.';
+
+  @override
+  String get appLockOptionImmediately => 'Immediately';
+
+  @override
+  String appLockOptionMinute(int count) {
+    return '$count minute';
+  }
+
+  @override
+  String appLockOptionMinutes(int count) {
+    return '$count minutes';
+  }
+
+  @override
+  String get appLockOptionImmediatelySubtitle =>
+      'Lock the app the instant it goes to background';
+
+  @override
+  String appLockOptionMinuteSubtitle(int count) {
+    return 'Lock the app after $count minute in background';
+  }
+
+  @override
+  String appLockOptionMinutesSubtitle(int count) {
+    return 'Lock the app after $count minutes in background';
+  }
+
+  @override
+  String get appLockPinFieldLabel => 'PIN (4–8 digits)';
+
+  @override
+  String get appLockConfirmPinLabel => 'Confirm PIN';
+
+  @override
   String get apiConfigPageTitle => 'API Configuration';
 
   @override
@@ -2825,6 +2924,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get apiConfigBaseUrlHint => 'https://api-apac.tenant.example.com';
+
+  @override
+  String get apiConfigBannerWarning =>
+      'Switching environment clusters signs you out of the current tenant session to prevent cross-contamination of credentials.';
+
+  @override
+  String get apiConfigCannotDeleteFallback => 'Cannot delete.';
 
   @override
   String get roleEditorPageTitle => 'Roles & Permissions';
@@ -2867,6 +2973,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get roleEditorDeleteConfirmMessage =>
+      'This action cannot be undone and will strip permissions from all assigned users.';
+
+  @override
+  String get roleEditorCannotDeleteFallback => 'Cannot delete.';
+
+  @override
   String get roleEditorDeleteAction => 'Delete';
 
   @override
@@ -2905,6 +3018,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String userMgmtStatusSetSnack(String status) {
     return 'Status set to $status.';
   }
+
+  @override
+  String get userMgmtFilterAll => 'All';
+
+  @override
+  String get userMgmtFilterActive => 'Active';
+
+  @override
+  String get userMgmtFilterInvited => 'Invited';
+
+  @override
+  String get userMgmtFilterSuspended => 'Suspended';
+
+  @override
+  String get userMgmtNewUserPlaceholder => 'New User';
+
+  @override
+  String get userMgmtEmailAddressLabel => 'Email Address';
+
+  @override
+  String get userMgmtFullNameLabel => 'Full Name';
+
+  @override
+  String get userMgmtCannotApplyFallback => 'Cannot apply.';
+
+  @override
+  String get userMgmtStatusActive => 'ACTIVE';
+
+  @override
+  String get userMgmtStatusInvited => 'INVITED';
+
+  @override
+  String get userMgmtStatusSuspended => 'SUSPENDED';
 
   @override
   String get myRolesPageTitle => 'My Roles & Permissions';
@@ -3018,4 +3164,114 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get myProfileConfirmAction => 'Confirm';
+
+  @override
+  String myProfileSaveErrorSnack(String error) {
+    return 'Could not save changes: $error';
+  }
+
+  @override
+  String get myProfileChangePhotoSheetTitle => 'Change profile photo';
+
+  @override
+  String get myProfileAddPhotoSheetTitle => 'Add a profile photo';
+
+  @override
+  String get myProfileEmailRequiresVerificationHelper =>
+      'Requires verification on the new address';
+
+  @override
+  String get myProfilePhoneRequiresVerificationHelper =>
+      'Requires SMS verification on the new number';
+
+  @override
+  String get myProfileManagedByHrBadge => 'Managed by HR';
+
+  @override
+  String get myProfileChangePasswordReAuthMessage =>
+      'Re-enter your current password to confirm this change.';
+
+  @override
+  String get myProfileChangePinReAuthMessage =>
+      'Re-authenticate before changing your PIN.';
+
+  @override
+  String get myProfileEnableBiometricReAuthMessage =>
+      'Re-authenticate to bind your device biometric to this app.';
+
+  @override
+  String get myProfileCannotToggleBiometricFallback =>
+      'Cannot toggle biometric';
+
+  @override
+  String get myProfilePasswordChangeStubSnack =>
+      'Password change flow would open here.';
+
+  @override
+  String get myProfileCurrentPasswordLabel => 'Current password';
+
+  @override
+  String get myProfileBiometricEnabledSubtitle =>
+      'Tap to disable — re-auth not required';
+
+  @override
+  String get myProfileBiometricDisabledSubtitle => 'Re-auth required to enable';
+
+  @override
+  String get myProfileNameFieldHumanLabel => 'Name';
+
+  @override
+  String get myProfileEmailFieldHumanLabel => 'Email';
+
+  @override
+  String get myProfilePhoneFieldHumanLabel => 'Phone';
+
+  @override
+  String get myProfileRelativeToday => 'Today';
+
+  @override
+  String get myProfileRelativeYesterday => 'Yesterday';
+
+  @override
+  String myProfileRelativeDaysAgo(int count) {
+    return '${count}d ago';
+  }
+
+  @override
+  String myProfileRelativeWeeksAgo(int count) {
+    return '${count}w ago';
+  }
+
+  @override
+  String myProfileRelativeMonthsAgo(int count) {
+    return '${count}mo ago';
+  }
+
+  @override
+  String myProfileRelativeYearsAgo(int count) {
+    return '${count}y ago';
+  }
+
+  @override
+  String get myProfileTenureLessThanMonth => '<1 mo';
+
+  @override
+  String myProfileTenureMonths(int count) {
+    return '$count mo';
+  }
+
+  @override
+  String myProfileTenureYear(int count) {
+    return '$count yr';
+  }
+
+  @override
+  String myProfileTenureYears(int count) {
+    return '$count yrs';
+  }
+
+  @override
+  String myProfileTenureYearsMonths(int years, int months) {
+    return '${years}y ${months}m';
+  }
 }
