@@ -3338,6 +3338,150 @@ abstract class AppLocalizations {
   /// **'Password must be at least 6 characters'**
   String get loginValidatorPasswordTooShort;
 
+  /// No description provided for @loginNoAccountPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t have an account?'**
+  String get loginNoAccountPrompt;
+
+  /// No description provided for @loginCreateAccountAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Create one'**
+  String get loginCreateAccountAction;
+
+  /// No description provided for @registerWelcomeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create your account'**
+  String get registerWelcomeTitle;
+
+  /// No description provided for @registerWelcomeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Start managing your business in minutes.'**
+  String get registerWelcomeSubtitle;
+
+  /// No description provided for @registerFullNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Full name'**
+  String get registerFullNameLabel;
+
+  /// No description provided for @registerFullNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Jane Doe'**
+  String get registerFullNameHint;
+
+  /// No description provided for @registerPhoneHint.
+  ///
+  /// In en, this message translates to:
+  /// **'096 506 0999'**
+  String get registerPhoneHint;
+
+  /// No description provided for @registerValidatorPhoneRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter your phone number'**
+  String get registerValidatorPhoneRequired;
+
+  /// No description provided for @registerValidatorPhoneInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid phone number'**
+  String get registerValidatorPhoneInvalid;
+
+  /// No description provided for @registerConfirmPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm password'**
+  String get registerConfirmPasswordLabel;
+
+  /// No description provided for @registerTermsPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'By tapping Create account you agree to our '**
+  String get registerTermsPrefix;
+
+  /// No description provided for @registerTermsLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms'**
+  String get registerTermsLink;
+
+  /// No description provided for @registerTermsAnd.
+  ///
+  /// In en, this message translates to:
+  /// **' and '**
+  String get registerTermsAnd;
+
+  /// No description provided for @registerPrivacyLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy Policy'**
+  String get registerPrivacyLink;
+
+  /// No description provided for @registerTermsSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **'.'**
+  String get registerTermsSuffix;
+
+  /// No description provided for @registerSubmitAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Create account'**
+  String get registerSubmitAction;
+
+  /// No description provided for @registerHaveAccountPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Already have an account?'**
+  String get registerHaveAccountPrompt;
+
+  /// No description provided for @registerSignInAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get registerSignInAction;
+
+  /// No description provided for @registerValidatorFullNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter your full name'**
+  String get registerValidatorFullNameRequired;
+
+  /// No description provided for @registerValidatorPasswordsMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords do not match'**
+  String get registerValidatorPasswordsMismatch;
+
+  /// No description provided for @registerValidatorAcceptTermsRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please accept the terms to continue'**
+  String get registerValidatorAcceptTermsRequired;
+
+  /// No description provided for @registerAcceptTermsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'I accept the Terms and Privacy Policy'**
+  String get registerAcceptTermsLabel;
+
+  /// No description provided for @authGenericErrorFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Please try again.'**
+  String get authGenericErrorFallback;
+
+  /// No description provided for @authNetworkErrorFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t reach the server. Check your connection and try again.'**
+  String get authNetworkErrorFallback;
+
   /// No description provided for @forgotPasswordTitle.
   ///
   /// In en, this message translates to:
@@ -4831,6 +4975,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sign out'**
   String get settingsHomeSignOutAction;
+
+  /// No description provided for @settingsHomeSignOutConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out?'**
+  String get settingsHomeSignOutConfirmTitle;
+
+  /// No description provided for @settingsHomeSignOutConfirmMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ll need to sign in again to access your data on this device.'**
+  String get settingsHomeSignOutConfirmMessage;
+
+  /// No description provided for @settingsHomeSignOutErrorSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not sign out cleanly. Please try again.'**
+  String get settingsHomeSignOutErrorSnack;
 
   /// No description provided for @appearancePageTitle.
   ///

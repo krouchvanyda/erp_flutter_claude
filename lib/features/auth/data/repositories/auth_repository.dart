@@ -7,15 +7,18 @@ import '../../../../core/error/crash_reporter.dart';
 import '../../../../core/error/either.dart';
 import '../../../../core/error/failure.dart';
 import '../../../../core/error/failure_from_dio.dart';
+import '../../../../core/network/api_envelope.dart';
 import '../../../../core/network/session_signal.dart';
 import '../../../../core/network/token_storage.dart';
 import '../../../../core/utils/logger/app_logger.dart';
+import '../../entities/user.dart';
 import '../datasources/auth_remote_data_source.dart';
 import '../datasources/biometric_service.dart';
 import '../datasources/biometric_settings_dao.dart';
 import '../datasources/cached_user_dao.dart';
 import '../datasources/oauth_flow_session.dart';
 import '../datasources/oauth_token_data_source.dart';
+import '../models/auth_requests.dart';
 
 /// Concrete auth feature repository.
 ///
@@ -69,6 +72,85 @@ class AuthRepository {
   final AppLogger _logger;
   final CrashReporter _crash;
 
+  /// Email + password sign-in against the Spring `/auth/login` endpoint.
+  ///
+  /// Side effects on success:
+  ///   1. [AuthTokens] (access + refresh + access expiry) are persisted to
+  ///      [TokenStorage] — that's `flutter_secure_storage` in production,
+  ///      never drift.
+  ///   2. The returned [User] is cached in drift via [CachedUserDao.cacheUser]
+  ///      so the splash probe / route guard can answer offline.
+  ///   3. [AnalyticsService.identify] tags the session with the user id
+  ///      so subsequent events carry their identity.
+  ///
+  /// On failure, no tokens or user data are persisted — the caller gets
+  /// back a typed [Failure] mapped via `failureFromDioException` (the
+  /// same translator the rest of the network layer uses).
+  Future<Result<User>> login({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final response = await _remote.login(
+        LoginRequest(email: email, password: password),
+      );
+      final user = response.user.toDomain();
+      await _tokenStorage.write(response.toAuthTokens());
+      await _cache.cacheUser(user);
+      await _analytics.identify(user.id, traits: <String, Object?>{
+        'email': user.email,
+      });
+      _logger.info('login OK for ${user.id}');
+      return ok(user);
+    } on ApiEnvelopeException catch (e) {
+      return err(Failure.server(message: e.message));
+    } on DioException catch (e) {
+      return err(failureFromDioException(e));
+    } on FormatException catch (e) {
+      return err(Failure.unknown(message: e.message));
+    }
+  }
+
+  /// New-account flow against the Spring `/auth/register` endpoint.
+  ///
+  /// Same side-effects contract as [login] — the backend returns an
+  /// already-issued token pair so the client can drop the user straight
+  /// into the authenticated shell without a second round-trip.
+  ///
+  /// All four fields ([email], [password], [fullName], [phone]) are
+  /// required by the backend record.
+  Future<Result<User>> register({
+    required String email,
+    required String password,
+    required String fullName,
+    required String phone,
+  }) async {
+    try {
+      final response = await _remote.register(
+        RegisterRequest(
+          email: email,
+          password: password,
+          fullName: fullName,
+          phone: phone,
+        ),
+      );
+      final user = response.user.toDomain();
+      await _tokenStorage.write(response.toAuthTokens());
+      await _cache.cacheUser(user);
+      await _analytics.identify(user.id, traits: <String, Object?>{
+        'email': user.email,
+      });
+      _logger.info('register OK for ${user.id}');
+      return ok(user);
+    } on ApiEnvelopeException catch (e) {
+      return err(Failure.server(message: e.message));
+    } on DioException catch (e) {
+      return err(failureFromDioException(e));
+    } on FormatException catch (e) {
+      return err(Failure.unknown(message: e.message));
+    }
+  }
+
   /// Server-revoke the refresh token (best-effort) and wipe every local
   /// trace of the session — secure-storage tokens **and** drift-cached
   /// profile + permissions.
@@ -81,9 +163,15 @@ class AuthRepository {
 
     // Step 1 — best-effort server revoke. Skipped when we have no
     // refresh token (e.g. logout button hit twice / boot-time cleanup).
+    // Both tokens are forwarded: the refresh token is the payload to
+    // invalidate; the access token is required by Spring Security to
+    // authorize the `/auth/logout` request.
     if (tokens != null) {
       try {
-        await _remote.revokeRefreshToken(tokens.refreshToken);
+        await _remote.revokeRefreshToken(
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+        );
         _logger.info('server-side refresh-token revoke succeeded');
       } catch (e, stack) {
         _crash.report(

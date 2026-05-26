@@ -1809,6 +1809,85 @@ class AppLocalizationsEn extends AppLocalizations {
       'Password must be at least 6 characters';
 
   @override
+  String get loginNoAccountPrompt => 'Don\'t have an account?';
+
+  @override
+  String get loginCreateAccountAction => 'Create one';
+
+  @override
+  String get registerWelcomeTitle => 'Create your account';
+
+  @override
+  String get registerWelcomeSubtitle =>
+      'Start managing your business in minutes.';
+
+  @override
+  String get registerFullNameLabel => 'Full name';
+
+  @override
+  String get registerFullNameHint => 'Jane Doe';
+
+  @override
+  String get registerPhoneHint => '096 506 0999';
+
+  @override
+  String get registerValidatorPhoneRequired => 'Please enter your phone number';
+
+  @override
+  String get registerValidatorPhoneInvalid =>
+      'Please enter a valid phone number';
+
+  @override
+  String get registerConfirmPasswordLabel => 'Confirm password';
+
+  @override
+  String get registerTermsPrefix =>
+      'By tapping Create account you agree to our ';
+
+  @override
+  String get registerTermsLink => 'Terms';
+
+  @override
+  String get registerTermsAnd => ' and ';
+
+  @override
+  String get registerPrivacyLink => 'Privacy Policy';
+
+  @override
+  String get registerTermsSuffix => '.';
+
+  @override
+  String get registerSubmitAction => 'Create account';
+
+  @override
+  String get registerHaveAccountPrompt => 'Already have an account?';
+
+  @override
+  String get registerSignInAction => 'Sign in';
+
+  @override
+  String get registerValidatorFullNameRequired => 'Please enter your full name';
+
+  @override
+  String get registerValidatorPasswordsMismatch => 'Passwords do not match';
+
+  @override
+  String get registerValidatorAcceptTermsRequired =>
+      'Please accept the terms to continue';
+
+  @override
+  String get registerAcceptTermsLabel =>
+      'I accept the Terms and Privacy Policy';
+
+  @override
+  String get authGenericErrorFallback =>
+      'Something went wrong. Please try again.';
+
+  @override
+  String get authNetworkErrorFallback =>
+      'Can\'t reach the server. Check your connection and try again.';
+
+  @override
   String get forgotPasswordTitle => 'Forgot Password?';
 
   @override
@@ -2616,6 +2695,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsHomeSignOutAction => 'Sign out';
+
+  @override
+  String get settingsHomeSignOutConfirmTitle => 'Sign out?';
+
+  @override
+  String get settingsHomeSignOutConfirmMessage =>
+      'You\'ll need to sign in again to access your data on this device.';
+
+  @override
+  String get settingsHomeSignOutErrorSnack =>
+      'Could not sign out cleanly. Please try again.';
 
   @override
   String get appearancePageTitle => 'Appearance';

@@ -99,19 +99,19 @@ class SettingsSeed {
     ApiEnvironment(
       id: 'env-prod',
       name: 'Production',
-      baseUrl: 'https://api.erp-mobile.example',
+      baseUrl: 'http://localhost:8080/api/v1',
       isBuiltIn: true,
     ),
     ApiEnvironment(
       id: 'env-staging',
       name: 'Staging',
-      baseUrl: 'https://api.staging.erp-mobile.example',
+      baseUrl: 'http://localhost:8080/api/v1',
       isBuiltIn: true,
     ),
     ApiEnvironment(
       id: 'env-local',
       name: 'Local dev',
-      baseUrl: 'http://localhost:8080',
+      baseUrl: 'http://localhost:8080/api/v1',
       isBuiltIn: true,
     ),
   ];

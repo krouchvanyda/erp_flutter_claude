@@ -1803,6 +1803,84 @@ class AppLocalizationsKm extends AppLocalizations {
       'ពាក្យសម្ងាត់ត្រូវមានយ៉ាងតិច ៦ តួអក្សរ';
 
   @override
+  String get loginNoAccountPrompt => 'មិនទាន់មានគណនី?';
+
+  @override
+  String get loginCreateAccountAction => 'បង្កើតមួយ';
+
+  @override
+  String get registerWelcomeTitle => 'បង្កើតគណនីរបស់អ្នក';
+
+  @override
+  String get registerWelcomeSubtitle =>
+      'ចាប់ផ្ដើមគ្រប់គ្រងអាជីវកម្មរបស់អ្នកក្នុងរយៈពេលប៉ុន្មាននាទី។';
+
+  @override
+  String get registerFullNameLabel => 'ឈ្មោះពេញ';
+
+  @override
+  String get registerFullNameHint => 'Jane Doe';
+
+  @override
+  String get registerPhoneHint => '096 506 0999';
+
+  @override
+  String get registerValidatorPhoneRequired => 'សូមបញ្ចូលលេខទូរស័ព្ទរបស់អ្នក';
+
+  @override
+  String get registerValidatorPhoneInvalid =>
+      'សូមបញ្ចូលលេខទូរស័ព្ទដែលត្រឹមត្រូវ';
+
+  @override
+  String get registerConfirmPasswordLabel => 'បញ្ជាក់ពាក្យសម្ងាត់';
+
+  @override
+  String get registerTermsPrefix => 'ដោយចុច បង្កើតគណនី អ្នកយល់ព្រមនឹង ';
+
+  @override
+  String get registerTermsLink => 'លក្ខខណ្ឌ';
+
+  @override
+  String get registerTermsAnd => ' និង ';
+
+  @override
+  String get registerPrivacyLink => 'គោលការណ៍ឯកជនភាព';
+
+  @override
+  String get registerTermsSuffix => '។';
+
+  @override
+  String get registerSubmitAction => 'បង្កើតគណនី';
+
+  @override
+  String get registerHaveAccountPrompt => 'មានគណនីរួចហើយ?';
+
+  @override
+  String get registerSignInAction => 'ចូលគណនី';
+
+  @override
+  String get registerValidatorFullNameRequired => 'សូមបញ្ចូលឈ្មោះពេញរបស់អ្នក';
+
+  @override
+  String get registerValidatorPasswordsMismatch => 'ពាក្យសម្ងាត់មិនត្រូវគ្នាទេ';
+
+  @override
+  String get registerValidatorAcceptTermsRequired =>
+      'សូមទទួលយកលក្ខខណ្ឌដើម្បីបន្ត';
+
+  @override
+  String get registerAcceptTermsLabel =>
+      'ខ្ញុំទទួលយកលក្ខខណ្ឌ និងគោលការណ៍ឯកជនភាព';
+
+  @override
+  String get authGenericErrorFallback =>
+      'មានបញ្ហាបានកើតឡើង។ សូមព្យាយាមម្ដងទៀត។';
+
+  @override
+  String get authNetworkErrorFallback =>
+      'មិនអាចភ្ជាប់ទៅម៉ាស៊ីនបម្រើបានទេ។ សូមពិនិត្យការតភ្ជាប់ហើយព្យាយាមម្ដងទៀត។';
+
+  @override
   String get forgotPasswordTitle => 'ភ្លេចពាក្យសម្ងាត់?';
 
   @override
@@ -2610,6 +2688,17 @@ class AppLocalizationsKm extends AppLocalizations {
 
   @override
   String get settingsHomeSignOutAction => 'ចេញ';
+
+  @override
+  String get settingsHomeSignOutConfirmTitle => 'ចេញពីគណនី?';
+
+  @override
+  String get settingsHomeSignOutConfirmMessage =>
+      'អ្នកនឹងត្រូវចូលគណនីម្ដងទៀត ដើម្បីប្រើទិន្នន័យរបស់អ្នកនៅលើឧបករណ៍នេះ។';
+
+  @override
+  String get settingsHomeSignOutErrorSnack =>
+      'មិនអាចចេញពីគណនីបានល្អទេ។ សូមព្យាយាមម្ដងទៀត។';
 
   @override
   String get appearancePageTitle => 'រូបរាង';

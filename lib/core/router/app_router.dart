@@ -13,6 +13,7 @@ import '../../features/dashboard/presentation/pages/coming_soon_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/dashboard/presentation/pages/modules_page.dart';
 import '../../features/auth/data/demo_sign_in.dart';
+import '../../features/auth/data/repositories/auth_repository.dart';
 import '../../features/finance/presentation/pages/account_detail_page.dart';
 import '../di/injection.dart';
 import '../../features/finance/presentation/pages/chart_of_accounts_page.dart';
@@ -650,7 +651,14 @@ class AppRouter {
                     path: RoutePaths.settings,
                     name: RoutePaths.settingsName,
                     builder: (_, __) => SettingsHomePage(
-                      onSignOut: () => session.signOut(),
+                      // Full sign-out via AuthRepository — revokes the
+                      // refresh token server-side, clears
+                      // flutter_secure_storage, wipes the cached user from
+                      // drift, then SessionSignal.invalidate() flips the
+                      // AuthSession bool and the router bounces to /login.
+                      // Using `session.signOut()` here would only flip the
+                      // stub's bool and leave tokens + cache on the device.
+                      onSignOut: () => getIt<AuthRepository>().signOut(),
                     ),
                   ),
                   // Phase 9.1 — preferences.

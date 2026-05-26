@@ -56,7 +56,10 @@ void main() {
     });
 
     test('POSTs the refresh token to the revoke endpoint', () async {
-      await source.revokeRefreshToken('rt-xyz');
+      await source.revokeRefreshToken(
+        accessToken: 'at-abc',
+        refreshToken: 'rt-xyz',
+      );
 
       expect(adapter.received, hasLength(1));
       final req = adapter.received.single;
@@ -65,33 +68,44 @@ void main() {
 
       final body = jsonDecode(utf8.decode(adapter.requestBodies.single))
           as Map<String, dynamic>;
-      expect(body, {'refresh_token': 'rt-xyz'});
+      // Spring Boot record fields → camelCase JSON.
+      expect(body, {'refreshToken': 'rt-xyz'});
     });
 
     test('sets skipAuthKey so the auth interceptor stays out', () async {
-      await source.revokeRefreshToken('rt-xyz');
+      await source.revokeRefreshToken(
+        accessToken: 'at-abc',
+        refreshToken: 'rt-xyz',
+      );
       expect(
         adapter.received.single.extra[AuthInterceptor.skipAuthKey],
         isTrue,
       );
     });
 
-    test('does not attach a Bearer header (revoke uses body auth, RFC 7009)',
+    test('attaches the Bearer header so Spring Security accepts the logout',
         () async {
-      await source.revokeRefreshToken('rt-xyz');
-      // The shared Dio in tests has no auth interceptor attached, so
-      // the only Authorization header source would be manual attachment.
-      // Verify we don't add one.
+      await source.revokeRefreshToken(
+        accessToken: 'at-abc',
+        refreshToken: 'rt-xyz',
+      );
+      // Spring's `/auth/logout` is gated by Spring Security — without
+      // `Authorization: Bearer …` the server returns 401. The header is
+      // attached manually because skipAuthKey is still set (to avoid the
+      // refresh-on-401 loop), so the interceptor isn't doing it for us.
       expect(
-        adapter.received.single.headers.containsKey('Authorization'),
-        isFalse,
+        adapter.received.single.headers['Authorization'],
+        'Bearer at-abc',
       );
     });
 
     test('propagates DioException on 5xx', () async {
       adapter.statusCode = 503;
       await expectLater(
-        () => source.revokeRefreshToken('rt-xyz'),
+        () => source.revokeRefreshToken(
+          accessToken: 'at-abc',
+          refreshToken: 'rt-xyz',
+        ),
         throwsA(isA<DioException>()),
       );
     });
@@ -99,7 +113,10 @@ void main() {
     test('propagates DioException on 401 (expired token)', () async {
       adapter.statusCode = 401;
       await expectLater(
-        () => source.revokeRefreshToken('rt-xyz'),
+        () => source.revokeRefreshToken(
+          accessToken: 'at-abc',
+          refreshToken: 'rt-xyz',
+        ),
         throwsA(isA<DioException>()),
       );
     });

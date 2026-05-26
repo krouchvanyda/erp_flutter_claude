@@ -1,3 +1,5 @@
+import '../config/environments.dart';
+
 /// Application-wide environment / build-time configuration.
 ///
 /// Pure value object — no framework deps. Registered into the DI graph by
@@ -9,17 +11,23 @@ class AppEnv {
     required this.connectTimeoutMs,
     required this.receiveTimeoutMs,
     required this.enableNetworkLogging,
-    this.oauthClientId = 'erp-mobile-dev',
-    this.oauthRedirectUri = 'erpmobile://oauth/callback',
-    this.realtimeUrl = 'wss://api.example.com/realtime',
+    this.oauthClientId = Environments.oauthClientId,
+    this.oauthRedirectUri = Environments.oauthRedirectUri,
+    this.realtimeUrl = Environments.localRealtimeUrl,
     this.realtimeEnabled = false,
   });
 
   /// Default profile used when no explicit environment is selected.
+  ///
+  /// Points at the local Spring backend by default. Swap to
+  /// [Environments.stagingApiBaseUrl] or [Environments.prodApiBaseUrl] for
+  /// build flavors. The URL must already include the `/api/v1` path
+  /// prefix because dio resolves relative request paths (e.g.
+  /// `/auth/login`) against it.
   factory AppEnv.defaults() => const AppEnv(
-        apiBaseUrl: 'https://api.example.com',
-        connectTimeoutMs: 15000,
-        receiveTimeoutMs: 20000,
+        apiBaseUrl: Environments.localApiBaseUrl,
+        connectTimeoutMs: Environments.defaultConnectTimeoutMs,
+        receiveTimeoutMs: Environments.defaultReceiveTimeoutMs,
         enableNetworkLogging: true,
       );
 

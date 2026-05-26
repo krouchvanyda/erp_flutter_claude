@@ -42,7 +42,10 @@ class _FakeAuthRemoteDataSource implements AuthRemoteDataSource {
   final calls = <_RevokeCall>[];
 
   @override
-  Future<void> revokeRefreshToken(String refreshToken) async {
+  Future<void> revokeRefreshToken({
+    required String accessToken,
+    required String refreshToken,
+  }) async {
     calls.add(_RevokeCall(refreshToken));
     if (onRevoke != null) await onRevoke!(refreshToken);
   }

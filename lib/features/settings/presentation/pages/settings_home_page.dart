@@ -8,6 +8,7 @@ import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../core/widgets/loading_screen.dart';
 import '../../../../l10n/app_localizations.dart';
 import 'api_config_page.dart';
 import 'app_lock_page.dart';
@@ -23,10 +24,96 @@ import 'user_management_page.dart';
 
 /// Module 9 settings hub. Groups every sub-page from Phases 9.1–9.3
 /// into three sections so the user can scan the surface at a glance.
-class SettingsHomePage extends StatelessWidget {
+class SettingsHomePage extends StatefulWidget {
   const SettingsHomePage({super.key, required this.onSignOut});
 
-  final VoidCallback onSignOut;
+  /// Full sign-out orchestrator — wired in `app_router.dart` to
+  /// `AuthRepository.signOut()`, which revokes the refresh token,
+  /// clears `flutter_secure_storage`, wipes the drift cache, and then
+  /// flips the `AuthSession` so the router bounces to `/login`.
+  ///
+  /// Returns a `Future` so the button can show a spinner during the
+  /// network round-trip (~100–500ms typical) and we can `await` to
+  /// catch errors from the local-cleanup step.
+  final Future<void> Function() onSignOut;
+
+  @override
+  State<SettingsHomePage> createState() => _SettingsHomePageState();
+}
+
+class _SettingsHomePageState extends State<SettingsHomePage> {
+  bool _signingOut = false;
+
+  /// Two-step: confirm → execute. The confirm dialog blocks accidental
+  /// taps; the loading state on the button prevents double-fire while
+  /// the round-trip is in flight.
+  Future<void> _handleSignOut() async {
+    if (_signingOut) return;
+
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final theme = Theme.of(context);
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: AppLabel(
+          text: l10n.settingsHomeSignOutConfirmTitle,
+          fontSize: AppFontSize.value18,
+          fontWeight: FontWeight.bold,
+        ),
+        content: AppLabel(
+          text: l10n.settingsHomeSignOutConfirmMessage,
+          fontSize: AppFontSize.value14,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: AppLabel(
+              text: l10n.commonCancelAction,
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: theme.colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: AppLabel(
+              text: l10n.settingsHomeSignOutAction,
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _signingOut = true);
+    try {
+      await widget.onSignOut();
+      // Note: no need to flip _signingOut back — by the time the
+      // AuthRepository.signOut() completes, the router has already
+      // bounced this page off-stack via the SessionSignal/AuthSession
+      // notification. The setState below only runs on the unhappy path.
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _signingOut = false);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(l10n.settingsHomeSignOutErrorSnack),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: theme.colorScheme.error,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -192,7 +279,12 @@ class SettingsHomePage extends StatelessWidget {
                           vertical: 12,
                         ),
                       ),
-                      onPressed: onSignOut,
+                      // Disables while the LoadingScreen overlay
+                      // (added at the end of the Stack) is showing.
+                      // Icon stays static so the button doesn't jitter
+                      // — the overlay is the single source of "we're
+                      // working".
+                      onPressed: _signingOut ? null : _handleSignOut,
                       icon: const Icon(Icons.logout_rounded),
                       label: AppLabel(
                         text: l10n.settingsHomeSignOutAction,
@@ -204,6 +296,21 @@ class SettingsHomePage extends StatelessWidget {
                 ),
               ],
             ),
+
+            // Loading overlay — last child so it paints on top of the
+            // ListView + AppBackgroundGradient. `AbsorbPointer` blocks
+            // every tap during sign-out so the user can't drill into a
+            // sub-page (My Profile, etc.) while tokens are being wiped
+            // and the router is about to bounce to /login.
+            if (_signingOut)
+              Positioned.fill(
+                child: AbsorbPointer(
+                  child: ColoredBox(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    child: const LoadingScreen(color: Colors.white),
+                  ),
+                ),
+              ),
           ],
         ),
       ),

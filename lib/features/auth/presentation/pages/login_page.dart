@@ -2,16 +2,21 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:get_it/get_it.dart';
 
+import '../../../../core/error/failure.dart';
 import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../core/widgets/loading_screen.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_text_field.dart';
+import '../../data/repositories/auth_repository.dart';
 import 'biometric_unlock_page.dart';
 import 'forgot_password_page.dart';
+import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key, this.onSimulatedLogin});
@@ -27,6 +32,7 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _submitting = false;
 
   @override
   void dispose() {
@@ -35,10 +41,54 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void _handleLogin() {
-    if (_formKey.currentState?.validate() ?? false) {
-      widget.onSimulatedLogin?.call();
-    }
+  Future<void> _handleLogin() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (_submitting) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context);
+
+    setState(() => _submitting = true);
+    final result = await GetIt.I<AuthRepository>().login(
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+    );
+    if (!mounted) return;
+    setState(() => _submitting = false);
+
+    result.fold(
+      (failure) => messenger.showSnackBar(
+        SnackBar(
+          content: Text(_failureMessage(failure, l10n)),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      ),
+      (_) => widget.onSimulatedLogin?.call(),
+    );
+  }
+
+  /// Map a typed [Failure] onto a user-facing string. Prefer the message
+  /// the backend / interceptor put on the failure; fall back to a
+  /// localized generic when it's null (and a network-specific one for
+  /// connectivity issues so the user knows to retry instead of fixing
+  /// their password).
+  String _failureMessage(Failure failure, AppLocalizations l10n) {
+    return switch (failure) {
+      NetworkFailure(:final message) ||
+      TimeoutFailure(:final message) =>
+        message ?? l10n.authNetworkErrorFallback,
+      UnauthorizedFailure(:final message) ||
+      ValidationFailure(:final message) ||
+      ServerFailure(:final message) ||
+      ForbiddenFailure(:final message) ||
+      NotFoundFailure(:final message) ||
+      ConflictFailure(:final message) ||
+      RateLimitFailure(:final message) ||
+      UnknownFailure(:final message) =>
+        message ?? l10n.authGenericErrorFallback,
+      CancelledFailure() => l10n.authGenericErrorFallback,
+    };
   }
 
   @override
@@ -225,7 +275,14 @@ class _LoginPageState extends State<LoginPage> {
                                     SizedBox(
                                       height: 54,
                                       child: FilledButton(
-                                        onPressed: _handleLogin,
+                                        // Button disables while the
+                                        // LoadingScreen overlay (added
+                                        // at the end of the Stack) is
+                                        // showing — keeps a single
+                                        // source of "we're working" so
+                                        // the UI doesn't have two
+                                        // competing spinners.
+                                        onPressed: _submitting ? null : _handleLogin,
                                         style: FilledButton.styleFrom(
                                           shape: RoundedRectangleBorder(
                                             borderRadius: BorderRadius.circular(AppRadii.md),
@@ -289,9 +346,28 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                         ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1, end: 0),
-                        
-                        const SizedBox(height: 32),
-                        
+
+                        const SizedBox(height: 24),
+
+                        // Don't have an account? → Register
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            AppLabel(
+                              text: l10n.loginNoAccountPrompt,
+                              fontSize: AppFontSize.value13,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                            TextButton(
+                              onPressed: () => ConfigRouter.pushPageAnimation(
+                                context,
+                                RegisterPage(onSimulatedRegister: widget.onSimulatedLogin),
+                              ),
+                              child: Text(l10n.loginCreateAccountAction),
+                            ),
+                          ],
+                        ).animate().fadeIn(delay: 700.ms),
+
                         // Demo Link
                         // TextButton(
                         //   onPressed: () => ConfigRouter.pushPageAnimation(context, const OtpEntryPage()),
@@ -303,6 +379,22 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
             ),
+
+            // Loading overlay — last child so it paints on top of the
+            // whole screen. `AbsorbPointer` swallows taps so the user
+            // can't double-submit by hammering the disabled button or
+            // tap the "Forgot password" / "Create one" links during
+            // the in-flight call. Semi-opaque scrim dims everything
+            // underneath so the centred LoadingScreen reads cleanly.
+            if (_submitting)
+              Positioned.fill(
+                child: AbsorbPointer(
+                  child: ColoredBox(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    child: const LoadingScreen(color: Colors.white),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
