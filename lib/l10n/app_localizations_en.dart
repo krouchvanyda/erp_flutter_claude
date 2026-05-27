@@ -2043,6 +2043,108 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonCancelAction => 'Cancel';
 
   @override
+  String get commonRetryAction => 'Retry';
+
+  @override
+  String get commonLoadFailedFallback => 'Could not load. Please try again.';
+
+  @override
+  String get assignmentsPageTitle => 'Assign Permissions & Roles';
+
+  @override
+  String get assignmentsRolesTab => 'Roles → Permissions';
+
+  @override
+  String get assignmentsUsersTab => 'Users → Roles';
+
+  @override
+  String get assignmentsPickRolePrompt => 'Pick a role to edit its permissions';
+
+  @override
+  String get assignmentsPickUserPrompt => 'Pick a user to edit their roles';
+
+  @override
+  String get assignmentsPermissionsSectionTitle => 'Permissions';
+
+  @override
+  String get assignmentsRolesSectionTitle => 'Roles';
+
+  @override
+  String assignmentsCountSuffix(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String get assignmentsSaveAction => 'Save changes';
+
+  @override
+  String get assignmentsNoChangesYet => 'No changes';
+
+  @override
+  String get assignmentsSavedSnack => 'Saved';
+
+  @override
+  String get assignmentsSaveFailedSnack => 'Could not save changes';
+
+  @override
+  String get assignmentsForbiddenMessage =>
+      'You don\'t have permission to make changes here.';
+
+  @override
+  String get assignmentsSuperAdminOnlyTitle => 'Super-administrators only';
+
+  @override
+  String get assignmentsSuperAdminOnlyMessage =>
+      'Only super-administrators can assign roles and permissions. Sign in with a super-admin account to use this page.';
+
+  @override
+  String get assignmentsUsersSearchHint => 'Search users…';
+
+  @override
+  String get assignmentsSearchPermissionsHint => 'Search permissions…';
+
+  @override
+  String get assignmentsRolePickerLabel => 'Role';
+
+  @override
+  String get assignmentsSystemRoleBadge => 'SYSTEM';
+
+  @override
+  String get assignmentsSystemRoleLockedMessage =>
+      'System roles are read-only. Create a custom role to assign different permissions.';
+
+  @override
+  String get assignmentsLoadMoreAction => 'Load more';
+
+  @override
+  String get assignmentsEmptyUsers => 'No users yet.';
+
+  @override
+  String get assignmentsNoUserSelected =>
+      'Pick a user from the list to assign roles.';
+
+  @override
+  String get assignmentsNoRoleSelected =>
+      'Pick a role above to start assigning permissions.';
+
+  @override
+  String get assignmentsAssignSubtitle => 'Pick a user, then assign one role.';
+
+  @override
+  String get assignmentsUserFieldLabel => 'USER';
+
+  @override
+  String get assignmentsRoleFieldLabel => 'ROLE';
+
+  @override
+  String get assignmentsRoleHelperPickUserFirst =>
+      'Pick a user first to enable role assignment.';
+
+  @override
+  String get assignmentsRoleHelperCurrentRole =>
+      'Replaces every role currently assigned to the user.';
+
+  @override
   String get commonApproveAction => 'Approve';
 
   @override

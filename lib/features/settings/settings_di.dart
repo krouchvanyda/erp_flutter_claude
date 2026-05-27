@@ -1,5 +1,8 @@
+import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
+import 'data/datasources/roles_remote_data_source.dart';
+import 'data/datasources/users_remote_data_source.dart';
 import 'data/repositories/admin_repositories.dart';
 import 'data/repositories/my_profile_repository.dart';
 import 'data/repositories/preferences_repository.dart';
@@ -22,7 +25,22 @@ void registerSettingsModule(GetIt getIt) {
       MyProfileRepository.new,
     );
   }
-  // Phase 9.2 — admin.
+  // Phase 9.2 — admin backend wiring.
+  // Remote data sources (Spring `/api/v1/roles` + `/api/v1/users`).
+  // Registered alongside the in-memory `RolesRepository` /
+  // `ManagedUsersRepository` below — callers pick the source they want
+  // (real backend vs demo seed) until the page-level swap lands.
+  if (!getIt.isRegistered<RolesRemoteDataSource>()) {
+    getIt.registerLazySingleton<RolesRemoteDataSource>(
+      () => DioRolesRemoteDataSource(dio: getIt<Dio>()),
+    );
+  }
+  if (!getIt.isRegistered<UsersRemoteDataSource>()) {
+    getIt.registerLazySingleton<UsersRemoteDataSource>(
+      () => DioUsersRemoteDataSource(dio: getIt<Dio>()),
+    );
+  }
+  // Phase 9.2 — admin (in-memory demo repositories).
   if (!getIt.isRegistered<ManagedUsersRepository>()) {
     getIt.registerLazySingleton<ManagedUsersRepository>(
       ManagedUsersRepository.new,

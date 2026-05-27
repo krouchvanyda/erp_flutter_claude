@@ -3746,6 +3746,192 @@ abstract class AppLocalizations {
   /// **'Cancel'**
   String get commonCancelAction;
 
+  /// No description provided for @commonRetryAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get commonRetryAction;
+
+  /// No description provided for @commonLoadFailedFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load. Please try again.'**
+  String get commonLoadFailedFallback;
+
+  /// No description provided for @assignmentsPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign Permissions & Roles'**
+  String get assignmentsPageTitle;
+
+  /// No description provided for @assignmentsRolesTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Roles → Permissions'**
+  String get assignmentsRolesTab;
+
+  /// No description provided for @assignmentsUsersTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Users → Roles'**
+  String get assignmentsUsersTab;
+
+  /// No description provided for @assignmentsPickRolePrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a role to edit its permissions'**
+  String get assignmentsPickRolePrompt;
+
+  /// No description provided for @assignmentsPickUserPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a user to edit their roles'**
+  String get assignmentsPickUserPrompt;
+
+  /// No description provided for @assignmentsPermissionsSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Permissions'**
+  String get assignmentsPermissionsSectionTitle;
+
+  /// No description provided for @assignmentsRolesSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Roles'**
+  String get assignmentsRolesSectionTitle;
+
+  /// No description provided for @assignmentsCountSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String assignmentsCountSuffix(int count);
+
+  /// No description provided for @assignmentsSaveAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Save changes'**
+  String get assignmentsSaveAction;
+
+  /// No description provided for @assignmentsNoChangesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No changes'**
+  String get assignmentsNoChangesYet;
+
+  /// No description provided for @assignmentsSavedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get assignmentsSavedSnack;
+
+  /// No description provided for @assignmentsSaveFailedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save changes'**
+  String get assignmentsSaveFailedSnack;
+
+  /// No description provided for @assignmentsForbiddenMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You don\'t have permission to make changes here.'**
+  String get assignmentsForbiddenMessage;
+
+  /// No description provided for @assignmentsSuperAdminOnlyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Super-administrators only'**
+  String get assignmentsSuperAdminOnlyTitle;
+
+  /// No description provided for @assignmentsSuperAdminOnlyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Only super-administrators can assign roles and permissions. Sign in with a super-admin account to use this page.'**
+  String get assignmentsSuperAdminOnlyMessage;
+
+  /// No description provided for @assignmentsUsersSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search users…'**
+  String get assignmentsUsersSearchHint;
+
+  /// No description provided for @assignmentsSearchPermissionsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search permissions…'**
+  String get assignmentsSearchPermissionsHint;
+
+  /// No description provided for @assignmentsRolePickerLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Role'**
+  String get assignmentsRolePickerLabel;
+
+  /// No description provided for @assignmentsSystemRoleBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'SYSTEM'**
+  String get assignmentsSystemRoleBadge;
+
+  /// No description provided for @assignmentsSystemRoleLockedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'System roles are read-only. Create a custom role to assign different permissions.'**
+  String get assignmentsSystemRoleLockedMessage;
+
+  /// No description provided for @assignmentsLoadMoreAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get assignmentsLoadMoreAction;
+
+  /// No description provided for @assignmentsEmptyUsers.
+  ///
+  /// In en, this message translates to:
+  /// **'No users yet.'**
+  String get assignmentsEmptyUsers;
+
+  /// No description provided for @assignmentsNoUserSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a user from the list to assign roles.'**
+  String get assignmentsNoUserSelected;
+
+  /// No description provided for @assignmentsNoRoleSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a role above to start assigning permissions.'**
+  String get assignmentsNoRoleSelected;
+
+  /// No description provided for @assignmentsAssignSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a user, then assign one role.'**
+  String get assignmentsAssignSubtitle;
+
+  /// No description provided for @assignmentsUserFieldLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'USER'**
+  String get assignmentsUserFieldLabel;
+
+  /// No description provided for @assignmentsRoleFieldLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'ROLE'**
+  String get assignmentsRoleFieldLabel;
+
+  /// No description provided for @assignmentsRoleHelperPickUserFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a user first to enable role assignment.'**
+  String get assignmentsRoleHelperPickUserFirst;
+
+  /// No description provided for @assignmentsRoleHelperCurrentRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Replaces every role currently assigned to the user.'**
+  String get assignmentsRoleHelperCurrentRole;
+
   /// No description provided for @commonApproveAction.
   ///
   /// In en, this message translates to:

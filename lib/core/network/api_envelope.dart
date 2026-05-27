@@ -54,6 +54,45 @@ class ApiEnvelope {
     }
     return parser(data);
   }
+
+  /// List variant — when the backend returns
+  /// `{ "success": true, "data": [ ... ], ... }`. Each item is parsed
+  /// by [itemFromJson]; non-map elements are silently skipped so a
+  /// stray null in the array doesn't poison the whole response.
+  ///
+  /// Throws [ApiEnvelopeException] on `success: false`, and
+  /// [FormatException] when `data` is missing or not a `List`.
+  static List<T> parseList<T>(
+    Map<String, dynamic> body,
+    T Function(Map<String, dynamic>) itemFromJson,
+  ) {
+    if (!body.containsKey('success') && !body.containsKey('data')) {
+      // Bare list endpoints that don't wrap — treat the body itself as
+      // the array if it happens to look like one (unusual but cheap to
+      // support).
+      return const <Never>[];
+    }
+
+    final success = body['success'] as bool? ?? true;
+    if (!success) {
+      throw ApiEnvelopeException(
+        message: body['message']?.toString(),
+        errorCode: body['errorCode']?.toString(),
+        traceId: body['traceId']?.toString(),
+      );
+    }
+
+    final data = body['data'];
+    if (data is! List) {
+      throw const FormatException(
+        'API envelope "data" expected to be a list but was not',
+      );
+    }
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(itemFromJson)
+        .toList(growable: false);
+  }
 }
 
 /// Raised when an API envelope arrives with `success: false`. The

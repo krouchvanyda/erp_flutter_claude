@@ -299,6 +299,9 @@ abstract final class RoutePaths {
   static const settingsRoles = '/settings/roles';
   static const settingsRolesName = 'settingsRoles';
 
+  static const settingsAssignments = '/settings/assignments';
+  static const settingsAssignmentsName = 'settingsAssignments';
+
   static const settingsApiConfig = '/settings/api-config';
   static const settingsApiConfigName = 'settingsApiConfig';
 

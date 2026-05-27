@@ -8,13 +8,15 @@ import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
+import '../../../../core/widgets/loading_screen.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
+import '../../data/datasources/roles_remote_data_source.dart';
+import '../../data/datasources/users_remote_data_source.dart';
+import '../../data/models/role_dto.dart';
+import '../../data/models/user_dto.dart';
 import '../../data/permission_catalog.dart';
-import '../../data/repositories/admin_repositories.dart';
-import '../../data/repositories/my_profile_repository.dart';
 import '../../entities/managed_user.dart';
-import '../../entities/my_profile.dart';
 
 /// Slice 9.1.5 — My Roles & Permissions.
 ///
@@ -32,17 +34,27 @@ class MyRolesPage extends StatefulWidget {
 }
 
 class _MyRolesPageState extends State<MyRolesPage> {
-  final _profileRepo = GetIt.I<MyProfileRepository>();
-  final _usersRepo = GetIt.I<ManagedUsersRepository>();
-  final _rolesRepo = GetIt.I<RolesRepository>();
+  final _usersRemote = GetIt.I<UsersRemoteDataSource>();
+  final _rolesRemote = GetIt.I<RolesRemoteDataSource>();
 
   final _searchCtrl = TextEditingController();
   String _query = '';
+
+  /// Held in state (vs created inline in `build`) so a `setState` from
+  /// the search field doesn't re-fire the network calls. Reassigned only
+  /// when the user pulls to refresh or hits Retry.
+  late Future<_RoleViewModel> _loadFuture = _load();
 
   @override
   void dispose() {
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  void _reload() {
+    setState(() {
+      _loadFuture = _load();
+    });
   }
 
   @override
@@ -58,26 +70,28 @@ class _MyRolesPageState extends State<MyRolesPage> {
         child: Stack(
           children: [
             const AppBackgroundGradient(),
-            StreamBuilder<MyProfile>(
-              stream: _profileRepo.watch(),
-              builder: (context, profileSnap) {
-                if (!profileSnap.hasData) {
-                  return const Center(child: CircularProgressIndicator());
+            FutureBuilder<_RoleViewModel>(
+              future: _loadFuture,
+              builder: (context, snap) {
+                if (snap.connectionState != ConnectionState.done) {
+                  return const Center(child: LoadingScreen());
                 }
-                final profile = profileSnap.data!;
-                return FutureBuilder<_RoleViewModel>(
-                  future: _load(profile.id),
-                  builder: (context, vmSnap) {
-                    if (!vmSnap.hasData) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    return _Body(
-                      vm: vmSnap.data!,
-                      searchCtrl: _searchCtrl,
-                      query: _query,
-                      onSearchChanged: (q) => setState(() => _query = q),
-                    );
+                if (snap.hasError || !snap.hasData) {
+                  return _ErrorPanel(onRetry: _reload);
+                }
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    _reload();
+                    // Wait on the new future so the indicator stays
+                    // visible until the call actually finishes.
+                    await _loadFuture;
                   },
+                  child: _Body(
+                    vm: snap.data!,
+                    searchCtrl: _searchCtrl,
+                    query: _query,
+                    onSearchChanged: (q) => setState(() => _query = q),
+                  ),
                 );
               },
             ),
@@ -87,27 +101,131 @@ class _MyRolesPageState extends State<MyRolesPage> {
     );
   }
 
-  Future<_RoleViewModel> _load(String userId) async {
-    final me = await _usersRepo.findById(userId);
-    final allRoles = await _rolesRepo.getAll();
+  /// Fan out three GETs in parallel — they don't depend on each other,
+  /// so `Future.wait` cuts perceived latency by ~2/3 vs sequential.
+  ///
+  /// - `GET /users/me`              → current user with already-resolved
+  ///                                  permissions (no need to walk roles)
+  /// - `GET /roles`                 → role definitions for the chip
+  ///                                  summary (name + isSystem flag)
+  /// - `GET /roles/permissions`     → full catalog used for the
+  ///                                  "Not granted" comparison list
+  Future<_RoleViewModel> _load() async {
+    final results = await Future.wait<dynamic>([
+      _usersRemote.me(),
+      _rolesRemote.listRoles(),
+      _rolesRemote.listPermissions(),
+    ]);
+    final me = results[0] as UserDto;
+    final allRoles = results[1] as List<RoleDto>;
+    final allPermissions = results[2] as List<PermissionDto>;
+
+    // Match each role id/name from `/me` against the full role list
+    // for chip rendering. `me.roles` arrives as identifiers (per the
+    // V3 seed, the values look like `"SUPER_ADMIN"` — i.e. role
+    // codes, not numeric ids). Match by both id and name so either
+    // wire shape works without code change.
     final assigned = <Role>[];
-    final grantedScopes = <String>{};
-    if (me != null) {
-      for (final id in me.roleIds) {
-        for (final r in allRoles) {
-          if (r.id == id) {
-            assigned.add(r);
-            grantedScopes.addAll(r.permissionTokens);
-            break;
-          }
-        }
-      }
+    for (final identifier in me.roles) {
+      final match = _findRole(allRoles, identifier);
+      assigned.add(
+        match != null
+            ? Role(
+                id: match.id,
+                name: match.name,
+                description: match.description,
+                permissionTokens: match.permissionTokens,
+                isSystem: match.isSystem,
+              )
+            : Role(
+                // Fallback chip — backend hasn't shipped the role
+                // definition yet (or we got an unknown id). Render the
+                // identifier verbatim so the user still sees *something*.
+                id: identifier,
+                name: identifier,
+                description: '',
+                permissionTokens: const <String>[],
+              ),
+      );
     }
+
+    // `me.permissions` already contains the union of every grant from
+    // every assigned role — server-side resolution, no client math.
+    final grantedScopes = me.permissions.toSet();
+
+    // Catalog drives the "Not granted" list. Prefer the live backend
+    // catalog so newly-added scopes appear without an app release;
+    // fall back to the bundled `knownPermissionScopes` when the
+    // catalog endpoint returns empty (e.g. dev seed not run).
+    final catalog = allPermissions.isNotEmpty
+        ? allPermissions.map((p) => p.token).toList(growable: false)
+        : knownPermissionScopes;
+
     return _RoleViewModel(
       assigned: assigned,
       granted: grantedScopes,
-      catalog: knownPermissionScopes,
+      catalog: catalog,
       lastSyncedAt: DateTime.now(),
+    );
+  }
+
+  /// Matches a role identifier from `/me` (which may be an id or a
+  /// human-readable code like `"SUPER_ADMIN"`) against the full
+  /// `/roles` list. Case-insensitive name match because the backend
+  /// could ship `SUPER_ADMIN` or `Super_Admin` depending on seed-data
+  /// conventions and we don't want a casing change to break chips.
+  static RoleDto? _findRole(List<RoleDto> all, String identifier) {
+    for (final r in all) {
+      if (r.id == identifier) return r;
+      if (r.name.toLowerCase() == identifier.toLowerCase()) return r;
+    }
+    return null;
+  }
+}
+
+/// Failure panel — shown when any of the three GETs throws. Generic
+/// retry rather than per-error UX since the page is read-only.
+class _ErrorPanel extends StatelessWidget {
+  const _ErrorPanel({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.cloud_off_outlined,
+              size: 56,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: 16),
+            AppLabel(
+              text: l10n.commonLoadFailedFallback,
+              fontSize: AppFontSize.value14,
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: AppLabel(
+                text: l10n.commonRetryAction,
+                fontSize: AppFontSize.value14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -205,26 +323,6 @@ class _Body extends StatelessWidget {
           _ScopeListCard(
             scopes: granted,
             isGranted: true,
-          ),
-        const SizedBox(height: 20),
-        _ListSectionHeader(
-          title: l10n.myRolesNotGrantedTitle,
-          count: notGranted.length,
-          accent: theme.colorScheme.outline,
-          icon: Icons.lock_outline,
-        ),
-        const SizedBox(height: 8),
-        if (notGranted.isEmpty)
-          _EmptyPanel(
-            icon: Icons.verified_outlined,
-            message: query.trim().isEmpty
-                ? 'You have access to every catalogued scope.'
-                : 'All remaining catalogued scopes match your filter.',
-          )
-        else
-          _ScopeListCard(
-            scopes: notGranted,
-            isGranted: false,
           ),
       ],
     );

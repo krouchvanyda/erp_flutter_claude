@@ -1,18 +1,23 @@
 import 'package:erp_mobile/shared/widgets/app_background_gradient.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:get_it/get_it.dart';
 
 import '../../../../core/router/config_router.dart';
+import '../../../../core/security/app_permissions.dart';
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../core/widgets/loading_screen.dart';
+import '../../../../features/auth/data/datasources/cached_user_dao.dart';
+import '../../../../features/auth/entities/user.dart';
 import '../../../../l10n/app_localizations.dart';
 import 'api_config_page.dart';
 import 'app_lock_page.dart';
 import 'appearance_page.dart';
+import 'assignments_page.dart';
 import 'audit_log_page.dart';
 import 'language_page.dart';
 import 'my_profile_page.dart';
@@ -234,8 +239,28 @@ class _SettingsHomePageState extends State<SettingsHomePage> {
 
                 const SizedBox(height: 20),
 
-                // Administration Group
-                _Section(
+                // Administration Group — super-admin only. Hidden
+                // entirely from regular admins / staff so the surface
+                // matches the policy. Stream comes from the cached
+                // user (populated by AuthRepository.login) — no
+                // extra network call on every Settings open.
+                StreamBuilder<User?>(
+                  stream: GetIt.I<CachedUserDao>().watchCurrentUser(),
+                  builder: (context, snap) {
+                    final user = snap.data;
+                    // TEMP DEBUG — remove once the gate is confirmed
+                    // working. Prints exactly what's in the cached
+                    // user's `roles` set so we can see why the
+                    // isSuperAdmin check is matching/missing.
+                    debugPrint(
+                      '[SettingsHome] cached user=${user?.id} '
+                      'roles=${user?.roles} '
+                      'isSuperAdmin=${isSuperAdmin(user?.roles ?? const <String>{})}',
+                    );
+                    final isAdmin =
+                        isSuperAdmin(user?.roles ?? const <String>{});
+                    if (!isAdmin) return const SizedBox.shrink();
+                    return _Section(
                       title: l10n.settingsHomeAdminSection,
                       children: [
                         _Tile(
@@ -255,6 +280,14 @@ class _SettingsHomePageState extends State<SettingsHomePage> {
                         ),
                         const Divider(height: 1, indent: 56),
                         _Tile(
+                          icon: Icons.tune_rounded,
+                          title: l10n.assignmentsPageTitle,
+                          subtitle: l10n.assignmentsRolesTab,
+                          page: const AssignmentsPage(),
+                          color: Colors.deepPurple,
+                        ),
+                        const Divider(height: 1, indent: 56),
+                        _Tile(
                           icon: Icons.cloud_outlined,
                           title: l10n.settingsHomeApiConfigTitle,
                           subtitle: l10n.settingsHomeApiConfigSubtitle,
@@ -263,9 +296,11 @@ class _SettingsHomePageState extends State<SettingsHomePage> {
                         ),
                       ],
                     )
-                    .animate()
-                    .fadeIn(delay: 300.ms)
-                    .slideY(begin: 0.05, end: 0, duration: 300.ms),
+                        .animate()
+                        .fadeIn(delay: 300.ms)
+                        .slideY(begin: 0.05, end: 0, duration: 300.ms);
+                  },
+                ),
 
                 Container(
                   margin: EdgeInsets.only(bottom: 16, top: 16),

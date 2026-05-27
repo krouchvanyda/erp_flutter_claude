@@ -2035,6 +2035,111 @@ class AppLocalizationsKm extends AppLocalizations {
   String get commonCancelAction => 'បោះបង់';
 
   @override
+  String get commonRetryAction => 'ព្យាយាមម្ដងទៀត';
+
+  @override
+  String get commonLoadFailedFallback => 'មិនអាចផ្ទុកបានទេ។ សូមព្យាយាមម្ដងទៀត។';
+
+  @override
+  String get assignmentsPageTitle => 'កំណត់សិទ្ធិ និងតួនាទី';
+
+  @override
+  String get assignmentsRolesTab => 'តួនាទី → សិទ្ធិ';
+
+  @override
+  String get assignmentsUsersTab => 'អ្នកប្រើ → តួនាទី';
+
+  @override
+  String get assignmentsPickRolePrompt => 'ជ្រើសរើសតួនាទីដើម្បីកែសម្រួលសិទ្ធិ';
+
+  @override
+  String get assignmentsPickUserPrompt =>
+      'ជ្រើសរើសអ្នកប្រើដើម្បីកែសម្រួលតួនាទី';
+
+  @override
+  String get assignmentsPermissionsSectionTitle => 'សិទ្ធិ';
+
+  @override
+  String get assignmentsRolesSectionTitle => 'តួនាទី';
+
+  @override
+  String assignmentsCountSuffix(int count) {
+    return 'បានជ្រើស $count';
+  }
+
+  @override
+  String get assignmentsSaveAction => 'រក្សាទុកការផ្លាស់ប្ដូរ';
+
+  @override
+  String get assignmentsNoChangesYet => 'មិនមានការផ្លាស់ប្ដូរ';
+
+  @override
+  String get assignmentsSavedSnack => 'បានរក្សាទុក';
+
+  @override
+  String get assignmentsSaveFailedSnack => 'មិនអាចរក្សាទុកបានទេ';
+
+  @override
+  String get assignmentsForbiddenMessage =>
+      'អ្នកគ្មានសិទ្ធិធ្វើការផ្លាស់ប្ដូរនៅទីនេះទេ។';
+
+  @override
+  String get assignmentsSuperAdminOnlyTitle =>
+      'សម្រាប់អ្នកគ្រប់គ្រងជាន់ខ្ពស់ប៉ុណ្ណោះ';
+
+  @override
+  String get assignmentsSuperAdminOnlyMessage =>
+      'មានតែអ្នកគ្រប់គ្រងជាន់ខ្ពស់ប៉ុណ្ណោះ ដែលអាចកំណត់តួនាទី និងសិទ្ធិបាន។ សូមចូលគណនីជាអ្នកគ្រប់គ្រងជាន់ខ្ពស់ ដើម្បីប្រើទំព័រនេះ។';
+
+  @override
+  String get assignmentsUsersSearchHint => 'ស្វែងរកអ្នកប្រើ...';
+
+  @override
+  String get assignmentsSearchPermissionsHint => 'ស្វែងរកសិទ្ធិ...';
+
+  @override
+  String get assignmentsRolePickerLabel => 'តួនាទី';
+
+  @override
+  String get assignmentsSystemRoleBadge => 'ប្រព័ន្ធ';
+
+  @override
+  String get assignmentsSystemRoleLockedMessage =>
+      'តួនាទីប្រព័ន្ធគឺអាចមើលបានតែប៉ុណ្ណោះ។ បង្កើតតួនាទីផ្ទាល់ខ្លួនដើម្បីកំណត់សិទ្ធិផ្សេង។';
+
+  @override
+  String get assignmentsLoadMoreAction => 'ផ្ទុកបន្ថែម';
+
+  @override
+  String get assignmentsEmptyUsers => 'មិនមានអ្នកប្រើនៅឡើយទេ។';
+
+  @override
+  String get assignmentsNoUserSelected =>
+      'ជ្រើសរើសអ្នកប្រើពីបញ្ជី ដើម្បីកំណត់តួនាទី។';
+
+  @override
+  String get assignmentsNoRoleSelected =>
+      'ជ្រើសរើសតួនាទីខាងលើ ដើម្បីចាប់ផ្ដើមកំណត់សិទ្ធិ។';
+
+  @override
+  String get assignmentsAssignSubtitle =>
+      'ជ្រើសរើសអ្នកប្រើ បន្ទាប់មកកំណត់តួនាទីមួយ។';
+
+  @override
+  String get assignmentsUserFieldLabel => 'អ្នកប្រើ';
+
+  @override
+  String get assignmentsRoleFieldLabel => 'តួនាទី';
+
+  @override
+  String get assignmentsRoleHelperPickUserFirst =>
+      'សូមជ្រើសរើសអ្នកប្រើជាមុនសិន ដើម្បីបើកការកំណត់តួនាទី។';
+
+  @override
+  String get assignmentsRoleHelperCurrentRole =>
+      'នឹងជំនួសរាល់តួនាទីដែលអ្នកប្រើនេះមានរួចហើយ។';
+
+  @override
   String get commonApproveAction => 'អនុម័ត';
 
   @override

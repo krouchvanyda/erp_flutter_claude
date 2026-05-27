@@ -72,6 +72,7 @@ import '../../features/hr/presentation/pages/payslips_list_page.dart';
 import '../../features/settings/presentation/pages/api_config_page.dart';
 import '../../features/settings/presentation/pages/app_lock_page.dart';
 import '../../features/settings/presentation/pages/appearance_page.dart';
+import '../../features/settings/presentation/pages/assignments_page.dart';
 import '../../features/settings/presentation/pages/audit_log_page.dart';
 import '../../features/settings/presentation/pages/language_page.dart';
 import '../../features/settings/presentation/pages/notification_preferences_page.dart';
@@ -687,6 +688,11 @@ class AppRouter {
                     path: RoutePaths.settingsRoles,
                     name: RoutePaths.settingsRolesName,
                     builder: (_, __) => const RoleEditorPage(),
+                  ),
+                  GoRoute(
+                    path: RoutePaths.settingsAssignments,
+                    name: RoutePaths.settingsAssignmentsName,
+                    builder: (_, __) => const AssignmentsPage(),
                   ),
                   GoRoute(
                     path: RoutePaths.settingsApiConfig,
