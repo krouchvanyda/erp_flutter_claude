@@ -176,14 +176,18 @@ class _AssignRolesFormState extends State<_AssignRolesForm> {
   /// modal sheet re-opens.
   final Set<String> _selectedUserIds = <String>{};
 
-  /// Role to apply. Single-select for now — backend's `roles` field is
-  /// a set so we could extend to multi-role later, but the common case
-  /// is "apply STAFF to these 5 people".
+  /// Role to apply. Single-select: each user gets exactly one role
+  /// per app policy. Backend's `roles` field is a `Set<String>` so it
+  /// technically allows multi-role, but the UX never sends more than
+  /// one entry.
   RoleDto? _draftRole;
 
-  /// Mutation mode. ADD is the backend default; we surface it
-  /// explicitly so the wire payload is never ambiguous.
-  AssignRolesMode _mode = AssignRolesMode.add;
+  /// Mutation mode is always REPLACE: it strips the user's existing
+  /// role(s) and sets exactly the picked one. Hardcoded (no UI) so
+  /// the policy "one user = one role" can't be violated by accident
+  /// — ADD would stack a second role on top of an existing one, and
+  /// REMOVE isn't a flow this page offers.
+  static const _mode = AssignRolesMode.replace;
 
   bool _saving = false;
 
@@ -197,10 +201,6 @@ class _AssignRolesFormState extends State<_AssignRolesForm> {
 
   void _selectRole(RoleDto? role) {
     setState(() => _draftRole = role);
-  }
-
-  void _setMode(AssignRolesMode mode) {
-    setState(() => _mode = mode);
   }
 
   /// Lookup helper — turns the picked user ids back into [UserDto]s so
@@ -327,17 +327,6 @@ class _AssignRolesFormState extends State<_AssignRolesForm> {
     }
   }
 
-  String _modeHelper(AppLocalizations l10n) {
-    switch (_mode) {
-      case AssignRolesMode.add:
-        return l10n.assignmentsModeHelperAdd;
-      case AssignRolesMode.replace:
-        return l10n.assignmentsModeHelperReplace;
-      case AssignRolesMode.remove:
-        return l10n.assignmentsModeHelperRemove;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -390,22 +379,9 @@ class _AssignRolesFormState extends State<_AssignRolesForm> {
                   enabled: canEdit && !_saving,
                   onTap: _openUserPicker,
                 ),
-                const SizedBox(height: 20),
-                // ── MODE section ────────────────────────────────────
-                _FieldLabel(text: l10n.assignmentsModeFieldLabel),
-                const SizedBox(height: 6),
-                _ModePicker(
-                  mode: _mode,
-                  enabled: canEdit && !_saving,
-                  onChanged: _setMode,
-                ),
-                const SizedBox(height: 8),
-                AppLabel(
-                  text: _modeHelper(l10n),
-                  fontSize: AppFontSize.value12,
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w400,
-                ),
+                // MODE picker removed — see [_mode] doc: REPLACE is
+                // hardcoded so the "one user, one role" policy can't
+                // be bypassed by accident.
               ],
             ),
           ),
@@ -422,11 +398,9 @@ class _AssignRolesFormState extends State<_AssignRolesForm> {
             child: _SaveBar(
               enabled: canEdit && _isDirty && !_saving,
               saving: _saving,
-              // Save label is mode + count aware — "Add role to 3
-              // users" / "Replace roles on 5 users" / etc. Falls back
-              // to a generic "Save changes" when no users are picked.
-              dirtyLabel: l10n.assignmentsSaveActionBulk(
-                _mode.name,
+              // Save label = "Assign role to N users". Mode is no
+              // longer a knob, so the label is just count-aware.
+              dirtyLabel: l10n.assignmentsSaveActionAssign(
                 _selectedUserIds.length,
               ),
               cleanLabel: l10n.assignmentsNoChangesYet,
@@ -718,17 +692,11 @@ class _RoleStatusChip extends StatelessWidget {
         ? theme.colorScheme.error
         : theme.colorScheme.onPrimaryContainer;
 
-    final String label;
-    if (isEmpty) {
-      label = l10n.assignmentsUserNoRoleBadge;
-    } else if (roles.length <= 2) {
-      label = roles.join(' · ');
-    } else {
-      // Show first two + a count of the rest so a user with 5 roles
-      // doesn't blow up the row width.
-      final shown = roles.take(2).join(' · ');
-      label = '$shown ${l10n.assignmentsUserRolesMore(roles.length - 2)}';
-    }
+    // One user, one role per app policy — show just the first entry.
+    // If the backend ever returns multiple (legacy data created before
+    // the policy was tightened), only the first surfaces here; the
+    // next REPLACE-mode save will collapse the user back to one role.
+    final label = isEmpty ? l10n.assignmentsUserNoRoleBadge : roles.first;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -1057,54 +1025,6 @@ class _AssignRoleDropdown extends StatelessWidget {
           ),
       ],
       onChanged: enabled ? onChanged : null,
-    );
-  }
-}
-
-/// Segmented mode picker — `ADD` / `REPLACE` / `REMOVE`. Mirrors the
-/// `AssignRolesRequest.Mode` enum on the Spring side. Always 3
-/// segments; disabled when no users are picked.
-class _ModePicker extends StatelessWidget {
-  const _ModePicker({
-    required this.mode,
-    required this.enabled,
-    required this.onChanged,
-  });
-
-  final AssignRolesMode mode;
-  final bool enabled;
-  final ValueChanged<AssignRolesMode> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return SegmentedButton<AssignRolesMode>(
-      segments: <ButtonSegment<AssignRolesMode>>[
-        ButtonSegment(
-          value: AssignRolesMode.add,
-          label: Text(l10n.assignmentsModeAdd),
-          icon: const Icon(Icons.add_rounded, size: 18),
-        ),
-        ButtonSegment(
-          value: AssignRolesMode.replace,
-          label: Text(l10n.assignmentsModeReplace),
-          icon: const Icon(Icons.swap_horiz_rounded, size: 18),
-        ),
-        ButtonSegment(
-          value: AssignRolesMode.remove,
-          label: Text(l10n.assignmentsModeRemove),
-          icon: const Icon(Icons.remove_rounded, size: 18),
-        ),
-      ],
-      selected: <AssignRolesMode>{mode},
-      onSelectionChanged:
-          enabled ? (s) => onChanged(s.first) : null,
-      showSelectedIcon: false,
-      style: SegmentedButton.styleFrom(
-        // Tighten padding so all three segments fit on narrow phones
-        // without truncating the labels.
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-      ),
     );
   }
 }

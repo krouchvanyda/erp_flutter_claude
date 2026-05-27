@@ -1,3 +1,6 @@
+import 'dart:developer' as developer;
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
@@ -11,10 +14,7 @@ import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../core/widgets/loading_screen.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
-import '../../data/datasources/roles_remote_data_source.dart';
 import '../../data/datasources/users_remote_data_source.dart';
-import '../../data/models/role_dto.dart';
-import '../../data/models/user_dto.dart';
 import '../../data/permission_catalog.dart';
 import '../../entities/managed_user.dart';
 
@@ -35,7 +35,6 @@ class MyRolesPage extends StatefulWidget {
 
 class _MyRolesPageState extends State<MyRolesPage> {
   final _usersRemote = GetIt.I<UsersRemoteDataSource>();
-  final _rolesRemote = GetIt.I<RolesRemoteDataSource>();
 
   final _searchCtrl = TextEditingController();
   String _query = '';
@@ -77,7 +76,10 @@ class _MyRolesPageState extends State<MyRolesPage> {
                   return const Center(child: LoadingScreen());
                 }
                 if (snap.hasError || !snap.hasData) {
-                  return _ErrorPanel(onRetry: _reload);
+                  return _ErrorPanel(
+                    onRetry: _reload,
+                    error: snap.error,
+                  );
                 }
                 return RefreshIndicator(
                   onRefresh: () async {
@@ -101,99 +103,108 @@ class _MyRolesPageState extends State<MyRolesPage> {
     );
   }
 
-  /// Fan out three GETs in parallel — they don't depend on each other,
-  /// so `Future.wait` cuts perceived latency by ~2/3 vs sequential.
+  /// Single GET: `/users/me` is open to any authenticated user and
+  /// already returns the resolved role codes + permission tokens —
+  /// server walks the user's role set and unions every permission.
   ///
-  /// - `GET /users/me`              → current user with already-resolved
-  ///                                  permissions (no need to walk roles)
-  /// - `GET /roles`                 → role definitions for the chip
-  ///                                  summary (name + isSystem flag)
-  /// - `GET /roles/permissions`     → full catalog used for the
-  ///                                  "Not granted" comparison list
+  /// We deliberately do NOT call `/roles` or `/roles/permissions` —
+  /// those are gated by `role:read` (super-admin only) and would 403
+  /// for everyone else looking at their own page. The chip labels use
+  /// the role codes verbatim (formatted), and the granted list comes
+  /// straight from `me.permissions`.
   Future<_RoleViewModel> _load() async {
-    final results = await Future.wait<dynamic>([
-      _usersRemote.me(),
-      _rolesRemote.listRoles(),
-      _rolesRemote.listPermissions(),
-    ]);
-    final me = results[0] as UserDto;
-    final allRoles = results[1] as List<RoleDto>;
-    final allPermissions = results[2] as List<PermissionDto>;
-
-    // Match each role id/name from `/me` against the full role list
-    // for chip rendering. `me.roles` arrives as identifiers (per the
-    // V3 seed, the values look like `"SUPER_ADMIN"` — i.e. role
-    // codes, not numeric ids). Match by both id and name so either
-    // wire shape works without code change.
-    final assigned = <Role>[];
-    for (final identifier in me.roles) {
-      final match = _findRole(allRoles, identifier);
-      assigned.add(
-        match != null
-            ? Role(
-                id: match.id,
-                name: match.name,
-                description: match.description,
-                permissionTokens: match.permissionTokens,
-                isSystem: match.isSystem,
-              )
-            : Role(
-                // Fallback chip — backend hasn't shipped the role
-                // definition yet (or we got an unknown id). Render the
-                // identifier verbatim so the user still sees *something*.
-                id: identifier,
-                name: identifier,
-                description: '',
-                permissionTokens: const <String>[],
-              ),
+    try {
+      final me = await _usersRemote.me();
+      developer.log(
+        '[MyRoles] me.id=${me.id} roles=${me.roles} '
+        'permissions(${me.permissions.length})=${me.permissions}',
+        name: 'MyRoles',
       );
+
+      // Render each role code as its own chip. `me.roles` is already
+      // a set of codes (e.g. `"SUPER_ADMIN"`) per the V3 seed; we wrap
+      // each into a [Role] for the existing chip widget. No `name`
+      // lookup — the formatted code (`Super Admin`) is the label.
+      final assigned = [
+        for (final code in me.roles)
+          Role(
+            id: code,
+            name: _formatRoleCode(code),
+            description: '',
+            permissionTokens: const <String>[],
+          ),
+      ];
+
+      return _RoleViewModel(
+        assigned: assigned,
+        granted: me.permissions.toSet(),
+        lastSyncedAt: DateTime.now(),
+      );
+    } catch (e, stack) {
+      // Log + rethrow so the FutureBuilder's `hasError` branch still
+      // fires and shows the _ErrorPanel. The console line gives us
+      // the actual cause when a user reports "page errors" without a
+      // dio log handy — covers backend 403s on /users/me (which would
+      // mean the server's security config gates the whole /users/**
+      // path) AND any JSON-parse blowups on unexpected payload shape.
+      developer.log(
+        '[MyRoles] _load FAILED: $e',
+        name: 'MyRoles',
+        error: e,
+        stackTrace: stack,
+      );
+      rethrow;
     }
-
-    // `me.permissions` already contains the union of every grant from
-    // every assigned role — server-side resolution, no client math.
-    final grantedScopes = me.permissions.toSet();
-
-    // Catalog drives the "Not granted" list. Prefer the live backend
-    // catalog so newly-added scopes appear without an app release;
-    // fall back to the bundled `knownPermissionScopes` when the
-    // catalog endpoint returns empty (e.g. dev seed not run).
-    final catalog = allPermissions.isNotEmpty
-        ? allPermissions.map((p) => p.token).toList(growable: false)
-        : knownPermissionScopes;
-
-    return _RoleViewModel(
-      assigned: assigned,
-      granted: grantedScopes,
-      catalog: catalog,
-      lastSyncedAt: DateTime.now(),
-    );
   }
 
-  /// Matches a role identifier from `/me` (which may be an id or a
-  /// human-readable code like `"SUPER_ADMIN"`) against the full
-  /// `/roles` list. Case-insensitive name match because the backend
-  /// could ship `SUPER_ADMIN` or `Super_Admin` depending on seed-data
-  /// conventions and we don't want a casing change to break chips.
-  static RoleDto? _findRole(List<RoleDto> all, String identifier) {
-    for (final r in all) {
-      if (r.id == identifier) return r;
-      if (r.name.toLowerCase() == identifier.toLowerCase()) return r;
-    }
-    return null;
+  /// `SUPER_ADMIN` → `Super Admin`. Cheap title-case so the chip reads
+  /// nicely without needing the `/roles` lookup that 403s for non-
+  /// super-admins. Plays well with any future code the backend adds.
+  static String _formatRoleCode(String code) {
+    return code
+        .split('_')
+        .where((p) => p.isNotEmpty)
+        .map((p) =>
+            p[0].toUpperCase() + (p.length > 1 ? p.substring(1).toLowerCase() : ''))
+        .join(' ');
   }
 }
 
-/// Failure panel — shown when any of the three GETs throws. Generic
-/// retry rather than per-error UX since the page is read-only.
+/// Failure panel — shown when `/users/me` throws. Now surfaces the
+/// actual cause (HTTP status + server message) so 403s from backend
+/// security config don't look identical to network outages.
 class _ErrorPanel extends StatelessWidget {
-  const _ErrorPanel({required this.onRetry});
+  const _ErrorPanel({required this.onRetry, this.error});
 
   final VoidCallback onRetry;
+  final Object? error;
+
+  /// Strips the noisy "DioException [bad response]: …" wrapper. Falls
+  /// back to the raw `toString()` for non-dio errors so a JSON-parse
+  /// crash or anything else still shows up readable.
+  String? _humanError() {
+    final e = error;
+    if (e == null) return null;
+    if (e is DioException) {
+      final status = e.response?.statusCode;
+      final data = e.response?.data;
+      if (data is Map && data['message'] is String) {
+        final msg = data['message'] as String;
+        return status != null ? 'HTTP $status — $msg' : msg;
+      }
+      if (status != null) {
+        return 'HTTP $status — ${e.message ?? e.type.name}';
+      }
+      return e.message ?? e.type.name;
+    }
+    return e.toString();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+    final detail = _humanError();
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -213,6 +224,17 @@ class _ErrorPanel extends StatelessWidget {
               fontWeight: FontWeight.w600,
               textAlign: TextAlign.center,
             ),
+            if (detail != null) ...[
+              const SizedBox(height: 8),
+              AppLabel(
+                text: detail,
+                fontSize: AppFontSize.value12,
+                color: theme.colorScheme.error,
+                fontWeight: FontWeight.w500,
+                textAlign: TextAlign.center,
+                maxLines: 4,
+              ),
+            ],
             const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: onRetry,
@@ -234,26 +256,18 @@ class _RoleViewModel {
   const _RoleViewModel({
     required this.assigned,
     required this.granted,
-    required this.catalog,
     required this.lastSyncedAt,
   });
 
   final List<Role> assigned;
   final Set<String> granted;
-  final List<String> catalog;
   final DateTime lastSyncedAt;
 
+  /// Granted scopes alphabetised so the list reads predictably and
+  /// renders identically across rebuilds.
   List<String> get grantedSorted {
     final list = granted.toList()..sort();
     return list;
-  }
-
-  List<String> get notGranted {
-    final out = <String>[];
-    for (final scope in catalog) {
-      if (!granted.contains(scope)) out.add(scope);
-    }
-    return out;
   }
 }
 
@@ -282,10 +296,8 @@ class _Body extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final granted = vm.grantedSorted.where(_matchesQuery).toList();
-    final notGranted = vm.notGranted.where(_matchesQuery).toList();
 
     return ListView(
       padding: EdgeInsets.only(

@@ -2123,7 +2123,17 @@ class AppLocalizationsKm extends AppLocalizations {
 
   @override
   String get assignmentsAssignSubtitle =>
-      'ជ្រើសរើសអ្នកប្រើ បន្ទាប់មកកំណត់តួនាទី។';
+      'ជ្រើសរើសតួនាទីមួយ បន្ទាប់មកជ្រើសរើសអ្នកប្រើដែលត្រូវកំណត់។ អ្នកប្រើម្នាក់មានតួនាទីតែមួយប៉ុណ្ណោះ។';
+
+  @override
+  String assignmentsSaveActionAssign(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '#នាក់',
+    );
+    return 'កំណត់តួនាទីដល់ $_temp0';
+  }
 
   @override
   String get assignmentsUserFieldLabel => 'អ្នកប្រើ';

@@ -3905,8 +3905,14 @@ abstract class AppLocalizations {
   /// No description provided for @assignmentsAssignSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Pick users, then assign roles.'**
+  /// **'Pick a role, then the users to assign it to. Each user gets exactly one role.'**
   String get assignmentsAssignSubtitle;
+
+  /// No description provided for @assignmentsSaveActionAssign.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign role to {count, plural, one{# user} other{# users}}'**
+  String assignmentsSaveActionAssign(int count);
 
   /// No description provided for @assignmentsUserFieldLabel.
   ///

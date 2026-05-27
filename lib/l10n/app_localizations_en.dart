@@ -2128,7 +2128,19 @@ class AppLocalizationsEn extends AppLocalizations {
       'Pick a role above to start assigning permissions.';
 
   @override
-  String get assignmentsAssignSubtitle => 'Pick users, then assign roles.';
+  String get assignmentsAssignSubtitle =>
+      'Pick a role, then the users to assign it to. Each user gets exactly one role.';
+
+  @override
+  String assignmentsSaveActionAssign(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# users',
+      one: '# user',
+    );
+    return 'Assign role to $_temp0';
+  }
 
   @override
   String get assignmentsUserFieldLabel => 'USERS';
