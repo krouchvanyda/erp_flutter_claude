@@ -336,7 +336,10 @@ class _MyProfilePageState extends State<MyProfilePage> {
     final current = await _profileRepo.get();
     if (!mounted) return;
     final l10n = AppLocalizations.of(context);
-    final hasPhoto = (current.avatarFilePath ?? '').isNotEmpty;
+    // A photo exists if EITHER the local optimistic file is set OR
+    // the server has stored a URL — both cases enable "Remove photo".
+    final hasPhoto = (current.avatarFilePath ?? '').isNotEmpty ||
+        (current.avatarUrl ?? '').isNotEmpty;
     final choice = await AvatarPickerSheet.show(
       context: context,
       title: hasPhoto ? l10n.myProfileChangePhotoSheetTitle : l10n.myProfileAddPhotoSheetTitle,
@@ -494,13 +497,15 @@ class _HeroCard extends StatelessWidget {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 6),
-                  // Inline role · department — cleaner than two chips.
+                  // Inline position · department — cleaner than two
+                  // chips. `position` is the HR job title; RBAC roles
+                  // live on the My Roles page.
                   Wrap(
                     crossAxisAlignment: WrapCrossAlignment.center,
                     alignment: WrapAlignment.center,
                     children: [
                       AppLabel(
-                        text: profile.role,
+                        text: profile.position,
                         fontSize: AppFontSize.value14,
                         color: theme.colorScheme.onPrimary,
                         fontWeight: FontWeight.w700,
@@ -638,7 +643,14 @@ class _Avatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final hasPhoto = profile.avatarFilePath != null;
+    // Local picker file takes priority over the server URL — covers
+    // the optimistic-update window after the user picks a photo but
+    // before the multipart upload finishes. Network URL is the
+    // canonical source once the upload returns.
+    final hasLocalPhoto = profile.avatarFilePath != null;
+    final hasRemotePhoto =
+        !hasLocalPhoto && (profile.avatarUrl ?? '').isNotEmpty;
+    final hasPhoto = hasLocalPhoto || hasRemotePhoto;
     final innerGradient = _avatarGradient(theme, profile.avatarTone ?? 0);
 
     return GestureDetector(
@@ -685,12 +697,24 @@ class _Avatar extends StatelessWidget {
                   offset: const Offset(0, 6),
                 ),
               ],
-              image: hasPhoto
+              image: hasLocalPhoto
                   ? DecorationImage(
                       image: FileImage(File(profile.avatarFilePath!)),
                       fit: BoxFit.cover,
                     )
-                  : null,
+                  : hasRemotePhoto
+                      ? DecorationImage(
+                          // `headers` carries the Bearer token —
+                          // Spring's upload route is auth-gated and
+                          // `NetworkImage` doesn't attach the dio
+                          // interceptor on its own.
+                          image: NetworkImage(
+                            profile.avatarUrl!,
+                            headers: profile.avatarHeaders,
+                          ),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
             ),
             alignment: Alignment.center,
             child: hasPhoto

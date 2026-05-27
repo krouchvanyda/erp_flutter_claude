@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
+import '../../core/network/token_storage.dart';
+import '../employees/data/datasources/employees_remote_data_source.dart';
 import 'data/datasources/roles_remote_data_source.dart';
 import 'data/datasources/users_remote_data_source.dart';
 import 'data/repositories/admin_repositories.dart';
@@ -19,10 +21,23 @@ void registerSettingsModule(GetIt getIt) {
       PreferencesRepository.new,
     );
   }
-  // Slice 9.1.4 — signed-in user's own profile (in-memory demo state).
+  // Slice 9.1.4 — signed-in user's own profile, backed by Spring
+  // `/api/v1/employees`. The data source MUST be registered before
+  // the repository so the lazy resolve below finds it on first use.
+  if (!getIt.isRegistered<EmployeesRemoteDataSource>()) {
+    getIt.registerLazySingleton<EmployeesRemoteDataSource>(
+      () => DioEmployeesRemoteDataSource(dio: getIt<Dio>()),
+    );
+  }
   if (!getIt.isRegistered<MyProfileRepository>()) {
     getIt.registerLazySingleton<MyProfileRepository>(
-      MyProfileRepository.new,
+      () => MyProfileRepository(
+        employees: getIt<EmployeesRemoteDataSource>(),
+        // Token storage is already registered upstream (Module 1's
+        // auth DI). Pulled here so the repo can stamp `Authorization`
+        // headers onto auth-gated avatar URLs.
+        tokens: getIt<TokenStorage>(),
+      ),
     );
   }
   // Phase 9.2 — admin backend wiring.
