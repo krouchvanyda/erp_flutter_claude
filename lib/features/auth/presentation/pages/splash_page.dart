@@ -2,8 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/network/token_storage.dart';
+import '../../../../core/router/auth_session.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';
@@ -28,9 +31,32 @@ class _SplashPageState extends State<SplashPage> {
     _timer = Timer(_probeDelay, _decide);
   }
 
-  void _decide() {
+  /// Decide where to send the user after the splash animation:
+  ///   - tokens present in [TokenStorage]  → straight to the dashboard
+  ///                                         (auto-login from prior session)
+  ///   - no tokens / read fails            → login page
+  ///
+  /// Tokens live in `flutter_secure_storage` via `SecureTokenStorage`,
+  /// so this survives app kills — the user only re-types credentials
+  /// after an explicit logout. If the stored access token has expired
+  /// the AuthInterceptor will refresh it on the first authenticated
+  /// call (or fall back to /login if the refresh also fails), so we
+  /// don't gate the redirect on expiry here.
+  Future<void> _decide() async {
     if (!mounted) return;
-    context.goNamed(RoutePaths.loginName);
+    final tokens = await GetIt.I<TokenStorage>().read();
+    if (!mounted) return;
+    final hasTokens = tokens != null && tokens.accessToken.isNotEmpty;
+    if (hasTokens) {
+      // Hydrate the in-process session BEFORE navigating — the router's
+      // `redirect` checks `AuthSession.isAuthenticated` and would
+      // bounce us back to /login otherwise (the stored tokens alone
+      // don't tell the router the user is signed in).
+      GetIt.I<AuthSession>().markAuthenticated();
+      context.goNamed(RoutePaths.dashboardName);
+    } else {
+      context.goNamed(RoutePaths.loginName);
+    }
   }
 
   @override

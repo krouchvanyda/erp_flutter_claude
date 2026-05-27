@@ -97,7 +97,7 @@ class AppShell extends StatelessWidget {
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 8),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surface.withValues(alpha: 0.8),
                   borderRadius: BorderRadius.circular(36),

@@ -168,6 +168,11 @@ TABLE: user_permissions
 - Slice 1.1.2b: Cache user profile + permissions → SQLite (`cached_user` + `user_permissions` tables) ← **NEW**
 - Slice 1.1.3: Token refresh logic in interceptor — reads `user_id` from SQLite to re-attach context
 - Slice 1.1.4: Logout + token revocation + SQLite wipe (`deleteUser` + `deletePermissions`)
+- Slice 1.1.5: **Auto-login on app start** — splash probes `TokenStorage.read()`,
+  calls `AuthSession.markAuthenticated()` when tokens exist, then routes:
+  tokens present → `/dashboard`, no tokens → `/login`. The user only sees the
+  login screen again after an explicit logout, a refresh failure (interceptor
+  routes back to `/login`), or a manual secure-storage wipe (uninstall/reset). ← **NEW**
 
 **Storage boundary for Phase 1.1:**
 ```
@@ -176,6 +181,29 @@ Login API response
    ├── user profile                  ──→ SQLite: cached_user       (structural)
    └── permissions                   ──→ SQLite: user_permissions  (structural)
 ```
+
+**Session persistence rules (Slice 1.1.5):**
+- Tokens persist across app kills because `SecureTokenStorage` writes to
+  `flutter_secure_storage` (iOS Keychain / Android Keystore). Do NOT add a
+  process-lifetime cache that shadows it — the splash must always read the
+  authoritative storage on cold start.
+- `AuthSession.isAuthenticated` boots to `false` on every cold start (the
+  bool is in-process state, not persisted). The splash MUST flip it via
+  `AuthSession.markAuthenticated()` before navigating to `/dashboard` —
+  otherwise the router's `redirect` (which reads `session.isAuthenticated`)
+  bounces the request back to `/login` even when tokens are present. Stored
+  tokens alone do not equal "router thinks I'm signed in."
+- The splash does NOT validate the access token before redirecting. An expired
+  access token is fine here — the first authenticated call hits the
+  `AuthInterceptor`, which transparently refreshes via the refresh token. The
+  user only bounces back to `/login` if BOTH access AND refresh have expired
+  (or been revoked) — exactly the "session truly ended" case.
+- Logout (and any failed refresh) MUST call `TokenStorage.clear()`. Skipping it
+  re-grants auto-login on the next app start, which would be a security bug.
+- The splash redirect target is the only place the "should I auto-login?"
+  decision lives. Route guards and interceptors handle the after-the-fact
+  cases (401 → refresh → maybe-logout). Don't duplicate the decision in
+  individual pages or BLoCs.
 
 #### Phase 1.2 — Multi-Factor & SSO
 - Slice 1.2.1: TOTP/OTP input screen — ephemeral, memory only, no SQLite

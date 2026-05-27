@@ -14,6 +14,16 @@ abstract class AuthSession implements Listenable {
   /// router so it bounces back to `/login`. Called by the auth interceptor
   /// when a token refresh fails.
   Future<void> signOut();
+
+  /// Flip the session to authenticated WITHOUT going through a login
+  /// round-trip. Used by the splash to hydrate from `TokenStorage` on
+  /// cold start — the secure-storage entry survives the kill but the
+  /// in-process session boots to `false`, so without this call the
+  /// router's redirect would bounce a returning user back to `/login`
+  /// even though their tokens are valid.
+  ///
+  /// Safe to call when already authenticated (no-op).
+  void markAuthenticated();
 }
 
 /// Stub implementation used until Module 1 lands. Mutable so tests can
@@ -31,6 +41,9 @@ class StubAuthSession extends ChangeNotifier implements AuthSession {
   Future<void> signOut() async {
     setAuthenticated(value: false);
   }
+
+  @override
+  void markAuthenticated() => setAuthenticated(value: true);
 
   /// Placeholder API used by the router to flip the stub session to
   /// "signed in" when the demo login button is tapped. The real
