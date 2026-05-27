@@ -2128,21 +2128,125 @@ class AppLocalizationsEn extends AppLocalizations {
       'Pick a role above to start assigning permissions.';
 
   @override
-  String get assignmentsAssignSubtitle => 'Pick a user, then assign one role.';
+  String get assignmentsAssignSubtitle => 'Pick users, then assign roles.';
 
   @override
-  String get assignmentsUserFieldLabel => 'USER';
+  String get assignmentsUserFieldLabel => 'USERS';
 
   @override
   String get assignmentsRoleFieldLabel => 'ROLE';
 
   @override
+  String get assignmentsModeFieldLabel => 'MODE';
+
+  @override
   String get assignmentsRoleHelperPickUserFirst =>
-      'Pick a user first to enable role assignment.';
+      'Pick at least one user to enable role assignment.';
 
   @override
   String get assignmentsRoleHelperCurrentRole =>
-      'Replaces every role currently assigned to the user.';
+      'Applies the selected role to every picked user.';
+
+  @override
+  String get assignmentsPickUsersPrompt => 'Pick users…';
+
+  @override
+  String assignmentsUsersSelectedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# users selected',
+      one: '# user selected',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String assignmentsUsersSelectedSummary(String first, int others) {
+    String _temp0 = intl.Intl.pluralLogic(
+      others,
+      locale: localeName,
+      other: '# others',
+      one: '# other',
+    );
+    return '$first +$_temp0';
+  }
+
+  @override
+  String get assignmentsModeAdd => 'Add';
+
+  @override
+  String get assignmentsModeReplace => 'Replace';
+
+  @override
+  String get assignmentsModeRemove => 'Remove';
+
+  @override
+  String get assignmentsModeHelperAdd =>
+      'Adds the role on top of each user\'s existing roles.';
+
+  @override
+  String get assignmentsModeHelperReplace =>
+      'Replaces each user\'s roles with only the picked role.';
+
+  @override
+  String get assignmentsModeHelperRemove =>
+      'Strips the picked role from each user (others kept).';
+
+  @override
+  String assignmentsSaveActionBulk(String mode, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# users',
+      one: '# user',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# users',
+      one: '# user',
+    );
+    String _temp2 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# users',
+      one: '# user',
+    );
+    String _temp3 = intl.Intl.selectLogic(mode, {
+      'add': 'Add role to $_temp0',
+      'replace': 'Replace roles on $_temp1',
+      'remove': 'Remove role from $_temp2',
+      'other': 'Save changes',
+    });
+    return '$_temp3';
+  }
+
+  @override
+  String get assignmentsSelectAllAction => 'Select all';
+
+  @override
+  String get assignmentsClearSelectionAction => 'Clear';
+
+  @override
+  String get assignmentsConfirmDoneAction => 'Done';
+
+  @override
+  String get assignmentsUserNoRoleBadge => 'No role';
+
+  @override
+  String assignmentsUserRolesMore(int count) {
+    return '+$count';
+  }
+
+  @override
+  String get assignmentsFilterAll => 'All';
+
+  @override
+  String get assignmentsFilterHasRole => 'Has role';
+
+  @override
+  String get assignmentsFilterNoRole => 'No role';
 
   @override
   String get commonApproveAction => 'Approve';

@@ -697,11 +697,44 @@
   "assignmentsEmptyUsers": "មិនមានអ្នកប្រើនៅឡើយទេ។",
   "assignmentsNoUserSelected": "ជ្រើសរើសអ្នកប្រើពីបញ្ជី ដើម្បីកំណត់តួនាទី។",
   "assignmentsNoRoleSelected": "ជ្រើសរើសតួនាទីខាងលើ ដើម្បីចាប់ផ្ដើមកំណត់សិទ្ធិ។",
-  "assignmentsAssignSubtitle": "ជ្រើសរើសអ្នកប្រើ បន្ទាប់មកកំណត់តួនាទីមួយ។",
+  "assignmentsAssignSubtitle": "ជ្រើសរើសអ្នកប្រើ បន្ទាប់មកកំណត់តួនាទី។",
   "assignmentsUserFieldLabel": "អ្នកប្រើ",
   "assignmentsRoleFieldLabel": "តួនាទី",
-  "assignmentsRoleHelperPickUserFirst": "សូមជ្រើសរើសអ្នកប្រើជាមុនសិន ដើម្បីបើកការកំណត់តួនាទី។",
-  "assignmentsRoleHelperCurrentRole": "នឹងជំនួសរាល់តួនាទីដែលអ្នកប្រើនេះមានរួចហើយ។",
+  "assignmentsModeFieldLabel": "របៀប",
+  "assignmentsRoleHelperPickUserFirst": "សូមជ្រើសរើសអ្នកប្រើយ៉ាងតិចម្នាក់ ដើម្បីបើកការកំណត់តួនាទី។",
+  "assignmentsRoleHelperCurrentRole": "តួនាទីដែលជ្រើសរើសនឹងត្រូវអនុវត្តចំពោះអ្នកប្រើទាំងអស់ដែលបានជ្រើសរើស។",
+  "assignmentsPickUsersPrompt": "ជ្រើសរើសអ្នកប្រើ…",
+  "assignmentsUsersSelectedCount": "{count, plural, other{បានជ្រើសរើស #នាក់}}",
+  "@assignmentsUsersSelectedCount": {"placeholders": {"count": {"type": "int"}}},
+  "assignmentsUsersSelectedSummary": "{first} +{others, plural, other{#នាក់ផ្សេងទៀត}}",
+  "@assignmentsUsersSelectedSummary": {
+    "placeholders": {
+      "first": {"type": "String"},
+      "others": {"type": "int"}
+    }
+  },
+  "assignmentsModeAdd": "បន្ថែម",
+  "assignmentsModeReplace": "ជំនួស",
+  "assignmentsModeRemove": "លុបចេញ",
+  "assignmentsModeHelperAdd": "បន្ថែមតួនាទីនេះទៅលើតួនាទីដែលអ្នកប្រើមានរួចហើយ។",
+  "assignmentsModeHelperReplace": "ជំនួសតួនាទីទាំងអស់របស់អ្នកប្រើដោយតួនាទីដែលជ្រើសរើស។",
+  "assignmentsModeHelperRemove": "លុបតួនាទីដែលជ្រើសរើសចេញពីអ្នកប្រើ (តួនាទីផ្សេងនៅដដែល)។",
+  "assignmentsSaveActionBulk": "{mode, select, add{បន្ថែមតួនាទីដល់ {count, plural, other{#នាក់}}} replace{ជំនួសតួនាទីលើ {count, plural, other{#នាក់}}} remove{លុបតួនាទីពី {count, plural, other{#នាក់}}} other{រក្សាទុក}}",
+  "@assignmentsSaveActionBulk": {
+    "placeholders": {
+      "mode": {"type": "String"},
+      "count": {"type": "int"}
+    }
+  },
+  "assignmentsSelectAllAction": "ជ្រើសរើសទាំងអស់",
+  "assignmentsClearSelectionAction": "សម្អាត",
+  "assignmentsConfirmDoneAction": "រួចរាល់",
+  "assignmentsUserNoRoleBadge": "មិនមានតួនាទី",
+  "assignmentsUserRolesMore": "+{count}",
+  "@assignmentsUserRolesMore": {"placeholders": {"count": {"type": "int"}}},
+  "assignmentsFilterAll": "ទាំងអស់",
+  "assignmentsFilterHasRole": "មានតួនាទី",
+  "assignmentsFilterNoRole": "មិនមានតួនាទី",
   "commonApproveAction": "អនុម័ត",
   "commonRejectAction": "បដិសេធ",
 

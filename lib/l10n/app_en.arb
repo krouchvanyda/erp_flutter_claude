@@ -1793,11 +1793,44 @@
   "assignmentsEmptyUsers": "No users yet.",
   "assignmentsNoUserSelected": "Pick a user from the list to assign roles.",
   "assignmentsNoRoleSelected": "Pick a role above to start assigning permissions.",
-  "assignmentsAssignSubtitle": "Pick a user, then assign one role.",
-  "assignmentsUserFieldLabel": "USER",
+  "assignmentsAssignSubtitle": "Pick users, then assign roles.",
+  "assignmentsUserFieldLabel": "USERS",
   "assignmentsRoleFieldLabel": "ROLE",
-  "assignmentsRoleHelperPickUserFirst": "Pick a user first to enable role assignment.",
-  "assignmentsRoleHelperCurrentRole": "Replaces every role currently assigned to the user.",
+  "assignmentsModeFieldLabel": "MODE",
+  "assignmentsRoleHelperPickUserFirst": "Pick at least one user to enable role assignment.",
+  "assignmentsRoleHelperCurrentRole": "Applies the selected role to every picked user.",
+  "assignmentsPickUsersPrompt": "Pick users…",
+  "assignmentsUsersSelectedCount": "{count, plural, one{# user selected} other{# users selected}}",
+  "@assignmentsUsersSelectedCount": {"placeholders": {"count": {"type": "int"}}},
+  "assignmentsUsersSelectedSummary": "{first} +{others, plural, one{# other} other{# others}}",
+  "@assignmentsUsersSelectedSummary": {
+    "placeholders": {
+      "first": {"type": "String"},
+      "others": {"type": "int"}
+    }
+  },
+  "assignmentsModeAdd": "Add",
+  "assignmentsModeReplace": "Replace",
+  "assignmentsModeRemove": "Remove",
+  "assignmentsModeHelperAdd": "Adds the role on top of each user's existing roles.",
+  "assignmentsModeHelperReplace": "Replaces each user's roles with only the picked role.",
+  "assignmentsModeHelperRemove": "Strips the picked role from each user (others kept).",
+  "assignmentsSaveActionBulk": "{mode, select, add{Add role to {count, plural, one{# user} other{# users}}} replace{Replace roles on {count, plural, one{# user} other{# users}}} remove{Remove role from {count, plural, one{# user} other{# users}}} other{Save changes}}",
+  "@assignmentsSaveActionBulk": {
+    "placeholders": {
+      "mode": {"type": "String"},
+      "count": {"type": "int"}
+    }
+  },
+  "assignmentsSelectAllAction": "Select all",
+  "assignmentsClearSelectionAction": "Clear",
+  "assignmentsConfirmDoneAction": "Done",
+  "assignmentsUserNoRoleBadge": "No role",
+  "assignmentsUserRolesMore": "+{count}",
+  "@assignmentsUserRolesMore": {"placeholders": {"count": {"type": "int"}}},
+  "assignmentsFilterAll": "All",
+  "assignmentsFilterHasRole": "Has role",
+  "assignmentsFilterNoRole": "No role",
   "commonApproveAction": "Approve",
   "commonRejectAction": "Reject",
 

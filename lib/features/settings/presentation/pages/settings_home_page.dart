@@ -285,6 +285,23 @@ class _SettingsHomePageState extends State<SettingsHomePage> {
                           subtitle: l10n.assignmentsRolesTab,
                           page: const AssignmentsPage(),
                           color: Colors.deepPurple,
+                          // Assignments page pops with `true` after a
+                          // successful bulk save so the snackbar can be
+                          // shown HERE — using the settings page's own
+                          // ScaffoldMessenger, which is still alive
+                          // after the pop. Showing it from inside the
+                          // assignments route would flash and vanish
+                          // because that route's messenger is gone.
+                          onResult: (result) {
+                            if (result == true && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(l10n.assignmentsSavedSnack),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          },
                         ),
                         const Divider(height: 1, indent: 56),
                         _Tile(
@@ -404,6 +421,7 @@ class _Tile extends StatelessWidget {
     required this.subtitle,
     required this.page,
     required this.color,
+    this.onResult,
   });
 
   final IconData icon;
@@ -411,6 +429,18 @@ class _Tile extends StatelessWidget {
   final String subtitle;
   final Widget page;
   final Color color;
+
+  /// Optional callback fired with the pushed page's pop result. Lets
+  /// callers react to success/cancel signals from sub-pages without
+  /// the sub-page having to reach into a global state holder. Pages
+  /// that don't need a result (the vast majority) leave this null.
+  final ValueChanged<Object?>? onResult;
+
+  Future<void> _open(BuildContext context) async {
+    final result = await ConfigRouter.pushPageAnimation(context, page);
+    if (!context.mounted) return;
+    onResult?.call(result);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -441,7 +471,7 @@ class _Tile extends StatelessWidget {
         color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
         size: 16,
       ),
-      onTap: () => ConfigRouter.pushPageAnimation(context, page),
+      onTap: () => _open(context),
     );
   }
 }

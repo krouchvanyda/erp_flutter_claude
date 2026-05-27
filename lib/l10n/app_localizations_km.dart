@@ -2123,7 +2123,7 @@ class AppLocalizationsKm extends AppLocalizations {
 
   @override
   String get assignmentsAssignSubtitle =>
-      'ជ្រើសរើសអ្នកប្រើ បន្ទាប់មកកំណត់តួនាទីមួយ។';
+      'ជ្រើសរើសអ្នកប្រើ បន្ទាប់មកកំណត់តួនាទី។';
 
   @override
   String get assignmentsUserFieldLabel => 'អ្នកប្រើ';
@@ -2132,12 +2132,111 @@ class AppLocalizationsKm extends AppLocalizations {
   String get assignmentsRoleFieldLabel => 'តួនាទី';
 
   @override
+  String get assignmentsModeFieldLabel => 'របៀប';
+
+  @override
   String get assignmentsRoleHelperPickUserFirst =>
-      'សូមជ្រើសរើសអ្នកប្រើជាមុនសិន ដើម្បីបើកការកំណត់តួនាទី។';
+      'សូមជ្រើសរើសអ្នកប្រើយ៉ាងតិចម្នាក់ ដើម្បីបើកការកំណត់តួនាទី។';
 
   @override
   String get assignmentsRoleHelperCurrentRole =>
-      'នឹងជំនួសរាល់តួនាទីដែលអ្នកប្រើនេះមានរួចហើយ។';
+      'តួនាទីដែលជ្រើសរើសនឹងត្រូវអនុវត្តចំពោះអ្នកប្រើទាំងអស់ដែលបានជ្រើសរើស។';
+
+  @override
+  String get assignmentsPickUsersPrompt => 'ជ្រើសរើសអ្នកប្រើ…';
+
+  @override
+  String assignmentsUsersSelectedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'បានជ្រើសរើស #នាក់',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String assignmentsUsersSelectedSummary(String first, int others) {
+    String _temp0 = intl.Intl.pluralLogic(
+      others,
+      locale: localeName,
+      other: '#នាក់ផ្សេងទៀត',
+    );
+    return '$first +$_temp0';
+  }
+
+  @override
+  String get assignmentsModeAdd => 'បន្ថែម';
+
+  @override
+  String get assignmentsModeReplace => 'ជំនួស';
+
+  @override
+  String get assignmentsModeRemove => 'លុបចេញ';
+
+  @override
+  String get assignmentsModeHelperAdd =>
+      'បន្ថែមតួនាទីនេះទៅលើតួនាទីដែលអ្នកប្រើមានរួចហើយ។';
+
+  @override
+  String get assignmentsModeHelperReplace =>
+      'ជំនួសតួនាទីទាំងអស់របស់អ្នកប្រើដោយតួនាទីដែលជ្រើសរើស។';
+
+  @override
+  String get assignmentsModeHelperRemove =>
+      'លុបតួនាទីដែលជ្រើសរើសចេញពីអ្នកប្រើ (តួនាទីផ្សេងនៅដដែល)។';
+
+  @override
+  String assignmentsSaveActionBulk(String mode, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '#នាក់',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '#នាក់',
+    );
+    String _temp2 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '#នាក់',
+    );
+    String _temp3 = intl.Intl.selectLogic(mode, {
+      'add': 'បន្ថែមតួនាទីដល់ $_temp0',
+      'replace': 'ជំនួសតួនាទីលើ $_temp1',
+      'remove': 'លុបតួនាទីពី $_temp2',
+      'other': 'រក្សាទុក',
+    });
+    return '$_temp3';
+  }
+
+  @override
+  String get assignmentsSelectAllAction => 'ជ្រើសរើសទាំងអស់';
+
+  @override
+  String get assignmentsClearSelectionAction => 'សម្អាត';
+
+  @override
+  String get assignmentsConfirmDoneAction => 'រួចរាល់';
+
+  @override
+  String get assignmentsUserNoRoleBadge => 'មិនមានតួនាទី';
+
+  @override
+  String assignmentsUserRolesMore(int count) {
+    return '+$count';
+  }
+
+  @override
+  String get assignmentsFilterAll => 'ទាំងអស់';
+
+  @override
+  String get assignmentsFilterHasRole => 'មានតួនាទី';
+
+  @override
+  String get assignmentsFilterNoRole => 'មិនមានតួនាទី';
 
   @override
   String get commonApproveAction => 'អនុម័ត';

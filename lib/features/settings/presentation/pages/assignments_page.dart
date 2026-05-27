@@ -17,18 +17,28 @@ import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/datasources/roles_remote_data_source.dart';
 import '../../data/datasources/users_remote_data_source.dart';
+import '../../data/models/assign_roles_request.dart';
 import '../../data/models/page_response.dart';
 import '../../data/models/role_dto.dart';
 import '../../data/models/user_dto.dart';
-import '../../data/models/user_requests.dart';
 
 /// Admin-only **Assign Roles** page.
 ///
-/// One flow: pick a user → pick a role → save. PATCHes the user with
-/// `{"roles": ["<role-code>"]}` — backend's `UpdateUserRequest` takes
-/// `Set<String> roles` of role codes and replaces the user's full
-/// role set. Sending `null` would leave roles untouched; an empty list
-/// strips every role.
+/// Bulk flow: pick one or more users → pick a role → pick a mode →
+/// save. Calls `POST /api/v1/users/assign-roles` which takes the
+/// Spring record:
+///
+/// ```java
+/// public record AssignRolesRequest(
+///     @NotEmpty Set<Long> userIds,
+///     @NotNull  Set<String> roles,
+///     Mode mode    // ADD | REPLACE | REMOVE
+/// ) {}
+/// ```
+///
+/// One round-trip mutates every selected user in a single transaction
+/// on the server side — far better than looping `PATCH /users/{id}`
+/// per-user.
 ///
 /// **Permission gating** — only super-admins reach the editor. Non-
 /// super-admins see [_SuperAdminLock] instead. Backend would 403
@@ -92,17 +102,11 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
                   return _ErrorPanel(onRetry: _reload);
                 }
                 final bundle = snap.data!;
-                // Debug breadcrumb so we can see exactly what `/users/me`
-                // returned when the gate denies a user who *should* be
-                // a super-admin. Remove once the RBAC wiring is stable.
                 developer.log(
                   '[Assignments] me.id=${bundle.me.id} '
                   'roles=${bundle.me.roles} canEdit=${bundle.canEdit}',
                   name: 'Assignments',
                 );
-                // Whole-page super-admin gate. Non-super-admins get a
-                // full-screen lock — backend would 403 anyway, this is
-                // the friendlier UX.
                 if (!bundle.canEdit) {
                   return Padding(
                     padding: EdgeInsets.only(
@@ -115,7 +119,7 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
                   padding: EdgeInsets.only(
                     top: context.dynamicAppBarPadding,
                   ),
-                  child: _UsersToRolesForm(
+                  child: _AssignRolesForm(
                     bundle: bundle,
                     usersApi: _users,
                     onSaved: _reload,
@@ -144,17 +148,15 @@ class _AssignmentsBundle {
   final PageResponse<UserDto> usersPage;
 
   /// Whole-page gate: assigning roles is super-admin only by policy.
-  /// Regular admins / staff can browse `My roles & permissions` but
-  /// never reach this page's editor.
   bool get canEdit => isSuperAdmin(me.roles);
 }
 
 // ════════════════════════════════════════════════════════════════════
-// Users → Roles form (the only flow on this page)
+// Bulk assignment form
 // ════════════════════════════════════════════════════════════════════
 
-class _UsersToRolesForm extends StatefulWidget {
-  const _UsersToRolesForm({
+class _AssignRolesForm extends StatefulWidget {
+  const _AssignRolesForm({
     required this.bundle,
     required this.usersApi,
     required this.onSaved,
@@ -165,28 +167,31 @@ class _UsersToRolesForm extends StatefulWidget {
   final VoidCallback onSaved;
 
   @override
-  State<_UsersToRolesForm> createState() => _UsersToRolesFormState();
+  State<_AssignRolesForm> createState() => _AssignRolesFormState();
 }
 
-class _UsersToRolesFormState extends State<_UsersToRolesForm> {
-  UserDto? _selected;
+class _AssignRolesFormState extends State<_AssignRolesForm> {
+  /// IDs of every user picked for assignment. A `Set` keeps toggle
+  /// logic O(1) and dedups against accidental double-add when the
+  /// modal sheet re-opens.
+  final Set<String> _selectedUserIds = <String>{};
 
-  /// Drafted role for the currently-selected user. Single-select model:
-  /// the backend allows N roles per user but the UX assigns exactly one
-  /// at a time (matches the V3 seed convention + the team's SQL
-  /// `UPDATE user_roles SET role_id = X` flow). Save sends a
-  /// single-element list, which the backend treats as "replace all
-  /// assigned roles with this one".
+  /// Role to apply. Single-select for now — backend's `roles` field is
+  /// a set so we could extend to multi-role later, but the common case
+  /// is "apply STAFF to these 5 people".
   RoleDto? _draftRole;
+
+  /// Mutation mode. ADD is the backend default; we surface it
+  /// explicitly so the wire payload is never ambiguous.
+  AssignRolesMode _mode = AssignRolesMode.add;
+
   bool _saving = false;
 
-  void _selectUser(UserDto user) {
+  void _setSelectedUsers(Set<String> ids) {
     setState(() {
-      _selected = user;
-      // Resolve the user's *first* current role (if any) into a RoleDto
-      // so the dropdown shows it pre-selected. Falls through to null
-      // when the user has no role yet.
-      _draftRole = _resolveFirstRole(user.roles, widget.bundle.roles);
+      _selectedUserIds
+        ..clear()
+        ..addAll(ids);
     });
   }
 
@@ -194,81 +199,72 @@ class _UsersToRolesFormState extends State<_UsersToRolesForm> {
     setState(() => _draftRole = role);
   }
 
-  /// `user.roles` from the wire could be ids, codes (`SUPER_ADMIN`),
-  /// or display names (`Super Admin`) depending on which endpoint
-  /// shipped the user — match any of them against the full role list
-  /// so the dropdown's pre-selected value lines up regardless of shape.
-  static RoleDto? _resolveFirstRole(
-    Iterable<String> identifiers,
-    List<RoleDto> all,
-  ) {
-    for (final identifier in identifiers) {
-      final needle = identifier.trim().toLowerCase();
-      if (needle.isEmpty) continue;
-      for (final r in all) {
-        if (r.id == identifier ||
-            r.code.toLowerCase() == needle ||
-            r.name.toLowerCase() == needle) {
-          return r;
-        }
-      }
-    }
-    return null;
+  void _setMode(AssignRolesMode mode) {
+    setState(() => _mode = mode);
   }
 
-  bool get _isDirty {
-    final user = _selected;
-    if (user == null) return false;
-    final originalRole = _resolveFirstRole(user.roles, widget.bundle.roles);
-    return originalRole?.id != _draftRole?.id;
-  }
+  /// Lookup helper — turns the picked user ids back into [UserDto]s so
+  /// the picker field can render names. Preserves the directory's
+  /// natural order (alphabetical by API ranking) instead of selection
+  /// order, which keeps the field stable as users tap on/off.
+  List<UserDto> get _selectedUsers => widget.bundle.usersPage.items
+      .where((u) => _selectedUserIds.contains(u.id))
+      .toList(growable: false);
+
+  bool get _isDirty => _selectedUserIds.isNotEmpty && _draftRole != null;
 
   Future<void> _save() async {
-    final user = _selected;
-    if (user == null || _saving) return;
+    if (!_isDirty || _saving) return;
     final messenger = ScaffoldMessenger.of(context);
     final l10n = AppLocalizations.of(context);
     setState(() => _saving = true);
-    try {
-      // Send the picked role's **code** (e.g. `"STAFF"`) under the
-      // **`roles`** JSON key — that's what the Spring DTO actually
-      // expects:
-      //
-      //   public record UpdateUserRequest(..., Set<String> roles) {}
-      //
-      // Earlier iterations sent `roleIds: [3]` / `roleIds: ["3"]` /
-      // `roles: [3]` — Jackson silently dropped every one because the
-      // shapes didn't match the record's field name + type. Result:
-      // `"roles": []` on the response. Codes-as-strings is the only
-      // shape that actually persists.
-      //
-      // Empty list = strip every role; null (default ctor arg) = leave
-      // roles untouched.
-      final roles = _draftRole != null
-          ? <String>[_draftRole!.code]
-          : const <String>[];
-      final body = UpdateUserRequest(roles: roles);
-      developer.log(
-        '[Assignments] PATCH /users/${user.id} '
-        'body=${body.toJson()}',
-        name: 'Assignments',
-      );
-      await widget.usersApi.updateUser(user.id, body);
-      if (!mounted) return;
+
+    // UserDto.id is a stringified Spring Long — parse back to int for
+    // the wire payload (backend expects `Set<Long> userIds`). Anything
+    // non-numeric is dropped silently here; we add a sanity check
+    // below in case the whole set ends up empty.
+    final userIds = <int>[];
+    for (final id in _selectedUserIds) {
+      final parsed = int.tryParse(id);
+      if (parsed != null) userIds.add(parsed);
+    }
+    if (userIds.isEmpty) {
+      setState(() => _saving = false);
       messenger.showSnackBar(
         SnackBar(
-          content: Text(l10n.assignmentsSavedSnack),
+          content: Text(l10n.assignmentsSaveFailedSnack),
           behavior: SnackBarBehavior.floating,
+          backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
-      widget.onSaved();
+      return;
+    }
+
+    final body = AssignRolesRequest(
+      userIds: userIds,
+      roles: <String>[_draftRole!.code],
+      mode: _mode,
+    );
+
+    developer.log(
+      '[Assignments] POST /users/assign-roles body=${body.toJson()}',
+      name: 'Assignments',
+    );
+
+    try {
+      await widget.usersApi.assignRoles(body);
+      if (!mounted) return;
+      // Pop back to Settings home with `true` so the parent tile can
+      // show the success snackbar. Going via the root navigator
+      // matches the original push (see `_Tile._open` →
+      // `ConfigRouter.pushPageAnimation`) — using the non-root
+      // navigator here would no-op because there's no in-shell route
+      // to pop. We deliberately DON'T call `widget.onSaved()` (the
+      // bundle reload) since we're leaving the page entirely.
+      Navigator.of(context, rootNavigator: true).pop(true);
     } catch (e, stack) {
-      // Surface the real reason. The previous `catch (_)` silently
-      // swallowed the cause, so a 403 from a missing permission, a 400
-      // from a malformed body, or a connection refused all looked
-      // identical to the user.
       developer.log(
-        '[Assignments] PATCH /users/${user.id} FAILED: $e',
+        '[Assignments] POST /users/assign-roles FAILED: $e',
         name: 'Assignments',
         error: e,
         stackTrace: stack,
@@ -277,10 +273,10 @@ class _UsersToRolesFormState extends State<_UsersToRolesForm> {
       setState(() => _saving = false);
       messenger.showSnackBar(
         SnackBar(
-          content: Text('${l10n.assignmentsSaveFailedSnack}: ${_humanError(e)}'),
+          content: Text(
+              '${l10n.assignmentsSaveFailedSnack}: ${_humanError(e)}'),
           behavior: SnackBarBehavior.floating,
           backgroundColor: Theme.of(context).colorScheme.error,
-          // Long error messages need room to be readable.
           duration: const Duration(seconds: 6),
           action: SnackBarAction(
             label: 'Copy',
@@ -296,14 +292,11 @@ class _UsersToRolesFormState extends State<_UsersToRolesForm> {
 
   /// Strip the noisy dio prefix so the snackbar shows the actionable
   /// part — HTTP status + server message — instead of the full
-  /// "DioException [bad response]: …" wrapper. Falls back to the raw
-  /// `toString()` for non-dio errors.
+  /// "DioException [bad response]: …" wrapper.
   String _humanError(Object e) {
     if (e is DioException) {
       final status = e.response?.statusCode;
       final data = e.response?.data;
-      // Spring envelope ships failures as
-      // `{success: false, message: "...", errorCode: "..."}`.
       if (data is Map && data['message'] is String) {
         final msg = data['message'] as String;
         return status != null ? 'HTTP $status — $msg' : msg;
@@ -318,7 +311,7 @@ class _UsersToRolesFormState extends State<_UsersToRolesForm> {
 
   Future<void> _openUserPicker() async {
     if (_saving) return;
-    final picked = await showModalBottomSheet<UserDto>(
+    final picked = await showModalBottomSheet<Set<String>>(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
@@ -326,11 +319,22 @@ class _UsersToRolesFormState extends State<_UsersToRolesForm> {
       ),
       builder: (_) => _UserPickerSheet(
         users: widget.bundle.usersPage.items,
-        initialSelectedId: _selected?.id,
+        initialSelectedIds: _selectedUserIds,
       ),
     );
     if (picked != null) {
-      _selectUser(picked);
+      _setSelectedUsers(picked);
+    }
+  }
+
+  String _modeHelper(AppLocalizations l10n) {
+    switch (_mode) {
+      case AssignRolesMode.add:
+        return l10n.assignmentsModeHelperAdd;
+      case AssignRolesMode.replace:
+        return l10n.assignmentsModeHelperReplace;
+      case AssignRolesMode.remove:
+        return l10n.assignmentsModeHelperRemove;
     }
   }
 
@@ -339,7 +343,6 @@ class _UsersToRolesFormState extends State<_UsersToRolesForm> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final canEdit = widget.bundle.canEdit;
-    final hasUser = _selected != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -350,7 +353,6 @@ class _UsersToRolesFormState extends State<_UsersToRolesForm> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Subtitle that anchors the flow: one user, one role.
                 AppLabel(
                   text: l10n.assignmentsAssignSubtitle,
                   fontSize: AppFontSize.value13,
@@ -358,39 +360,48 @@ class _UsersToRolesFormState extends State<_UsersToRolesForm> {
                   fontWeight: FontWeight.w500,
                 ),
                 const SizedBox(height: 20),
-                // ── USER section ────────────────────────────────────
-                _FieldLabel(text: l10n.assignmentsUserFieldLabel),
-                const SizedBox(height: 6),
-                _UserPickerField(
-                  user: _selected,
-                  enabled: canEdit,
-                  onTap: _openUserPicker,
-                ),
-                const SizedBox(height: 20),
                 // ── ROLE section ────────────────────────────────────
-                _FieldLabel(
-                  text: l10n.assignmentsRoleFieldLabel,
-                  // Dim the label when the dropdown is disabled — makes
-                  // it obvious the section isn't yet active.
-                  dim: !hasUser,
-                ),
+                // Role goes first now: pick what you want to assign,
+                // then pick who gets it. Both fields are independently
+                // editable — the previous "pick a user first" gate
+                // would feel arbitrary in this order, so it's gone.
+                // The save bar still gates on the combination.
+                _FieldLabel(text: l10n.assignmentsRoleFieldLabel),
                 const SizedBox(height: 6),
                 _AssignRoleDropdown(
                   roles: widget.bundle.roles,
                   value: _draftRole,
-                  // Role dropdown only becomes interactive once a user
-                  // is picked — assigning a role to nobody makes no
-                  // sense and would confuse the dirty-check.
-                  enabled: canEdit && hasUser && !_saving,
+                  enabled: canEdit && !_saving,
                   onChanged: _selectRole,
                 ),
                 const SizedBox(height: 8),
-                // Helper text shifts based on state so the user always
-                // knows why the role field is or isn't actionable.
                 AppLabel(
-                  text: hasUser
-                      ? l10n.assignmentsRoleHelperCurrentRole
-                      : l10n.assignmentsRoleHelperPickUserFirst,
+                  text: l10n.assignmentsRoleHelperCurrentRole,
+                  fontSize: AppFontSize.value12,
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w400,
+                ),
+                const SizedBox(height: 20),
+                // ── USERS section ───────────────────────────────────
+                _FieldLabel(text: l10n.assignmentsUserFieldLabel),
+                const SizedBox(height: 6),
+                _UserPickerField(
+                  selectedUsers: _selectedUsers,
+                  enabled: canEdit && !_saving,
+                  onTap: _openUserPicker,
+                ),
+                const SizedBox(height: 20),
+                // ── MODE section ────────────────────────────────────
+                _FieldLabel(text: l10n.assignmentsModeFieldLabel),
+                const SizedBox(height: 6),
+                _ModePicker(
+                  mode: _mode,
+                  enabled: canEdit && !_saving,
+                  onChanged: _setMode,
+                ),
+                const SizedBox(height: 8),
+                AppLabel(
+                  text: _modeHelper(l10n),
                   fontSize: AppFontSize.value12,
                   color: theme.colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w400,
@@ -399,8 +410,6 @@ class _UsersToRolesFormState extends State<_UsersToRolesForm> {
             ),
           ),
         ),
-        // Hairline divider visually separates the sticky save bar from
-        // the scrollable form above.
         Divider(
           height: 1,
           thickness: 0.5,
@@ -411,9 +420,15 @@ class _UsersToRolesFormState extends State<_UsersToRolesForm> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
             child: _SaveBar(
-              enabled: canEdit && hasUser && _isDirty && !_saving,
+              enabled: canEdit && _isDirty && !_saving,
               saving: _saving,
-              dirtyLabel: l10n.assignmentsSaveAction,
+              // Save label is mode + count aware — "Add role to 3
+              // users" / "Replace roles on 5 users" / etc. Falls back
+              // to a generic "Save changes" when no users are picked.
+              dirtyLabel: l10n.assignmentsSaveActionBulk(
+                _mode.name,
+                _selectedUserIds.length,
+              ),
               cleanLabel: l10n.assignmentsNoChangesYet,
               onSave: _save,
             ),
@@ -425,15 +440,15 @@ class _UsersToRolesFormState extends State<_UsersToRolesForm> {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// Form pieces — labels, pickers, save bar
+// Form pieces — labels, pickers, mode picker, save bar
 // ════════════════════════════════════════════════════════════════════
 
-/// Small uppercase label that sits above each picker ("USER", "ROLE").
+/// Small uppercase label that sits above each section ("ROLE",
+/// "USERS", "MODE").
 class _FieldLabel extends StatelessWidget {
-  const _FieldLabel({required this.text, this.dim = false});
+  const _FieldLabel({required this.text});
 
   final String text;
-  final bool dim;
 
   @override
   Widget build(BuildContext context) {
@@ -443,9 +458,7 @@ class _FieldLabel extends StatelessWidget {
       child: AppLabel(
         text: text.toUpperCase(),
         fontSize: AppFontSize.value11,
-        color: dim
-            ? theme.colorScheme.onSurfaceVariant
-            : theme.colorScheme.primary,
+        color: theme.colorScheme.primary,
         fontWeight: FontWeight.w900,
         letterSpacing: 0.5,
       ),
@@ -453,6 +466,108 @@ class _FieldLabel extends StatelessWidget {
   }
 }
 
+/// Tap-to-pick users field. Renders a form-field-styled row showing a
+/// summary of the selection (count + first few names) or a hint when
+/// empty. Tapping opens [_UserPickerSheet] for multi-select.
+class _UserPickerField extends StatelessWidget {
+  const _UserPickerField({
+    required this.selectedUsers,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final List<UserDto> selectedUsers;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  static String _displayName(UserDto u) =>
+      u.fullName.trim().isEmpty ? u.email : u.fullName.trim();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final hasSelection = selectedUsers.isNotEmpty;
+
+    String? summary;
+    if (selectedUsers.length == 1) {
+      summary = _displayName(selectedUsers.first);
+    } else if (selectedUsers.length > 1 && selectedUsers.length <= 3) {
+      summary = selectedUsers.map(_displayName).join(', ');
+    } else if (selectedUsers.length > 3) {
+      // "John +3 others" — keeps the field height stable regardless of
+      // selection size, and the count line below carries the exact
+      // number so the user never has to count names.
+      summary = l10n.assignmentsUsersSelectedSummary(
+        _displayName(selectedUsers.first),
+        selectedUsers.length - 1,
+      );
+    }
+
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          border: Border.all(
+            color: theme.colorScheme.outlineVariant,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.group_outlined,
+              color: enabled
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.outline,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: hasSelection
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AppLabel(
+                          text: summary!,
+                          fontSize: AppFontSize.value14,
+                          fontWeight: FontWeight.w700,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        AppLabel(
+                          text: l10n.assignmentsUsersSelectedCount(
+                              selectedUsers.length),
+                          fontSize: AppFontSize.value12,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ],
+                    )
+                  : AppLabel(
+                      text: l10n.assignmentsPickUsersPrompt,
+                      fontSize: AppFontSize.value14,
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
+                    ),
+            ),
+            Icon(
+              Icons.unfold_more_rounded,
+              size: 20,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Multi-select user row used inside [_UserPickerSheet]. Toggle state
+/// is owned by the sheet's state; this widget just paints checked /
+/// unchecked + dispatches taps.
 class _UserRow extends StatelessWidget {
   const _UserRow({
     required this.user,
@@ -493,131 +608,215 @@ class _UserRow extends StatelessWidget {
         fontSize: AppFontSize.value14,
         fontWeight: FontWeight.w700,
       ),
-      subtitle: AppLabel(
-        text: user.email,
-        fontSize: AppFontSize.value12,
-        color: theme.colorScheme.onSurfaceVariant,
+      // Two-line subtitle: email on one row, role-status chip on the
+      // next. Surfaces "this person has no role" / "this person is
+      // already STAFF" at a glance so the admin can pick the right
+      // people without re-opening each user's profile.
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 2),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AppLabel(
+              text: user.email,
+              fontSize: AppFontSize.value12,
+              color: theme.colorScheme.onSurfaceVariant,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            _RoleStatusChip(roles: user.roles),
+          ],
+        ),
       ),
-      trailing: isSelected
-          ? Icon(Icons.check_circle, color: theme.colorScheme.primary, size: 20)
-          : null,
+      // Checkbox icon (not a real Checkbox widget) keeps the whole row
+      // tappable without a hit-target collision between the box and
+      // the ListTile.
+      trailing: Icon(
+        isSelected
+            ? Icons.check_box_rounded
+            : Icons.check_box_outline_blank_rounded,
+        color: isSelected
+            ? theme.colorScheme.primary
+            : theme.colorScheme.outline,
+      ),
     );
   }
 }
 
-/// Tap-to-pick "Select user" field. Renders a form-field-styled row —
-/// avatar + name + email when a user is selected, hint text otherwise.
-/// Tapping opens [_UserPickerSheet] where the actual list lives.
-class _UserPickerField extends StatelessWidget {
-  const _UserPickerField({
-    required this.user,
-    required this.enabled,
+/// Selectable pill used by the picker sheet's role-status filter row.
+/// Looks like a Material `FilterChip` but rolled by hand so it picks
+/// up the same `AppLabel` typography + `AppRadii.pill` shape as the
+/// rest of the page.
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({
+    required this.label,
+    required this.selected,
     required this.onTap,
   });
 
-  final UserDto? user;
-  final bool enabled;
+  final String label;
+  final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    final hasUser = user != null;
-
+    final bg = selected
+        ? theme.colorScheme.primaryContainer
+        : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5);
+    final fg = selected
+        ? theme.colorScheme.onPrimaryContainer
+        : theme.colorScheme.onSurfaceVariant;
     return InkWell(
-      onTap: enabled ? onTap : null,
-      borderRadius: BorderRadius.circular(AppRadii.md),
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadii.pill),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(AppRadii.md),
+          color: bg,
+          borderRadius: BorderRadius.circular(AppRadii.pill),
           border: Border.all(
-            color: theme.colorScheme.outlineVariant,
+            color: selected
+                ? theme.colorScheme.primary.withValues(alpha: 0.4)
+                : Colors.transparent,
           ),
         ),
-        child: Row(
-          children: [
-            Icon(
-              Icons.person_outline,
-              color: enabled
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.outline,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: hasUser
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        AppLabel(
-                          text: user!.fullName.trim().isEmpty
-                              ? user!.email
-                              : user!.fullName,
-                          fontSize: AppFontSize.value14,
-                          fontWeight: FontWeight.w700,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (user!.fullName.trim().isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          AppLabel(
-                            text: user!.email,
-                            fontSize: AppFontSize.value12,
-                            color: theme.colorScheme.onSurfaceVariant,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ],
-                    )
-                  : AppLabel(
-                      text: l10n.assignmentsPickUserPrompt,
-                      fontSize: AppFontSize.value14,
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w500,
-                    ),
-            ),
-            Icon(
-              Icons.unfold_more_rounded,
-              size: 20,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ],
+        child: AppLabel(
+          text: label,
+          fontSize: AppFontSize.value12,
+          color: fg,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
   }
 }
 
-/// Modal bottom sheet with a searchable list of users. Tapping a row
-/// pops the sheet with the picked [UserDto]. Search filters by full
-/// name + email.
+/// Compact pill showing a user's current role(s). Renders as:
+///   - errorContainer "No role" when [roles] is empty
+///   - primaryContainer with up to 2 role codes ("STAFF" / "ADMIN · STAFF")
+///   - "+N" suffix if the user has more than 2 roles
+///
+/// Used inside the user picker sheet and (single-selection only) on
+/// the picker field itself.
+class _RoleStatusChip extends StatelessWidget {
+  const _RoleStatusChip({required this.roles});
+
+  final List<String> roles;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final isEmpty = roles.isEmpty;
+
+    final bg = isEmpty
+        ? theme.colorScheme.errorContainer.withValues(alpha: 0.5)
+        : theme.colorScheme.primaryContainer.withValues(alpha: 0.6);
+    final fg = isEmpty
+        ? theme.colorScheme.error
+        : theme.colorScheme.onPrimaryContainer;
+
+    final String label;
+    if (isEmpty) {
+      label = l10n.assignmentsUserNoRoleBadge;
+    } else if (roles.length <= 2) {
+      label = roles.join(' · ');
+    } else {
+      // Show first two + a count of the rest so a user with 5 roles
+      // doesn't blow up the row width.
+      final shown = roles.take(2).join(' · ');
+      label = '$shown ${l10n.assignmentsUserRolesMore(roles.length - 2)}';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+      ),
+      child: AppLabel(
+        text: label,
+        fontSize: AppFontSize.value10,
+        color: fg,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 0.3,
+      ),
+    );
+  }
+}
+
+/// Modal bottom sheet with a searchable, multi-select list of users.
+/// Pops with the full set of picked ids; cancel = system back / drag
+/// down = pop with null.
 class _UserPickerSheet extends StatefulWidget {
   const _UserPickerSheet({
     required this.users,
-    required this.initialSelectedId,
+    required this.initialSelectedIds,
   });
 
   final List<UserDto> users;
-  final String? initialSelectedId;
+  final Set<String> initialSelectedIds;
 
   @override
   State<_UserPickerSheet> createState() => _UserPickerSheetState();
 }
 
+/// Role-status filter applied on top of the text search inside the
+/// user picker sheet. Lets the admin narrow to "everyone who already
+/// has a role" vs "users who still need one assigned" — common ops
+/// after onboarding a batch of new staff.
+enum _RoleFilter { all, hasRole, noRole }
+
 class _UserPickerSheetState extends State<_UserPickerSheet> {
+  late final Set<String> _picked = <String>{...widget.initialSelectedIds};
   String _query = '';
+  _RoleFilter _roleFilter = _RoleFilter.all;
 
   List<UserDto> get _filtered {
-    if (_query.trim().isEmpty) return widget.users;
     final q = _query.trim().toLowerCase();
-    return widget.users
-        .where((u) =>
-            u.fullName.toLowerCase().contains(q) ||
-            u.email.toLowerCase().contains(q))
-        .toList(growable: false);
+    return widget.users.where((u) {
+      // Text predicate first — faster than the role check on long names.
+      if (q.isNotEmpty &&
+          !u.fullName.toLowerCase().contains(q) &&
+          !u.email.toLowerCase().contains(q)) {
+        return false;
+      }
+      switch (_roleFilter) {
+        case _RoleFilter.all:
+          return true;
+        case _RoleFilter.hasRole:
+          return u.roles.isNotEmpty;
+        case _RoleFilter.noRole:
+          return u.roles.isEmpty;
+      }
+    }).toList(growable: false);
+  }
+
+  bool get _allFilteredSelected =>
+      _filtered.isNotEmpty &&
+      _filtered.every((u) => _picked.contains(u.id));
+
+  void _toggle(String userId) {
+    setState(() {
+      if (_picked.contains(userId)) {
+        _picked.remove(userId);
+      } else {
+        _picked.add(userId);
+      }
+    });
+  }
+
+  /// "Select all" respects the active search filter — selecting only
+  /// the currently visible rows so the user can narrow + pick a group
+  /// without scooping up everyone in the directory.
+  void _selectAllFiltered() {
+    setState(() => _picked.addAll(_filtered.map((u) => u.id)));
+  }
+
+  void _clearAll() {
+    setState(_picked.clear);
   }
 
   @override
@@ -625,9 +824,6 @@ class _UserPickerSheetState extends State<_UserPickerSheet> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final users = _filtered;
-
-    // Take up to ~75% of the screen so the keyboard + sheet fit
-    // comfortably and the list can scroll within the remaining space.
     final maxHeight = MediaQuery.of(context).size.height * 0.75;
 
     return SafeArea(
@@ -638,7 +834,7 @@ class _UserPickerSheetState extends State<_UserPickerSheet> {
           padding: EdgeInsets.only(
             left: 16,
             right: 16,
-            top: 16,
+            top: 12,
             bottom: MediaQuery.of(context).viewInsets.bottom + 16,
           ),
           child: Column(
@@ -655,9 +851,33 @@ class _UserPickerSheetState extends State<_UserPickerSheet> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+              // Header row: count + Select all / Clear actions. Buttons
+              // disable when their action would be a no-op so the user
+              // gets visual feedback.
+              Row(
+                children: [
+                  Expanded(
+                    child: AppLabel(
+                      text: l10n.assignmentsUsersSelectedCount(_picked.length),
+                      fontSize: AppFontSize.value14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed:
+                        _allFilteredSelected ? null : _selectAllFiltered,
+                    child: Text(l10n.assignmentsSelectAllAction),
+                  ),
+                  TextButton(
+                    onPressed: _picked.isEmpty ? null : _clearAll,
+                    child: Text(l10n.assignmentsClearSelectionAction),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
               TextField(
-                autofocus: true,
+                autofocus: false,
                 onChanged: (q) => setState(() => _query = q),
                 decoration: InputDecoration(
                   hintText: l10n.assignmentsUsersSearchHint,
@@ -674,7 +894,41 @@ class _UserPickerSheetState extends State<_UserPickerSheet> {
                   isDense: true,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
+              // Role-status filter chips. "All" is the default; the
+              // other two let an admin laser-focus on either the
+              // already-assigned set (e.g. about to add an extra role)
+              // or the role-less set (e.g. onboarding fresh accounts).
+              SizedBox(
+                height: 36,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: EdgeInsets.zero,
+                  children: [
+                    _FilterChip(
+                      label: l10n.assignmentsFilterAll,
+                      selected: _roleFilter == _RoleFilter.all,
+                      onTap: () =>
+                          setState(() => _roleFilter = _RoleFilter.all),
+                    ),
+                    const SizedBox(width: 6),
+                    _FilterChip(
+                      label: l10n.assignmentsFilterHasRole,
+                      selected: _roleFilter == _RoleFilter.hasRole,
+                      onTap: () =>
+                          setState(() => _roleFilter = _RoleFilter.hasRole),
+                    ),
+                    const SizedBox(width: 6),
+                    _FilterChip(
+                      label: l10n.assignmentsFilterNoRole,
+                      selected: _roleFilter == _RoleFilter.noRole,
+                      onTap: () =>
+                          setState(() => _roleFilter = _RoleFilter.noRole),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
               Flexible(
                 child: users.isEmpty
                     ? _EmptyHint(
@@ -691,11 +945,28 @@ class _UserPickerSheetState extends State<_UserPickerSheet> {
                           final u = users[i];
                           return _UserRow(
                             user: u,
-                            isSelected: u.id == widget.initialSelectedId,
-                            onTap: () => Navigator.of(context).pop(u),
+                            isSelected: _picked.contains(u.id),
+                            onTap: () => _toggle(u.id),
                           );
                         },
                       ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 48,
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).pop(_picked),
+                  style: FilledButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.md),
+                    ),
+                  ),
+                  child: AppLabel(
+                    text: l10n.assignmentsConfirmDoneAction,
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ],
           ),
@@ -705,9 +976,8 @@ class _UserPickerSheetState extends State<_UserPickerSheet> {
   }
 }
 
-/// Single-select role dropdown. `isExpanded: true` so the trigger
-/// fills the parent column; ellipsis on long names; SYSTEM badge for
-/// built-in roles.
+/// Single-select role dropdown — same widget as before, just lives in
+/// the bulk form now.
 class _AssignRoleDropdown extends StatelessWidget {
   const _AssignRoleDropdown({
     required this.roles,
@@ -787,6 +1057,54 @@ class _AssignRoleDropdown extends StatelessWidget {
           ),
       ],
       onChanged: enabled ? onChanged : null,
+    );
+  }
+}
+
+/// Segmented mode picker — `ADD` / `REPLACE` / `REMOVE`. Mirrors the
+/// `AssignRolesRequest.Mode` enum on the Spring side. Always 3
+/// segments; disabled when no users are picked.
+class _ModePicker extends StatelessWidget {
+  const _ModePicker({
+    required this.mode,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final AssignRolesMode mode;
+  final bool enabled;
+  final ValueChanged<AssignRolesMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return SegmentedButton<AssignRolesMode>(
+      segments: <ButtonSegment<AssignRolesMode>>[
+        ButtonSegment(
+          value: AssignRolesMode.add,
+          label: Text(l10n.assignmentsModeAdd),
+          icon: const Icon(Icons.add_rounded, size: 18),
+        ),
+        ButtonSegment(
+          value: AssignRolesMode.replace,
+          label: Text(l10n.assignmentsModeReplace),
+          icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+        ),
+        ButtonSegment(
+          value: AssignRolesMode.remove,
+          label: Text(l10n.assignmentsModeRemove),
+          icon: const Icon(Icons.remove_rounded, size: 18),
+        ),
+      ],
+      selected: <AssignRolesMode>{mode},
+      onSelectionChanged:
+          enabled ? (s) => onChanged(s.first) : null,
+      showSelectedIcon: false,
+      style: SegmentedButton.styleFrom(
+        // Tighten padding so all three segments fit on narrow phones
+        // without truncating the labels.
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      ),
     );
   }
 }
@@ -871,9 +1189,6 @@ class _EmptyHint extends StatelessWidget {
   }
 }
 
-/// Full-page lock shown when the current user isn't a super-admin.
-///
-/// Matches the policy "only super admin can assign roles".
 class _SuperAdminLock extends StatelessWidget {
   const _SuperAdminLock();
 

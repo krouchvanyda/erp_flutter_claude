@@ -3905,13 +3905,13 @@ abstract class AppLocalizations {
   /// No description provided for @assignmentsAssignSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Pick a user, then assign one role.'**
+  /// **'Pick users, then assign roles.'**
   String get assignmentsAssignSubtitle;
 
   /// No description provided for @assignmentsUserFieldLabel.
   ///
   /// In en, this message translates to:
-  /// **'USER'**
+  /// **'USERS'**
   String get assignmentsUserFieldLabel;
 
   /// No description provided for @assignmentsRoleFieldLabel.
@@ -3920,17 +3920,131 @@ abstract class AppLocalizations {
   /// **'ROLE'**
   String get assignmentsRoleFieldLabel;
 
+  /// No description provided for @assignmentsModeFieldLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'MODE'**
+  String get assignmentsModeFieldLabel;
+
   /// No description provided for @assignmentsRoleHelperPickUserFirst.
   ///
   /// In en, this message translates to:
-  /// **'Pick a user first to enable role assignment.'**
+  /// **'Pick at least one user to enable role assignment.'**
   String get assignmentsRoleHelperPickUserFirst;
 
   /// No description provided for @assignmentsRoleHelperCurrentRole.
   ///
   /// In en, this message translates to:
-  /// **'Replaces every role currently assigned to the user.'**
+  /// **'Applies the selected role to every picked user.'**
   String get assignmentsRoleHelperCurrentRole;
+
+  /// No description provided for @assignmentsPickUsersPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick users…'**
+  String get assignmentsPickUsersPrompt;
+
+  /// No description provided for @assignmentsUsersSelectedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{# user selected} other{# users selected}}'**
+  String assignmentsUsersSelectedCount(int count);
+
+  /// No description provided for @assignmentsUsersSelectedSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{first} +{others, plural, one{# other} other{# others}}'**
+  String assignmentsUsersSelectedSummary(String first, int others);
+
+  /// No description provided for @assignmentsModeAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get assignmentsModeAdd;
+
+  /// No description provided for @assignmentsModeReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace'**
+  String get assignmentsModeReplace;
+
+  /// No description provided for @assignmentsModeRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get assignmentsModeRemove;
+
+  /// No description provided for @assignmentsModeHelperAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Adds the role on top of each user\'s existing roles.'**
+  String get assignmentsModeHelperAdd;
+
+  /// No description provided for @assignmentsModeHelperReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Replaces each user\'s roles with only the picked role.'**
+  String get assignmentsModeHelperReplace;
+
+  /// No description provided for @assignmentsModeHelperRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Strips the picked role from each user (others kept).'**
+  String get assignmentsModeHelperRemove;
+
+  /// No description provided for @assignmentsSaveActionBulk.
+  ///
+  /// In en, this message translates to:
+  /// **'{mode, select, add{Add role to {count, plural, one{# user} other{# users}}} replace{Replace roles on {count, plural, one{# user} other{# users}}} remove{Remove role from {count, plural, one{# user} other{# users}}} other{Save changes}}'**
+  String assignmentsSaveActionBulk(String mode, int count);
+
+  /// No description provided for @assignmentsSelectAllAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all'**
+  String get assignmentsSelectAllAction;
+
+  /// No description provided for @assignmentsClearSelectionAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get assignmentsClearSelectionAction;
+
+  /// No description provided for @assignmentsConfirmDoneAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get assignmentsConfirmDoneAction;
+
+  /// No description provided for @assignmentsUserNoRoleBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'No role'**
+  String get assignmentsUserNoRoleBadge;
+
+  /// No description provided for @assignmentsUserRolesMore.
+  ///
+  /// In en, this message translates to:
+  /// **'+{count}'**
+  String assignmentsUserRolesMore(int count);
+
+  /// No description provided for @assignmentsFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get assignmentsFilterAll;
+
+  /// No description provided for @assignmentsFilterHasRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Has role'**
+  String get assignmentsFilterHasRole;
+
+  /// No description provided for @assignmentsFilterNoRole.
+  ///
+  /// In en, this message translates to:
+  /// **'No role'**
+  String get assignmentsFilterNoRole;
 
   /// No description provided for @commonApproveAction.
   ///
