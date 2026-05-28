@@ -35,18 +35,41 @@ class ErpMobileApp extends StatefulWidget {
 class _ErpMobileAppState extends State<ErpMobileApp> {
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
-    FirebaseNotificationProvider().getFirebaseToken();
-    FirebaseNotificationProvider().initOnMessageListener(getData: (message){
-      print("message----------------------- in App $message");
-    });
-    FirebaseNotificationProvider().initOnMessageOpenedApp(getData: (message){
-      print("message-----------------------out app minimue $message");
-    });
-    FirebaseNotificationProvider().handleInitialMessage(getData: (message){
-      print("message-----------------------kill app $message");
-    });
+    // FirebaseNotificationProvider is now a singleton (private
+    // constructor + `.instance`) so subscription state, dedupe
+    // counters, and the dispose hook don't fragment across callers.
+    //
+    // Token fetch + persistence to PushTokenStorage already runs in
+    // `main.dart`; this redundant `getFirebaseToken()` call is kept
+    // here only for the debug log it produces — drop it once the
+    // backend `POST /devices` flow lands.
+    FirebaseNotificationProvider.instance.getFirebaseToken();
+
+    // Three labelled callbacks so the console makes the source of
+    // each push obvious during development:
+    //   - foreground (app open)
+    //   - background → tap to open
+    //   - terminated → tap to launch
+    //
+    // The provider's `initOnMessageListener` / `initOnMessageOpenedApp`
+    // now cancel any previous subscription on re-call, so a hot
+    // reload that re-runs initState won't leak duplicate listeners.
+    FirebaseNotificationProvider.instance.initOnMessageListener(
+      getData: (message) {
+        debugPrint('message ── in app ── $message');
+      },
+    );
+    FirebaseNotificationProvider.instance.initOnMessageOpenedApp(
+      getData: (message) {
+        debugPrint('message ── out of app (minimised) ── $message');
+      },
+    );
+    FirebaseNotificationProvider.instance.handleInitialMessage(
+      getData: (message) {
+        debugPrint('message ── killed app ── $message');
+      },
+    );
   }
   @override
   Widget build(BuildContext context) {
