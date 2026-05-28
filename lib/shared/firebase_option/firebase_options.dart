@@ -46,8 +46,8 @@ class DefaultFirebaseOptions {
 
   /// Prod — iOS (`e-customer-dev`) ← WRONG PROJECT (see warning above).
   static const FirebaseOptions iosProd = FirebaseOptions(
-    apiKey: "AIzaSyC9GQ_IAasLPrOhl4fflGjGGP3OPfAxcLQ",
-    appId: "1:903789590606:android:f04c643b383b358673ab1f",
+    apiKey: "AIzaSyB41yHhZ_eoTc2go0icMI5Yj74VvixPLeM",
+    appId: "1:903789590606:ios:f0c38e800be8f28573ab1f",
     messagingSenderId: "903789590606",
     projectId: "erp-project-ba24f",
   );
