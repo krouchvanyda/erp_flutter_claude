@@ -31,6 +31,11 @@ dependencies:
   connectivity_plus: ^6.1.0
   pretty_dio_logger: ^1.4.0
   web_socket_channel: ^3.0.1
+  # STOMP client for the chat module's real-backend integration
+  # (Prompt 1 of CHAT_MODULE_BACKEND_INTEGRATIONGUIDE.md). Subscribes
+  # to `/topic/conversations/{id}*` + `/user/queue/*` for inbound;
+  # outbound chat ops go through REST via dio.
+  stomp_dart_client: ^2.1.0
 
   # ── Local persistence ───────────────────────────────────────────
   drift: ^2.21.0

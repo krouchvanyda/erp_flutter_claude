@@ -16,6 +16,7 @@ import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/active_conversation_tracker.dart';
 import '../../data/chat_settings.dart';
+import '../../data/chat_transport.dart';
 import '../../data/repositories/call_log_repository.dart';
 import '../../data/repositories/conversations_repository.dart';
 import '../../data/repositories/messages_repository.dart';
@@ -83,6 +84,11 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     unawaited(GetIt.I<ConversationsRepository>()
         .markRead(widget.conversationId)
         .catchError((_) async => throw StateError('conv missing')));
+    // Prompt 3 — pull real history from `GET /chats/conversations/{id}/messages`
+    // and ask the transport to subscribe to `/topic/conversations/{id}`
+    // for live updates. No-op on seed convs (`conv-001` etc.) or when
+    // the backend data source hasn't been bound (demo mode).
+    unawaited(_msgRepo.loadForConversation(widget.conversationId));
     // Rebuild the page when identity changes so "isOwn" bubbles flip
     // sides instantly.
     _settingsSub = _settings.watch().listen((_) {
@@ -100,6 +106,10 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   @override
   void dispose() {
     ActiveConversationTracker.instance.leave(widget.conversationId);
+    // Prompt 3 — drop the per-conv STOMP subscriptions
+    // (`/topic/conversations/{id}` + `…/call`) so we don't keep them
+    // alive for every chat the user has ever opened this session.
+    GetIt.I<ChatTransport>().unsubscribeConversation(widget.conversationId);
     _settingsSub?.cancel();
     _inputCtrl.dispose();
     _scrollCtrl.dispose();

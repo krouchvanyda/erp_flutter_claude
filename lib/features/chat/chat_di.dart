@@ -2,18 +2,23 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../core/network/token_storage.dart';
+import '../settings/data/datasources/users_remote_data_source.dart';
 import 'data/active_conversation_tracker.dart';
 import 'data/call_signaling_service.dart';
 import 'data/chat_lifecycle_bridge.dart';
 import 'data/chat_seed.dart';
 import 'data/chat_settings.dart';
 import 'data/chat_transport.dart';
+import 'data/chats_remote_data_source.dart';
 import 'data/repositories/call_log_repository.dart';
 import 'data/repositories/conversations_repository.dart';
 import 'data/repositories/messages_repository.dart';
+import 'data/users_cache.dart';
 import 'entities/chat_message.dart';
 import 'entities/conversation.dart';
 
@@ -41,8 +46,26 @@ void registerChatModule(GetIt getIt) {
   if (!getIt.isRegistered<ChatSettings>()) {
     getIt.registerLazySingleton<ChatSettings>(() => ChatSettings.instance);
   }
+  // Real-backend transport (Prompt 1 of
+  // CHAT_MODULE_BACKEND_INTEGRATIONGUIDE.md). Constructor now takes
+  // - ChatsRemoteDataSource for outbound REST calls
+  // - TokenStorage so the STOMP CONNECT frame can carry the
+  //   `Authorization: Bearer …` header.
+  // The data source itself is built from the shared `Dio` registered
+  // by `core/di/register_module.dart`, so it auto-inherits the
+  // AuthInterceptor + base URL.
+  if (!getIt.isRegistered<ChatsRemoteDataSource>()) {
+    getIt.registerLazySingleton<ChatsRemoteDataSource>(
+      () => DioChatsRemoteDataSource(dio: getIt<Dio>()),
+    );
+  }
   if (!getIt.isRegistered<ChatTransport>()) {
-    getIt.registerLazySingleton<ChatTransport>(ChatTransport.new);
+    getIt.registerLazySingleton<ChatTransport>(
+      () => ChatTransport(
+        remote: getIt<ChatsRemoteDataSource>(),
+        tokens: getIt<TokenStorage>(),
+      ),
+    );
   }
   // Slice 10.2.3 — call signalling. Built lazily but pulls the
   // transport / settings / repos through its constructor so the
@@ -70,9 +93,59 @@ Future<void> bootChatTransport(GetIt getIt) async {
   final transport = getIt<ChatTransport>();
   final messages = getIt<MessagesRepository>();
   final conversations = getIt<ConversationsRepository>();
+  final remote = getIt<ChatsRemoteDataSource>();
 
   await settings.load();
   messages.attachTransport(transport);
+
+  // Resolve who we are from `/users/me` BEFORE wiring the repos so
+  // `currentUserId` is the real backend id and the UsersCache has
+  // self's name available for inbox tile / chat header rendering on
+  // first paint (no waiting for the user to open the picker). Then
+  // try to bulk-fetch `/users` so OTHER members' fullName also
+  // resolves before `loadInbox()` runs — without this, the inbox
+  // tiles render with raw numeric ids until the user opens the picker.
+  //
+  // Failures here are swallowed — the rest of the chat boot continues
+  // with whatever the cache has (often just self).
+  if (GetIt.I.isRegistered<UsersRemoteDataSource>()) {
+    final users = GetIt.I<UsersRemoteDataSource>();
+    try {
+      final meUser = await users.me();
+      final displayName = meUser.fullName.trim().isEmpty
+          ? meUser.email
+          : meUser.fullName;
+      unawaited(settings.setIdentity(
+        userId: meUser.id,
+        userName: displayName,
+      ));
+      UsersCache.instance.put(userId: meUser.id, name: displayName);
+    } catch (_) {
+      // Not signed in yet (401), no network, or tokens missing — fine.
+    }
+    try {
+      final page = await users.listUsers(pageSize: 200);
+      UsersCache.instance.putAll(
+        page.items.where((u) => u.enabled).map((u) => (
+              id: u.id,
+              name: u.fullName.trim().isEmpty ? u.email : u.fullName,
+              avatarUrl: null as String?,
+            )),
+      );
+    } catch (_) {
+      // 403 for CUSTOMER / STAFF roles, or auth not ready. Either way,
+      // inbox + conversation pages will show ids for unresolved users
+      // until the backend ships `name` on MemberDto or a public
+      // `/users/{id}` endpoint.
+    }
+  }
+
+  // Prompt 2 + 3 — wire the REST data source into both repos so
+  // `loadInbox()` (conversations) and `loadForConversation(id)`
+  // (messages) can pull real backend rows on demand. Done once here so
+  // pages don't have to.
+  conversations.setRemote(remote, currentUserId: settings.userId);
+  messages.setRemote(remote);
 
   // Pump every inbound peer event straight into the repo. For
   // received messages (Slice 10.1.6), also push the conversation's
@@ -161,12 +234,48 @@ Future<void> bootChatTransport(GetIt getIt) async {
   ChatLifecycleBridge(transport: transport, settings: settings).attach();
 
   // Open the socket with the current settings, and re-open whenever
-  // the user changes the URL or identity.
-  Future<void> apply() => transport.updateConfig(
-        url: settings.relayUrl,
-        userId: settings.userId,
-        userName: settings.userName,
-      );
+  // the user changes the URL or identity. After each (re)connect,
+  // refresh the inbox from REST so the conversation list shows real
+  // backend rows instead of seed data.
+  //
+  // URL resolution priority:
+  //   1. `settings.apiBaseUrl` — explicit chat override (chat ⋮ menu)
+  //   2. `Dio.options.baseUrl` minus `/api/v1` — same backend the REST
+  //      calls already hit, so STOMP follows REST automatically. This
+  //      is the line that fixes "A sends, B doesn't see anything":
+  //      previously we passed `settings.relayUrl` (the legacy LAN demo
+  //      URL, defaults to empty), so the STOMP socket never connected
+  //      and inbound `/user/queue/inbox` + `/topic/conversations/{id}`
+  //      frames had nowhere to land.
+  //   3. `settings.relayUrl` — legacy demo fallback
+  String resolveStompBase() {
+    if (settings.apiBaseUrl.isNotEmpty) return settings.apiBaseUrl;
+    if (GetIt.I.isRegistered<Dio>()) {
+      final dioBase = GetIt.I<Dio>().options.baseUrl;
+      if (dioBase.isNotEmpty) {
+        // Strip `/api/v1` (and any trailing slash) so the transport
+        // can append `/ws` cleanly. `Uri.parse` keeps us safe against
+        // missing scheme / path-only inputs.
+        final uri = Uri.tryParse(dioBase);
+        if (uri != null && uri.hasScheme) {
+          final port = uri.hasPort ? ':${uri.port}' : '';
+          return '${uri.scheme}://${uri.host}$port';
+        }
+      }
+    }
+    return settings.relayUrl;
+  }
+
+  Future<void> apply() async {
+    await transport.updateConfig(
+      url: resolveStompBase(),
+      userId: settings.userId,
+      userName: settings.userName,
+    );
+    // Re-bind in case the user id changed (sign-out → sign-in flip).
+    conversations.setRemote(remote, currentUserId: settings.userId);
+    unawaited(conversations.loadInbox());
+  }
 
   await apply();
   settings.watch().listen((_) => unawaited(apply()));

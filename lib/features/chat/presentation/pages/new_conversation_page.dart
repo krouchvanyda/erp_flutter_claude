@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
@@ -9,10 +12,12 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
-import '../../data/chat_seed.dart';
+import '../../../settings/data/datasources/users_remote_data_source.dart';
+import '../../data/chat_dto_mappers.dart';
 import '../../data/chat_settings.dart';
-import '../../data/chat_transport.dart';
+import '../../data/chats_remote_data_source.dart';
 import '../../data/repositories/conversations_repository.dart';
+import '../../data/users_cache.dart';
 import '../../entities/conversation.dart';
 import '../widgets/chat_avatar.dart';
 import 'chat_conversation_page.dart';
@@ -35,6 +40,20 @@ class _NewConversationPageState extends State<NewConversationPage> {
   final Set<String> _selected = {};
   bool _creating = false;
 
+  /// Real users pulled from `GET /api/v1/users` and mapped onto the
+  /// chat module's [ChatParticipantPreview] shape. Replaces the
+  /// pre-backend `ChatSeed.peopleDirectory` so the picker reflects
+  /// who's actually in the database. Loaded once in initState.
+  List<ChatParticipantPreview> _directory = const [];
+  bool _loadingDirectory = true;
+  String? _directoryError;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDirectory();
+  }
+
   @override
   void dispose() {
     _searchCtrl.dispose();
@@ -42,14 +61,120 @@ class _NewConversationPageState extends State<NewConversationPage> {
     super.dispose();
   }
 
+  Future<void> _loadDirectory() async {
+    final users = GetIt.I<UsersRemoteDataSource>();
+    final settings = GetIt.I<ChatSettings>();
+    // Resolve the real backend user id BEFORE filtering — `ChatSettings`
+    // boots with the demo-seed default (e.g. "u-001") so a bare
+    // `settings.userId` check would let the signed-in user show up in
+    // their own picker. We hit `/users/me` in parallel with the
+    // directory list to find out who we actually are, then sync the
+    // result back into `ChatSettings` so downstream chat code
+    // (sender-name resolution, conversation routing) also benefits.
+    String me = settings.userId;
+    try {
+      // Fire both calls in parallel — they're independent and
+      // `/users/me` is tiny next to a 200-row directory page.
+      final mePending = users.me();
+      final pagePending = users.listUsers(
+        // 200 covers the vast majority of small/mid orgs in one shot.
+        // Sort is intentionally NOT passed: backend's `PageQuery`
+        // does not parse the Spring `field,direction` shorthand —
+        // it treats "fullName,asc" as one column name and returns
+        // 400. We sort client-side below.
+        pageSize: 200,
+      );
+      final meUser = await mePending;
+      me = meUser.id;
+      // Fire-and-forget — setIdentity short-circuits when nothing
+      // changed, so calling this every directory load is cheap.
+      unawaited(settings.setIdentity(
+        userId: me,
+        userName: meUser.fullName.trim().isEmpty
+            ? meUser.email
+            : meUser.fullName,
+      ));
+      // Seed the shared users cache with self so chat_dto_mappers can
+      // resolve "You" / own avatar without another /users/me roundtrip.
+      UsersCache.instance.put(
+        userId: me,
+        name: meUser.fullName.trim().isEmpty
+            ? meUser.email
+            : meUser.fullName,
+      );
+      final page = await pagePending;
+      final mapped = <ChatParticipantPreview>[];
+      for (final u in page.items) {
+        if (!u.enabled) continue; // disabled accounts can't be messaged
+        if (u.id == me) continue; // exclude self
+        mapped.add(
+          ChatParticipantPreview(
+            employeeId: u.id,
+            name: u.fullName.trim().isEmpty ? u.email : u.fullName,
+            // Backend doesn't ship avatar URL or presence on UserDto
+            // yet — keep nulls so ChatAvatar falls back to initials and
+            // the status dot stays grey. Wire real values in once
+            // backend adds them.
+          ),
+        );
+      }
+      // Bulk-seed the cache so every chat surface (inbox tiles, chat
+      // header, sender labels) can resolve names for everyone in this
+      // org without per-id lookups. Includes self via the put() above.
+      UsersCache.instance.putAll(
+        page.items.where((u) => u.enabled).map((u) => (
+              id: u.id,
+              name: u.fullName.trim().isEmpty ? u.email : u.fullName,
+              avatarUrl: null as String?,
+            )),
+      );
+      mapped.sort(
+        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+      );
+      if (!mounted) return;
+      setState(() {
+        _directory = mapped;
+        _loadingDirectory = false;
+      });
+    } on DioException catch (e) {
+      if (!mounted) return;
+      // 403 means the signed-in user doesn't have `USER_READ`
+      // permission — typical for CUSTOMER / STAFF roles. The backend
+      // currently has no dedicated "chat-eligible users" endpoint, so
+      // until it ships one (or `/users` is relaxed for anyone with
+      // `chat:write`), non-admin users can't start new conversations
+      // from this picker. Show a clear message instead of a generic
+      // network error so the user / dev knows what to fix.
+      final isForbidden = e.response?.statusCode == 403;
+      setState(() {
+        _loadingDirectory = false;
+        _directoryError = isForbidden
+            ? 'You don\'t have permission to browse users.\nAsk an admin to enable chat directory access.'
+            : 'Could not load users. Tap retry.';
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loadingDirectory = false;
+        _directoryError = 'Could not load users. Tap retry.';
+      });
+    }
+  }
+
+  /// Look up a participant preview by id from the loaded directory.
+  /// Falls back to a placeholder so a stale selection (e.g. user got
+  /// disabled mid-flow) doesn't crash the create flow.
+  ChatParticipantPreview _resolve(String id) {
+    for (final p in _directory) {
+      if (p.employeeId == id) return p;
+    }
+    return ChatParticipantPreview(employeeId: id, name: 'Unknown');
+  }
+
   List<ChatParticipantPreview> get _filtered {
     final q = _query.trim().toLowerCase();
-    final me = GetIt.I<ChatSettings>().userId;
-    final everyone = ChatSeed.peopleDirectory
-        .where((p) => p.employeeId != me)
-        .toList();
-    if (q.isEmpty) return everyone;
-    return everyone.where((p) => p.name.toLowerCase().contains(q)).toList();
+    if (q.isEmpty) return _directory;
+    return _directory.where((p) => p.name.toLowerCase().contains(q)).toList();
   }
 
   bool get _canCreate {
@@ -78,67 +203,59 @@ class _NewConversationPageState extends State<NewConversationPage> {
   Future<void> _create() async {
     setState(() => _creating = true);
     try {
+      // Resolve numeric backend ids for every selected member. The
+      // picker only shows backend users, so every `_selected` entry
+      // should parse — but be defensive: if any id is junk, bail with
+      // a snackbar rather than POSTing a partially-broken payload.
+      final memberIds = <int>{};
+      for (final id in _selected) {
+        final n = int.tryParse(id);
+        if (n == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Selection contains a non-backend user.'),
+              ),
+            );
+          }
+          return;
+        }
+        memberIds.add(n);
+      }
+
+      final remote = GetIt.I<ChatsRemoteDataSource>();
       final repo = GetIt.I<ConversationsRepository>();
-      ChatConversation draft;
-      final now = DateTime.now();
-      if (_mode == _Mode.direct) {
-        final picked = ChatSeed.personById(_selected.first);
-        draft = ChatConversation(
-          id: '',
-          name: picked.name,
-          isGroup: false,
-          isMuted: false,
-          unreadCount: 0,
-          createdAt: now,
-          updatedAt: now,
-          presence: picked.presence,
-        );
-      } else {
-        final previews =
-            _selected.map(ChatSeed.personById).toList(growable: false);
-        final online = previews
-            .where((p) => p.presence == PresenceStatus.online)
-            .length;
-        draft = ChatConversation(
-          id: '',
-          name: _groupNameCtrl.text.trim(),
-          isGroup: true,
-          isMuted: false,
-          unreadCount: 0,
-          createdAt: now,
-          updatedAt: now,
-          participantPreviews: previews,
-          totalMembers: previews.length + 1, // include self
-          onlineCount: online,
-        );
-      }
-      final created = await repo.create(draft);
-      // Slice 10.1.7 — broadcast group creation so every invited member
-      // hydrates the conversation locally. Direct convs don't broadcast
-      // (they materialise implicitly on the first message exchange).
-      if (_mode == _Mode.group) {
-        final settings = GetIt.I<ChatSettings>();
-        // Wire payload includes the creator AND every invited member so
-        // each callee can verify it's actually addressed to them.
-        final participantIds = <String>[
-          settings.userId,
-          ..._selected,
-        ];
-        GetIt.I<ChatTransport>().sendConversationCreate(
-          conversationId: created.id,
-          name: created.name,
-          isGroup: true,
-          creatorId: settings.userId,
-          creatorName: settings.userName,
-          participantIds: participantIds,
-          createdAt: now,
-        );
-      }
+      final settings = GetIt.I<ChatSettings>();
+
+      // POST /chats/conversations — backend validates membership,
+      // assigns a real numeric id, and (typically) publishes
+      // `conversation.create` envelopes to every member's
+      // `/user/queue/inbox` so peers hydrate on their own.
+      final json = await remote.createConversation(
+        type: _mode == _Mode.direct ? 'DIRECT' : 'GROUP',
+        memberIds: memberIds,
+        name: _mode == _Mode.group ? _groupNameCtrl.text.trim() : null,
+      );
+
+      // Hydrate locally via the shared mapper so the inbox tile +
+      // chat page see the same shape they always have. `create` keeps
+      // the backend's id because it's non-empty.
+      final hydrated = conversationFromDto(json, currentUserId: settings.userId);
+      final created = await repo.create(hydrated);
+
       if (!mounted) return;
       Navigator.pop(context);
       await ConfigRouter.pushPageAnimation(
         context,
         ChatConversationPage(conversationId: created.id),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not create conversation: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     } finally {
       if (mounted) setState(() => _creating = false);
@@ -176,6 +293,7 @@ class _NewConversationPageState extends State<NewConversationPage> {
                 if (_mode == _Mode.group && _selected.isNotEmpty)
                   _SelectedChips(
                     selectedIds: _selected,
+                    resolve: _resolve,
                     onRemove: (id) => setState(() => _selected.remove(id)),
                   ),
                 const Divider(height: 1),
@@ -183,6 +301,17 @@ class _NewConversationPageState extends State<NewConversationPage> {
                   people: _filtered,
                   selected: _selected,
                   isMulti: _mode == _Mode.group,
+                  loading: _loadingDirectory,
+                  errorText: _directoryError,
+                  onRetry: _directoryError != null
+                      ? () {
+                          setState(() {
+                            _loadingDirectory = true;
+                            _directoryError = null;
+                          });
+                          _loadDirectory();
+                        }
+                      : null,
                   onToggle: (id) {
                     if (_mode == _Mode.direct) {
                       // Direct mode: tapping a member opens the chat
@@ -524,8 +653,13 @@ class _SearchBar extends StatelessWidget {
 }
 
 class _SelectedChips extends StatelessWidget {
-  const _SelectedChips({required this.selectedIds, required this.onRemove});
+  const _SelectedChips({
+    required this.selectedIds,
+    required this.resolve,
+    required this.onRemove,
+  });
   final Set<String> selectedIds;
+  final ChatParticipantPreview Function(String employeeId) resolve;
   final void Function(String employeeId) onRemove;
 
   @override
@@ -542,12 +676,12 @@ class _SelectedChips extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
               child: InputChip(
                 avatar: ChatAvatar(
-                  name: ChatSeed.personById(id).name,
+                  name: resolve(id).name,
                   size: 24,
                   showStatus: false,
                 ),
                 label: AppLabel(
-                  text: ChatSeed.personById(id).name,
+                  text: resolve(id).name,
                   fontSize: AppFontSize.value14,
                   fontWeight: FontWeight.w700,
                 ),
@@ -571,14 +705,63 @@ class _MemberList extends StatelessWidget {
     required this.selected,
     required this.isMulti,
     required this.onToggle,
+    this.loading = false,
+    this.errorText,
+    this.onRetry,
   });
   final List<ChatParticipantPreview> people;
   final Set<String> selected;
   final bool isMulti;
   final void Function(String id) onToggle;
+  final bool loading;
+  final String? errorText;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    if (loading) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+    if (errorText != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.cloud_off_rounded,
+                size: 40,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(height: 12),
+              AppLabel(
+                text: errorText!,
+                fontSize: AppFontSize.value14,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              if (onRetry != null) ...[
+                const SizedBox(height: 12),
+                FilledButton.tonal(
+                  onPressed: onRetry,
+                  child: AppLabel(
+                    text: 'Retry',
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
     if (people.isEmpty) {
       return const Center(
         child: AppLabel(

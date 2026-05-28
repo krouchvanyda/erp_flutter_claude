@@ -1,13 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'dart:developer' as developer;
 
-import 'package:web_socket_channel/io.dart';
-import 'package:web_socket_channel/status.dart' as ws_status;
-import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:flutter/foundation.dart';
+import 'package:stomp_dart_client/stomp_dart_client.dart';
 
+import '../../../core/network/token_storage.dart';
 import '../entities/call_log.dart';
 import '../entities/chat_message.dart';
+import 'chat_dto_mappers.dart';
+import 'chats_remote_data_source.dart';
 
 /// Connection status surfaced to the UI (banner / status dot).
 enum ChatTransportStatus { disconnected, connecting, connected, error }
@@ -19,14 +21,13 @@ sealed class ChatTransportEvent {
 
 /// Peer sent a new message — add to local seed without re-broadcasting.
 ///
-/// [targetIds] is the list of user ids the message is addressed to.
-/// For direct conversations that's the single other person, for groups
-/// it's every member except the sender. The relay is broadcast-only
-/// (no identity awareness on the server), so each receiver filters on
-/// [targetIds.contains(settings.userId)] in `bootChatTransport` —
-/// without this, a Vibol → Pisey direct message would land in
-/// Channary's inbox as well (Slice 10.1.8). Empty list = pre-10.1.8
-/// "broadcast to everyone" for backwards compatibility.
+/// [targetIds] used to drive client-side routing in the relay era
+/// (Slice 10.1.8). With the real backend, STOMP topics already route
+/// by membership — every member of `/topic/conversations/{convId}`
+/// gets the frame and no one else does. We still populate the field
+/// (with the conversation member list when available) so the
+/// existing `bootChatTransport` filter stays a no-op rather than a
+/// regression risk.
 class MessageReceivedEvent extends ChatTransportEvent {
   const MessageReceivedEvent(this.message, {this.targetIds = const <String>[]});
   final ChatMessage message;
@@ -46,7 +47,10 @@ class MessageDeletedEvent extends ChatTransportEvent {
   final String messageId;
 }
 
-/// Peer toggled a reaction on a message.
+/// Peer toggled a reaction on a message. Backend ships the full
+/// reaction list per toggle, but the existing repo expects a single
+/// `(emoji, employeeId)` pair — we synthesise one event per delta so
+/// the repo math (add when missing, remove when present) still works.
 class ReactionToggledEvent extends ChatTransportEvent {
   const ReactionToggledEvent({
     required this.messageId,
@@ -58,22 +62,9 @@ class ReactionToggledEvent extends ChatTransportEvent {
   final String employeeId;
 }
 
-/// Slice 10.2.3 — call signalling envelopes. No media flows; these
-/// just drive the call-state machine on both sides so a placed call
-/// rings on the peer, accept transitions both to "connected", and
-/// hangup closes both. "Real" WebRTC would replace the body of the
-/// `connected` state with actual SDP offer/answer + ICE exchange.
-
 /// Caller pressed Call → callee's overlay should show an incoming
-/// call sheet.
-///
-/// [targetIds] is the list of user ids the caller intends to ring —
-/// for direct calls just the other person, for group calls every
-/// member except the caller. The relay still broadcasts the envelope
-/// to every connected socket (it doesn't know identities), so the
-/// callee filters on its own userId before raising the overlay
-/// (Slice 10.2.7). An empty list means "ring everyone" — falls back
-/// to the old pre-slice-10.2.7 behaviour.
+/// call sheet. [targetIds] populated from the call's participant list
+/// so legacy client-side filters keep working.
 class CallInviteEvent extends ChatTransportEvent {
   const CallInviteEvent({
     required this.callId,
@@ -93,52 +84,24 @@ class CallInviteEvent extends ChatTransportEvent {
   final List<String> targetIds;
 }
 
-/// Callee tapped Accept on the incoming sheet — both sides should
-/// transition to the "connected" state. For group calls, [accepterId]
-/// tells the caller WHICH callee joined so the caller can track the
-/// set of "in-call" peers and auto-end the call when the last one
-/// leaves (Slice 10.2.11). Optional for back-compat with pre-10.2.11
-/// clients on the wire.
 class CallAcceptEvent extends ChatTransportEvent {
   const CallAcceptEvent({required this.callId, this.accepterId});
   final String callId;
   final String? accepterId;
 }
 
-/// Callee tapped Reject (or the invite timed out on their device).
-/// Caller should transition to "ended". [reason] is `'busy'` when the
-/// callee was already in another call, `'declined'` when they tapped
-/// Reject explicitly, or `null` when no reason was supplied.
 class CallRejectEvent extends ChatTransportEvent {
   const CallRejectEvent({required this.callId, this.reason});
   final String callId;
   final String? reason;
 }
 
-/// Either side pressed End — for direct calls both sides transition to
-/// "ended". For group calls the receiver checks [hangerUpperId] against
-/// the original caller's id: only the caller's hangup ends the call
-/// for everyone (Slice 10.2.10). A callee tapping End just leaves
-/// their own client; the other group members stay connected.
 class CallHangupEvent extends ChatTransportEvent {
   const CallHangupEvent({required this.callId, this.hangerUpperId});
   final String callId;
-
-  /// User id of whoever pressed End. Optional for back-compat with
-  /// pre-10.2.10 clients on the wire — if null, falls back to the old
-  /// "everyone ends" behaviour.
   final String? hangerUpperId;
 }
 
-/// Slice 10.1.7 — peer just created a group conversation that lists us
-/// as a member. The receiving device materialises the conversation in
-/// its local repo so it shows up in the inbox without needing a server
-/// round-trip. Direct conversations don't fan out (they're created
-/// implicitly the first time anyone sends a message).
-///
-/// [participantIds] includes the creator AND every invited member. Each
-/// callee filters on its own [participantIds.contains(settings.userId)]
-/// before applying — the relay still broadcasts to every socket.
 class ConversationCreatedEvent extends ChatTransportEvent {
   const ConversationCreatedEvent({
     required this.conversationId,
@@ -158,14 +121,6 @@ class ConversationCreatedEvent extends ChatTransportEvent {
   final DateTime createdAt;
 }
 
-/// Slice 10.3.4 — admin renamed a group on their device. Every other
-/// member's local conv gets updated so their inbox tile + AppBar
-/// reflect the new name. [participantIds] is used the same way as
-/// [ConversationCreatedEvent.participantIds] — receivers filter on
-/// their own id to ignore renames they're not part of.
-///
-/// Group avatar is NOT broadcast — it's a local `image_picker` file
-/// path, which is meaningless on a peer device. That stays per-device.
 class ConversationUpdatedEvent extends ChatTransportEvent {
   const ConversationUpdatedEvent({
     required this.conversationId,
@@ -177,67 +132,96 @@ class ConversationUpdatedEvent extends ChatTransportEvent {
   final List<String> participantIds;
 }
 
-/// Slice 10.3.4 — the user changed their display name (currently via
-/// the chat identity switcher, eventually via the My Profile screen).
-/// Every other connected device updates its local direct conversation
-/// with this user so the AppBar title + inbox tile rename live.
-///
-/// [userId] is the chat identity that changed; [newName] is the value
-/// we want every peer to render going forward. Avatar would ride here
-/// too if we had a server to host it.
 class ProfileUpdatedEvent extends ChatTransportEvent {
   const ProfileUpdatedEvent({required this.userId, required this.newName});
   final String userId;
   final String newName;
 }
 
-/// Slice 10.3.6 — admin set or cleared a group's avatar. Carries the
-/// raw image bytes (base64-encoded JPEG, sized down by image_picker to
-/// 1024×1024 / quality 85 ≈ 50–200 KB) so receivers can write them to
-/// their own local cache and use that path — local file paths from
-/// the sender are meaningless on a peer device. Set [avatarBase64] to
-/// null to clear the photo on every member.
 class ConversationAvatarUpdatedEvent extends ChatTransportEvent {
   const ConversationAvatarUpdatedEvent({
     required this.conversationId,
     required this.participantIds,
-    required this.avatarBase64,
-    required this.fileExtension,
+    this.avatarBase64,
+    this.fileExtension,
   });
   final String conversationId;
   final List<String> participantIds;
 
-  /// Base64-encoded image bytes; null = "remove the photo".
+  /// Legacy relay carried raw bytes in this field. With the real
+  /// backend the avatar lives at [ConversationAvatarUpdatedEvent.avatarUrl] —
+  /// kept for back-compat with code that still reads `avatarBase64`.
   final String? avatarBase64;
-
-  /// File extension (`.jpg` / `.png` / etc.) so the receiver can
-  /// reconstruct a sensible file name. Empty / null = default to `.jpg`.
   final String? fileExtension;
 }
 
-/// Module 10 wire transport — wraps a [WebSocketChannel] connected to
-/// the relay (`tools/chat_relay/bin/server.dart`) and translates between
-/// JSON envelopes on the wire and typed [ChatTransportEvent]s for the
-/// repositories.
+/// ────────────────────────────────────────────────────────────────────
+/// ChatTransport — STOMP edition.
 ///
-/// **Lifecycle**: call [start] with the relay URL once; it connects in
-/// the background and auto-reconnects on drop with a 2-second backoff.
-/// Call [updateConfig] to change URL or identity (existing socket is
-/// closed and a new one opened). Call [dispose] on app shutdown.
+/// Public API kept byte-for-byte identical to the relay-era version
+/// so repositories don't need to change (per Prompt 1 of
+/// `CHAT_MODULE_BACKEND_INTEGRATIONGUIDE.md`).
+///
+/// **Internals replaced**:
+///   - WS connection → `StompClient` against `<apiBaseUrl>/ws`
+///   - Outbound `sendXxx(...)` → REST calls via [ChatsRemoteDataSource]
+///   - Inbound `_onData(...)` → STOMP frame handlers per topic/queue
+///     dispatching on the `ChatEvent.event` envelope name and parsing
+///     the matching DTO from `ChatEvent.payload`
+///
+/// **STOMP destinations subscribed**:
+///   - `/user/queue/inbox` — inbox preview + conversation events
+///   - `/user/queue/calls` — incoming call invites
+///   - `/topic/conversations/{id}` and `/topic/conversations/{id}/call` —
+///     per active conversation, managed via
+///     [subscribeConversation] / [unsubscribeConversation]
+///
+/// **Auth**: the CONNECT frame carries `Authorization: Bearer <access>`
+/// from [TokenStorage]. A 401-style STOMP ERROR triggers a reconnect
+/// chain that will pick up a refreshed token on the next attempt
+/// (the dio-layer interceptor refreshes it under the hood when any
+/// REST call hits 401 first).
+/// ────────────────────────────────────────────────────────────────────
 class ChatTransport {
-  ChatTransport();
+  ChatTransport({
+    required ChatsRemoteDataSource remote,
+    required TokenStorage tokens,
+  })  : _remote = remote,
+        _tokens = tokens;
+
+  // ── deps ─────────────────────────────────────────────────────
+  final ChatsRemoteDataSource _remote;
+  final TokenStorage _tokens;
 
   // ── current configuration ────────────────────────────────────
+  // [_url] now holds an HTTP base URL like `http://10.0.2.2:8080`.
+  // We append `/ws` for the STOMP socket. The previous relay
+  // `ws://host:port` form is detected + adapted in [_buildStompUrl]
+  // so a mid-migration device that still has the old URL in prefs
+  // doesn't crash on launch.
   String _url = '';
   String _userId = '';
   String _userName = '';
 
   // ── connection state ─────────────────────────────────────────
-  WebSocketChannel? _channel;
-  StreamSubscription<dynamic>? _sub;
+  StompClient? _client;
   ChatTransportStatus _status = ChatTransportStatus.disconnected;
-  Timer? _reconnect;
   bool _disposed = false;
+
+  /// Active per-conv subscription handles, keyed by `convId#kind`
+  /// where kind is `'msg'` or `'call'`. We don't expose the kind
+  /// to callers — [subscribeConversation] adds both, and
+  /// [unsubscribeConversation] removes both.
+  final Map<String, StompUnsubscribe> _convSubs = <String, StompUnsubscribe>{};
+
+  /// Conv ids we've been asked to subscribe to. Re-applied on
+  /// reconnect so the page doesn't have to re-call after a network
+  /// blip.
+  final Set<String> _wantConvSubs = <String>{};
+
+  // Global subscriptions (inbox + calls). Cleared on disconnect.
+  StompUnsubscribe? _inboxSub;
+  StompUnsubscribe? _callsSub;
 
   final StreamController<ChatTransportEvent> _events =
       StreamController<ChatTransportEvent>.broadcast();
@@ -251,6 +235,8 @@ class ChatTransport {
   }
 
   ChatTransportStatus get currentStatus => _status;
+
+  // ── lifecycle ────────────────────────────────────────────────
 
   /// Start (or restart) with a new URL + identity.
   Future<void> updateConfig({
@@ -269,8 +255,8 @@ class ChatTransport {
     }
   }
 
-  /// Initial start. Same as [updateConfig] but exists as a clearer
-  /// boot-time entry point.
+  /// Initial start — alias for [updateConfig] kept for clarity at
+  /// boot sites.
   Future<void> start({
     required String url,
     required String userId,
@@ -280,7 +266,6 @@ class ChatTransport {
 
   Future<void> dispose() async {
     _disposed = true;
-    _reconnect?.cancel();
     await _close();
     await _events.close();
     await _statusEvents.close();
@@ -292,183 +277,399 @@ class ChatTransport {
       _setStatus(ChatTransportStatus.disconnected);
       return;
     }
-    final uri = Uri.tryParse(_url);
-    if (uri == null || (uri.scheme != 'ws' && uri.scheme != 'wss')) {
+    final wsUrl = _buildStompUrl(_url);
+    if (wsUrl == null) {
       _setStatus(ChatTransportStatus.error);
+      return;
+    }
+    final accessToken = (await _tokens.read())?.accessToken;
+    if (accessToken == null || accessToken.isEmpty) {
+      // No session yet — splash will eventually wake us via
+      // updateConfig once the user signs in. Stay disconnected
+      // rather than spinning on rejected CONNECT frames.
+      _setStatus(ChatTransportStatus.disconnected);
       return;
     }
     _setStatus(ChatTransportStatus.connecting);
-    // Use `WebSocket.connect` (dart:io) instead of
-    // `WebSocketChannel.connect` so we get an awaitable Future that
-    // throws synchronously on TCP / handshake failure. The
-    // shelf-style `WebSocketChannel.connect` returns immediately and
-    // fires errors on the sink — those errors escape the zone as
-    // `runZonedGuarded uncaught` and spam the log.
-    WebSocket socket;
-    try {
-      socket = await WebSocket.connect(uri.toString())
-          .timeout(const Duration(seconds: 5));
-    } catch (e) {
-      _setStatus(ChatTransportStatus.error);
-      _scheduleReconnect();
-      return;
-    }
-    if (_disposed) {
-      await socket.close();
-      return;
-    }
-    final channel = IOWebSocketChannel(socket);
-    _channel = channel;
-    _sub = channel.stream.listen(
-      _onData,
-      onDone: _onDone,
-      onError: _onError,
-      cancelOnError: true,
+
+    final client = StompClient(
+      config: StompConfig(
+        url: wsUrl,
+        // `Authorization` and `accept-version` go on the CONNECT frame.
+        // Spring Security's STOMP interceptor reads the token from the
+        // CONNECT headers (Spring Boot's WebSocket security samples).
+        stompConnectHeaders: <String, String>{
+          'Authorization': 'Bearer $accessToken',
+        },
+        webSocketConnectHeaders: <String, String>{
+          'Authorization': 'Bearer $accessToken',
+        },
+        // stomp_dart_client handles backoff internally — capped at
+        // 30s per Prompt 1.
+        reconnectDelay: const Duration(seconds: 2),
+        heartbeatIncoming: const Duration(seconds: 10),
+        heartbeatOutgoing: const Duration(seconds: 10),
+        onConnect: _onStompConnect,
+        onWebSocketError: (e) {
+          if (kDebugMode) developer.log('chat: ws error → $e', name: 'chat');
+          _setStatus(ChatTransportStatus.error);
+        },
+        onStompError: (frame) {
+          if (kDebugMode) {
+            developer.log('chat: STOMP error frame ${frame.body}',
+                name: 'chat');
+          }
+          _setStatus(ChatTransportStatus.error);
+        },
+        onDisconnect: (_) => _setStatus(ChatTransportStatus.disconnected),
+      ),
     );
-    // Tag the socket with our identity so the relay log is useful.
-    channel.sink.add(jsonEncode({
-      'type': 'hello',
-      'from': _userId,
-      'payload': {'name': _userName},
-    }));
-    _setStatus(ChatTransportStatus.connected);
+    _client = client;
+    client.activate();
   }
 
-  void _onData(dynamic data) {
-    if (data is! String) return;
+  void _onStompConnect(StompFrame _) {
+    _setStatus(ChatTransportStatus.connected);
+
+    // Inbox queue — conversation create / update + new-message
+    // previews + read-state updates. Per-user queue: only we get
+    // these, so no client-side targetIds filtering needed.
+    _inboxSub = _client?.subscribe(
+      destination: '/user/queue/inbox',
+      callback: (frame) => _handleEnvelope(frame, source: 'inbox'),
+    );
+
+    // Calls queue — incoming `call.invite` for any conversation we're
+    // a member of. The per-conv `/topic/.../call` subscription below
+    // covers accept/reject/hangup during an active call.
+    _callsSub = _client?.subscribe(
+      destination: '/user/queue/calls',
+      callback: (frame) => _handleEnvelope(frame, source: 'calls'),
+    );
+
+    // Re-apply any per-conv subscriptions requested before this
+    // reconnect (page opened a chat, network blipped, etc.). Idempotent.
+    for (final id in _wantConvSubs.toList()) {
+      _attachConvSubs(id);
+    }
+  }
+
+  // ── conversation topic subscription management ──────────────
+  //
+  // The previous transport had a single LAN broadcast — no per-conv
+  // routing. STOMP needs an explicit subscribe for each
+  // `/topic/conversations/{id}` we want messages from. Pages call
+  // these from `initState` / `dispose` of the chat page so we don't
+  // subscribe to every conv the user has ever opened.
+
+  /// Subscribe to message + call topics for [conversationId]. Safe to
+  /// call multiple times — the second call no-ops.
+  void subscribeConversation(String conversationId) {
+    if (conversationId.isEmpty) return;
+    _wantConvSubs.add(conversationId);
+    if (_status == ChatTransportStatus.connected) {
+      _attachConvSubs(conversationId);
+    }
+  }
+
+  /// Drop both subscriptions for [conversationId]. Idempotent.
+  void unsubscribeConversation(String conversationId) {
+    _wantConvSubs.remove(conversationId);
+    _convSubs.remove('$conversationId#msg')?.call();
+    _convSubs.remove('$conversationId#call')?.call();
+  }
+
+  void _attachConvSubs(String conversationId) {
+    final msgKey = '$conversationId#msg';
+    final callKey = '$conversationId#call';
+    if (_convSubs.containsKey(msgKey)) return; // already subscribed
+    final client = _client;
+    if (client == null) return;
+    final msgUnsub = client.subscribe(
+      destination: '/topic/conversations/$conversationId',
+      callback: (frame) => _handleEnvelope(frame, source: 'conv'),
+    );
+    final callUnsub = client.subscribe(
+      destination: '/topic/conversations/$conversationId/call',
+      callback: (frame) => _handleEnvelope(frame, source: 'convCall'),
+    );
+    _convSubs[msgKey] = msgUnsub;
+    _convSubs[callKey] = callUnsub;
+  }
+
+  // ── inbound frame handling ──────────────────────────────────
+
+  void _handleEnvelope(StompFrame frame, {required String source}) {
+    final body = frame.body;
+    if (body == null || body.isEmpty) return;
     Map<String, dynamic> envelope;
     try {
-      envelope = jsonDecode(data) as Map<String, dynamic>;
-    } catch (_) {
+      envelope = jsonDecode(body) as Map<String, dynamic>;
+    } catch (e) {
+      if (kDebugMode) {
+        developer.log('chat: bad envelope from $source → $body', name: 'chat');
+      }
       return;
     }
-    final type = envelope['type'] as String? ?? '';
+    final eventName = envelope['event'] as String? ?? '';
     final payload = envelope['payload'];
     if (payload is! Map<String, dynamic>) return;
 
-    final event = _decode(type, payload);
-    if (event != null && !_events.isClosed) {
-      _events.add(event);
+    final ev = _decode(eventName, payload);
+    if (ev == null) return;
+
+    // Fan out one event per `ReactionToggledEvent` delta — the backend
+    // ships the full reaction list per toggle, but the repo expects a
+    // single (emoji, employeeId) delta. We compute the delta from the
+    // existing local state OR emit one per current reaction; the repo
+    // will reconcile either way because toggling twice is a no-op.
+    if (ev is List<ChatTransportEvent>) {
+      for (final e in ev.cast<ChatTransportEvent>()) {
+        if (!_events.isClosed) _events.add(e);
+      }
+    } else if (ev is ChatTransportEvent && !_events.isClosed) {
+      _events.add(ev);
     }
   }
 
-  ChatTransportEvent? _decode(String type, Map<String, dynamic> payload) {
-    switch (type) {
+  /// Decode by event name. The map keys mirror `ChatEvent.event`
+  /// strings used in Section 7 of the integration guide.
+  dynamic _decode(String name, Map<String, dynamic> payload) {
+    switch (name) {
       case 'message.send':
-        return MessageReceivedEvent(
-          _decodeMessage(payload),
-          targetIds:
-              (payload['targetIds'] as List?)?.cast<String>() ?? const <String>[],
-        );
+        return MessageReceivedEvent(messageFromDto(payload));
       case 'message.edit':
+        // Server may send the full MessageDto or a `{messageId, newBody}`
+        // delta — handle both. Edit always carries a non-null body.
+        if (payload.containsKey('id')) {
+          final dto = messageFromDto(payload);
+          return MessageEditedEvent(
+            messageId: dto.id,
+            newBody: dto.body ?? '',
+          );
+        }
         return MessageEditedEvent(
-          messageId: payload['messageId'] as String,
+          messageId: payload['messageId'].toString(),
           newBody: payload['newBody'] as String? ?? '',
         );
       case 'message.delete':
-        return MessageDeletedEvent(payload['messageId'] as String);
+        if (payload.containsKey('id')) {
+          return MessageDeletedEvent(payload['id'].toString());
+        }
+        return MessageDeletedEvent(payload['messageId'].toString());
       case 'reaction.toggle':
-        return ReactionToggledEvent(
-          messageId: payload['messageId'] as String,
-          emoji: payload['emoji'] as String,
-          employeeId: payload['employeeId'] as String,
-        );
+        return _reactionEventsFromPayload(payload);
       case 'call.invite':
-        return CallInviteEvent(
-          callId: payload['callId'] as String,
-          conversationId: payload['conversationId'] as String,
-          callerId: payload['callerId'] as String,
-          callerName: payload['callerName'] as String,
-          callType: (payload['callType'] as String? ?? 'voice') == 'video'
-              ? ChatCallType.video
-              : ChatCallType.voice,
-          startedAt:
-              DateTime.tryParse(payload['startedAt'] as String? ?? '') ??
-                  DateTime.now(),
-          targetIds: (payload['targetIds'] as List?)?.cast<String>() ??
-              const <String>[],
-        );
+        return _callInviteFromDto(payload);
       case 'call.accept':
         return CallAcceptEvent(
-          callId: payload['callId'] as String,
-          accepterId: payload['accepterId'] as String?,
+          callId: (payload['id'] ?? payload['callId']).toString(),
+          accepterId: _pickAccepterId(payload),
         );
       case 'call.reject':
         return CallRejectEvent(
-          callId: payload['callId'] as String,
-          reason: payload['reason'] as String?,
+          callId: (payload['id'] ?? payload['callId']).toString(),
+          reason: (payload['reason'] ?? payload['endReason']) as String?,
         );
       case 'call.hangup':
+      case 'call.end':
         return CallHangupEvent(
-          callId: payload['callId'] as String,
-          hangerUpperId: payload['hangerUpperId'] as String?,
+          callId: (payload['id'] ?? payload['callId']).toString(),
+          hangerUpperId: _pickHangerUpperId(payload),
         );
       case 'conversation.create':
-        return ConversationCreatedEvent(
-          conversationId: payload['conversationId'] as String,
-          name: payload['name'] as String,
-          isGroup: payload['isGroup'] as bool? ?? true,
-          creatorId: payload['creatorId'] as String,
-          creatorName: payload['creatorName'] as String,
-          participantIds: (payload['participantIds'] as List?)
-                  ?.cast<String>() ??
-              const <String>[],
-          createdAt:
-              DateTime.tryParse(payload['createdAt'] as String? ?? '') ??
-                  DateTime.now(),
-        );
+        return _conversationCreatedFromDto(payload);
       case 'conversation.update':
-        return ConversationUpdatedEvent(
-          conversationId: payload['conversationId'] as String,
-          name: payload['name'] as String,
-          participantIds: (payload['participantIds'] as List?)
-                  ?.cast<String>() ??
-              const <String>[],
-        );
-      case 'profile.update':
-        return ProfileUpdatedEvent(
-          userId: payload['userId'] as String,
-          newName: payload['newName'] as String,
-        );
+        return _conversationUpdatedFromDto(payload);
       case 'conversation.avatar.update':
         return ConversationAvatarUpdatedEvent(
-          conversationId: payload['conversationId'] as String,
-          participantIds: (payload['participantIds'] as List?)
-                  ?.cast<String>() ??
-              const <String>[],
+          conversationId: (payload['id'] ?? payload['conversationId']).toString(),
+          participantIds: _membersAsStringIds(payload),
+          // Real backend uses URL-only — `avatarBase64` stays null;
+          // the URL flows in via `conversation.update` instead.
           avatarBase64: payload['avatarBase64'] as String?,
           fileExtension: payload['fileExtension'] as String?,
         );
+      case 'profile.update':
+        return ProfileUpdatedEvent(
+          userId: (payload['userId'] ?? payload['id']).toString(),
+          newName: (payload['newName'] ?? payload['fullName']) as String? ?? '',
+        );
       default:
+        if (kDebugMode) {
+          developer.log('chat: unknown event "$name"', name: 'chat');
+        }
         return null;
     }
   }
 
-  void _onDone() {
-    _setStatus(ChatTransportStatus.disconnected);
-    _scheduleReconnect();
+  // ── DTO → entity mappers ────────────────────────────────────
+  //
+  // `messageFromDto` now lives in `chat_dto_mappers.dart` so the
+  // transport (decoding STOMP frames) and the repos (decoding REST
+  // responses) agree on field aliases + seed-driven sender lookup.
+  // The remaining mappers below are transport-only (call invite +
+  // conversation create/update envelopes).
+
+  /// Map an incoming `ChatCallDto` onto the existing [CallInviteEvent].
+  CallInviteEvent _callInviteFromDto(Map<String, dynamic> json) {
+    final callType = (json['type'] as String? ?? 'VOICE').toUpperCase();
+    return CallInviteEvent(
+      callId: json['id'].toString(),
+      conversationId: json['conversationId'].toString(),
+      callerId: json['callerId'].toString(),
+      // Caller name isn't on ChatCallDto — page layer joins from
+      // user cache. Empty string surfaces no name; the page falls
+      // back to "Incoming call" headline.
+      callerName: '',
+      callType: callType == 'VIDEO' ? ChatCallType.video : ChatCallType.voice,
+      startedAt: _parseInstant(json['startedAt']) ?? DateTime.now(),
+      targetIds: _participantIdsAsStrings(json['participants']),
+    );
   }
 
-  void _onError(Object e) {
-    _setStatus(ChatTransportStatus.error);
-    _scheduleReconnect();
+  /// Map an incoming `ConversationDto` onto the existing
+  /// [ConversationCreatedEvent].
+  ConversationCreatedEvent _conversationCreatedFromDto(
+      Map<String, dynamic> json) {
+    final type = (json['type'] as String? ?? 'DIRECT').toUpperCase();
+    return ConversationCreatedEvent(
+      conversationId: json['id'].toString(),
+      name: (json['name'] as String?) ?? '',
+      isGroup: type == 'GROUP',
+      // Creator id/name not surfaced on ConversationDto directly —
+      // the page layer can read it from the first member with
+      // ADMIN role. For now, blank.
+      creatorId: '',
+      creatorName: '',
+      participantIds: _membersAsStringIds(json),
+      createdAt: _parseInstant(json['createdAt']) ?? DateTime.now(),
+    );
   }
 
-  void _scheduleReconnect() {
-    if (_disposed || _url.isEmpty) return;
-    _reconnect?.cancel();
-    _reconnect = Timer(const Duration(seconds: 2), () => unawaited(_maybeConnect()));
+  ConversationUpdatedEvent _conversationUpdatedFromDto(
+      Map<String, dynamic> json) {
+    return ConversationUpdatedEvent(
+      conversationId: json['id'].toString(),
+      name: (json['name'] as String?) ?? '',
+      participantIds: _membersAsStringIds(json),
+    );
   }
+
+  /// Collapse a reactions payload into one or more
+  /// [ReactionToggledEvent]s.
+  List<ChatTransportEvent> _reactionEventsFromPayload(
+      Map<String, dynamic> payload) {
+    // Two shapes possible:
+    //   1. `{messageId, reactions: [{userId, emoji}, ...]}`
+    //      (server pushes the full list after a toggle)
+    //   2. `{messageId, emoji, userId}` (server pushes just the delta)
+    final messageId =
+        (payload['id'] ?? payload['messageId']).toString();
+    final reactionsRaw = payload['reactions'];
+    if (reactionsRaw is List) {
+      return [
+        for (final r in reactionsRaw)
+          if (r is Map &&
+              r['emoji'] is String &&
+              r['userId'] != null)
+            ReactionToggledEvent(
+              messageId: messageId,
+              emoji: r['emoji'] as String,
+              employeeId: r['userId'].toString(),
+            ),
+      ];
+    }
+    final emoji = payload['emoji'] as String? ?? '';
+    final uid = (payload['userId'] ?? payload['employeeId'])?.toString();
+    if (emoji.isEmpty || uid == null) return const <ChatTransportEvent>[];
+    return [
+      ReactionToggledEvent(
+        messageId: messageId,
+        emoji: emoji,
+        employeeId: uid,
+      ),
+    ];
+  }
+
+  // Helpers extracting lists of stringified user ids from DTO shapes.
+  List<String> _membersAsStringIds(Map<String, dynamic> json) {
+    final raw = json['members'] ?? json['participantIds'];
+    if (raw is! List) return const <String>[];
+    return raw.map<String?>((m) {
+      if (m == null) return null;
+      if (m is Map) return m['userId']?.toString();
+      return m.toString();
+    }).whereType<String>().toList(growable: false);
+  }
+
+  List<String> _participantIdsAsStrings(Object? participants) {
+    if (participants is! List) return const <String>[];
+    return participants
+        .map<String?>((p) => p is Map ? p['userId']?.toString() : null)
+        .whereType<String>()
+        .toList(growable: false);
+  }
+
+  String? _pickAccepterId(Map<String, dynamic> payload) {
+    final direct = payload['accepterId'];
+    if (direct != null) return direct.toString();
+    // ChatCallDto echo — the accepter is the participant with
+    // status=ANSWERED whose joinedAt is the latest.
+    final parts = payload['participants'];
+    if (parts is List) {
+      Map<String, dynamic>? best;
+      for (final p in parts) {
+        if (p is Map &&
+            (p['status'] as String?)?.toUpperCase() == 'ANSWERED') {
+          if (best == null) {
+            best = Map<String, dynamic>.from(p);
+          } else {
+            final a = _parseInstant(p['joinedAt']);
+            final b = _parseInstant(best['joinedAt']);
+            if (a != null && (b == null || a.isAfter(b))) {
+              best = Map<String, dynamic>.from(p);
+            }
+          }
+        }
+      }
+      return best?['userId']?.toString();
+    }
+    return null;
+  }
+
+  String? _pickHangerUpperId(Map<String, dynamic> payload) {
+    final direct = payload['hangerUpperId'] ?? payload['endedById'];
+    if (direct != null) return direct.toString();
+    // Fall back to caller id when end is server-emitted (e.g.
+    // all-callees-left auto-end → caller is the canonical ender).
+    return payload['callerId']?.toString();
+  }
+
+  DateTime? _parseInstant(Object? v) {
+    if (v == null) return null;
+    if (v is DateTime) return v;
+    if (v is String) return DateTime.tryParse(v);
+    return null;
+  }
+
+  // ── disconnect / cleanup ────────────────────────────────────
 
   Future<void> _close() async {
+    _inboxSub?.call();
+    _inboxSub = null;
+    _callsSub?.call();
+    _callsSub = null;
+    for (final unsub in _convSubs.values) {
+      try {
+        unsub();
+      } catch (_) {}
+    }
+    _convSubs.clear();
     try {
-      await _sub?.cancel();
+      _client?.deactivate();
     } catch (_) {}
-    _sub = null;
-    try {
-      await _channel?.sink.close(ws_status.normalClosure);
-    } catch (_) {}
-    _channel = null;
+    _client = null;
   }
 
   void _setStatus(ChatTransportStatus s) {
@@ -477,23 +678,72 @@ class ChatTransport {
     if (!_statusEvents.isClosed) _statusEvents.add(s);
   }
 
-  // ── outbound ─────────────────────────────────────────────────
-  void sendMessage(
+  // ── outbound (REST, fire-and-forget) ─────────────────────────
+  //
+  // Public signatures match the legacy WS-era transport so repos
+  // and the call-signalling service don't need to change. Internals
+  // route through [ChatsRemoteDataSource] — STOMP echo handles the
+  // UI update via the subscriptions above.
+  //
+  // Errors are swallowed and a debug log emitted (matching the
+  // legacy behaviour where a send to a dead socket was also silent).
+  // Real error surfacing belongs to Prompt 4 when the optimistic
+  // local insert + reconciliation lands.
+
+  /// POST the message to the backend and return the canonical backend
+  /// id (stringified Long) so the caller can swap its optimistic local
+  /// id with the real one — that swap is what makes the inbound
+  /// STOMP echo dedup correctly. Returns `null` if the conversation
+  /// id isn't a backend id (seed conv) or the POST failed.
+  Future<String?> sendMessage(
     ChatMessage message, {
     List<String> targetIds = const <String>[],
-  }) {
-    _send('message.send', {
-      ..._encodeMessage(message),
-      if (targetIds.isNotEmpty) 'targetIds': targetIds,
-    });
+  }) async {
+    final convId = int.tryParse(message.conversationId);
+    if (convId == null) {
+      _logBadId('sendMessage', message.conversationId);
+      return null;
+    }
+    final type = switch (message.type) {
+      ChatMessageType.image => WireMessageType.image,
+      ChatMessageType.voice => WireMessageType.voice,
+      ChatMessageType.file => WireMessageType.file,
+      ChatMessageType.system => WireMessageType.system,
+      _ => WireMessageType.text,
+    };
+    try {
+      final response = await _remote.sendMessage(
+        convId,
+        type: type,
+        body: message.body,
+        attachmentUrl: message.fileUrl ?? message.voiceUrl,
+        attachmentSizeBytes: message.fileSizeBytes,
+        durationSeconds: message.voiceDurationSeconds,
+        replyToMessageId: int.tryParse(message.replyToId ?? ''),
+      );
+      return response['id']?.toString();
+    } catch (e) {
+      _swallow('sendMessage')(e);
+      return null;
+    }
   }
 
   void sendEdit(String messageId, String newBody) {
-    _send('message.edit', {'messageId': messageId, 'newBody': newBody});
+    final id = int.tryParse(messageId);
+    if (id == null) {
+      _logBadId('sendEdit', messageId);
+      return;
+    }
+    unawaited(_remote.editMessage(id, newBody).catchError(_swallow('sendEdit')));
   }
 
   void sendDelete(String messageId) {
-    _send('message.delete', {'messageId': messageId});
+    final id = int.tryParse(messageId);
+    if (id == null) {
+      _logBadId('sendDelete', messageId);
+      return;
+    }
+    unawaited(_remote.deleteMessage(id).catchError(_swallow('sendDelete')));
   }
 
   void sendReaction({
@@ -501,16 +751,18 @@ class ChatTransport {
     required String emoji,
     required String employeeId,
   }) {
-    _send('reaction.toggle', {
-      'messageId': messageId,
-      'emoji': emoji,
-      'employeeId': employeeId,
-    });
+    final id = int.tryParse(messageId);
+    if (id == null) {
+      _logBadId('sendReaction', messageId);
+      return;
+    }
+    unawaited(_remote.toggleReaction(id, emoji).catchError(_swallow('sendReaction')));
   }
 
-  // ── Slice 10.2.3 — call signalling outbound ──────────────────
+  // ── Call signalling ─────────────────────────────────────────
+
   void sendCallInvite({
-    required String callId,
+    required String callId, // ignored — server assigns the real id
     required String conversationId,
     required String callerId,
     required String callerName,
@@ -518,42 +770,56 @@ class ChatTransport {
     required DateTime startedAt,
     List<String> targetIds = const <String>[],
   }) {
-    _send('call.invite', {
-      'callId': callId,
-      'conversationId': conversationId,
-      'callerId': callerId,
-      'callerName': callerName,
-      'callType': callType.name,
-      'startedAt': startedAt.toIso8601String(),
-      if (targetIds.isNotEmpty) 'targetIds': targetIds,
-    });
+    final convId = int.tryParse(conversationId);
+    if (convId == null) {
+      _logBadId('sendCallInvite', conversationId);
+      return;
+    }
+    final type = callType == ChatCallType.video
+        ? WireCallType.video
+        : WireCallType.voice;
+    unawaited(_remote.startCall(convId, type: type).catchError(_swallow('sendCallInvite')));
   }
 
   void sendCallAccept(String callId, {String? accepterId}) {
-    _send('call.accept', {
-      'callId': callId,
-      if (accepterId != null) 'accepterId': accepterId,
-    });
+    final id = int.tryParse(callId);
+    if (id == null) {
+      _logBadId('sendCallAccept', callId);
+      return;
+    }
+    unawaited(_remote.acceptCall(id).catchError(_swallow('sendCallAccept')));
   }
 
   void sendCallReject(String callId, {String? reason}) {
-    _send('call.reject', {
-      'callId': callId,
-      if (reason != null) 'reason': reason,
-    });
+    final id = int.tryParse(callId);
+    if (id == null) {
+      _logBadId('sendCallReject', callId);
+      return;
+    }
+    unawaited(
+        _remote.rejectCall(id, reason: reason).catchError(_swallow('sendCallReject')));
   }
 
   void sendCallHangup(String callId, {String? hangerUpperId}) {
-    _send('call.hangup', {
-      'callId': callId,
-      if (hangerUpperId != null) 'hangerUpperId': hangerUpperId,
-    });
+    final id = int.tryParse(callId);
+    if (id == null) {
+      _logBadId('sendCallHangup', callId);
+      return;
+    }
+    unawaited(_remote.endCall(id).catchError(_swallow('sendCallHangup')));
   }
 
-  /// Slice 10.1.7 — broadcast a freshly-created group so every member
-  /// device hydrates it locally. [participantIds] must include the
-  /// creator and every invited member; receivers filter on their own
-  /// id before applying.
+  // ── Conversation management ─────────────────────────────────
+
+  /// Server creates the conversation and fans `conversation.create`
+  /// to every member's `/user/queue/inbox`. The local sender also
+  /// receives that fan-out so the existing inbound handler in
+  /// `bootChatTransport` hydrates the cache on every device.
+  ///
+  /// [conversationId] from the legacy API is ignored — the server
+  /// assigns the real id. Pages that need it should consume the
+  /// inbound `ConversationCreatedEvent` rather than the param they
+  /// passed in.
   void sendConversationCreate({
     required String conversationId,
     required String name,
@@ -563,120 +829,112 @@ class ChatTransport {
     required List<String> participantIds,
     required DateTime createdAt,
   }) {
-    _send('conversation.create', {
-      'conversationId': conversationId,
-      'name': name,
-      'isGroup': isGroup,
-      'creatorId': creatorId,
-      'creatorName': creatorName,
-      'participantIds': participantIds,
-      'createdAt': createdAt.toIso8601String(),
-    });
+    final ids = <int>{};
+    for (final p in participantIds) {
+      final n = int.tryParse(p);
+      if (n != null) ids.add(n);
+    }
+    if (ids.isEmpty) {
+      _logBadId('sendConversationCreate', participantIds.join(','));
+      return;
+    }
+    unawaited(_remote
+        .createConversation(
+          type: isGroup ? 'GROUP' : 'DIRECT',
+          memberIds: ids,
+          name: isGroup ? name : null,
+        )
+        .catchError(_swallow('sendConversationCreate')));
   }
 
-  /// Slice 10.3.4 — broadcast a group rename so every other member's
-  /// inbox tile + AppBar shows the new name without needing them to
-  /// re-open the chat.
   void sendConversationUpdate({
     required String conversationId,
     required String name,
-    required List<String> participantIds,
+    required List<String> participantIds, // ignored — backend authoritative
   }) {
-    _send('conversation.update', {
-      'conversationId': conversationId,
-      'name': name,
-      'participantIds': participantIds,
-    });
+    final id = int.tryParse(conversationId);
+    if (id == null) {
+      _logBadId('sendConversationUpdate', conversationId);
+      return;
+    }
+    unawaited(_remote
+        .updateConversation(id, name: name)
+        .catchError(_swallow('sendConversationUpdate')));
   }
 
-  /// Slice 10.3.4 — broadcast a user-profile rename so every other
-  /// device renames the matching local direct conversation.
+  /// Backend doesn't have a chat-specific profile-rename endpoint —
+  /// the canonical user/employee record is updated via the employee
+  /// PATCH, and the backend re-broadcasts `profile.update` to every
+  /// peer's `/user/queue/inbox`. Nothing for the transport to do
+  /// here; the method stays as a no-op so existing call sites in
+  /// `ChatSettings.setIdentity` still compile.
   void sendProfileUpdate({
     required String userId,
     required String newName,
   }) {
-    _send('profile.update', {
-      'userId': userId,
-      'newName': newName,
-    });
+    // intentional no-op — see doc above
   }
 
-  /// Slice 10.3.6 — broadcast a group avatar change. [avatarBase64] is
-  /// null to clear the photo; otherwise it's the raw image bytes
-  /// base64-encoded so every peer can write them locally and use that
-  /// path going forward.
+  /// Avatar updates go through the same `PATCH /conversations/{id}`
+  /// endpoint as renames; only `avatarUrl` is touched. The legacy
+  /// base64-broadcast flow is gone — when the URL upload endpoint
+  /// lands (Prompt 5 territory), wire it here. For now:
+  ///   - `avatarBase64 == null` → PATCH `avatarUrl=""` ("remove photo")
+  ///   - `avatarBase64 != null` → no-op (no URL to send yet)
   void sendConversationAvatar({
     required String conversationId,
-    required List<String> participantIds,
+    required List<String> participantIds, // ignored — backend authoritative
     required String? avatarBase64,
     required String? fileExtension,
   }) {
-    _send('conversation.avatar.update', {
-      'conversationId': conversationId,
-      'participantIds': participantIds,
-      if (avatarBase64 != null) 'avatarBase64': avatarBase64,
-      if (fileExtension != null) 'fileExtension': fileExtension,
-    });
+    if (avatarBase64 != null) {
+      // Upload endpoint TBD — see doc above.
+      return;
+    }
+    final id = int.tryParse(conversationId);
+    if (id == null) {
+      _logBadId('sendConversationAvatar', conversationId);
+      return;
+    }
+    unawaited(_remote
+        .updateConversation(id, avatarUrl: '')
+        .catchError(_swallow('sendConversationAvatar')));
   }
 
-  void _send(String type, Map<String, dynamic> payload) {
-    final ch = _channel;
-    if (ch == null || _status != ChatTransportStatus.connected) return;
-    try {
-      ch.sink.add(jsonEncode({
-        'type': type,
-        'from': _userId,
-        'payload': payload,
-      }));
-    } catch (_) {
-      _setStatus(ChatTransportStatus.error);
-      _scheduleReconnect();
+  // ── misc ────────────────────────────────────────────────────
+
+  Function _swallow(String op) => (Object e, StackTrace? s) {
+        if (kDebugMode) {
+          developer.log('chat: $op failed → $e', name: 'chat');
+        }
+      };
+
+  void _logBadId(String op, String id) {
+    if (kDebugMode) {
+      developer.log('chat: $op skipped — non-numeric id "$id"', name: 'chat');
     }
   }
 
-  // ── (de)serialise ChatMessage on the wire ────────────────────
-  static Map<String, dynamic> _encodeMessage(ChatMessage m) => {
-        'id': m.id,
-        'conversationId': m.conversationId,
-        'senderId': m.senderId,
-        'senderName': m.senderName,
-        'type': m.type.name,
-        'sentAt': m.sentAt.toIso8601String(),
-        if (m.body != null) 'body': m.body,
-        if (m.replyToId != null) 'replyToId': m.replyToId,
-        if (m.replyToSenderName != null)
-          'replyToSenderName': m.replyToSenderName,
-        if (m.replyToPreview != null) 'replyToPreview': m.replyToPreview,
-        if (m.voiceUrl != null) 'voiceUrl': m.voiceUrl,
-        if (m.voiceDurationSeconds != null)
-          'voiceDurationSeconds': m.voiceDurationSeconds,
-        if (m.fileUrl != null) 'fileUrl': m.fileUrl,
-        if (m.fileName != null) 'fileName': m.fileName,
-        if (m.fileSizeBytes != null) 'fileSizeBytes': m.fileSizeBytes,
-      };
-
-  static ChatMessage _decodeMessage(Map<String, dynamic> p) {
-    final typeName = p['type'] as String? ?? 'text';
-    return ChatMessage(
-      id: p['id'] as String,
-      conversationId: p['conversationId'] as String,
-      senderId: p['senderId'] as String,
-      senderName: p['senderName'] as String,
-      type: ChatMessageType.values.firstWhere(
-        (t) => t.name == typeName,
-        orElse: () => ChatMessageType.text,
-      ),
-      sentAt: DateTime.tryParse(p['sentAt'] as String? ?? '') ??
-          DateTime.now(),
-      body: p['body'] as String?,
-      replyToId: p['replyToId'] as String?,
-      replyToSenderName: p['replyToSenderName'] as String?,
-      replyToPreview: p['replyToPreview'] as String?,
-      voiceUrl: p['voiceUrl'] as String?,
-      voiceDurationSeconds: p['voiceDurationSeconds'] as int?,
-      fileUrl: p['fileUrl'] as String?,
-      fileName: p['fileName'] as String?,
-      fileSizeBytes: p['fileSizeBytes'] as int?,
-    );
+  /// Adapt the configured base URL to a STOMP-compatible URL.
+  /// Accepts:
+  ///   `http://host:port`  →  `ws://host:port/ws`
+  ///   `https://host:port` →  `wss://host:port/ws`
+  ///   `ws://host:port`    →  `ws://host:port/ws` (legacy relay URL)
+  ///   `ws://host:port/ws` →  unchanged
+  String? _buildStompUrl(String base) {
+    final trimmed = base.trim();
+    if (trimmed.isEmpty) return null;
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null || uri.host.isEmpty) return null;
+    final scheme = switch (uri.scheme) {
+      'http' => 'ws',
+      'https' => 'wss',
+      'ws' => 'ws',
+      'wss' => 'wss',
+      _ => 'ws',
+    };
+    final port = uri.hasPort ? ':${uri.port}' : '';
+    final path = uri.path.isEmpty || uri.path == '/' ? '/ws' : uri.path;
+    return '$scheme://${uri.host}$port$path';
   }
 }

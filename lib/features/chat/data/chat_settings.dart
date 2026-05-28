@@ -19,10 +19,12 @@ class ChatSettings {
   static const _kUserId = 'chat.currentUserId';
   static const _kUserName = 'chat.currentUserName';
   static const _kRelayUrl = 'chat.relayUrl';
+  static const _kApiBaseUrl = 'chat.apiBaseUrl';
 
   String _userId = ChatSeed.currentUserId;
   String _userName = ChatSeed.currentUserName;
   String _relayUrl = '';
+  String _apiBaseUrl = '';
 
   final StreamController<ChatSettings> _changes =
       StreamController<ChatSettings>.broadcast();
@@ -33,7 +35,28 @@ class ChatSettings {
   /// Empty string = transport stays offline. Examples:
   ///   real phone, same Wi-Fi:  ws://192.168.1.42:7777
   ///   Android emulator:        ws://10.0.2.2:7777
+  ///
+  /// **Deprecated path** — points at the LAN-local
+  /// `tools/chat_relay/bin/server.dart` used by the demo. The
+  /// real-backend transport (Prompt 1+ of
+  /// CHAT_MODULE_BACKEND_INTEGRATIONGUIDE.md) reads [apiBaseUrl]
+  /// instead. Kept here until Prompt 9 deletes the relay.
   String get relayUrl => _relayUrl;
+
+  /// REST + STOMP base URL for the real ERP backend. Set via the
+  /// **Settings → API Config** screen or the chat ⋮ menu. Empty
+  /// string means "fall back to the legacy relay" so existing
+  /// demos still work mid-migration.
+  ///
+  /// Format: `http(s)://host[:port]` (no trailing slash, no `/api/v1`).
+  /// STOMP path `/ws` and REST prefix `/api/v1` are appended by the
+  /// transport + data source — they're not part of this value.
+  ///
+  /// Examples:
+  ///   real phone, same Wi-Fi:  http://192.168.1.42:8080
+  ///   Android emulator:        http://10.0.2.2:8080
+  ///   iOS simulator:           http://127.0.0.1:8080
+  String get apiBaseUrl => _apiBaseUrl;
 
   /// Reactive view of the settings record — emits the same singleton
   /// every time one of the fields changes so listeners can rebuild.
@@ -48,6 +71,16 @@ class ChatSettings {
     _userId = prefs.getString(_kUserId) ?? ChatSeed.currentUserId;
     _userName = prefs.getString(_kUserName) ?? ChatSeed.currentUserName;
     _relayUrl = prefs.getString(_kRelayUrl) ?? '';
+    _apiBaseUrl = prefs.getString(_kApiBaseUrl) ?? '';
+    _emit();
+  }
+
+  Future<void> setApiBaseUrl(String url) async {
+    final trimmed = url.trim();
+    if (trimmed == _apiBaseUrl) return;
+    _apiBaseUrl = trimmed;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kApiBaseUrl, trimmed);
     _emit();
   }
 
