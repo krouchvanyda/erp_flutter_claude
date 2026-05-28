@@ -1,3 +1,4 @@
+import 'package:erp_mobile/shared/firebase_services/firebase_notification_provider.dart';
 import 'package:flutter/material.dart';
 
 import 'core/di/injection.dart';
@@ -14,7 +15,7 @@ import 'l10n/app_localizations.dart';
 /// Pulls the resolved [AppRouter] from DI, applies the global [AppTheme]
 /// dynamically watching [PreferencesRepository] to switch theme modes (light, dark, system),
 /// and rebuilds whenever preferences emit language or theme changes.
-class ErpMobileApp extends StatelessWidget {
+class ErpMobileApp extends StatefulWidget {
   const ErpMobileApp({
     super.key,
     AppRouter? router,
@@ -28,8 +29,28 @@ class ErpMobileApp extends StatelessWidget {
   final LocaleService? _injectedLocaleService;
 
   @override
+  State<ErpMobileApp> createState() => _ErpMobileAppState();
+}
+
+class _ErpMobileAppState extends State<ErpMobileApp> {
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    FirebaseNotificationProvider().getFirebaseToken();
+    FirebaseNotificationProvider().initOnMessageListener(getData: (message){
+      print("message----------------------- in App $message");
+    });
+    FirebaseNotificationProvider().initOnMessageOpenedApp(getData: (message){
+      print("message-----------------------out app minimue $message");
+    });
+    FirebaseNotificationProvider().handleInitialMessage(getData: (message){
+      print("message-----------------------kill app $message");
+    });
+  }
+  @override
   Widget build(BuildContext context) {
-    final router = _injectedRouter ?? getIt<AppRouter>();
+    final router = widget._injectedRouter ?? getIt<AppRouter>();
     final prefRepo = getIt<PreferencesRepository>();
 
     return StreamBuilder<pref_entities.UserPreferences>(
@@ -37,10 +58,10 @@ class ErpMobileApp extends StatelessWidget {
       initialData: pref_entities.UserPreferences.initial,
       builder: (context, snapshot) {
         final prefs = snapshot.data ?? pref_entities.UserPreferences.initial;
-        
+
         // Map settings AppThemeMode to Flutter's ThemeMode
         final themeMode = _mapThemeMode(prefs.themeMode);
-        
+
         // Map settings AppLanguage to language code
         final langCode = prefs.language == pref_entities.AppLanguage.en ? 'en' : 'km';
 

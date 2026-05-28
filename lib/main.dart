@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:erp_mobile/shared/firebase_option/firebase_options.dart';
+import 'package:erp_mobile/shared/firebase_services/firebase_notification_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:injectable/injectable.dart';
@@ -19,16 +21,19 @@ import 'features/procurement/procurement_di.dart';
 import 'features/projects/projects_di.dart';
 import 'features/sales/sales_di.dart';
 import 'features/settings/settings_di.dart';
+import 'package:firebase_core/firebase_core.dart';
 
-void main() {
+Future <void> main() async {
   // Build the bootstrap reporter outside DI so uncaught errors during
   // `configureDependencies()` are still captured.
   final reporter = LoggingCrashReporter(ConsoleLogger());
 
   runWithCrashHooks(
     reporter: reporter,
-    body: () {
+    body: () async {
       WidgetsFlutterBinding.ensureInitialized();
+      await Firebase.initializeApp(options: DefaultFirebaseOptions().currentPlatform);
+      FirebaseNotificationProvider().requestNotificationPermissions();
       SystemChrome.setSystemUIOverlayStyle(
         const SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
