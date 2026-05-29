@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -15,12 +14,12 @@ import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../../../shared/widgets/avatar_picker_sheet.dart';
-import '../../data/chat_seed.dart';
+import '../../../settings/data/datasources/users_remote_data_source.dart';
 import '../../data/chat_settings.dart';
-import '../../data/chat_transport.dart';
 import '../../data/repositories/call_log_repository.dart';
 import '../../data/repositories/conversations_repository.dart';
 import '../../data/repositories/messages_repository.dart';
+import '../../data/repositories/presence_repository.dart';
 import '../../entities/call_log.dart';
 import '../../entities/chat_message.dart';
 import '../../entities/conversation.dart';
@@ -167,7 +166,12 @@ class _Hero extends StatelessWidget {
                           // user-set photo (drives the inbox tile too
                           // via the same `ChatAvatar(avatarFilePath:)`).
                           avatarFilePath: conversation.avatarFilePath,
-                          presence: conversation.presence,
+                          // Live presence for the other person; dot
+                          // ticks on every `/topic/presence` frame.
+                          userId: conversation.participantPreviews.isNotEmpty
+                              ? conversation
+                                  .participantPreviews.first.employeeId
+                              : null,
                         ),
                 ),
               ),
@@ -229,26 +233,66 @@ class _Hero extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        AppLabel(
-          text: isGroup
-              ? '${conversation.totalMembers} members · ${conversation.onlineCount} online'
-              : _presenceLabel(conversation.presence),
-          fontSize: AppFontSize.value12,
-          color: theme.colorScheme.onSurfaceVariant,
+        // Live presence subtitle — same source of truth as the AppBar
+        // on the chat page so they always agree. Reads from
+        // PresenceRepository on every tick of `revision`, so peers
+        // going Online → Busy → Offline update without us re-opening
+        // the page.
+        AnimatedBuilder(
+          animation: GetIt.I<PresenceRepository>().revision,
+          builder: (_, __) => AppLabel(
+            text: _subtitleFor(conversation),
+            fontSize: AppFontSize.value12,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
         ),
       ],
     );
   }
 
-  String _presenceLabel(PresenceStatus p) {
-    switch (p) {
+  String _subtitleFor(ChatConversation c) {
+    if (c.isGroup) {
+      // Online count derived live from PresenceRepository — the
+      // ConversationDto's `onlineCount` is a snapshot at fetch time
+      // and goes stale the moment a member's presence flips.
+      final repo = GetIt.I<PresenceRepository>();
+      final onlineNow = c.participantPreviews
+          .where((p) =>
+              repo.statusOf(p.employeeId).status == PresenceStatus.online)
+          .length;
+      return '${c.totalMembers} members · $onlineNow online';
+    }
+    if (c.participantPreviews.isEmpty) return 'Offline';
+    final otherId = c.participantPreviews.first.employeeId;
+    final p = GetIt.I<PresenceRepository>().statusOf(otherId);
+    switch (p.status) {
       case PresenceStatus.online:
         return 'Online now';
+      case PresenceStatus.busy:
+        return 'In a call';
       case PresenceStatus.away:
         return 'Away';
       case PresenceStatus.offline:
-        return 'Offline';
+        return p.lastSeenAt != null
+            ? 'Last seen ${_relativeTime(p.lastSeenAt!)}'
+            : 'Offline';
     }
+  }
+
+  String _relativeTime(DateTime when) {
+    final diff = DateTime.now().difference(when);
+    if (diff.inSeconds < 60) return 'just now';
+    if (diff.inMinutes < 60) {
+      final m = diff.inMinutes;
+      return '$m minute${m == 1 ? '' : 's'} ago';
+    }
+    if (diff.inHours < 24) {
+      final h = diff.inHours;
+      return '$h hour${h == 1 ? '' : 's'} ago';
+    }
+    final d = diff.inDays;
+    if (d < 7) return '$d day${d == 1 ? '' : 's'} ago';
+    return DateFormat('d MMM').format(when);
   }
 }
 
@@ -287,7 +331,7 @@ class _QuickActions extends StatelessWidget {
             label: 'Search messages',
             onTap: () => ConfigRouter.pushPageAnimation(
               context,
-              const MessageSearchPage(),
+              MessageSearchPage(conversationId: conversation.id),
             ),
           ),
           if (conversation.isGroup) ...[
@@ -697,6 +741,7 @@ class _Members extends StatelessWidget {
                 role: 'You',
                 presence: PresenceStatus.online,
                 isAdmin: true,
+                userId: GetIt.I<ChatSettings>().userId,
               ),
               for (final p in shown) ...[
                 const _Hairline(),
@@ -705,6 +750,9 @@ class _Members extends StatelessWidget {
                   presence: p.presence,
                   role: null,
                   isAdmin: false,
+                  // Drive the row's dot from PresenceRepository so
+                  // it ticks live on every `/topic/presence` frame.
+                  userId: p.employeeId,
                 ),
               ],
               if (extra > 0) ...[
@@ -735,11 +783,13 @@ class _MemberRow extends StatelessWidget {
     required this.presence,
     required this.role,
     required this.isAdmin,
+    this.userId,
   });
   final String name;
   final PresenceStatus presence;
   final String? role;
   final bool isAdmin;
+  final String? userId;
 
   @override
   Widget build(BuildContext context) {
@@ -748,7 +798,12 @@ class _MemberRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Row(
         children: [
-          ChatAvatar(name: name, size: 40, presence: presence),
+          ChatAvatar(
+            name: name,
+            size: 40,
+            userId: userId,
+            presence: userId == null ? presence : null,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -858,7 +913,22 @@ class _DangerZone extends StatelessWidget {
     );
     if (ok != true) return;
     if (!context.mounted) return;
-    await GetIt.I<ConversationsRepository>().delete(conversation.id);
+    // Section 7 op #8 — DELETE /chats/conversations/{id}/members/{me}.
+    // Backend removes us, fans `conversation.remove` to our other
+    // sessions, and `conversation.update` to remaining members.
+    try {
+      await GetIt.I<ConversationsRepository>()
+          .leaveGroupRemote(conversation.id);
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not leave: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     if (!context.mounted) return;
     Navigator.popUntil(context, (r) => r.isFirst);
   }
@@ -1066,10 +1136,37 @@ Future<void> _showAddMembersSheet(
     builder: (_) => _AddMembersSheet(conversation: conversation),
   );
   if (picks == null || picks.isEmpty || !context.mounted) return;
-  await GetIt.I<ConversationsRepository>().addMembers(
-    id: conversation.id,
-    people: picks,
-  );
+  // Section 7 op #6 — POST /chats/conversations/{id}/members.
+  // Convert the preview employeeIds to numeric backend ids; any pick
+  // that doesn't parse (e.g. seed-only entry) is dropped silently.
+  final memberIds = <int>{};
+  for (final p in picks) {
+    final n = int.tryParse(p.employeeId);
+    if (n != null) memberIds.add(n);
+  }
+  if (memberIds.isEmpty) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Selection contains no backend users.'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    return;
+  }
+  try {
+    await GetIt.I<ConversationsRepository>()
+        .addMembersRemote(conversation.id, memberIds);
+  } catch (e) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Could not add members: $e'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    return;
+  }
   if (!context.mounted) return;
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
@@ -1096,10 +1193,56 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
   final Set<String> _selected = {};
   String _query = '';
 
+  // Real users pulled from `GET /api/v1/users` on sheet open. Replaces
+  // the pre-backend demo seed so the picker reflects
+  // who's actually in the database. Already-in-group folks are filtered
+  // out before render.
+  List<ChatParticipantPreview> _directory = const [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDirectory();
+  }
+
   @override
   void dispose() {
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadDirectory() async {
+    try {
+      final page = await GetIt.I<UsersRemoteDataSource>().listUsers(
+        // 200 covers small/mid orgs in one shot; `_candidates` filters
+        // out current group members + self locally.
+        pageSize: 200,
+      );
+      final mapped = <ChatParticipantPreview>[];
+      for (final u in page.items) {
+        if (!u.enabled) continue;
+        final name = u.fullName.trim().isEmpty
+            ? (u.email.trim().isEmpty ? 'User #${u.id}' : u.email)
+            : u.fullName;
+        mapped.add(ChatParticipantPreview(employeeId: u.id, name: name));
+      }
+      mapped.sort(
+        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+      );
+      if (!mounted) return;
+      setState(() {
+        _directory = mapped;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = 'Could not load users.';
+      });
+    }
   }
 
   List<ChatParticipantPreview> get _candidates {
@@ -1109,7 +1252,7 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
       ...widget.conversation.participantPreviews.map((p) => p.employeeId),
     };
     final q = _query.trim().toLowerCase();
-    return ChatSeed.peopleDirectory
+    return _directory
         .where((p) => !inGroup.contains(p.employeeId))
         .where((p) => q.isEmpty || p.name.toLowerCase().contains(q))
         .toList();
@@ -1193,7 +1336,26 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
           ),
           const SizedBox(height: 12),
           Flexible(
-            child: candidates.isEmpty
+            child: _loading
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 36),
+                    child: Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                : _error != null
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 24),
+                        child: Center(
+                          child: AppLabel(
+                            text: _error!,
+                            fontSize: AppFontSize.value14,
+                            color: theme.colorScheme.error,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      )
+                    : candidates.isEmpty
                 ? Padding(
                     padding: const EdgeInsets.symmetric(vertical: 24),
                     child: Center(
@@ -1244,7 +1406,7 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
                                 ChatAvatar(
                                   name: p.name,
                                   size: 40,
-                                  presence: p.presence,
+                                  userId: p.employeeId,
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
@@ -1298,9 +1460,19 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
                   onPressed: _selected.isEmpty
                       ? null
                       : () {
-                          final picks = _selected
-                              .map(ChatSeed.personById)
-                              .toList(growable: false);
+                          // Map each selected id to its preview from
+                          // the loaded directory. Falls back to a
+                          // placeholder if the user vanished between
+                          // load and confirm — rare but safe.
+                          final picks = _selected.map((id) {
+                            for (final p in _directory) {
+                              if (p.employeeId == id) return p;
+                            }
+                            return ChatParticipantPreview(
+                              employeeId: id,
+                              name: 'User #$id',
+                            );
+                          }).toList(growable: false);
                           Navigator.pop(context, picks);
                         },
                   style: FilledButton.styleFrom(
@@ -1342,21 +1514,21 @@ Future<void> _showRenameSheet(
   );
   if (name == null || name.trim().isEmpty || !context.mounted) return;
   final trimmed = name.trim();
-  await GetIt.I<ConversationsRepository>().rename(conversation.id, trimmed);
-  // Slice 10.3.4 — fan the rename out to every other member so their
-  // inbox tile + AppBar pick up "TEST01" without needing them to
-  // re-open the group. participantIds includes self so each peer can
-  // filter on "am I in this group?" before applying.
-  if (conversation.isGroup) {
-    final me = GetIt.I<ChatSettings>().userId;
-    final participantIds = <String>[
-      me,
-      ...conversation.participantPreviews.map((p) => p.employeeId),
-    ];
-    GetIt.I<ChatTransport>().sendConversationUpdate(
-      conversationId: conversation.id,
-      name: trimmed,
-      participantIds: participantIds,
+  // Section 7 op #5 — backend rename. The server fans
+  // `conversation.update` to every member's `/user/queue/inbox` and to
+  // `/topic/conversations/{id}` so peers update via STOMP — no
+  // client-side broadcast needed (the previous relay-era
+  // `sendConversationUpdate` call is gone).
+  try {
+    await GetIt.I<ConversationsRepository>()
+        .renameRemote(conversation.id, trimmed);
+  } catch (e) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Could not rename: $e'),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 }
@@ -1514,15 +1686,10 @@ Future<void> _showChangePhotoSheet(
     case AvatarPickChoice.remove:
       await GetIt.I<ConversationsRepository>()
           .setAvatarPath(conversation.id, null);
-      // Slice 10.3.6 — propagate the clear to peers so every group
-      // member's tile drops the photo too.
-      if (conversation.isGroup) {
-        _broadcastAvatar(
-          conversation: conversation,
-          avatarBase64: null,
-          fileExtension: null,
-        );
-      }
+      // Group avatar URL on the backend (op #5) is `null` here too —
+      // PATCH `avatarUrl: ''` would clear it. Skipped while there's
+      // no binary upload endpoint: the local file path is per-device
+      // by definition and won't be useful to peers either way.
   }
 }
 
@@ -1553,20 +1720,11 @@ Future<void> _pickGroupPhoto(
     }
     await GetIt.I<ConversationsRepository>()
         .setAvatarPath(conversation.id, picked.path);
-    // Slice 10.3.6 — for groups, fan the image bytes out to every
-    // member so their inbox tile + AppBar + call hero all pick up
-    // the new photo. Per-device-only for direct convs (Slice 10.3.5).
-    if (conversation.isGroup) {
-      final bytes = await file.readAsBytes();
-      final ext = picked.name.contains('.')
-          ? '.${picked.name.split('.').last.toLowerCase()}'
-          : '.jpg';
-      _broadcastAvatar(
-        conversation: conversation,
-        avatarBase64: base64Encode(bytes),
-        fileExtension: ext,
-      );
-    }
+    // Per-device avatar only — the previous relay-era base64 broadcast
+    // is gone with the relay. Cross-device group avatar needs a binary
+    // upload endpoint on the backend; the resulting URL would then go
+    // to PATCH /chats/conversations/{id} { avatarUrl } via
+    // `setAvatarUrlRemote(...)`. Out of scope until that endpoint ships.
   } catch (e) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1576,25 +1734,5 @@ Future<void> _pickGroupPhoto(
       ),
     );
   }
-}
-
-/// Slice 10.3.6 — fire-and-forget broadcast helper. participantIds
-/// includes self so every peer can run the same membership filter.
-void _broadcastAvatar({
-  required ChatConversation conversation,
-  required String? avatarBase64,
-  required String? fileExtension,
-}) {
-  final me = GetIt.I<ChatSettings>().userId;
-  final participantIds = <String>[
-    me,
-    ...conversation.participantPreviews.map((p) => p.employeeId),
-  ];
-  GetIt.I<ChatTransport>().sendConversationAvatar(
-    conversationId: conversation.id,
-    participantIds: participantIds,
-    avatarBase64: avatarBase64,
-    fileExtension: fileExtension,
-  );
 }
 

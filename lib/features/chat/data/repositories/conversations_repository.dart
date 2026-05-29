@@ -1,15 +1,16 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
+
 import '../../entities/conversation.dart';
 import '../chat_dto_mappers.dart';
-import '../chat_seed.dart';
 import '../chats_remote_data_source.dart';
 import '../users_cache.dart';
 
 /// Slice 10.1.1 / 10.1.3 / 10.3.1 — conversations store.
 ///
-/// Backed by an in-memory list seeded from [ChatSeed] for the
-/// pre-backend demo era. Once [setRemote] has been called by
+/// Backed by an in-memory cache populated entirely from REST +
+/// STOMP — no more demo seed. Once [setRemote] has been called by
 /// `bootChatTransport`, [loadInbox] replaces that seed with real
 /// `GET /api/v1/chats/conversations` rows mapped via
 /// [conversationFromDto]. The seed remains as a fallback so the demo
@@ -28,8 +29,10 @@ class ConversationsRepository {
     UsersCache.instance.changes.listen((_) => _reresolveNames());
   }
 
-  static final List<ChatConversation> _seed =
-      List<ChatConversation>.of(ChatSeed.conversations);
+  // Starts empty — `loadInbox()` populates from
+  // `GET /chats/conversations` at boot and after every reconnect.
+  // Backend is the source of truth; no local seed.
+  static final List<ChatConversation> _seed = <ChatConversation>[];
 
   final StreamController<List<ChatConversation>> _changes =
       StreamController<List<ChatConversation>>.broadcast();
@@ -137,6 +140,218 @@ class ConversationsRepository {
     } catch (_) {
       // Backend down or auth not ready — keep whatever cache we had.
     }
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  // Section 7 ops 2 / 5 / 6 / 7 / 8 / 9 — REST-backed wrappers.
+  //
+  // Each helper POSTs/PATCHes/DELETEs to the backend, then updates
+  // the local cache from the returned ConversationDto so the inbox
+  // reflects the new state without waiting for the STOMP fan-out
+  // (which still arrives a fraction of a second later and is
+  // idempotent — `_upsert` is by id).
+  //
+  // All take backend-style ids (numeric strings like "5"). Seed
+  // conv ids like "conv-001" short-circuit silently — they're demo
+  // rows that don't exist on the backend.
+  // ──────────────────────────────────────────────────────────────
+
+  /// Op #2 — GET /chats/conversations/{id}. Re-fetches a single
+  /// conversation and upserts it into the cache. Use after a known
+  /// mutation that the local response doesn't already cover.
+  Future<void> refreshOne(String id) async {
+    final remote = _remote;
+    final userId = _currentUserId;
+    if (remote == null || userId == null) return;
+    final n = int.tryParse(id);
+    if (n == null) return;
+    try {
+      final dto = await remote.getConversation(n);
+      _upsert(conversationFromDto(dto, currentUserId: userId));
+    } catch (_) {/* swallow */}
+  }
+
+  /// Op #5 — PATCH /chats/conversations/{id} { name }. Admin-only on
+  /// the backend (server returns 403 otherwise).
+  Future<void> renameRemote(String id, String name) async {
+    final remote = _remote;
+    final userId = _currentUserId;
+    if (remote == null || userId == null) return;
+    final n = int.tryParse(id);
+    if (n == null) {
+      // Seed conv — keep the local-only behaviour for demo continuity.
+      await rename(id, name);
+      return;
+    }
+    final dto = await remote.updateConversation(n, name: name);
+    _upsert(conversationFromDto(dto, currentUserId: userId));
+  }
+
+  /// Op #5 (avatar URL) — PATCH /chats/conversations/{id} { avatarUrl }.
+  /// The backend stores the URL as-is; binary upload is a separate
+  /// endpoint (out of scope here). Pass an empty string to clear.
+  Future<void> setAvatarUrlRemote(String id, String url) async {
+    final remote = _remote;
+    final userId = _currentUserId;
+    if (remote == null || userId == null) return;
+    final n = int.tryParse(id);
+    if (n == null) return;
+    final dto = await remote.updateConversation(n, avatarUrl: url);
+    _upsert(conversationFromDto(dto, currentUserId: userId));
+  }
+
+  /// Op #6 — POST /chats/conversations/{id}/members { memberIds }.
+  /// Admin-only. Backend fans `conversation.update` to every
+  /// member's `/user/queue/inbox`, so peers update via STOMP — we
+  /// also refresh locally so the actor sees the new state on the
+  /// next frame.
+  Future<void> addMembersRemote(String id, Set<int> memberIds) async {
+    final remote = _remote;
+    if (remote == null) return;
+    final n = int.tryParse(id);
+    if (n == null) return;
+    if (memberIds.isEmpty) return;
+    await remote.addMembers(n, memberIds);
+    await refreshOne(id);
+  }
+
+  /// Op #7 — DELETE /chats/conversations/{id}/members/{userId}.
+  /// Admin-only when removing someone else; member-self when leaving
+  /// (op #8 uses the same endpoint with the caller's id).
+  Future<void> removeMemberRemote(String id, int userId) async {
+    final remote = _remote;
+    if (remote == null) return;
+    final n = int.tryParse(id);
+    if (n == null) return;
+    await remote.removeMember(n, userId);
+    await refreshOne(id);
+  }
+
+  /// Op #8 — Leaving a group: caller deletes themselves from the
+  /// member list. After success the conv is removed locally because
+  /// we're no longer a member of it.
+  Future<void> leaveGroupRemote(String id) async {
+    final remote = _remote;
+    final userId = _currentUserId;
+    if (remote == null || userId == null) return;
+    final n = int.tryParse(id);
+    final selfId = int.tryParse(userId);
+    if (n == null || selfId == null) return;
+    await remote.removeMember(n, selfId);
+    // Drop the conv from the local cache — `refreshOne` would 403
+    // (we're no longer a member) so just delete locally.
+    _seed.removeWhere((c) => c.id == id);
+    await _emit();
+  }
+
+  /// DELETE /chats/conversations/{id} — backend enforces auth (group
+  /// → admin only; direct → either party). On success we also clear
+  /// the local row so the inbox tile vanishes without waiting for
+  /// the STOMP `conversation.remove` echo.
+  ///
+  /// **Non-admin fallback for groups:** if the user swipes a group
+  /// they don't own, the backend returns 403. From the user's POV
+  /// "remove this chat from my inbox" is the same intent whether
+  /// they're an admin (real delete for everyone) or a member (leave
+  /// the group, conv stays for the rest). So a 403 on a group falls
+  /// through to [leaveGroupRemote]. Direct convs bubble the 403 up
+  /// because that case isn't supposed to happen and the caller
+  /// should know.
+  Future<void> deleteRemote(String id) async {
+    final remote = _remote;
+    if (remote == null) {
+      // Seed/demo mode — keep legacy local-only behaviour.
+      await delete(id);
+      return;
+    }
+    final n = int.tryParse(id);
+    if (n == null) {
+      await delete(id);
+      return;
+    }
+    try {
+      await remote.deleteConversation(n);
+      _seed.removeWhere((c) => c.id == id);
+      await _emit();
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 403) {
+        final existing = await findById(id);
+        if (existing != null && existing.isGroup) {
+          await leaveGroupRemote(id);
+          return;
+        }
+      }
+      rethrow;
+    }
+  }
+
+  /// Op #9 — POST /chats/conversations/{id}/read { lastReadMessageId }.
+  /// Server clears unread, returns the updated ConversationDto, and
+  /// fans `conversation.update` to other sessions of the same user.
+  Future<void> markReadRemote(String id, int lastReadMessageId) async {
+    final remote = _remote;
+    final userId = _currentUserId;
+    if (remote == null || userId == null) return;
+    final n = int.tryParse(id);
+    if (n == null) {
+      // Seed conv — local-only clear.
+      try {
+        await markRead(id);
+      } catch (_) {}
+      return;
+    }
+    try {
+      final dto = await remote.markRead(n, lastReadMessageId);
+      _upsert(conversationFromDto(dto, currentUserId: userId));
+    } catch (_) {/* swallow — next loadInbox will reconcile */}
+  }
+
+  /// Inbound `message.read` (from `/topic/conversations/{id}`) →
+  /// bump the matching member's [ChatParticipantPreview.lastReadMessageId]
+  /// in place. Pairs with the message-side patch in
+  /// `MessagesRepository.applyInbound` (which adds the reader to
+  /// each msg's `readByUserIds`) — together they keep the read
+  /// cursor consistent across both data axes.
+  ///
+  /// No-op when the conv isn't in our cache, the reader isn't a
+  /// known member, or the new id isn't actually higher than what we
+  /// already have.
+  void applyInboundRead({
+    required String conversationId,
+    required String userId,
+    required String lastReadMessageId,
+  }) {
+    final idx = _seed.indexWhere((c) => c.id == conversationId);
+    if (idx == -1) return;
+    final c = _seed[idx];
+    final memberIdx =
+        c.participantPreviews.indexWhere((p) => p.employeeId == userId);
+    if (memberIdx == -1) return;
+    final current = c.participantPreviews[memberIdx];
+    // Only bump forward — protects against out-of-order delivery
+    // (older read frame arrives after a newer one).
+    final newId = int.tryParse(lastReadMessageId);
+    final oldId = int.tryParse(current.lastReadMessageId ?? '');
+    if (newId != null && oldId != null && newId <= oldId) return;
+    final nextPreviews =
+        List<ChatParticipantPreview>.of(c.participantPreviews);
+    nextPreviews[memberIdx] =
+        current.copyWith(lastReadMessageId: lastReadMessageId);
+    _seed[idx] = c.copyWith(participantPreviews: nextPreviews);
+    _emit();
+  }
+
+  /// Insert-or-replace by id, then re-emit. Used by the REST
+  /// wrappers above to keep the local cache in sync without
+  /// rebuilding the whole inbox.
+  void _upsert(ChatConversation c) {
+    final idx = _seed.indexWhere((existing) => existing.id == c.id);
+    if (idx == -1) {
+      _seed.insert(0, c);
+    } else {
+      _seed[idx] = c;
+    }
+    _emit();
   }
 
   Future<List<ChatConversation>> getAll() async {

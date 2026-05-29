@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'chat_seed.dart';
 import 'chat_transport.dart';
 
 /// Persistent demo settings for the chat module — current user identity
@@ -21,8 +20,12 @@ class ChatSettings {
   static const _kRelayUrl = 'chat.relayUrl';
   static const _kApiBaseUrl = 'chat.apiBaseUrl';
 
-  String _userId = ChatSeed.currentUserId;
-  String _userName = ChatSeed.currentUserName;
+  // Default to empty — `bootChatTransport` calls `/users/me` at app
+  // start and writes the real backend user id/name via [setIdentity].
+  // No demo defaults — authentication is real and the backend is
+  // the single source of truth for identity.
+  String _userId = '';
+  String _userName = '';
   String _relayUrl = '';
   String _apiBaseUrl = '';
 
@@ -68,8 +71,8 @@ class ChatSettings {
   /// Load persisted settings. Idempotent — safe to call from `main`.
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
-    _userId = prefs.getString(_kUserId) ?? ChatSeed.currentUserId;
-    _userName = prefs.getString(_kUserName) ?? ChatSeed.currentUserName;
+    _userId = prefs.getString(_kUserId) ?? '';
+    _userName = prefs.getString(_kUserName) ?? '';
     _relayUrl = prefs.getString(_kRelayUrl) ?? '';
     _apiBaseUrl = prefs.getString(_kApiBaseUrl) ?? '';
     _emit();

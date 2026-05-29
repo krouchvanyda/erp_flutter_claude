@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_font_size.dart';
@@ -20,6 +21,7 @@ import '../../data/chat_transport.dart';
 import '../../data/repositories/call_log_repository.dart';
 import '../../data/repositories/conversations_repository.dart';
 import '../../data/repositories/messages_repository.dart';
+import '../../data/repositories/presence_repository.dart';
 import '../../entities/call_log.dart';
 import '../../entities/chat_message.dart';
 import '../../entities/conversation.dart';
@@ -58,6 +60,9 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   late final MessagesRepository _msgRepo;
   late final ChatSettings _settings;
   StreamSubscription<ChatSettings>? _settingsSub;
+  StreamSubscription<List<ChatMessage>>? _messagesSub;
+  Timer? _markReadDebounce;
+  int _lastMarkedReadId = 0;
 
   // Tracks the last message count we rendered so the page can auto-
   // scroll to the latest bubble on initial load AND whenever a new
@@ -88,7 +93,21 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     // and ask the transport to subscribe to `/topic/conversations/{id}`
     // for live updates. No-op on seed convs (`conv-001` etc.) or when
     // the backend data source hasn't been bound (demo mode).
-    unawaited(_msgRepo.loadForConversation(widget.conversationId));
+    unawaited(_msgRepo.loadForConversation(widget.conversationId).then((_) {
+      // Section 7 op #9 — once history is loaded, tell the backend
+      // we've read up to the newest message. The server clears
+      // unread and fans `conversation.update` to our other sessions
+      // so the badge clears there too.
+      _markReadDebounced();
+    }));
+    // Also re-mark on every fresh emission so messages arriving while
+    // we're on the page don't leave a stale server-side counter
+    // (TC-RS.2). Debounced inside `_markReadDebounced` so a rapid
+    // burst of inbound messages collapses to one POST.
+    _messagesSub =
+        _msgRepo.watchForConversation(widget.conversationId).listen((_) {
+      _markReadDebounced();
+    });
     // Rebuild the page when identity changes so "isOwn" bubbles flip
     // sides instantly.
     _settingsSub = _settings.watch().listen((_) {
@@ -111,9 +130,33 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     // alive for every chat the user has ever opened this session.
     GetIt.I<ChatTransport>().unsubscribeConversation(widget.conversationId);
     _settingsSub?.cancel();
+    _messagesSub?.cancel();
+    _markReadDebounce?.cancel();
     _inputCtrl.dispose();
     _scrollCtrl.dispose();
     super.dispose();
+  }
+
+  /// Section 7 op #9 — POST /chats/conversations/{id}/read with the
+  /// highest numeric message id we've seen for this conv. Debounced
+  /// to one POST per second so a burst of inbound messages collapses
+  /// to a single backend call. Skips when the newest id is the same
+  /// as last time (idempotent).
+  void _markReadDebounced() {
+    _markReadDebounce?.cancel();
+    _markReadDebounce = Timer(const Duration(seconds: 1), () async {
+      final msgs = await _msgRepo.getForConversation(widget.conversationId);
+      var maxId = 0;
+      for (final m in msgs) {
+        final n = int.tryParse(m.id);
+        if (n != null && n > maxId) maxId = n;
+      }
+      if (maxId == 0 || maxId == _lastMarkedReadId) return;
+      _lastMarkedReadId = maxId;
+      try {
+        await _convRepo.markReadRemote(widget.conversationId, maxId);
+      } catch (_) {/* swallow — next emission will retry */}
+    });
   }
 
   /// Slice 10.1.8 — compute the recipient list for a message in the
@@ -349,8 +392,14 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                       name: conv.name,
                       size: 36,
                       avatarFilePath: conv.avatarFilePath,
-                      presence:
-                          conv.isGroup ? null : conv.presence,
+                      // For direct convs feed `userId` so the dot
+                      // tracks live `/topic/presence` updates from
+                      // PresenceRepository. Groups don't show a dot.
+                      userId: conv.isGroup
+                          ? null
+                          : conv.participantPreviews.isNotEmpty
+                              ? conv.participantPreviews.first.employeeId
+                              : null,
                       showStatus: !conv.isGroup,
                     ),
                   const SizedBox(width: 10),
@@ -366,10 +415,18 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        AppLabel(
-                          text: _subtitleFor(conv),
-                          fontSize: 11.5,
-                          color: theme.colorScheme.onSurfaceVariant,
+                        // Direct subtitle is presence-driven; rebuild
+                        // on every PresenceRepository tick so a peer
+                        // going from Online → Busy → Offline updates
+                        // live without us re-opening the page.
+                        AnimatedBuilder(
+                          animation:
+                              GetIt.I<PresenceRepository>().revision,
+                          builder: (_, __) => AppLabel(
+                            text: _subtitleFor(conv),
+                            fontSize: 11.5,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                         ),
                       ],
                     ),
@@ -411,16 +468,49 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
 
   String _subtitleFor(ChatConversation c) {
     if (c.isGroup) {
-      return '${c.totalMembers} members · ${c.onlineCount} online';
+      // For groups, derive the online count live from the presence
+      // cache rather than the (possibly stale) ConversationDto field.
+      final repo = GetIt.I<PresenceRepository>();
+      final onlineNow = c.participantPreviews
+          .where((p) =>
+              repo.statusOf(p.employeeId).status == PresenceStatus.online)
+          .length;
+      return '${c.totalMembers} members · $onlineNow online';
     }
-    switch (c.presence) {
+    // Direct conv — read live status of the other person.
+    if (c.participantPreviews.isEmpty) return 'Offline';
+    final otherId = c.participantPreviews.first.employeeId;
+    final p = GetIt.I<PresenceRepository>().statusOf(otherId);
+    switch (p.status) {
       case PresenceStatus.online:
         return 'Online';
+      case PresenceStatus.busy:
+        return 'In a call';
       case PresenceStatus.away:
         return 'Away';
       case PresenceStatus.offline:
-        return 'Offline';
+        return p.lastSeenAt != null
+            ? 'Last seen ${_relativeTime(p.lastSeenAt!)}'
+            : 'Offline';
     }
+  }
+
+  /// Lightweight "X ago" formatter — keeps us off the `timeago` dep
+  /// for the one place we need a relative timestamp.
+  String _relativeTime(DateTime when) {
+    final diff = DateTime.now().difference(when);
+    if (diff.inSeconds < 60) return 'just now';
+    if (diff.inMinutes < 60) {
+      final m = diff.inMinutes;
+      return '$m minute${m == 1 ? '' : 's'} ago';
+    }
+    if (diff.inHours < 24) {
+      final h = diff.inHours;
+      return '$h hour${h == 1 ? '' : 's'} ago';
+    }
+    final d = diff.inDays;
+    if (d < 7) return '$d day${d == 1 ? '' : 's'} ago';
+    return DateFormat('d MMM').format(when);
   }
 
   Future<void> _toggleReaction(String messageId, String emoji) async {
@@ -938,6 +1028,12 @@ class _MessageList extends StatelessWidget {
     if (typingShown) {
       items.add(_ListItem.typing(conversation));
     }
+    // Compute "expected readers" once per build: every conv member
+    // except us. Drives the read-receipt tick logic in ChatBubble.
+    final expectedReaderIds = <String>{
+      for (final p in conversation.participantPreviews)
+        if (p.employeeId != currentUserId) p.employeeId,
+    };
     return ListView.builder(
       controller: scrollController,
       padding: const EdgeInsets.only(top: 8, bottom: 12),
@@ -951,6 +1047,7 @@ class _MessageList extends StatelessWidget {
               isOwn: item.message!.senderId == currentUserId,
               showSender: item.showSender,
               currentUserId: currentUserId,
+              expectedReaderIds: expectedReaderIds,
               onLongPress: () => onLongPressBubble(item.message!),
               onReact: (e) => onReact(item.message!.id, e),
               onJumpToReply: onJumpToReply,
@@ -965,8 +1062,7 @@ class _MessageList extends StatelessWidget {
               onTap: () => onTapCall(item.callLog!),
             ),
           _ListItemKind.typing => TypingIndicator(
-              label:
-                  '${item.conversation!.isGroup ? item.conversation!.participantPreviews.first.name : item.conversation!.name} is typing…',
+              label: '${_typingLabelFor(item.conversation!)} is typing…',
             ),
         };
       },
@@ -975,6 +1071,21 @@ class _MessageList extends StatelessWidget {
 
   static bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
+
+  /// Safe display label for the typing indicator. Direct convs show
+  /// the conv name (the other person); groups show the first
+  /// participant's name, but guard the `.first` access — a freshly
+  /// created group can have an empty `participantPreviews` list
+  /// before the backend's refresh fills it in, which previously
+  /// crashed with `Bad state: No element`.
+  static String _typingLabelFor(ChatConversation c) {
+    if (!c.isGroup) return c.name.isNotEmpty ? c.name : 'Someone';
+    if (c.participantPreviews.isNotEmpty) {
+      final first = c.participantPreviews.first.name;
+      if (first.trim().isNotEmpty) return first;
+    }
+    return 'Someone';
+  }
 }
 
 enum _ListItemKind { separator, message, call, typing }

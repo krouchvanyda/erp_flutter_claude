@@ -1,8 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 
 import '../../../../core/theme/app_label.dart';
+import '../../data/repositories/presence_repository.dart';
 import '../../entities/conversation.dart';
 
 /// Circular avatar with initials fallback. Used for direct chats and
@@ -21,6 +23,7 @@ class ChatAvatar extends StatelessWidget {
     this.avatarFilePath,
     this.presence,
     this.showStatus = true,
+    this.userId,
   });
 
   final String name;
@@ -30,6 +33,12 @@ class ChatAvatar extends StatelessWidget {
   final PresenceStatus? presence;
   final bool showStatus;
 
+  /// When set, the dot is driven live from [PresenceRepository] for
+  /// this user — overrides the static [presence] field and rebuilds
+  /// on every `presence.update` STOMP frame. Leave null for legacy
+  /// call sites that pass an explicit [presence] (seed data, etc.).
+  final String? userId;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -38,6 +47,10 @@ class ChatAvatar extends StatelessWidget {
     final colors = _gradientFor(hue);
     final dotSize = (size * 0.28).clamp(8.0, 18.0);
     final hasPhoto = avatarFilePath != null && avatarFilePath!.isNotEmpty;
+    final presenceRepo = (userId != null &&
+            GetIt.I.isRegistered<PresenceRepository>())
+        ? GetIt.I<PresenceRepository>()
+        : null;
     return SizedBox(
       width: size,
       height: size,
@@ -75,15 +88,33 @@ class ChatAvatar extends StatelessWidget {
                     letterSpacing: 0.5,
                   ),
           ),
-          if (showStatus && presence != null)
+          if (showStatus)
             Positioned(
               right: -1,
               bottom: -1,
-              child: OnlineStatusDot(
-                presence: presence!,
-                size: dotSize,
-                borderColor: theme.colorScheme.surface,
-              ),
+              child: presenceRepo != null
+                  ? AnimatedBuilder(
+                      animation: presenceRepo.revision,
+                      builder: (_, __) {
+                        final live =
+                            presenceRepo.statusOf(userId!).status;
+                        if (live == PresenceStatus.offline) {
+                          return const SizedBox.shrink();
+                        }
+                        return OnlineStatusDot(
+                          presence: live,
+                          size: dotSize,
+                          borderColor: theme.colorScheme.surface,
+                        );
+                      },
+                    )
+                  : (presence != null
+                      ? OnlineStatusDot(
+                          presence: presence!,
+                          size: dotSize,
+                          borderColor: theme.colorScheme.surface,
+                        )
+                      : const SizedBox.shrink()),
             ),
         ],
       ),
@@ -126,7 +157,8 @@ class OnlineStatusDot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = switch (presence) {
-      PresenceStatus.online => Colors.green.shade500,
+      PresenceStatus.online => const Color(0xFF31A24C), // facebook-green
+      PresenceStatus.busy => const Color(0xFFE2A03F),   // amber — in a call
       PresenceStatus.away => Colors.orange.shade500,
       PresenceStatus.offline => Colors.grey.shade400,
     };

@@ -46,6 +46,7 @@ class ChatMessage {
     this.reactions = const <ChatReaction>[],
     this.senderAvatarUrl,
     this.isPinned = false,
+    this.readByUserIds = const <String>{},
   });
 
   final String id;
@@ -84,6 +85,14 @@ class ChatMessage {
 
   final List<ChatReaction> reactions;
 
+  /// User ids that have read up to (and including) this message — comes
+  /// from the backend's `MessageDto.readByUserIds`. The chat bubble's
+  /// read-receipt drives its tick state from this set: empty → single
+  /// `done`; non-empty but missing one or more expected readers →
+  /// grey `done_all`; all expected readers present → blue `done_all`.
+  /// Inbound `message.read` STOMP events patch this set in place.
+  final Set<String> readByUserIds;
+
   /// Pinned by an admin — rendered as the conversation's pinned banner.
   final bool isPinned;
 
@@ -112,6 +121,7 @@ class ChatMessage {
     DateTime? readAt,
     List<ChatReaction>? reactions,
     bool? isPinned,
+    Set<String>? readByUserIds,
   }) =>
       ChatMessage(
         id: id ?? this.id,
@@ -137,5 +147,6 @@ class ChatMessage {
         readAt: readAt ?? this.readAt,
         reactions: reactions ?? this.reactions,
         isPinned: isPinned ?? this.isPinned,
+        readByUserIds: readByUserIds ?? this.readByUserIds,
       );
 }

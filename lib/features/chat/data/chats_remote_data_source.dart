@@ -55,6 +55,9 @@ abstract class ChatsRemoteDataSource {
     String? name,
     String? avatarUrl,
   });
+  /// `DELETE /chats/conversations/{id}` — admin only for groups,
+  /// either-party for direct convs (backend enforces).
+  Future<void> deleteConversation(int id);
   Future<void> addMembers(int conversationId, Set<int> memberIds);
   Future<void> removeMember(int conversationId, int userId);
   Future<Map<String, dynamic>> markRead(int conversationId, int lastReadMessageId);
@@ -62,6 +65,15 @@ abstract class ChatsRemoteDataSource {
   // ── Messages ──────────────────────────────────────────────────────
   Future<Map<String, dynamic>> listMessages(
     int conversationId, {
+    int page = 1,
+    int pageSize = 30,
+  });
+  /// `GET /chats/conversations/{id}/messages/search?q=&page=&pageSize=`
+  /// — server-side case-insensitive substring over message bodies.
+  /// Returns the same paginated envelope shape as [listMessages].
+  Future<Map<String, dynamic>> searchMessages(
+    int conversationId,
+    String query, {
     int page = 1,
     int pageSize = 30,
   });
@@ -87,12 +99,26 @@ abstract class ChatsRemoteDataSource {
   Future<Map<String, dynamic>> acceptCall(int callId);
   Future<Map<String, dynamic>> rejectCall(int callId, {String? reason});
   Future<Map<String, dynamic>> endCall(int callId);
+  /// `GET /chats/calls/{id}` — reconcile a call's state after a STOMP
+  /// dropout or a cold start. Returns the canonical [ChatCallDto].
+  Future<Map<String, dynamic>> getCall(int callId);
   Future<Map<String, dynamic>> listCalls({int page = 1, int pageSize = 50});
   Future<Map<String, dynamic>> listConversationCalls(
     int conversationId, {
     int page = 1,
     int pageSize = 6,
   });
+
+  // ── Presence ──────────────────────────────────────────────────────
+  /// `GET /chats/presence` — full snapshot of every user the server
+  /// has tracked. Used on app boot + on every successful reconnect
+  /// to recover state the broker may have advanced while we were
+  /// disconnected.
+  Future<List<dynamic>> listPresence();
+
+  /// `GET /chats/presence?ids=1,4,7` — batch hydrate just the users
+  /// on screen (group members, chat-info participants, etc.).
+  Future<List<dynamic>> listPresenceForIds(Iterable<int> userIds);
 }
 
 /// `dio`-backed implementation. Resolves paths against
@@ -105,6 +131,7 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
   static const String _conversationsPath = '/chats/conversations';
   static const String _messagesPath = '/chats/messages';
   static const String _callsPath = '/chats/calls';
+  static const String _presencePath = '/chats/presence';
 
   final Dio _dio;
 
@@ -171,6 +198,13 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
   }
 
   @override
+  Future<void> deleteConversation(int id) async {
+    // Backend enforces auth: group → admin only; direct → either party.
+    // 403 surfaces through Dio as a `DioException`.
+    await _dio.delete<dynamic>('$_conversationsPath/$id');
+  }
+
+  @override
   Future<void> addMembers(int conversationId, Set<int> memberIds) async {
     // Body mirrors AddMembersRequest.java: { memberIds: [Long, ...] }.
     await _dio.post<dynamic>(
@@ -210,6 +244,24 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
     final res = await _dio.get<Map<String, dynamic>>(
       '$_conversationsPath/$conversationId/messages',
       queryParameters: {'page': page, 'pageSize': pageSize},
+    );
+    return ApiEnvelope.parse<Map<String, dynamic>>(res.data!, (d) => d);
+  }
+
+  @override
+  Future<Map<String, dynamic>> searchMessages(
+    int conversationId,
+    String query, {
+    int page = 1,
+    int pageSize = 30,
+  }) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '$_conversationsPath/$conversationId/messages/search',
+      queryParameters: <String, dynamic>{
+        'q': query,
+        'page': page,
+        'pageSize': pageSize,
+      },
     );
     return ApiEnvelope.parse<Map<String, dynamic>>(res.data!, (d) => d);
   }
@@ -316,6 +368,14 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
   }
 
   @override
+  Future<Map<String, dynamic>> getCall(int callId) async {
+    // Used to reconcile a call's state after a missed STOMP event
+    // (network blip mid-call, cold start while a call is in flight).
+    final res = await _dio.get<Map<String, dynamic>>('$_callsPath/$callId');
+    return ApiEnvelope.parse<Map<String, dynamic>>(res.data!, (d) => d);
+  }
+
+  @override
   Future<Map<String, dynamic>> listCalls({
     int page = 1,
     int pageSize = 50,
@@ -338,5 +398,38 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
       queryParameters: {'page': page, 'pageSize': pageSize},
     );
     return ApiEnvelope.parse<Map<String, dynamic>>(res.data!, (d) => d);
+  }
+
+  // ── Presence ──────────────────────────────────────────────────────
+
+  @override
+  Future<List<dynamic>> listPresence() async {
+    // Tolerant of both shapes:
+    //   `{success:true, data:[...]}` — standard envelope
+    //   `[...]`                      — bare array (rare; some
+    //                                    presence endpoints skip the
+    //                                    wrapper for cache reasons)
+    final res = await _dio.get<dynamic>(_presencePath);
+    final body = res.data;
+    if (body is List) return body;
+    if (body is Map<String, dynamic>) {
+      return ApiEnvelope.parseList<dynamic>(body, (d) => d);
+    }
+    return const <dynamic>[];
+  }
+
+  @override
+  Future<List<dynamic>> listPresenceForIds(Iterable<int> userIds) async {
+    if (userIds.isEmpty) return const <dynamic>[];
+    final res = await _dio.get<dynamic>(
+      _presencePath,
+      queryParameters: {'ids': userIds.join(',')},
+    );
+    final body = res.data;
+    if (body is List) return body;
+    if (body is Map<String, dynamic>) {
+      return ApiEnvelope.parseList<dynamic>(body, (d) => d);
+    }
+    return const <dynamic>[];
   }
 }

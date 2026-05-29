@@ -17,8 +17,17 @@ import '../widgets/chat_avatar.dart';
 import 'chat_conversation_page.dart';
 
 /// Slice 10.1.4 — Message Search.
+///
+/// When [conversationId] is null, runs a local in-memory search over
+/// every loaded message (Telegram-style global archive lookup).
+/// When set, calls the backend's
+/// `GET /chats/conversations/{id}/messages/search?q=` instead — server
+/// authoritative, case-insensitive substring over the full server-side
+/// history of that one conversation.
 class MessageSearchPage extends StatefulWidget {
-  const MessageSearchPage({super.key});
+  const MessageSearchPage({super.key, this.conversationId});
+
+  final String? conversationId;
 
   @override
   State<MessageSearchPage> createState() => _MessageSearchPageState();
@@ -76,10 +85,20 @@ class _MessageSearchPageState extends State<MessageSearchPage> {
           children: [
             const AppBackgroundGradient(),
             FutureBuilder<List<ChatMessage>>(
-              future: GetIt.I<MessagesRepository>().search(_query),
+              future: widget.conversationId != null
+                  ? GetIt.I<MessagesRepository>().searchInConversation(
+                      widget.conversationId!,
+                      _query,
+                    )
+                  : GetIt.I<MessagesRepository>().search(_query),
               builder: (context, snap) {
                 if (_query.trim().isEmpty) {
-                  return _Hint(icon: Icons.search_rounded, text: 'Search every conversation for text, file names, or @mentions.');
+                  return _Hint(
+                    icon: Icons.search_rounded,
+                    text: widget.conversationId != null
+                        ? 'Search this conversation\'s messages.'
+                        : 'Search every conversation for text, file names, or @mentions.',
+                  );
                 }
                 if (!snap.hasData) {
                   return const Center(child: CircularProgressIndicator());

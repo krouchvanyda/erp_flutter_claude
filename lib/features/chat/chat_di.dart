@@ -11,16 +11,17 @@ import '../settings/data/datasources/users_remote_data_source.dart';
 import 'data/active_conversation_tracker.dart';
 import 'data/call_signaling_service.dart';
 import 'data/chat_lifecycle_bridge.dart';
-import 'data/chat_seed.dart';
 import 'data/chat_settings.dart';
 import 'data/chat_transport.dart';
 import 'data/chats_remote_data_source.dart';
 import 'data/repositories/call_log_repository.dart';
 import 'data/repositories/conversations_repository.dart';
 import 'data/repositories/messages_repository.dart';
+import 'data/repositories/presence_repository.dart';
 import 'data/users_cache.dart';
 import 'entities/chat_message.dart';
 import 'entities/conversation.dart';
+import 'entities/presence.dart';
 
 /// Manual DI registration for Module 10 (Chat & Voice / Video).
 ///
@@ -41,6 +42,11 @@ void registerChatModule(GetIt getIt) {
   if (!getIt.isRegistered<CallLogRepository>()) {
     getIt.registerLazySingleton<CallLogRepository>(
       CallLogRepository.new,
+    );
+  }
+  if (!getIt.isRegistered<PresenceRepository>()) {
+    getIt.registerLazySingleton<PresenceRepository>(
+      () => PresenceRepository(remote: getIt<ChatsRemoteDataSource>()),
     );
   }
   if (!getIt.isRegistered<ChatSettings>()) {
@@ -77,6 +83,7 @@ void registerChatModule(GetIt getIt) {
         settings: getIt<ChatSettings>(),
         conversations: getIt<ConversationsRepository>(),
         callLog: getIt<CallLogRepository>(),
+        remote: getIt<ChatsRemoteDataSource>(),
       ),
     );
   }
@@ -93,10 +100,16 @@ Future<void> bootChatTransport(GetIt getIt) async {
   final transport = getIt<ChatTransport>();
   final messages = getIt<MessagesRepository>();
   final conversations = getIt<ConversationsRepository>();
+  final presence = getIt<PresenceRepository>();
   final remote = getIt<ChatsRemoteDataSource>();
 
   await settings.load();
   messages.attachTransport(transport);
+
+  // Bulk-hydrate presence from `GET /chats/presence` so avatar dots
+  // and direct-conv subtitles paint with real state on the first
+  // frame. Fire-and-forget — the call swallows errors internally.
+  unawaited(presence.loadAll());
 
   // Resolve who we are from `/users/me` BEFORE wiring the repos so
   // `currentUserId` is the real backend id and the UsersCache has
@@ -181,25 +194,39 @@ Future<void> bootChatTransport(GetIt getIt) async {
       unawaited(messages
           .applyInbound(MessageReceivedEvent(m, targetIds: event.targetIds)));
       final preview = _previewFor(m);
-      unawaited(
-        conversations
-            .updateLastMessage(
-              id: m.conversationId,
-              body: preview,
-              senderId: m.senderId,
-              senderName: m.senderName,
-              type: m.type.name,
-              at: m.sentAt,
-            )
-            // Conversation may not exist locally yet (peer started a
-            // fresh conv we don't have seeded) — swallow.
-            .catchError((_) async => throw StateError('conv missing')),
-      );
-      if (!ActiveConversationTracker.instance.isActive(m.conversationId)) {
-        unawaited(conversations.bumpUnread(m.conversationId).catchError(
-          (_) async => throw StateError('conv missing'),
-        ));
-      }
+      // If the conv doesn't exist locally yet (peer started a fresh
+      // direct conv we haven't seen, or backend pushed before our
+      // first loadInbox), pull it from the backend so future messages
+      // land in a real row and the inbox tile appears. Both
+      // updateLastMessage and bumpUnread throw StateError when the
+      // conv is missing — try once, fall back to refreshOne + retry,
+      // and silently give up on the second failure (next loadInbox
+      // will reconcile).
+      unawaited(() async {
+        Future<void> applyPreview() async {
+          await conversations.updateLastMessage(
+            id: m.conversationId,
+            body: preview,
+            senderId: m.senderId,
+            senderName: m.senderName,
+            type: m.type.name,
+            at: m.sentAt,
+          );
+          if (!ActiveConversationTracker.instance
+              .isActive(m.conversationId)) {
+            await conversations.bumpUnread(m.conversationId);
+          }
+        }
+
+        try {
+          await applyPreview();
+        } catch (_) {
+          try {
+            await conversations.refreshOne(m.conversationId);
+            await applyPreview();
+          } catch (_) {/* give up — next loadInbox reconciles */}
+        }
+      }());
     } else {
       unawaited(messages.applyInbound(event));
       if (event is ConversationCreatedEvent) {
@@ -218,6 +245,31 @@ Future<void> bootChatTransport(GetIt getIt) async {
           conversations,
           settings,
         ));
+      } else if (event is MessageReadEvent) {
+        // Sync the conv-side member.lastReadMessageId in addition to
+        // the message-side readByUserIds patched by applyInbound
+        // above. Keeps both data axes consistent for any UI that
+        // wants to show "Read by X up to Y".
+        conversations.applyInboundRead(
+          conversationId: event.conversationId,
+          userId: event.userId,
+          lastReadMessageId: event.lastReadMessageId,
+        );
+      } else if (event is PresenceUpdatedEvent) {
+        try {
+          presence.applyInboundPresence(Presence.fromJson(event.payload));
+        } catch (_) {
+          // Malformed payload — leave the cache alone; next loadAll
+          // will reconcile.
+        }
+      } else if (event is ConversationRemovedEvent) {
+        // Admin kicked us out of the group OR we left ourselves on a
+        // different device. Drop the conv from the local cache so
+        // the inbox tile disappears immediately. If we're currently
+        // viewing the conv, the StreamBuilder<ChatConversation?> in
+        // chat info / chat page yields null → page handles its own
+        // "conv missing" empty state.
+        unawaited(conversations.delete(event.conversationId));
       }
     }
   });
@@ -231,7 +283,11 @@ Future<void> bootChatTransport(GetIt getIt) async {
   // Slice 10.2.6 — re-kick the WebSocket whenever the app returns to
   // the foreground, in case the OS dropped it while we were
   // backgrounded. No-op when the socket is still alive.
-  ChatLifecycleBridge(transport: transport, settings: settings).attach();
+  ChatLifecycleBridge(
+    transport: transport,
+    settings: settings,
+    presence: presence,
+  ).attach();
 
   // Open the socket with the current settings, and re-open whenever
   // the user changes the URL or identity. After each (re)connect,
@@ -275,6 +331,11 @@ Future<void> bootChatTransport(GetIt getIt) async {
     // Re-bind in case the user id changed (sign-out → sign-in flip).
     conversations.setRemote(remote, currentUserId: settings.userId);
     unawaited(conversations.loadInbox());
+    // Re-hydrate presence too — the STOMP broker may have advanced
+    // its state while we were disconnected, and the global
+    // `/topic/presence` subscription only delivers DELTAS once
+    // we're connected (not the current snapshot).
+    unawaited(presence.loadAll());
   }
 
   await apply();
@@ -296,19 +357,38 @@ Future<void> _applyInboundGroup(
   ConversationsRepository conversations,
   ChatSettings settings,
 ) async {
+  // Hydrate any inbound conv (direct OR group) from the backend so
+  // members[] arrives with full info (role, lastReadMessageId, etc.)
+  // and names resolve via UsersCache. This is the fix for "group
+  // members don't show until the first message" — without it we
+  // would build participantPreviews from only the bare participant
+  // ids in the event, then wait for the conversation to come back
+  // through the next loadInbox (or a message arrival) to fill them.
+  //
+  // refreshOne is a no-op when the conv already exists in the cache
+  // and `_remote` is bound, so we don't bother deduping here.
+  await conversations.refreshOne(event.conversationId);
+  // If refresh failed silently (e.g. backend 404 on a fresh conv
+  // that hasn't propagated yet), fall through to the legacy build
+  // so SOMETHING shows up.
+  final existing = await conversations.findById(event.conversationId);
+  if (existing != null) return;
   if (!event.isGroup) return;
   final me = settings.userId;
   if (!event.participantIds.contains(me)) return;
-  final existing = await conversations.findById(event.conversationId);
-  if (existing != null) return;
 
-  // Build participantPreviews from the directory, excluding self.
-  // Unknown ids (e.g. a peer running a forked seed) get a placeholder
-  // entry so they still render in the AppBar member count.
+  // Legacy fallback path — build participantPreviews from the
+  // directory ids carried in the event. Names resolve via UsersCache
+  // when populated; unknown ids land as `User #<id>` placeholders.
   final previews = <ChatParticipantPreview>[];
   for (final id in event.participantIds) {
     if (id == me) continue;
-    previews.add(ChatSeed.personById(id));
+    final cachedName = UsersCache.instance.nameOf(id);
+    previews.add(ChatParticipantPreview(
+      employeeId: id,
+      name: cachedName ?? 'User #$id',
+      avatarUrl: UsersCache.instance.avatarOf(id),
+    ));
   }
   final online = previews
       .where((p) => p.presence == PresenceStatus.online)
@@ -341,13 +421,18 @@ Future<void> _applyInboundConversationUpdate(
       !event.participantIds.contains(settings.userId)) {
     return;
   }
-  final existing = await conversations.findById(event.conversationId);
-  if (existing == null || existing.name == event.name) return;
-  try {
-    await conversations.rename(event.conversationId, event.name);
-  } catch (_) {
-    // Conv vanished between findById and rename — nothing to do.
-  }
+  // Always pull the full conv from the backend. This handles:
+  //   * rename                — old code path
+  //   * avatar URL change     — old code path missed it
+  //   * add / remove members  — bug: old code returned early when the
+  //                             name didn't change, so new members
+  //                             never appeared in peers' chat info
+  //                             until they hit loadInbox (next boot).
+  //   * fresh conv for a just-added member — `refreshOne` upserts so
+  //                             the conv appears even when it wasn't
+  //                             in the cache.
+  // refreshOne swallows GET errors internally; nothing to handle here.
+  await conversations.refreshOne(event.conversationId);
 }
 
 /// Slice 10.3.4 — peer changed their display name. Rename our local

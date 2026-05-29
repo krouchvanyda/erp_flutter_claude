@@ -9,7 +9,7 @@ import 'dart:async';
 /// inbox tile / chat header / sender label except the raw id.
 ///
 /// This cache is the small store the [chat_dto_mappers] layer
-/// consults BEFORE falling back to [ChatSeed.personById]. It's
+/// consults BEFORE falling back to a `User #<id>` placeholder. It's
 /// populated wherever the app already has the name in hand:
 ///   - `/users` page (admin/staff users via the new-message picker)
 ///   - `/users/me` (every signed-in user, on app boot)
@@ -64,10 +64,15 @@ class UsersCache {
     if (changed && !_changes.isClosed) _changes.add(null);
   }
 
-  /// Resolve display name for [userId], or null if unknown.
-  /// Mappers fall back to [ChatSeed.personById] (and then the bare id)
-  /// when this returns null.
-  String? nameOf(String userId) => _byId[userId]?.name;
+  /// Resolve display name for [userId], or null if unknown OR if
+  /// the cached entry is empty/whitespace. Treat empty-string caches
+  /// as a miss so mappers can keep falling through to a useful
+  /// placeholder instead of rendering "?".
+  String? nameOf(String userId) {
+    final n = _byId[userId]?.name;
+    if (n == null) return null;
+    return n.trim().isEmpty ? null : n;
+  }
 
   /// Resolve avatar URL for [userId], or null if unknown / not set.
   String? avatarOf(String userId) => _byId[userId]?.avatarUrl;

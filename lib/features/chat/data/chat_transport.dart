@@ -47,6 +47,40 @@ class MessageDeletedEvent extends ChatTransportEvent {
   final String messageId;
 }
 
+/// `message.read` — a member just told the server they've read up to
+/// [lastReadMessageId] in [conversationId]. Server fans this out on
+/// `/topic/conversations/{convId}` so other members can flip their
+/// own outgoing bubbles to "read" ticks. Carries the reader's user
+/// id (NOT the sender of the messages) so the repo can patch
+/// `readByUserIds` on every cached message at or below that id.
+class MessageReadEvent extends ChatTransportEvent {
+  const MessageReadEvent({
+    required this.conversationId,
+    required this.userId,
+    required this.lastReadMessageId,
+  });
+  final String conversationId;
+  final String userId;
+  final String lastReadMessageId;
+}
+
+/// `presence.update` — backend pushed a status change for [userId].
+/// Carries the raw payload through to `PresenceRepository` which
+/// builds the `Presence` model and fires its revision notifier.
+class PresenceUpdatedEvent extends ChatTransportEvent {
+  const PresenceUpdatedEvent(this.payload);
+  final Map<String, dynamic> payload;
+}
+
+/// `conversation.remove` — fanned out on the removed user's
+/// `/user/queue/inbox` when an admin kicks them OR when they leave
+/// a group themselves. The receiver drops the conv from their
+/// local cache so the inbox tile disappears.
+class ConversationRemovedEvent extends ChatTransportEvent {
+  const ConversationRemovedEvent(this.conversationId);
+  final String conversationId;
+}
+
 /// Peer toggled a reaction on a message. Backend ships the full
 /// reaction list per toggle, but the existing repo expects a single
 /// `(emoji, employeeId)` pair — we synthesise one event per delta so
@@ -219,9 +253,21 @@ class ChatTransport {
   /// blip.
   final Set<String> _wantConvSubs = <String>{};
 
+  /// Message ids the backend has just confirmed for us — populated
+  /// inside [sendMessage] from the POST response. When the matching
+  /// `/topic/conversations/{id}` echo arrives we drop it before
+  /// emitting a [MessageReceivedEvent], so the repo's optimistic
+  /// row never gets visually duplicated.
+  ///
+  /// Entries auto-prune after 30 s to keep the set small — by then
+  /// the echo has either arrived or been lost; either way we're done
+  /// caring about this id.
+  final Set<String> _ourRecentSends = <String>{};
+
   // Global subscriptions (inbox + calls). Cleared on disconnect.
   StompUnsubscribe? _inboxSub;
   StompUnsubscribe? _callsSub;
+  StompUnsubscribe? _presenceSub;
 
   final StreamController<ChatTransportEvent> _events =
       StreamController<ChatTransportEvent>.broadcast();
@@ -347,6 +393,14 @@ class ChatTransport {
       callback: (frame) => _handleEnvelope(frame, source: 'calls'),
     );
 
+    // Global presence channel — every user's status change for the
+    // whole org lands here. PresenceRepository de-dupes by user id
+    // so the volume is bounded by user count, not message rate.
+    _presenceSub = _client?.subscribe(
+      destination: '/topic/presence',
+      callback: (frame) => _handleEnvelope(frame, source: 'presence'),
+    );
+
     // Re-apply any per-conv subscriptions requested before this
     // reconnect (page opened a chat, network blipped, etc.). Idempotent.
     for (final id in _wantConvSubs.toList()) {
@@ -437,6 +491,39 @@ class ChatTransport {
   dynamic _decode(String name, Map<String, dynamic> payload) {
     switch (name) {
       case 'message.send':
+        // Drop self-echoes — backend fans every message back through
+        // `/topic/conversations/{id}` including to the original
+        // sender, but the repo's `send()` has already inserted the
+        // bubble optimistically. Letting the echo through always
+        // produced a brief duplicate while id-swap or heuristic
+        // dedup raced the STOMP frame.
+        //
+        // Two-layer check:
+        //   1. Id-based — set by `sendMessage` once REST returns the
+        //      canonical id. Catches the case where echo arrives
+        //      after the POST response.
+        //   2. SenderId-based — catches the inverted race where the
+        //      echo arrives BEFORE the POST response, so the id-set
+        //      is still empty. Compares against the current
+        //      [_userId] (configured via `updateConfig`/`start`).
+        //
+        // Multi-device caveat: if the same account is signed in on
+        // two devices, the OTHER device's messages would also have
+        // matching `senderId` and get dropped on this device's
+        // STOMP echo channel. They'll still appear on the next
+        // `loadForConversation` / `loadInbox`, but no real-time
+        // live update across-devices. Acceptable trade-off for the
+        // single-device case which is the overwhelming majority.
+        final selfId = payload['id']?.toString();
+        if (selfId != null && _ourRecentSends.remove(selfId)) {
+          return null;
+        }
+        final senderId = payload['senderId']?.toString();
+        if (senderId != null &&
+            _userId.isNotEmpty &&
+            senderId == _userId) {
+          return null;
+        }
         return MessageReceivedEvent(messageFromDto(payload));
       case 'message.edit':
         // Server may send the full MessageDto or a `{messageId, newBody}`
@@ -457,6 +544,25 @@ class ChatTransport {
           return MessageDeletedEvent(payload['id'].toString());
         }
         return MessageDeletedEvent(payload['messageId'].toString());
+      case 'message.read':
+        // `{ conversationId, userId, lastReadMessageId }` — peer
+        // (or our other device) just bumped their read cursor.
+        return MessageReadEvent(
+          conversationId: payload['conversationId'].toString(),
+          userId: payload['userId'].toString(),
+          lastReadMessageId: payload['lastReadMessageId'].toString(),
+        );
+      case 'presence.update':
+        // `{ userId, status, lastSeenAt? }` — repo decodes the
+        // payload into a typed Presence in its inbound handler.
+        return PresenceUpdatedEvent(payload);
+      case 'conversation.remove':
+        // `{ conversationId }` — backend kicked us OR we left.
+        // Tolerant of both shapes: `id` (full DTO) and the dedicated
+        // `conversationId` key.
+        final id = (payload['conversationId'] ?? payload['id'])?.toString();
+        if (id == null || id.isEmpty) return null;
+        return ConversationRemovedEvent(id);
       case 'reaction.toggle':
         return _reactionEventsFromPayload(payload);
       case 'call.invite':
@@ -660,6 +766,8 @@ class ChatTransport {
     _inboxSub = null;
     _callsSub?.call();
     _callsSub = null;
+    _presenceSub?.call();
+    _presenceSub = null;
     for (final unsub in _convSubs.values) {
       try {
         unsub();
@@ -721,7 +829,15 @@ class ChatTransport {
         durationSeconds: message.voiceDurationSeconds,
         replyToMessageId: int.tryParse(message.replyToId ?? ''),
       );
-      return response['id']?.toString();
+      final id = response['id']?.toString();
+      if (id != null && id.isNotEmpty) {
+        // Mark this id as "ours" so the matching STOMP echo gets
+        // dropped at [_decode] instead of producing a duplicate
+        // bubble while the repo's id-swap is still in flight.
+        _ourRecentSends.add(id);
+        Timer(const Duration(seconds: 30), () => _ourRecentSends.remove(id));
+      }
+      return id;
     } catch (e) {
       _swallow('sendMessage')(e);
       return null;
@@ -761,24 +877,36 @@ class ChatTransport {
 
   // ── Call signalling ─────────────────────────────────────────
 
-  void sendCallInvite({
-    required String callId, // ignored — server assigns the real id
+  /// POST /chats/conversations/{id}/calls. Returns the backend's
+  /// canonical call id (stringified Long) so the caller can swap its
+  /// local placeholder callId before the user taps Accept/Reject/End
+  /// — otherwise those calls would `_logBadId` and silently drop
+  /// because the local id (`call-2-1234`) doesn't parse as int.
+  /// Returns `null` if the conv id isn't numeric or the POST failed.
+  Future<String?> sendCallInvite({
+    required String callId, // local placeholder — backend assigns the real id
     required String conversationId,
     required String callerId,
     required String callerName,
     required ChatCallType callType,
     required DateTime startedAt,
     List<String> targetIds = const <String>[],
-  }) {
+  }) async {
     final convId = int.tryParse(conversationId);
     if (convId == null) {
       _logBadId('sendCallInvite', conversationId);
-      return;
+      return null;
     }
     final type = callType == ChatCallType.video
         ? WireCallType.video
         : WireCallType.voice;
-    unawaited(_remote.startCall(convId, type: type).catchError(_swallow('sendCallInvite')));
+    try {
+      final response = await _remote.startCall(convId, type: type);
+      return response['id']?.toString();
+    } catch (e) {
+      _swallow('sendCallInvite')(e);
+      return null;
+    }
   }
 
   void sendCallAccept(String callId, {String? accepterId}) {

@@ -2,15 +2,14 @@ import 'dart:async';
 
 import '../../entities/chat_message.dart';
 import '../chat_dto_mappers.dart';
-import '../chat_seed.dart';
 import '../chat_transport.dart';
 import '../chats_remote_data_source.dart';
 import '../users_cache.dart';
 
 /// Slice 10.1.2 / 10.1.4 — message store per conversation.
 ///
-/// In-memory cache seeded from [ChatSeed] for the pre-backend demo
-/// era. Once [setRemote] has been called by `bootChatTransport`,
+/// In-memory cache populated entirely from REST + STOMP — no demo
+/// seed. Once [setRemote] has been called by `bootChatTransport`,
 /// [loadForConversation] backfills real history from
 /// `GET /chats/conversations/{id}/messages` and asks the transport to
 /// subscribe to that conversation's `/topic/conversations/{id}` STOMP
@@ -26,8 +25,10 @@ class MessagesRepository {
     UsersCache.instance.changes.listen((_) => _reresolveSenderNames());
   }
 
-  static final List<ChatMessage> _seed =
-      List<ChatMessage>.of(ChatSeed.messages);
+  // Starts empty — `loadForConversation(convId)` populates from
+  // `GET /chats/conversations/{id}/messages` when the user opens a
+  // chat. Inbound STOMP frames append. The old demo seed is gone.
+  static final List<ChatMessage> _seed = <ChatMessage>[];
 
   final StreamController<List<ChatMessage>> _changes =
       StreamController<List<ChatMessage>>.broadcast();
@@ -179,19 +180,48 @@ class MessagesRepository {
           employeeId: final empId
         ):
         await _toggleReactionLocal(id, emoji, empId);
+      case MessageReadEvent(
+          conversationId: final convId,
+          userId: final readerId,
+          lastReadMessageId: final lastReadStr,
+        ):
+        // Peer (or our other device) bumped their read cursor. Walk
+        // every cached message in that conv with id <= lastRead and
+        // add the reader to its `readByUserIds` set. The chat
+        // bubble's read-tick re-renders via the watch stream.
+        final lastRead = int.tryParse(lastReadStr);
+        if (lastRead == null) return; // seed-era non-numeric id
+        var changed = false;
+        for (var i = 0; i < _seed.length; i++) {
+          final m = _seed[i];
+          if (m.conversationId != convId) continue;
+          if (m.senderId == readerId) continue; // own sender doesn't "read" own msg
+          final mid = int.tryParse(m.id);
+          if (mid == null || mid > lastRead) continue;
+          if (m.readByUserIds.contains(readerId)) continue;
+          _seed[i] = m.copyWith(
+            readByUserIds: <String>{...m.readByUserIds, readerId},
+          );
+          changed = true;
+        }
+        if (changed) _emit();
       // Call signalling envelopes are routed through
       // CallSignalingService; the messages repo ignores them.
       case CallInviteEvent():
       case CallAcceptEvent():
       case CallRejectEvent():
       case CallHangupEvent():
-      // Group-creation + rename + user-profile + avatar envelopes are
-      // routed through bootChatTransport into ConversationsRepository;
-      // nothing for the messages repo.
+      // Group-creation + rename + user-profile + avatar + remove
+      // envelopes are routed through bootChatTransport into
+      // ConversationsRepository; nothing for the messages repo.
       case ConversationCreatedEvent():
       case ConversationUpdatedEvent():
       case ProfileUpdatedEvent():
       case ConversationAvatarUpdatedEvent():
+      case ConversationRemovedEvent():
+      // Presence envelopes are routed through PresenceRepository;
+      // the messages repo doesn't care about online/busy/offline.
+      case PresenceUpdatedEvent():
         break;
     }
   }
@@ -231,6 +261,47 @@ class MessagesRepository {
     }
     out.sort((a, b) => b.sentAt.compareTo(a.sentAt));
     return List.unmodifiable(out);
+  }
+
+  /// GET /chats/conversations/{id}/messages/search?q= — server-side
+  /// case-insensitive substring search scoped to one conversation.
+  /// Falls back to the in-memory [search] when there's no transport
+  /// or the conv id isn't numeric (seed demo). Empty query returns
+  /// nothing rather than the whole history.
+  Future<List<ChatMessage>> searchInConversation(
+    String conversationId,
+    String query, {
+    int page = 1,
+    int pageSize = 30,
+  }) async {
+    final q = query.trim();
+    if (q.isEmpty) return const <ChatMessage>[];
+    final remote = _remote;
+    final convN = int.tryParse(conversationId);
+    if (remote == null || convN == null) {
+      // Demo / seed conv — filter locally to this conv id.
+      final all = await search(q);
+      return all.where((m) => m.conversationId == conversationId).toList();
+    }
+    try {
+      final body = await remote.searchMessages(
+        convN,
+        q,
+        page: page,
+        pageSize: pageSize,
+      );
+      final items = body['items'];
+      if (items is! List) return const <ChatMessage>[];
+      final out = <ChatMessage>[];
+      for (final raw in items) {
+        if (raw is Map<String, dynamic>) {
+          out.add(messageFromDto(raw));
+        }
+      }
+      return out;
+    } catch (_) {
+      return const <ChatMessage>[];
+    }
   }
 
   Future<ChatMessage?> findById(String id) async {

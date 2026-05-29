@@ -27,6 +27,7 @@ class ChatBubble extends StatelessWidget {
     this.onTapImage,
     this.isVoicePlaying = false,
     this.highlight = false,
+    this.expectedReaderIds = const <String>{},
   });
 
   final ChatMessage message;
@@ -43,6 +44,12 @@ class ChatBubble extends StatelessWidget {
   final VoidCallback? onTapImage;
   final bool isVoicePlaying;
   final bool highlight;
+
+  /// Every conversation member EXCEPT us — the set the read-receipt
+  /// tick treats as "expected readers". For a direct chat that's one
+  /// id; for a group it's everyone else. Empty when the conv hasn't
+  /// hydrated yet — the tick falls back to single-check sent state.
+  final Set<String> expectedReaderIds;
 
   @override
   Widget build(BuildContext context) {
@@ -113,6 +120,7 @@ class ChatBubble extends StatelessWidget {
                             onTapVoice: onTapVoice,
                             onTapImage: onTapImage,
                             isVoicePlaying: isVoicePlaying,
+                            expectedReaderIds: expectedReaderIds,
                           ),
                         ),
                       ),
@@ -185,7 +193,10 @@ class _LeadingAvatar extends StatelessWidget {
     return ChatAvatar(
       name: message.senderName,
       size: 36,
-      showStatus: false,
+      // Show a live presence dot for the sender of incoming bubbles
+      // so group chats surface who's online without having to open
+      // the chat info page.
+      userId: message.senderId,
     );
   }
 }
@@ -198,6 +209,7 @@ class _BubbleContent extends StatelessWidget {
     required this.onTapVoice,
     required this.onTapImage,
     required this.isVoicePlaying,
+    this.expectedReaderIds = const <String>{},
   });
   final ChatMessage message;
   final bool isOwn;
@@ -205,6 +217,7 @@ class _BubbleContent extends StatelessWidget {
   final VoidCallback? onTapVoice;
   final VoidCallback? onTapImage;
   final bool isVoicePlaying;
+  final Set<String> expectedReaderIds;
 
   @override
   Widget build(BuildContext context) {
@@ -236,7 +249,11 @@ class _BubbleContent extends StatelessWidget {
           ChatMessageType.system => const SizedBox.shrink(),
         },
         const SizedBox(height: 4),
-        _BubbleFooter(message: message, isOwn: isOwn),
+        _BubbleFooter(
+          message: message,
+          isOwn: isOwn,
+          expectedReaderIds: expectedReaderIds,
+        ),
       ],
     );
   }
@@ -563,9 +580,14 @@ class _FileContent extends StatelessWidget {
 }
 
 class _BubbleFooter extends StatelessWidget {
-  const _BubbleFooter({required this.message, required this.isOwn});
+  const _BubbleFooter({
+    required this.message,
+    required this.isOwn,
+    this.expectedReaderIds = const <String>{},
+  });
   final ChatMessage message;
   final bool isOwn;
+  final Set<String> expectedReaderIds;
 
   @override
   Widget build(BuildContext context) {
@@ -594,7 +616,11 @@ class _BubbleFooter extends StatelessWidget {
         ),
         if (isOwn) ...[
           const SizedBox(width: 4),
-          _ReadReceipt(message: message, color: color),
+          _ReadReceipt(
+            message: message,
+            color: color,
+            expectedReaderIds: expectedReaderIds,
+          ),
         ],
       ],
     );
@@ -602,16 +628,45 @@ class _BubbleFooter extends StatelessWidget {
 }
 
 class _ReadReceipt extends StatelessWidget {
-  const _ReadReceipt({required this.message, required this.color});
+  const _ReadReceipt({
+    required this.message,
+    required this.color,
+    this.expectedReaderIds = const <String>{},
+  });
   final ChatMessage message;
   final Color color;
 
+  /// Conversation members EXCEPT us — fed in by [ChatBubble] from the
+  /// live conv. Direct chat: one id; group: everyone else. Empty when
+  /// the conv hasn't hydrated yet (rare race) — we fall back to the
+  /// legacy [ChatMessage.readAt] / [deliveredAt] flags.
+  final Set<String> expectedReaderIds;
+
   @override
   Widget build(BuildContext context) {
-    if (message.readAt != null) {
-      return Icon(Icons.done_all, size: 14, color: Colors.lightBlueAccent.shade100);
+    // All tick states render in the same footer color — read vs
+    // unread is communicated by the icon (single ✓ vs double ✓✓),
+    // not by a colour shift. Optimistic / in-flight messages use
+    // the clock icon, also in footer color.
+    //
+    //   ✓✓  — message is sent AND at least one expected reader has
+    //         read it (or it was marked delivered server-side).
+    //   ✓   — sent but no one has read yet (or expectedReaderIds
+    //         hasn't hydrated and we have no readAt/deliveredAt).
+    //   ⏱   — pending — no canonical id yet (POST in flight).
+    final readBy = message.readByUserIds;
+    if (expectedReaderIds.isNotEmpty) {
+      final anyRead = readBy.isNotEmpty;
+      return Icon(
+        anyRead ? Icons.done_all : Icons.done,
+        size: 14,
+        color: color,
+      );
     }
-    if (message.deliveredAt != null) {
+
+    // Fallback when expectedReaderIds isn't supplied (conv not loaded
+    // yet, legacy callers): keep the pre-readByUserIds behaviour.
+    if (message.readAt != null || message.deliveredAt != null) {
       return Icon(Icons.done_all, size: 14, color: color);
     }
     return Icon(Icons.access_time_rounded, size: 12, color: color);

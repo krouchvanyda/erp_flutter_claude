@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import 'chat_settings.dart';
 import 'chat_transport.dart';
+import 'repositories/presence_repository.dart';
 
 /// Slice 10.2.6 — keeps [ChatTransport] in sync with the app's
 /// foreground / background lifecycle.
@@ -30,10 +31,12 @@ class ChatLifecycleBridge with WidgetsBindingObserver {
   ChatLifecycleBridge({
     required this.transport,
     required this.settings,
+    required this.presence,
   });
 
   final ChatTransport transport;
   final ChatSettings settings;
+  final PresenceRepository presence;
 
   void attach() {
     WidgetsBinding.instance.addObserver(this);
@@ -54,6 +57,10 @@ class ChatLifecycleBridge with WidgetsBindingObserver {
         userId: settings.userId,
         userName: settings.userName,
       );
+      // Re-hydrate presence: the broker may have advanced while we
+      // were backgrounded, and `/topic/presence` only delivers
+      // deltas (not the current snapshot) once we reconnect.
+      presence.loadAll();
     }
   }
 }

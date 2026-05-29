@@ -1,5 +1,11 @@
-/// Online / away / offline state shown as a small dot on the avatar.
-enum PresenceStatus { online, away, offline }
+/// Live presence state surfaced by the backend's
+/// `GET /chats/presence` + `/topic/presence` channel:
+///   * `online` — user has an active WebSocket session
+///   * `busy`   — user is mid-call (set/cleared by the call ceremony)
+///   * `offline` — no active session; `Presence.lastSeenAt` is set
+/// `away` is a legacy enum value kept around so old seed-driven UI
+/// (e.g. demo identity sheets) compiles; never sent by the server.
+enum PresenceStatus { online, busy, away, offline }
 
 /// Slice 10.1.1 — direct or group conversation summary.
 ///
@@ -130,12 +136,34 @@ class ChatParticipantPreview {
     required this.name,
     this.avatarUrl,
     this.presence = PresenceStatus.offline,
+    this.lastReadMessageId,
   });
 
   final String employeeId;
   final String name;
   final String? avatarUrl;
   final PresenceStatus presence;
+
+  /// Highest message id this member has read in the conversation —
+  /// from `MemberDto.lastReadMessageId`. The chat bubble's read-tick
+  /// uses this to decide who in a group counts as "has read up to N".
+  /// Updated in place by inbound `message.read` STOMP events.
+  final String? lastReadMessageId;
+
+  ChatParticipantPreview copyWith({
+    String? employeeId,
+    String? name,
+    String? avatarUrl,
+    PresenceStatus? presence,
+    String? lastReadMessageId,
+  }) =>
+      ChatParticipantPreview(
+        employeeId: employeeId ?? this.employeeId,
+        name: name ?? this.name,
+        avatarUrl: avatarUrl ?? this.avatarUrl,
+        presence: presence ?? this.presence,
+        lastReadMessageId: lastReadMessageId ?? this.lastReadMessageId,
+      );
 
   String get initials {
     final parts = name.trim().split(RegExp(r'\s+'));

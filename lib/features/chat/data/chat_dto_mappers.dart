@@ -1,12 +1,12 @@
 import '../entities/chat_message.dart';
 import '../entities/conversation.dart';
-import 'chat_seed.dart';
 import 'users_cache.dart';
 
-/// Resolve a display name + avatar for [userId] by consulting (in
-/// order): the in-memory [UsersCache] (populated from `/users` and
-/// `/users/me`), then the legacy [ChatSeed] directory for the demo,
-/// then a bare placeholder using the id itself.
+/// Resolve a display name + avatar for [userId] by consulting the
+/// in-memory [UsersCache] (populated from `/users` and `/users/me`).
+/// Falls back to a `User #<id>` placeholder when the cache hasn't
+/// learned about the user yet — guarantees a non-empty
+/// [ChatParticipantPreview.name] so [ChatAvatar] never renders "?".
 ///
 /// Lives in this file because both `messageFromDto` and
 /// `conversationFromDto` need it and there's nowhere else sensible.
@@ -19,7 +19,7 @@ ChatParticipantPreview _resolveParticipant(String userId) {
       avatarUrl: UsersCache.instance.avatarOf(userId),
     );
   }
-  return ChatSeed.personById(userId);
+  return ChatParticipantPreview(employeeId: userId, name: 'User #$userId');
 }
 
 /// Shared mapping helpers between Spring DTOs (JSON maps coming from
@@ -68,12 +68,22 @@ ChatMessage messageFromDto(Map<String, dynamic> json) {
     }
   }
 
-  // Sender display name + avatar are resolved via the shared
-  // [UsersCache] (populated from `/users` + `/users/me`), falling
-  // back to the legacy [ChatSeed] for the demo era and finally to
-  // the raw id when nothing matches.
+  // Sender display name + avatar resolved via the shared
+  // [UsersCache] (populated from `/users` + `/users/me`). Falls
+  // back to a `User #<id>` placeholder when the cache hasn't seen
+  // this user yet.
   final senderIdStr = json['senderId'].toString();
   final senderPreview = _resolveParticipant(senderIdStr);
+
+  // Read receipts — server ships `readByUserIds: [Long, …]`; convert
+  // to a Set<String> for the bubble's tick logic to consult.
+  final readBy = <String>{};
+  final readByRaw = json['readByUserIds'];
+  if (readByRaw is List) {
+    for (final v in readByRaw) {
+      if (v != null) readBy.add(v.toString());
+    }
+  }
 
   return ChatMessage(
     id: json['id'].toString(),
@@ -99,6 +109,7 @@ ChatMessage messageFromDto(Map<String, dynamic> json) {
         : null,
     voiceDurationSeconds: (json['durationSeconds'] as num?)?.toInt(),
     reactions: reactions,
+    readByUserIds: readBy,
   );
 }
 
@@ -137,7 +148,13 @@ ChatConversation conversationFromDto(
       final uid = m['userId']?.toString();
       if (uid == null) continue;
       if (uid == currentUserId) continue;
-      final p = _resolveParticipant(uid);
+      // Backend ships per-member `lastReadMessageId` (the highest msg
+      // id this member has read). Threaded onto the preview so the
+      // chat bubble's read-tick can compute who has caught up.
+      final lastReadId = m['lastReadMessageId']?.toString();
+      final p = _resolveParticipant(uid).copyWith(
+        lastReadMessageId: lastReadId,
+      );
       previews.add(p);
       otherDisplayName ??= p.name;
       if (!isGroup) directPresence = p.presence;

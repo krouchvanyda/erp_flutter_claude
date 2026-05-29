@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../entities/call_log.dart';
 import 'chat_settings.dart';
 import 'chat_transport.dart';
+import 'chats_remote_data_source.dart';
 import 'repositories/call_log_repository.dart';
 import 'repositories/conversations_repository.dart';
 
@@ -91,12 +92,13 @@ class ActiveCall {
   final String? conversationAvatarFilePath;
 
   ActiveCall copyWith({
+    String? callId,
     CallSignalState? state,
     DateTime? connectedAt,
     String? endReason,
   }) =>
       ActiveCall(
-        callId: callId,
+        callId: callId ?? this.callId,
         conversationId: conversationId,
         peerId: peerId,
         peerName: peerName,
@@ -127,6 +129,7 @@ class CallSignalingService {
     required this.settings,
     required this.conversations,
     required this.callLog,
+    required this.remote,
   }) {
     _sub = transport.events.listen(_onEvent);
   }
@@ -135,6 +138,7 @@ class CallSignalingService {
   final ChatSettings settings;
   final ConversationsRepository conversations;
   final CallLogRepository callLog;
+  final ChatsRemoteDataSource remote;
 
   StreamSubscription<ChatTransportEvent>? _sub;
   ActiveCall? _active;
@@ -306,7 +310,16 @@ class CallSignalingService {
     _activeCallees.clear();
     _setActive(active);
 
-    transport.sendCallInvite(
+    // POST /chats/conversations/{id}/calls and await the canonical
+    // backend call id — then swap it in. The local placeholder
+    // `call-<me>-<ts>` is a UUID stand-in for the period BETWEEN our
+    // tap and the backend acknowledging; without the swap, the
+    // caller's Accept/Reject/End buttons would call REST endpoints
+    // with a non-numeric id and silently no-op (transport's
+    // `int.tryParse` would fail). Fire-and-forget so the call page
+    // can render the ringing UI immediately.
+    unawaited(transport
+        .sendCallInvite(
       callId: callId,
       conversationId: conversationId,
       callerId: me,
@@ -314,7 +327,19 @@ class CallSignalingService {
       callType: callType,
       startedAt: now,
       targetIds: targetIds,
-    );
+    )
+        .then((backendCallId) {
+      if (backendCallId == null || backendCallId.isEmpty) return;
+      final cur = _active;
+      // Only swap if this is still the same call (user might have
+      // hung up before the backend responded).
+      if (cur == null || cur.callId != callId) return;
+      // Move the call-log mapping over so end / reject can still
+      // find the right log row.
+      final logId = _logIdByCallId.remove(callId);
+      if (logId != null) _logIdByCallId[backendCallId] = logId;
+      _setActive(cur.copyWith(callId: backendCallId));
+    }));
     return active;
   }
 
@@ -364,6 +389,75 @@ class CallSignalingService {
         _setActive(null);
       }
     });
+  }
+
+  /// GET /chats/calls/{id} — recover the canonical call state from
+  /// the backend. Used when the app resumes from background and
+  /// might have missed `call.accept` / `call.hangup` STOMP frames
+  /// while disconnected (Slice 10.2.6 — `ChatLifecycleBridge` doesn't
+  /// cover call-state recovery on its own).
+  ///
+  /// Applies whatever the server says onto our local [_active]:
+  ///   * `status: ANSWERED`     → connected (start the timer)
+  ///   * `status: REJECTED`     → ended with the server's `endReason`
+  ///   * `status: ENDED`        → ended (closes the page)
+  ///   * `status: MISSED`/`NO_ANSWER` → ended (closes the page)
+  ///   * `status: RINGING`      → leave the local state alone — the
+  ///     STOMP path will catch up; we don't downgrade `connected` back
+  ///     to ringing.
+  ///
+  /// No-op when there's no active call, when the active call's id
+  /// isn't a backend id (still local placeholder pre-`sendCallInvite`
+  /// response), or when the GET fails.
+  Future<void> reconcileActive() async {
+    final active = _active;
+    if (active == null) return;
+    final n = int.tryParse(active.callId);
+    if (n == null) return;
+    Map<String, dynamic> dto;
+    try {
+      dto = await remote.getCall(n);
+    } catch (_) {
+      return;
+    }
+    final status = (dto['status'] as String? ?? '').toUpperCase();
+    switch (status) {
+      case 'ANSWERED':
+        // Already connected locally? leave the timer running.
+        if (active.state == CallSignalState.connected) return;
+        final answeredAt = DateTime.tryParse(
+                dto['answeredAt'] as String? ?? '') ??
+            DateTime.now();
+        _setActive(active.copyWith(
+          state: CallSignalState.connected,
+          connectedAt: answeredAt,
+        ));
+      case 'REJECTED':
+        final reason = dto['endReason'] as String? ?? 'declined';
+        _setActive(active.copyWith(
+          state: CallSignalState.ended,
+          endReason: reason,
+        ));
+        Future.delayed(const Duration(milliseconds: 600), () {
+          if (_active?.callId == active.callId &&
+              _active?.state == CallSignalState.ended) {
+            _setActive(null);
+          }
+        });
+      case 'ENDED':
+      case 'MISSED':
+      case 'NO_ANSWER':
+        _setActive(active.copyWith(state: CallSignalState.ended));
+        Future.delayed(const Duration(milliseconds: 600), () {
+          if (_active?.callId == active.callId &&
+              _active?.state == CallSignalState.ended) {
+            _setActive(null);
+          }
+        });
+      default:
+        // RINGING / unknown — keep local state, STOMP will reconcile.
+        return;
+    }
   }
 
   // ── Incoming (peer is the caller, we're the callee) ──────────

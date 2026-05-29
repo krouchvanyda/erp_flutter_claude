@@ -27,7 +27,8 @@ class VideoCallPage extends StatefulWidget {
   State<VideoCallPage> createState() => _VideoCallPageState();
 }
 
-class _VideoCallPageState extends State<VideoCallPage> {
+class _VideoCallPageState extends State<VideoCallPage>
+    with WidgetsBindingObserver {
   bool _muted = false;
   bool _cameraOn = true;
   bool _frontCamera = true;
@@ -47,6 +48,7 @@ class _VideoCallPageState extends State<VideoCallPage> {
     super.initState();
     _signaling = GetIt.I<CallSignalingService>();
     _signaling.activeCallListenable.addListener(_onActiveCallChanged);
+    WidgetsBinding.instance.addObserver(this);
     final existing = _signaling.current;
     if (existing != null &&
         existing.conversationId == widget.conversationId &&
@@ -71,8 +73,20 @@ class _VideoCallPageState extends State<VideoCallPage> {
   void dispose() {
     _hideTimer?.cancel();
     _ticker?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     _signaling.activeCallListenable.removeListener(_onActiveCallChanged);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // GET /chats/calls/{id} — recover canonical call state if STOMP
+    // missed a `call.accept` / `call.hangup` while we were
+    // backgrounded. No-op when the active call doesn't have a
+    // backend id yet.
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_signaling.reconcileActive());
+    }
   }
 
   void _startTicker() {

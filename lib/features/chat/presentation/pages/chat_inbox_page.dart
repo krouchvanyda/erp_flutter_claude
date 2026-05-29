@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
@@ -10,9 +13,9 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
-import '../../data/chat_seed.dart';
 import '../../data/chat_settings.dart';
 import '../../data/chat_transport.dart';
+import '../../data/users_cache.dart';
 import '../../data/repositories/call_log_repository.dart';
 import '../../data/repositories/conversations_repository.dart';
 import '../../entities/call_log.dart';
@@ -444,7 +447,29 @@ class _Tile extends StatelessWidget {
             ) ??
             false;
       },
-      onDismissed: (_) => repo.delete(conversation.id),
+      onDismissed: (_) {
+        // Hit the backend so the conversation actually goes away —
+        // not just locally. For groups the server enforces admin-only
+        // (returns 403); for direct convs either party may delete.
+        // The Dismissible animation has already torn the local row
+        // out, so on failure we reconcile via loadInbox so the tile
+        // pops back in, and surface a snackbar explaining why.
+        unawaited(repo.deleteRemote(conversation.id).catchError((Object e) {
+          if (!context.mounted) return;
+          final msg = e is DioException && e.response?.statusCode == 403
+              ? 'Only an admin can delete this group.'
+              : 'Could not delete this conversation.';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(msg),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          // Re-fetch the inbox so the row the Dismissible removed
+          // reappears — the server still has it.
+          unawaited(repo.loadInbox());
+        }));
+      },
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -483,9 +508,17 @@ class _Tile extends StatelessWidget {
                     name: conversation.name,
                     size: 52,
                     avatarFilePath: conversation.avatarFilePath,
-                    presence: conversation.isGroup
+                    // For direct convs feed the other person's id so
+                    // the dot tracks live presence from
+                    // PresenceRepository (rebuilds on every
+                    // `/topic/presence` STOMP frame). Groups don't
+                    // show a dot.
+                    userId: conversation.isGroup
                         ? null
-                        : conversation.presence,
+                        : conversation.participantPreviews.isNotEmpty
+                            ? conversation
+                                .participantPreviews.first.employeeId
+                            : null,
                     showStatus: !conversation.isGroup,
                   ),
                 const SizedBox(width: 12),
@@ -563,11 +596,62 @@ class _Tile extends StatelessWidget {
     );
   }
 
+  /// Inbox tile preview composed from the conversation's `lastMessage`
+  /// payload. Mirrors the backend spec:
+  ///   text   → "You: hi" / "hi"
+  ///   image  → "You: 📷 Photo" / "📷 Photo"
+  ///   voice  → "You: 🎤 Voice · 0:05" / "🎤 Voice · 0:05"
+  ///   file   → "You: 📎 File" / "📎 File"
+  ///   deleted → "Message deleted"
+  ///   no last message → "No message yet"  (brand-new conv)
+  ///
+  /// Single "You:" prefix is enforced here so callers must NEVER also
+  /// prepend "You:" to the lastMessageBody they save into the conv —
+  /// otherwise tiles would render "You: You: hi".
   static String _previewFor(ChatConversation c) {
-    if (c.lastMessageBody == null) return 'No messages yet';
+    // A truly empty conv has no lastMessageAt — use that as the
+    // canonical "no messages ever" signal so we don't accidentally
+    // hit this branch for a deleted-only message or a voice/image
+    // with empty body.
+    if (c.lastMessageAt == null) return '💬 No message yet';
+    final body = c.lastMessageBody;
+    if (body == null && c.lastMessageType == 'text') return '💬 No message yet';
+
+    // Heuristic for soft-delete: backend sends body "Message deleted"
+    // OR no body with type=text. The conv doesn't currently carry a
+    // separate `deleted` flag on its last-message snapshot — if/when
+    // it does, swap to that.
+    if (body == 'Message deleted') return 'Message deleted';
+
+    // Sender prefix:
+    //   * own message       → "You: ..."
+    //   * group / other     → "<FirstName>: ..." so members can tell
+    //                          who said what without opening the chat
+    //   * direct / other    → no prefix (tile title is already the
+    //                          other person's name)
     final me = GetIt.I<ChatSettings>().userId;
-    final ownPrefix = c.lastMessageSenderId == me ? 'You: ' : '';
-    return '$ownPrefix${c.lastMessageBody}';
+    final isOwn = c.lastMessageSenderId == me;
+    String prefix = '';
+    if (isOwn) {
+      prefix = 'You: ';
+    } else if (c.isGroup) {
+      final senderName = (c.lastMessageSenderName ?? '').trim();
+      if (senderName.isNotEmpty) {
+        // First word only so a long full-name doesn't crowd out the
+        // body on narrow tiles.
+        final first = senderName.split(RegExp(r'\s+')).first;
+        prefix = '$first: ';
+      }
+    }
+    final type = c.lastMessageType;
+    if (type == 'image') return '${prefix}📷 Photo';
+    if (type == 'file') return '${prefix}📎 File';
+    if (type == 'voice') {
+      // We don't carry duration on the conv snapshot today; fall back
+      // to a label without timing. Real duration shows in the bubble.
+      return '${prefix}🎤 Voice message';
+    }
+    return '$prefix${body ?? ''}';
   }
 
   static String _formatStamp(DateTime when) {
@@ -770,10 +854,13 @@ class _TransportStatusPill extends StatelessWidget {
 
 // ── Identity picker ─────────────────────────────────────────────
 //
-// Bottom sheet that lists everyone in the demo directory plus the
-// seeded "Demo Approver" identity. Tapping a row writes the choice to
-// [ChatSettings] (which persists via shared_preferences) and the
-// transport reconnects with the new identity.
+// **Legacy dev sheet.** Pre-backend this was used to switch the
+// active demo identity. With real auth in place, signing in/out is
+// the canonical path and this sheet should be hidden in production.
+// It still works as a debug helper: it lists whatever users are in
+// the [UsersCache] (populated from `/users` for admins) plus the
+// currently signed-in user so you can switch back. Selecting a row
+// rewrites [ChatSettings] and the transport reconnects.
 
 class _IdentitySheet extends StatefulWidget {
   const _IdentitySheet();
@@ -794,16 +881,24 @@ class _IdentitySheetState extends State<_IdentitySheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final everyone = [
-      // Always include the seeded default so users can switch back.
-      const ChatParticipantPreview(
-        employeeId: ChatSeed.currentUserId,
-        name: ChatSeed.currentUserName,
+    final settings = GetIt.I<ChatSettings>();
+    // Build the picker list from whatever the UsersCache has — which
+    // gets seeded at boot (`/users/me`) and after the new-message
+    // picker fetches `/users`. For non-admin users whose cache only
+    // contains self, the picker will just show their own row; that's
+    // fine — there's no one else to switch to without admin rights.
+    final everyone = <ChatParticipantPreview>[];
+    if (settings.userId.isNotEmpty) {
+      everyone.add(ChatParticipantPreview(
+        employeeId: settings.userId,
+        name: UsersCache.instance.nameOf(settings.userId) ??
+            (settings.userName.isEmpty
+                ? 'User #${settings.userId}'
+                : settings.userName),
+        avatarUrl: UsersCache.instance.avatarOf(settings.userId),
         presence: PresenceStatus.online,
-      ),
-      ...ChatSeed.peopleDirectory
-          .where((p) => p.employeeId != ChatSeed.currentUserId),
-    ];
+      ));
+    }
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -871,7 +966,12 @@ class _IdentitySheetState extends State<_IdentitySheet> {
                             ChatAvatar(
                               name: p.name,
                               size: 40,
-                              presence: p.presence,
+                              // Live presence from PresenceRepository
+                              // rather than the (now-empty) seed
+                              // `p.presence`. The legacy demo sheet
+                              // still works, and the row's dot updates
+                              // with `/topic/presence` frames.
+                              userId: p.employeeId,
                             ),
                             const SizedBox(width: 12),
                             Expanded(

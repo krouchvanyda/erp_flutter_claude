@@ -35,7 +35,8 @@ class VoiceCallPage extends StatefulWidget {
 
 enum _CallStage { calling, ringing, connected, ended }
 
-class _VoiceCallPageState extends State<VoiceCallPage> {
+class _VoiceCallPageState extends State<VoiceCallPage>
+    with WidgetsBindingObserver {
   _CallStage _stage = _CallStage.calling;
   bool _muted = false;
   bool _speaker = false;
@@ -49,6 +50,7 @@ class _VoiceCallPageState extends State<VoiceCallPage> {
     super.initState();
     _signaling = GetIt.I<CallSignalingService>();
     _signaling.activeCallListenable.addListener(_onActiveCallChanged);
+    WidgetsBinding.instance.addObserver(this);
     // If we already have an active call for this conversation we're
     // the callee on an accepted invite — start in connected. Otherwise
     // place an outgoing invite.
@@ -71,8 +73,21 @@ class _VoiceCallPageState extends State<VoiceCallPage> {
   @override
   void dispose() {
     _ticker?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     _signaling.activeCallListenable.removeListener(_onActiveCallChanged);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // GET /chats/calls/{id} — recover canonical state if STOMP missed
+    // a `call.accept` / `call.hangup` while we were backgrounded.
+    // No-op when the active call doesn't have a backend id yet
+    // (the swap from `call-<me>-<ts>` to numeric happens once
+    // `sendCallInvite` returns).
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_signaling.reconcileActive());
+    }
   }
 
   void _startTicker() {

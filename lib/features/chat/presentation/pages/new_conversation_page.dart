@@ -13,6 +13,7 @@ import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../../settings/data/datasources/users_remote_data_source.dart';
+import '../../../settings/data/models/user_dto.dart';
 import '../../data/chat_dto_mappers.dart';
 import '../../data/chat_settings.dart';
 import '../../data/chats_remote_data_source.dart';
@@ -42,7 +43,7 @@ class _NewConversationPageState extends State<NewConversationPage> {
 
   /// Real users pulled from `GET /api/v1/users` and mapped onto the
   /// chat module's [ChatParticipantPreview] shape. Replaces the
-  /// pre-backend `ChatSeed.peopleDirectory` so the picker reflects
+  /// pre-backend demo seed so the picker reflects
   /// who's actually in the database. Loaded once in initState.
   List<ChatParticipantPreview> _directory = const [];
   bool _loadingDirectory = true;
@@ -110,7 +111,7 @@ class _NewConversationPageState extends State<NewConversationPage> {
         mapped.add(
           ChatParticipantPreview(
             employeeId: u.id,
-            name: u.fullName.trim().isEmpty ? u.email : u.fullName,
+            name: _displayNameFor(u),
             // Backend doesn't ship avatar URL or presence on UserDto
             // yet — keep nulls so ChatAvatar falls back to initials and
             // the status dot stays grey. Wire real values in once
@@ -124,7 +125,7 @@ class _NewConversationPageState extends State<NewConversationPage> {
       UsersCache.instance.putAll(
         page.items.where((u) => u.enabled).map((u) => (
               id: u.id,
-              name: u.fullName.trim().isEmpty ? u.email : u.fullName,
+              name: _displayNameFor(u),
               avatarUrl: null as String?,
             )),
       );
@@ -169,6 +170,18 @@ class _NewConversationPageState extends State<NewConversationPage> {
       if (p.employeeId == id) return p;
     }
     return ChatParticipantPreview(employeeId: id, name: 'Unknown');
+  }
+
+  /// Stable display label for a backend [UserDto]. Picks the first
+  /// non-empty of (fullName, email), then falls back to `User #id`
+  /// so the picker never shows "?" / blank rows when both name and
+  /// email come back empty from the backend.
+  String _displayNameFor(UserDto u) {
+    final full = u.fullName.trim();
+    if (full.isNotEmpty) return full;
+    final mail = u.email.trim();
+    if (mail.isNotEmpty) return mail;
+    return 'User #${u.id}';
   }
 
   List<ChatParticipantPreview> get _filtered {
@@ -792,7 +805,7 @@ class _MemberList extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Row(
                 children: [
-                  ChatAvatar(name: p.name, size: 44, presence: p.presence),
+                  ChatAvatar(name: p.name, size: 44, userId: p.employeeId),
                   const SizedBox(width: 12),
                   Expanded(
                     child: AppLabel(

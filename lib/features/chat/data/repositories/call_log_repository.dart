@@ -1,16 +1,15 @@
 import 'dart:async';
 
 import '../../entities/call_log.dart';
-import '../chat_seed.dart';
 
-/// Slice 10.2.x — in-memory call log. Real impl backs onto
-/// `chat_call_log` (drift). Page-level state machines (voice / video)
-/// call into this on every initiate / answer / end transition.
+/// Slice 10.2.x — in-memory call log. Page-level state machines
+/// (voice / video) call into this on every initiate / answer / end
+/// transition. The history view can hydrate from
+/// `GET /chats/calls` when needed; the old demo seed is gone.
 class CallLogRepository {
   CallLogRepository();
 
-  static final List<ChatCallLog> _seed =
-      List<ChatCallLog>.of(ChatSeed.callLog);
+  static final List<ChatCallLog> _seed = <ChatCallLog>[];
 
   final StreamController<List<ChatCallLog>> _changes =
       StreamController<List<ChatCallLog>>.broadcast();
