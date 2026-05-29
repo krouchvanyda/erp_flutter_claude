@@ -3,6 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  battery_plus
   connectivity_plus
   file_selector_windows
   firebase_core
@@ -10,6 +11,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   local_auth_windows
   permission_handler_windows
   sqlite3_flutter_libs
+  stream_webrtc_flutter
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST

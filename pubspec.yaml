@@ -37,6 +37,14 @@ dependencies:
   # outbound chat ops go through REST via dio.
   stomp_dart_client: ^2.1.0
 
+  # ── Real-time audio/video (call media) ──────────────────────────
+  # Module 10 — Stream Video powers actual audio/video on calls.
+  # The signalling state machine + chat ceremony lives in this app;
+  # `stream_video_flutter` opens the media leg once both sides have
+  # accepted, using a per-call CID + JWT issued by our backend at
+  # `GET /api/v1/chats/calls/stream-token`.
+  stream_video_flutter: ^0.10.0
+
   # ── Local persistence ───────────────────────────────────────────
   drift: ^2.21.0
   sqlite3_flutter_libs: ^0.5.27

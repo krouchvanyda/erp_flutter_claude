@@ -8,6 +8,7 @@ import 'chat_transport.dart';
 import 'chats_remote_data_source.dart';
 import 'repositories/call_log_repository.dart';
 import 'repositories/conversations_repository.dart';
+import 'stream_call_engine.dart';
 
 /// Slice 10.2.3 — local state of an active or incoming call.
 enum CallSignalState {
@@ -42,6 +43,7 @@ class ActiveCall {
     this.conversationName,
     this.isGroup = false,
     this.conversationAvatarFilePath,
+    this.streamCallCid,
   });
 
   final String callId;
@@ -91,11 +93,18 @@ class ActiveCall {
   /// shows that photo instead of just an icon.
   final String? conversationAvatarFilePath;
 
+  /// Stream Video call CID (e.g. `default:abc123`) — opaque to the
+  /// signalling layer, fed straight into `StreamCallEngine.join(...)`
+  /// once both sides have accepted. Null when the backend hasn't
+  /// shipped Stream integration yet — call stays signalling-only.
+  final String? streamCallCid;
+
   ActiveCall copyWith({
     String? callId,
     CallSignalState? state,
     DateTime? connectedAt,
     String? endReason,
+    String? streamCallCid,
   }) =>
       ActiveCall(
         callId: callId ?? this.callId,
@@ -111,6 +120,7 @@ class ActiveCall {
         conversationName: conversationName,
         isGroup: isGroup,
         conversationAvatarFilePath: conversationAvatarFilePath,
+        streamCallCid: streamCallCid ?? this.streamCallCid,
       );
 }
 
@@ -130,6 +140,7 @@ class CallSignalingService {
     required this.conversations,
     required this.callLog,
     required this.remote,
+    required this.streamEngine,
   }) {
     _sub = transport.events.listen(_onEvent);
   }
@@ -139,6 +150,7 @@ class CallSignalingService {
   final ConversationsRepository conversations;
   final CallLogRepository callLog;
   final ChatsRemoteDataSource remote;
+  final StreamCallEngine streamEngine;
 
   StreamSubscription<ChatTransportEvent>? _sub;
   ActiveCall? _active;
@@ -309,6 +321,9 @@ class CallSignalingService {
     // set so leftovers from a prior call can't confuse the auto-end.
     _activeCallees.clear();
     _setActive(active);
+    // Subscribe to the per-call topic so we (the caller) see every
+    // callee's accept / reject / hangup. Idempotent.
+    transport.subscribeConversation(conversationId);
 
     // POST /chats/conversations/{id}/calls and await the canonical
     // backend call id — then swap it in. The local placeholder
@@ -328,8 +343,11 @@ class CallSignalingService {
       startedAt: now,
       targetIds: targetIds,
     )
-        .then((backendCallId) {
-      if (backendCallId == null || backendCallId.isEmpty) return;
+        .then((response) async {
+      if (response == null) return;
+      final backendCallId = response['id']?.toString() ?? '';
+      final streamCallCid = response['streamCallCid'] as String?;
+      if (backendCallId.isEmpty) return;
       final cur = _active;
       // Only swap if this is still the same call (user might have
       // hung up before the backend responded).
@@ -338,9 +356,58 @@ class CallSignalingService {
       // find the right log row.
       final logId = _logIdByCallId.remove(callId);
       if (logId != null) _logIdByCallId[backendCallId] = logId;
-      _setActive(cur.copyWith(callId: backendCallId));
+      _setActive(cur.copyWith(
+        callId: backendCallId,
+        streamCallCid: streamCallCid,
+      ));
+      // Bring the media leg up (audio/video) once the chat side has
+      // acknowledged the call. join() is idempotent + swallows
+      // failures internally; if the backend hasn't shipped Stream
+      // integration the call falls back to signalling-only.
+      if (streamCallCid != null && streamCallCid.isNotEmpty) {
+        unawaited(streamEngine.join(
+          streamCallCid: streamCallCid,
+          isVideo: callType == ChatCallType.video,
+        ));
+      }
+    }).catchError((Object e) {
+      // POST failed — most common cause is a stale RINGING/ANSWERED
+      // call row on the server (force-killed app, crash mid-call).
+      // Roll back from outgoingRinging → ended so the call page
+      // pops itself and the user sees the snackbar instead of being
+      // stuck on "Calling…" until the 30 s ring timeout fires.
+      final cur = _active;
+      if (cur == null || cur.callId != callId) return;
+      final message = _extractBackendMessage(e);
+      final reason = (message != null &&
+              message.toLowerCase().contains('already in an active call'))
+          ? 'already_in_call'
+          : 'failed';
+      _setActive(cur.copyWith(
+        state: CallSignalState.ended,
+        endReason: reason,
+      ));
+      // Drop the active reference after the page has had a beat to
+      // render the ended state.
+      Future.delayed(const Duration(milliseconds: 600), () {
+        if (_active?.callId == callId &&
+            _active?.state == CallSignalState.ended) {
+          _setActive(null);
+        }
+      });
     }));
     return active;
+  }
+
+  /// Pull the human-readable `message` out of a DioException body
+  /// (the backend's standard envelope is `{success, message, …}`).
+  /// Returns null if the error isn't a DioException with a JSON body.
+  static String? _extractBackendMessage(Object e) {
+    try {
+      final data = (e as dynamic).response?.data;
+      if (data is Map && data['message'] is String) return data['message'] as String;
+    } catch (_) {}
+    return null;
   }
 
   /// Outgoing call: peer either rejected or we cancelled before they
@@ -471,16 +538,45 @@ class CallSignalingService {
     // Slice 10.2.11 — tag with our id so the caller can track which
     // callees are currently joined and auto-end when the last one
     // leaves a group call.
-    transport.sendCallAccept(active.callId, accepterId: settings.userId);
+    //
+    // Await the POST response so we can:
+    //   * pick up the latest `streamCallCid` from the canonical DTO
+    //     (the invite may not have included it on some backends)
+    //   * skip the Stream join + state transition entirely if the
+    //     server returned 4xx (call already ended on its side)
+    final response = await transport.sendCallAccept(
+      active.callId,
+      accepterId: settings.userId,
+    );
+    if (response == null) {
+      // Accept failed — surface as "ended" so the page pops itself.
+      _setActive(active.copyWith(
+        state: CallSignalState.ended,
+        endReason: 'hangup',
+      ));
+      return;
+    }
     final connectedAt = DateTime.now();
     final logId = _logIdByCallId[active.callId];
     if (logId != null) await callLog.logAnswered(logId);
+    // Use the cid from the response if present; otherwise stick
+    // with whatever the invite carried.
+    final streamCallCid = (response['streamCallCid'] as String?) ??
+        active.streamCallCid;
     _setActive(
       active.copyWith(
         state: CallSignalState.connected,
         connectedAt: connectedAt,
+        streamCallCid: streamCallCid,
       ),
     );
+    // Bring the media leg up — audio + (for video calls) camera.
+    if (streamCallCid != null && streamCallCid.isNotEmpty) {
+      unawaited(streamEngine.join(
+        streamCallCid: streamCallCid,
+        isVideo: active.callType == ChatCallType.video,
+      ));
+    }
   }
 
   /// Callee tapped Reject — tell the caller, log as rejected, drop.
@@ -510,15 +606,18 @@ class CallSignalingService {
   Future<void> _onEvent(ChatTransportEvent event) async {
     switch (event) {
       case CallInviteEvent(:final callId, :final conversationId, :final callerId, :final callerName, :final callType, :final startedAt, :final targetIds):
-        // Ignore self-echo if it ever happens (shouldn't — the relay
-        // filters the originating socket).
+        // Ignore self-echo if it ever happens.
         if (callerId == settings.userId) return;
-        // Slice 10.2.7 — drop invites that weren't addressed to us.
-        // Empty targetIds = pre-10.2.7 caller, ring through for
-        // backward compatibility.
-        if (targetIds.isNotEmpty && !targetIds.contains(settings.userId)) {
-          return;
-        }
+        // Routing note: with the real backend, invites land on
+        // `/user/queue/calls` — a per-user channel. If a frame
+        // arrives here it's already addressed to us, so we must NOT
+        // client-side-filter by `targetIds` (decoded from
+        // ChatCallDto.participants). The participants array at
+        // invite time can lag (callees not yet marshalled), which
+        // would falsely drop the invite. `targetIds` is kept on the
+        // event for the legacy LAN-relay broadcast path only.
+        // ignore: unused_local_variable
+        final _ = targetIds; // intentionally unused on the real backend
         // A new invite while we're in another non-pending call (in an
         // ongoing connected call, or our own outgoing invite) → busy
         // signal back. Replace stale `incomingRinging`/`ended` states
@@ -563,6 +662,13 @@ class CallSignalingService {
           isGroup: conv?.isGroup ?? false,
           conversationAvatarFilePath: conv?.avatarFilePath,
         ));
+        // Subscribe to `/topic/conversations/{convId}/call` so the
+        // accept / reject / hangup frames that come AFTER the invite
+        // land here — without this, the per-call topic is only
+        // attached when the user opens the chat page, which may not
+        // happen before the call wraps up. Idempotent: no-op if
+        // already subscribed.
+        transport.subscribeConversation(conversationId);
       case CallAcceptEvent(:final callId, :final accepterId):
         // Peer accepted our outgoing invite — transition to connected.
         final active = _active;
@@ -687,6 +793,7 @@ class CallSignalingService {
   }
 
   void _setActive(ActiveCall? next) {
+    final prev = _active;
     _active = next;
     activeCallListenable.value = next;
     // (Re)start the 30s safety timeout whenever we enter
@@ -701,6 +808,17 @@ class CallSignalingService {
           unawaited(rejectIncoming());
         }
       });
+    }
+
+    // Tear down the Stream media leg the moment the call leaves
+    // `connected` (either ENDED in place or fully cleared to null).
+    // Covers every termination path — local End, peer hangup, busy,
+    // missed, accept-failed — without each caller having to
+    // remember to call `streamEngine.leave()` itself.
+    final wasLive = prev?.state == CallSignalState.connected;
+    final stillLive = next?.state == CallSignalState.connected;
+    if (wasLive && !stillLive) {
+      unawaited(streamEngine.leave());
     }
   }
 }

@@ -18,6 +18,7 @@ import 'data/repositories/call_log_repository.dart';
 import 'data/repositories/conversations_repository.dart';
 import 'data/repositories/messages_repository.dart';
 import 'data/repositories/presence_repository.dart';
+import 'data/stream_call_engine.dart';
 import 'data/users_cache.dart';
 import 'entities/chat_message.dart';
 import 'entities/conversation.dart';
@@ -73,6 +74,14 @@ void registerChatModule(GetIt getIt) {
       ),
     );
   }
+  // Stream Video — actual audio/video media leg under the
+  // signalling ceremony. Wraps `stream_video_flutter` so the rest
+  // of the chat module doesn't import the SDK directly.
+  if (!getIt.isRegistered<StreamCallEngine>()) {
+    getIt.registerLazySingleton<StreamCallEngine>(
+      () => StreamCallEngine(remote: getIt<ChatsRemoteDataSource>()),
+    );
+  }
   // Slice 10.2.3 — call signalling. Built lazily but pulls the
   // transport / settings / repos through its constructor so the
   // subscription is live the first time something accesses it.
@@ -84,6 +93,7 @@ void registerChatModule(GetIt getIt) {
         conversations: getIt<ConversationsRepository>(),
         callLog: getIt<CallLogRepository>(),
         remote: getIt<ChatsRemoteDataSource>(),
+        streamEngine: getIt<StreamCallEngine>(),
       ),
     );
   }
@@ -336,6 +346,13 @@ Future<void> bootChatTransport(GetIt getIt) async {
     // `/topic/presence` subscription only delivers DELTAS once
     // we're connected (not the current snapshot).
     unawaited(presence.loadAll());
+    // Reconcile any active call against the backend. If we were
+    // mid-call when the socket dropped, peers may have hung up
+    // while we couldn't hear them; `GET /chats/calls/{id}` gives
+    // us the canonical state. No-op when no active call.
+    if (getIt.isRegistered<CallSignalingService>()) {
+      unawaited(getIt<CallSignalingService>().reconcileActive());
+    }
   }
 
   await apply();

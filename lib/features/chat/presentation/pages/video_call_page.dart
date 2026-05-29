@@ -133,6 +133,9 @@ class _VideoCallPageState extends State<VideoCallPage>
         final reason = switch (call.endReason) {
           'busy' => '${call.peerName} is on another call.',
           'declined' => '${call.peerName} declined the call.',
+          'already_in_call' =>
+            'You\'re already in another call. End it first.',
+          'failed' => 'Could not start the call. Try again.',
           _ => null,
         };
         if (reason != null) {

@@ -10,6 +10,7 @@ import '../entities/call_log.dart';
 import '../entities/chat_message.dart';
 import 'chat_dto_mappers.dart';
 import 'chats_remote_data_source.dart';
+import 'users_cache.dart';
 
 /// Connection status surfaced to the UI (banner / status dot).
 enum ChatTransportStatus { disconnected, connecting, connected, error }
@@ -108,6 +109,7 @@ class CallInviteEvent extends ChatTransportEvent {
     required this.callType,
     required this.startedAt,
     this.targetIds = const <String>[],
+    this.streamCallCid,
   });
   final String callId;
   final String conversationId;
@@ -116,6 +118,13 @@ class CallInviteEvent extends ChatTransportEvent {
   final ChatCallType callType;
   final DateTime startedAt;
   final List<String> targetIds;
+
+  /// Stream Video call CID (e.g. `default:abc123`) — opaque to the
+  /// signalling layer, fed straight into `StreamCallEngine.join(...)`.
+  /// Null when the backend hasn't shipped Stream integration yet
+  /// (legacy demo, or a backend that returns ChatCallDto without
+  /// the field); callers then fall back to signalling-only mode.
+  final String? streamCallCid;
 }
 
 class CallAcceptEvent extends ChatTransportEvent {
@@ -620,17 +629,25 @@ class ChatTransport {
   /// Map an incoming `ChatCallDto` onto the existing [CallInviteEvent].
   CallInviteEvent _callInviteFromDto(Map<String, dynamic> json) {
     final callType = (json['type'] as String? ?? 'VOICE').toUpperCase();
+    final callerId = json['callerId'].toString();
+    // ChatCallDto doesn't ship a caller name — resolve it via the
+    // shared [UsersCache] (populated by `bootChatTransport`'s
+    // /users + /users/me hydration). Falls back to a `User #<id>`
+    // placeholder so the incoming-call sheet never renders "?"
+    // initials for someone we *do* know the id of.
+    final cachedName = UsersCache.instance.nameOf(callerId);
+    final callerName = (cachedName != null && cachedName.trim().isNotEmpty)
+        ? cachedName
+        : 'User #$callerId';
     return CallInviteEvent(
       callId: json['id'].toString(),
       conversationId: json['conversationId'].toString(),
-      callerId: json['callerId'].toString(),
-      // Caller name isn't on ChatCallDto — page layer joins from
-      // user cache. Empty string surfaces no name; the page falls
-      // back to "Incoming call" headline.
-      callerName: '',
+      callerId: callerId,
+      callerName: callerName,
       callType: callType == 'VIDEO' ? ChatCallType.video : ChatCallType.voice,
       startedAt: _parseInstant(json['startedAt']) ?? DateTime.now(),
       targetIds: _participantIdsAsStrings(json['participants']),
+      streamCallCid: json['streamCallCid'] as String?,
     );
   }
 
@@ -867,8 +884,8 @@ class ChatTransport {
         Timer(const Duration(seconds: 30), () => _ourRecentSends.remove(id));
       }
       return id;
-    } catch (e) {
-      _swallow('sendMessage')(e);
+    } catch (e, s) {
+      _swallow('sendMessage')(e, s);
       return null;
     }
   }
@@ -906,13 +923,13 @@ class ChatTransport {
 
   // ── Call signalling ─────────────────────────────────────────
 
-  /// POST /chats/conversations/{id}/calls. Returns the backend's
-  /// canonical call id (stringified Long) so the caller can swap its
-  /// local placeholder callId before the user taps Accept/Reject/End
-  /// — otherwise those calls would `_logBadId` and silently drop
-  /// because the local id (`call-2-1234`) doesn't parse as int.
+  /// POST /chats/conversations/{id}/calls. Returns the full backend
+  /// response so the caller's side can pick up:
+  ///   * the canonical numeric `id` (replaces the local placeholder)
+  ///   * the `streamCallCid` for the media leg
+  ///   * any other fields the page wants to surface
   /// Returns `null` if the conv id isn't numeric or the POST failed.
-  Future<String?> sendCallInvite({
+  Future<Map<String, dynamic>?> sendCallInvite({
     required String callId, // local placeholder — backend assigns the real id
     required String conversationId,
     required String callerId,
@@ -930,21 +947,39 @@ class ChatTransport {
         ? WireCallType.video
         : WireCallType.voice;
     try {
-      final response = await _remote.startCall(convId, type: type);
-      return response['id']?.toString();
-    } catch (e) {
-      _swallow('sendCallInvite')(e);
-      return null;
+      return await _remote.startCall(convId, type: type);
+    } catch (e, s) {
+      // Log here so the failure shows up in the chat trace, but
+      // rethrow so [CallSignalingService.startOutgoing]'s
+      // `.catchError(...)` can roll the local "Calling…" state back
+      // to ENDED and surface a snackbar (e.g. "You're already in
+      // another call" for the 400 the backend throws when a stale
+      // call row is still RINGING).
+      _swallow('sendCallInvite')(e, s);
+      rethrow;
     }
   }
 
-  void sendCallAccept(String callId, {String? accepterId}) {
+  /// POST /chats/calls/{id}/accept. Returns the full ChatCallDto
+  /// response so the callee can pick up `streamCallCid` and bring
+  /// up the media leg only after the REST acknowledged the accept
+  /// (avoids joining Stream for a call the server says already
+  /// ended). Returns `null` on bad-id / network failure.
+  Future<Map<String, dynamic>?> sendCallAccept(
+    String callId, {
+    String? accepterId,
+  }) async {
     final id = int.tryParse(callId);
     if (id == null) {
       _logBadId('sendCallAccept', callId);
-      return;
+      return null;
     }
-    unawaited(_remote.acceptCall(id).catchError(_swallow('sendCallAccept')));
+    try {
+      return await _remote.acceptCall(id);
+    } catch (e, s) {
+      _swallow('sendCallAccept')(e, s);
+      return null;
+    }
   }
 
   void sendCallReject(String callId, {String? reason}) {

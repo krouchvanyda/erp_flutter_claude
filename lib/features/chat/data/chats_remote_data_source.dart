@@ -109,6 +109,13 @@ abstract class ChatsRemoteDataSource {
     int pageSize = 6,
   });
 
+  /// `GET /chats/calls/stream-token` — issue a short-lived JWT for the
+  /// Stream Video SDK. The response carries everything the mobile
+  /// needs to bring up the `StreamVideo` client:
+  ///   `{ token: <jwt>, apiKey: <stream-api-key>, userId: <our-id> }`
+  /// Refresh by re-calling this endpoint when the token expires.
+  Future<Map<String, dynamic>> getStreamToken();
+
   // ── Presence ──────────────────────────────────────────────────────
   /// `GET /chats/presence` — full snapshot of every user the server
   /// has tracked. Used on app boot + on every successful reconnect
@@ -363,6 +370,14 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
   Future<Map<String, dynamic>> endCall(int callId) async {
     final res = await _dio.post<Map<String, dynamic>>(
       '$_callsPath/$callId/end',
+    );
+    return ApiEnvelope.parse<Map<String, dynamic>>(res.data!, (d) => d);
+  }
+
+  @override
+  Future<Map<String, dynamic>> getStreamToken() async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '$_callsPath/stream-token',
     );
     return ApiEnvelope.parse<Map<String, dynamic>>(res.data!, (d) => d);
   }
