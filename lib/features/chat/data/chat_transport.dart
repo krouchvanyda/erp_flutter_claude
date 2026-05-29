@@ -759,6 +759,35 @@ class ChatTransport {
     return null;
   }
 
+  // ── lifecycle (app foreground / background) ──────────────────
+  //
+  // The OS often keeps a backgrounded app's TCP socket alive for
+  // minutes — long enough that the backend doesn't see us as
+  // "disconnected" and never broadcasts `presence.update OFFLINE`.
+  // Peers then keep seeing us as green-dot Online even though we've
+  // minimised. To make the "Away" / "Last seen X" surfaces work
+  // promptly, the lifecycle bridge calls [pause] on background
+  // (closing the STOMP socket so the server's heartbeat detects the
+  // disconnect immediately) and [resume] on foreground (reopens the
+  // socket so we get back online without a config change).
+
+  /// Close the STOMP socket without forgetting our config — so a
+  /// subsequent [resume] can rebuild against the same URL/identity.
+  /// Safe to call when already closed.
+  Future<void> pause() async {
+    await _close();
+    _setStatus(ChatTransportStatus.disconnected);
+  }
+
+  /// Re-open the STOMP socket using the current config. Safe to call
+  /// when already connected (the underlying [_maybeConnect] short-
+  /// circuits because [_client] is non-null after [pause] only when
+  /// [_close] is still in flight).
+  Future<void> resume() async {
+    if (_url.isEmpty) return;
+    unawaited(_maybeConnect());
+  }
+
   // ── disconnect / cleanup ────────────────────────────────────
 
   Future<void> _close() async {

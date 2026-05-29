@@ -481,13 +481,18 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     if (c.participantPreviews.isEmpty) return 'Offline';
     final otherId = c.participantPreviews.first.employeeId;
     final p = GetIt.I<PresenceRepository>().statusOf(otherId);
-    switch (p.status) {
+    // `effectiveStatus` promotes a fresh-OFFLINE (last-seen < 5 min)
+    // to AWAY so peers who just minimised the app show as "Away"
+    // instead of jumping straight to a last-seen timestamp.
+    switch (p.effectiveStatus) {
       case PresenceStatus.online:
         return 'Online';
       case PresenceStatus.busy:
         return 'In a call';
       case PresenceStatus.away:
-        return 'Away';
+        return p.lastSeenAt != null
+            ? 'Away · last seen ${_relativeTime(p.lastSeenAt!)}'
+            : 'Away';
       case PresenceStatus.offline:
         return p.lastSeenAt != null
             ? 'Last seen ${_relativeTime(p.lastSeenAt!)}'

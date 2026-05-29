@@ -48,19 +48,33 @@ class ChatLifecycleBridge with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      // Force the transport to re-check its connection. If the socket
-      // is still healthy this is a no-op; if it died while we were
-      // backgrounded the reconnect timer kicks in.
-      transport.updateConfig(
-        url: settings.relayUrl,
-        userId: settings.userId,
-        userName: settings.userName,
-      );
-      // Re-hydrate presence: the broker may have advanced while we
-      // were backgrounded, and `/topic/presence` only delivers
-      // deltas (not the current snapshot) once we reconnect.
-      presence.loadAll();
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.detached:
+        // Explicitly drop the STOMP socket so the backend's
+        // heartbeat detects the disconnect immediately and fans
+        // `presence.update {status: OFFLINE, lastSeenAt: now}` to
+        // every peer's `/topic/presence`. Without this, the OS would
+        // keep the TCP socket alive for minutes after minimise — so
+        // peers would keep seeing us as Online instead of Away (the
+        // 5-min effectiveStatus heuristic on the receiver maps a
+        // fresh-OFFLINE to AWAY for the right amber-dot rendering).
+        transport.pause();
+      case AppLifecycleState.resumed:
+        // Re-open the socket so we're Online again. Once connected
+        // our presence flips back to ONLINE server-side and peers'
+        // dots turn green.
+        transport.resume();
+        // Re-hydrate presence: the broker may have advanced while we
+        // were backgrounded, and `/topic/presence` only delivers
+        // deltas (not the current snapshot) once we reconnect.
+        presence.loadAll();
+      case AppLifecycleState.inactive:
+        // Brief transition (incoming call sheet, control-center on
+        // iOS, etc.) — don't tear the socket down here, the user
+        // hasn't actually backgrounded us.
+        break;
     }
   }
 }

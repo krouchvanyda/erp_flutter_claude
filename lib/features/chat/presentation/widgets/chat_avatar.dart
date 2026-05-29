@@ -96,8 +96,12 @@ class ChatAvatar extends StatelessWidget {
                   ? AnimatedBuilder(
                       animation: presenceRepo.revision,
                       builder: (_, __) {
+                        // `effectiveStatus` maps a fresh-OFFLINE
+                        // (last-seen < 5 min) to AWAY so dots stay
+                        // amber when the peer just minimised, instead
+                        // of disappearing instantly.
                         final live =
-                            presenceRepo.statusOf(userId!).status;
+                            presenceRepo.statusOf(userId!).effectiveStatus;
                         if (live == PresenceStatus.offline) {
                           return const SizedBox.shrink();
                         }

@@ -18,6 +18,7 @@ import '../../data/chat_transport.dart';
 import '../../data/users_cache.dart';
 import '../../data/repositories/call_log_repository.dart';
 import '../../data/repositories/conversations_repository.dart';
+import '../../data/repositories/presence_repository.dart';
 import '../../entities/call_log.dart';
 import '../../entities/conversation.dart';
 import '../widgets/chat_avatar.dart';
@@ -528,7 +529,7 @@ class _Tile extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Expanded(
+                          Flexible(
                             child: AppLabel(
                               text: conversation.name,
                               fontSize: AppFontSize.value16,
@@ -539,6 +540,17 @@ class _Tile extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          // Direct conv: live "· Away" / "· In a call"
+                          // pill that ticks on every PresenceRepository
+                          // revision. Group convs skip it (their
+                          // online-count belongs in the chat header).
+                          if (!conversation.isGroup &&
+                              conversation.participantPreviews.isNotEmpty)
+                            _PresenceInline(
+                              userId: conversation
+                                  .participantPreviews.first.employeeId,
+                            ),
+                          const Spacer(),
                           const SizedBox(width: 8),
                           if (conversation.isMuted)
                             Padding(
@@ -663,6 +675,54 @@ class _Tile extends StatelessWidget {
     if (diff == 1) return 'Yesterday';
     if (diff < 7) return DateFormat('EEE').format(when);
     return DateFormat('d MMM').format(when);
+  }
+}
+
+/// Tiny inline presence pill rendered next to the conversation name
+/// on direct-conv inbox tiles. Reads from [PresenceRepository] and
+/// rebuilds on every revision tick so the label flips live as peers
+/// go Online / Busy / Away. Renders nothing for online + offline so
+/// the tile stays clean — the avatar dot already conveys those.
+class _PresenceInline extends StatelessWidget {
+  const _PresenceInline({required this.userId});
+  final String userId;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final repo = GetIt.I<PresenceRepository>();
+    return AnimatedBuilder(
+      animation: repo.revision,
+      builder: (_, __) {
+        final p = repo.statusOf(userId);
+        final (String? label, Color color) = switch (p.effectiveStatus) {
+          PresenceStatus.online => (null, Colors.transparent),
+          PresenceStatus.busy => ('In a call', const Color(0xFFE2A03F)),
+          PresenceStatus.away => ('Away', const Color(0xFFE2A03F)),
+          PresenceStatus.offline => (null, Colors.transparent),
+        };
+        if (label == null) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(left: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppLabel(
+                text: '· ',
+                fontSize: AppFontSize.value12,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              AppLabel(
+                text: label,
+                fontSize: AppFontSize.value11,
+                color: color,
+                fontWeight: FontWeight.w700,
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
 

@@ -265,13 +265,18 @@ class _Hero extends StatelessWidget {
     if (c.participantPreviews.isEmpty) return 'Offline';
     final otherId = c.participantPreviews.first.employeeId;
     final p = GetIt.I<PresenceRepository>().statusOf(otherId);
-    switch (p.status) {
+    // `effectiveStatus` keeps a fresh-OFFLINE as AWAY for up to 5 min
+    // so peers who just minimised show "Away · last seen X" instead
+    // of skipping straight to plain "Last seen X" / "Offline".
+    switch (p.effectiveStatus) {
       case PresenceStatus.online:
         return 'Online now';
       case PresenceStatus.busy:
         return 'In a call';
       case PresenceStatus.away:
-        return 'Away';
+        return p.lastSeenAt != null
+            ? 'Away · last seen ${_relativeTime(p.lastSeenAt!)}'
+            : 'Away';
       case PresenceStatus.offline:
         return p.lastSeenAt != null
             ? 'Last seen ${_relativeTime(p.lastSeenAt!)}'

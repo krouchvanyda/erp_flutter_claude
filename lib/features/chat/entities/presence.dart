@@ -24,6 +24,30 @@ class Presence {
   factory Presence.offline(String userId) =>
       Presence(userId: userId, status: PresenceStatus.offline);
 
+  /// How long after an OFFLINE update we treat the user as "Away"
+  /// instead of truly offline. Picked to match the typical
+  /// background-then-foreground rhythm — a user who minimised the
+  /// app to glance at something else shows as Away (amber dot) for
+  /// a few minutes before fading to fully offline (no dot).
+  static const Duration _awayWindow = Duration(minutes: 5);
+
+  /// What the UI should actually render. Maps a fresh-OFFLINE
+  /// presence (server saw the socket drop within the last few
+  /// minutes) to AWAY so the dot stays amber instead of disappearing
+  /// the instant the user backgrounds the app. Older offlines keep
+  /// the real OFFLINE status so the dot truly hides.
+  ///
+  /// Online / busy / explicit away pass through unchanged.
+  PresenceStatus get effectiveStatus {
+    if (status != PresenceStatus.offline) return status;
+    final seen = lastSeenAt;
+    if (seen == null) return PresenceStatus.offline;
+    final diff = DateTime.now().difference(seen);
+    return diff < _awayWindow
+        ? PresenceStatus.away
+        : PresenceStatus.offline;
+  }
+
   factory Presence.fromJson(Map<String, dynamic> json) {
     final statusRaw = (json['status'] as String? ?? 'OFFLINE').toUpperCase();
     final status = switch (statusRaw) {
