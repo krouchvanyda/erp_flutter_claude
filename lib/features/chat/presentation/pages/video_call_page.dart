@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:stream_video_flutter/stream_video_flutter.dart';
 
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';
 import '../../data/call_signaling_service.dart';
 import '../../data/repositories/conversations_repository.dart';
+import '../../data/stream_call_engine.dart';
 import '../../entities/call_log.dart';
 import '../../entities/conversation.dart';
 import '../widgets/chat_avatar.dart';
@@ -40,6 +42,7 @@ class _VideoCallPageState extends State<VideoCallPage>
   Timer? _hideTimer;
   Timer? _ticker;
   late final CallSignalingService _signaling;
+  late final StreamCallEngine _engine;
   bool _connected = false;
   String _status = 'Connecting…';
 
@@ -47,6 +50,7 @@ class _VideoCallPageState extends State<VideoCallPage>
   void initState() {
     super.initState();
     _signaling = GetIt.I<CallSignalingService>();
+    _engine = GetIt.I<StreamCallEngine>();
     _signaling.activeCallListenable.addListener(_onActiveCallChanged);
     WidgetsBinding.instance.addObserver(this);
     final existing = _signaling.current;
@@ -169,6 +173,38 @@ class _VideoCallPageState extends State<VideoCallPage>
     await _signaling.hangup();
   }
 
+  Future<void> _toggleMute() async {
+    final next = !_muted;
+    setState(() => _muted = next);
+    _resetHideTimer();
+    final call = _engine.callNotifier.value;
+    await call?.setMicrophoneEnabled(enabled: !next);
+  }
+
+  Future<void> _toggleCamera() async {
+    final next = !_cameraOn;
+    setState(() => _cameraOn = next);
+    _resetHideTimer();
+    final call = _engine.callNotifier.value;
+    await call?.setCameraEnabled(enabled: next);
+  }
+
+  Future<void> _flipCamera() async {
+    setState(() => _frontCamera = !_frontCamera);
+    _resetHideTimer();
+    final call = _engine.callNotifier.value;
+    await call?.flipCamera();
+  }
+
+  Future<void> _toggleSpeaker() async {
+    final next = !_speaker;
+    setState(() => _speaker = next);
+    _resetHideTimer();
+    // Stream routes speakerphone via setAudioOutputDevice with a
+    // speaker-capable RtcMediaDevice. We keep the UI toggle for now;
+    // the audio routing helper is wired in a follow-up.
+  }
+
   String get _timerLabel {
     final h = _elapsedSeconds ~/ 3600;
     final m = (_elapsedSeconds ~/ 60) % 60;
@@ -191,11 +227,45 @@ class _VideoCallPageState extends State<VideoCallPage>
             final conv = snap.data;
             return Stack(
               children: [
-                // Remote video (placeholder).
+                // Remote video — real Stream tracks when the SDK has
+                // joined AND at least one remote peer is in the call.
+                // The ValueListenableBuilder reacts to join/leave; the
+                // inner StreamBuilder reacts to participant arrival.
+                // We gate on remote count because the SDK's spotlight
+                // layout does `participants.first` and throws on an
+                // empty list — which is exactly what we'd hand it if
+                // we mounted the widget before the peer joined.
                 Positioned.fill(
-                  child: _remoteVideoOn
-                      ? _RemoteVideoPlaceholder(conversation: conv)
-                      : _RemoteOffPlaceholder(conversation: conv),
+                  child: ValueListenableBuilder<Call?>(
+                    valueListenable: _engine.callNotifier,
+                    builder: (context, call, _) {
+                      Widget placeholder() => _remoteVideoOn
+                          ? _RemoteVideoPlaceholder(conversation: conv)
+                          : _RemoteOffPlaceholder(conversation: conv);
+                      if (call == null || !_remoteVideoOn) {
+                        return placeholder();
+                      }
+                      return StreamBuilder<CallState>(
+                        stream: call.state.valueStream,
+                        initialData: call.state.value,
+                        builder: (context, snap) {
+                          final remotes = snap.data?.callParticipants
+                                  .where((p) => !p.isLocal)
+                                  .toList() ??
+                              const <CallParticipantState>[];
+                          if (remotes.isEmpty) return placeholder();
+                          return StreamCallParticipants(
+                            call: call,
+                            layoutMode: ParticipantLayoutMode.spotlight,
+                            // Pre-filtered to remotes so the SDK's
+                            // 1-on-1 spotlight path always has at
+                            // least one element to pick.
+                            participants: remotes,
+                          );
+                        },
+                      );
+                    },
+                  ),
                 ),
                 // Top bar.
                 AnimatedOpacity(
@@ -231,25 +301,49 @@ class _VideoCallPageState extends State<VideoCallPage>
                     ),
                   ),
                 ),
-                // Local PiP.
+                // Local PiP — real camera feed once Stream has the
+                // local participant, otherwise the icon placeholder.
                 Positioned(
                   left: _pipPosition.dx,
                   top: _pipPosition.dy,
-                  child: Draggable(
-                    feedback: _LocalPip(cameraOn: _cameraOn, mirror: _frontCamera, dragging: true),
-                    childWhenDragging: const SizedBox(width: 120, height: 160),
-                    onDragEnd: (details) {
-                      // Clamp to screen bounds — leave 12px margin.
-                      final media = MediaQuery.of(context);
-                      final maxX = media.size.width - 120 - 12;
-                      final maxY = media.size.height - 160 - 12;
-                      final clamped = Offset(
-                        details.offset.dx.clamp(12.0, maxX),
-                        details.offset.dy.clamp(48.0, maxY),
+                  child: ValueListenableBuilder<Call?>(
+                    valueListenable: _engine.callNotifier,
+                    builder: (context, call, _) {
+                      Widget buildPip(CallParticipantState? local) {
+                        final pipChild = (call != null && local != null && _cameraOn)
+                            ? _LiveLocalPip(
+                                call: call,
+                                participant: local,
+                                mirror: _frontCamera,
+                              )
+                            : _LocalPip(cameraOn: _cameraOn, mirror: _frontCamera);
+                        return Draggable(
+                          feedback: pipChild,
+                          childWhenDragging: const SizedBox(width: 120, height: 160),
+                          onDragEnd: (details) {
+                            final media = MediaQuery.of(context);
+                            final maxX = media.size.width - 120 - 12;
+                            final maxY = media.size.height - 160 - 12;
+                            final clamped = Offset(
+                              details.offset.dx.clamp(12.0, maxX),
+                              details.offset.dy.clamp(48.0, maxY),
+                            );
+                            setState(() => _pipPosition = clamped);
+                          },
+                          child: pipChild,
+                        );
+                      }
+                      if (call == null) return buildPip(null);
+                      // Local participant arrives a beat after join — rebuild
+                      // the PiP the moment Stream surfaces the track.
+                      return StreamBuilder<CallState>(
+                        stream: call.state.valueStream,
+                        initialData: call.state.value,
+                        builder: (context, snap) {
+                          return buildPip(snap.data?.localParticipant);
+                        },
                       );
-                      setState(() => _pipPosition = clamped);
                     },
-                    child: _LocalPip(cameraOn: _cameraOn, mirror: _frontCamera),
                   ),
                 ),
                 // Bottom controls.
@@ -280,42 +374,27 @@ class _VideoCallPageState extends State<VideoCallPage>
                               active: _muted,
                               activeColor: Colors.red,
                               label: 'Mute',
-                              onTap: () {
-                                setState(() => _muted = !_muted);
-                                _resetHideTimer();
-                              },
+                              onTap: _toggleMute,
                             ),
                             _CtrlButton(
                               icon: _cameraOn ? Icons.videocam_rounded : Icons.videocam_off_rounded,
                               active: !_cameraOn,
                               activeColor: Colors.white24,
                               label: 'Camera',
-                              onTap: () {
-                                setState(() {
-                                  _cameraOn = !_cameraOn;
-                                  if (!_cameraOn) _remoteVideoOn = true; // simulate
-                                });
-                                _resetHideTimer();
-                              },
+                              onTap: _toggleCamera,
                             ),
                             _CtrlButton(
                               icon: Icons.cameraswitch_rounded,
                               active: false,
                               label: 'Flip',
-                              onTap: () {
-                                setState(() => _frontCamera = !_frontCamera);
-                                _resetHideTimer();
-                              },
+                              onTap: _flipCamera,
                             ),
                             _CtrlButton(
                               icon: _speaker ? Icons.volume_up_rounded : Icons.hearing_rounded,
                               active: _speaker,
                               activeColor: const Color(0xFF6366F1),
                               label: 'Speaker',
-                              onTap: () {
-                                setState(() => _speaker = !_speaker);
-                                _resetHideTimer();
-                              },
+                              onTap: _toggleSpeaker,
                             ),
                             _EndCtrl(onTap: _endCall),
                           ],
@@ -421,11 +500,9 @@ class _LocalPip extends StatelessWidget {
   const _LocalPip({
     required this.cameraOn,
     required this.mirror,
-    this.dragging = false,
   });
   final bool cameraOn;
   final bool mirror;
-  final bool dragging;
 
   @override
   Widget build(BuildContext context) {
@@ -436,15 +513,6 @@ class _LocalPip extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         color: cameraOn ? const Color(0xFF334155) : const Color(0xFF1F2937),
         border: Border.all(color: Colors.white, width: 1.5),
-        boxShadow: dragging
-            ? [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.4),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-              ]
-            : null,
       ),
       alignment: Alignment.center,
       child: cameraOn
@@ -477,6 +545,53 @@ class _LocalPip extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       child: child,
     );
+  }
+}
+
+/// PiP that renders the local participant's real camera track via the
+/// Stream SDK. Front camera is mirrored to match the FaceTime
+/// convention (so the on-screen image moves the same way the user
+/// does).
+class _LiveLocalPip extends StatelessWidget {
+  const _LiveLocalPip({
+    required this.call,
+    required this.participant,
+    required this.mirror,
+  });
+  final Call call;
+  final CallParticipantState participant;
+  final bool mirror;
+
+  @override
+  Widget build(BuildContext context) {
+    final inner = SizedBox(
+      width: 120,
+      height: 160,
+      child: StreamCallParticipant(
+        call: call,
+        participant: participant,
+        showParticipantLabel: false,
+        showConnectionQualityIndicator: false,
+        showSpeakerBorder: false,
+      ),
+    );
+    final framed = ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white, width: 1.5),
+        ),
+        child: mirror
+            ? Transform(
+                alignment: Alignment.center,
+                transform: Matrix4.diagonal3Values(-1, 1, 1),
+                child: inner,
+              )
+            : inner,
+      ),
+    );
+    return framed;
   }
 }
 

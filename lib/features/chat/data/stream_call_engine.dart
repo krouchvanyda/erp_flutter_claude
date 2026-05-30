@@ -28,6 +28,13 @@ class StreamCallEngine {
   /// to join as (rare: sign-out → sign-in mid-session).
   String? _clientUserId;
 
+  /// Live handle to the currently-joined Stream [Call] (or null when
+  /// idle). The voice/video pages listen to this so they can mount a
+  /// [StreamCallParticipants] / video renderer the instant Stream
+  /// finishes its join — without it, the UI sits on the placeholder
+  /// avatar forever even though the media leg is healthy.
+  final ValueNotifier<Call?> callNotifier = ValueNotifier<Call?>(null);
+
   /// Join the media leg of the call carried by [streamCallCid]
   /// (e.g. `default:abc123`). The chat ceremony is responsible for
   /// reaching the "connected" state BEFORE this is called — Stream
@@ -66,6 +73,13 @@ class StreamCallEngine {
         ),
       );
       _activeCall = call;
+      callNotifier.value = call;
+      if (kDebugMode) {
+        debugPrint(
+          '[StreamCallEngine] joined cid=$streamCallCid '
+          '(video=$isVideo) — Call ready for rendering',
+        );
+      }
     } catch (e, st) {
       if (kDebugMode) {
         debugPrint('StreamCallEngine.join failed: $e\n$st');
@@ -79,6 +93,7 @@ class StreamCallEngine {
   Future<void> leave() async {
     final call = _activeCall;
     _activeCall = null;
+    callNotifier.value = null;
     if (call == null) return;
     try {
       await call.leave();
