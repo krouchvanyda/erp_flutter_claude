@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart';
+import 'package:stream_video_push_notification/stream_video_push_notification.dart';
 
 import 'chats_remote_data_source.dart';
 
@@ -149,8 +150,38 @@ class StreamCallEngine {
       apiKey,
       user: User.regular(userId: userId),
       userToken: token,
+      // Native incoming-call ring screen. Without a PN manager the
+      // SDK falls back to a silent grouped notification (the one that
+      // was spamming `notify(...)` in the receiver logs). With this
+      // wired, Stream's backend ring=true push lands in the SDK's
+      // native handler → flutter_callkit_incoming renders the
+      // FaceTime/Connection-Service style fullscreen ringer.
+      //
+      // ⚠ Requires Stream Dashboard config (one-time, server side):
+      //   - Stream Console → your app → Push Notifications
+      //   - Add a Firebase provider, name it EXACTLY 'firebase'
+      //     (matching `androidPushProvider.name` below)
+      //   - Upload the Firebase Admin SDK service-account JSON
+      //   - Same for APNs on iOS (provider name 'apn')
+      pushNotificationManagerProvider:
+          StreamVideoPushNotificationManager.create(
+        iosPushProvider: const StreamVideoPushProvider.apn(
+          name: 'apn',
+        ),
+        androidPushProvider: const StreamVideoPushProvider.firebase(
+          name: 'firebase',
+        ),
+      ),
     );
     _clientUserId = userId;
+    // Install the foreground-service bridge so the mic/camera stay
+    // alive when the user backgrounds the app mid-call. Without this,
+    // Android 14+ silences the mic the instant the activity loses
+    // focus — the peer hears nothing. The plugin's own manifest
+    // declares the service + foregroundServiceType, so we only have
+    // to call init once per client; it auto-starts on every join and
+    // auto-stops on every leave.
+    StreamBackgroundService.init(_client!);
     try {
       await _client!.connect();
       if (kDebugMode) {

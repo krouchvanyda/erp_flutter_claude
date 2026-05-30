@@ -13,6 +13,9 @@ import 'app.dart';
 import 'core/di/injection.dart';
 import 'core/error/crash_hooks.dart';
 import 'core/error/logging_crash_reporter.dart';
+import 'core/network/token_storage.dart';
+import 'core/push/device_registrar.dart';
+import 'core/push/push_di.dart';
 import 'core/push/push_token_storage.dart';
 import 'core/sync/sync_engine.dart';
 import 'core/utils/logger/console_logger.dart';
@@ -75,6 +78,11 @@ Future <void> main() async {
         ),
       );
       configureDependencies(environment: Environment.prod);
+      // Hand-rolled DI for the device-registration stack. Must run
+      // BEFORE registerAuthModule because AuthRepository consumes
+      // DeviceRegistrar in its constructor (see push_di.dart for the
+      // codegen-skip rationale).
+      registerPushModule(getIt);
       registerAuthModule(getIt);
       registerFinanceModule(getIt);
       registerProcurementModule(getIt);
@@ -96,7 +104,11 @@ Future <void> main() async {
       // exists, also push the token to the server so the backend can
       // target this device. `deleteFirebaseToken()` should be called
       // from the logout flow to deactivate it.
-      unawaited(_persistAndWatchPushToken(getIt<PushTokenStorage>()));
+      unawaited(_persistAndWatchPushToken(
+        getIt<PushTokenStorage>(),
+        getIt<DeviceRegistrar>(),
+        getIt<TokenStorage>(),
+      ));
 
       // Boot the chat wire stack — loads persisted identity / relay
       // URL and opens the WebSocket if one is configured. Errors
@@ -114,19 +126,60 @@ Future <void> main() async {
 /// helper so `main()` stays readable. Failures are swallowed in
 /// release (kDebugMode logs them) because a push-token error must
 /// never block app launch.
-Future<void> _persistAndWatchPushToken(PushTokenStorage storage) async {
+Future<void> _persistAndWatchPushToken(
+  PushTokenStorage storage,
+  DeviceRegistrar registrar,
+  TokenStorage authTokenStorage,
+) async {
+  if (kDebugMode) debugPrint('🔥 FCM: _persistAndWatchPushToken() entered');
   try {
     final token = await FirebaseNotificationProvider.instance.getFirebaseToken();
     if (token != null && token.isNotEmpty) {
       await storage.saveToken(token);
+      if (kDebugMode) {
+        debugPrint('🔥 FCM: token persisted to secure storage');
+      }
+      // Cold-start re-register — only meaningful when there's a valid
+      // auth token to send with. On a fresh install or after sign-out,
+      // there's no session yet → the AuthInterceptor would attach
+      // nothing → backend returns 401. The auth login/register paths
+      // already call registrar.register() themselves, so skipping here
+      // doesn't drop coverage; it just means we wait for the user to
+      // sign in instead of POSTing /me/devices anonymously.
+      final session = await authTokenStorage.read();
+      if (session != null) {
+        unawaited(registrar.register(overrideToken: token));
+      } else if (kDebugMode) {
+        debugPrint('🔥 FCM: no auth session yet — deferring '
+            'DeviceRegistrar.register until login fires it');
+      }
+    } else {
+      if (kDebugMode) {
+        debugPrint('🔥 FCM: token was null/empty — NOT persisted. Backend cannot push to this device.');
+      }
     }
+    // FCM rotates tokens occasionally — every rotation must flow into
+    // BOTH the local secure cache AND the server-side `devices` row,
+    // otherwise the backend keeps pushing to a dead token. Same auth
+    // gate as the cold-start path: skip the registrar.register when
+    // there's no session, the next login will re-register with the
+    // current (rotated) token from the FCM SDK.
     FirebaseNotificationProvider.instance.onTokenRefresh.listen(
-      storage.saveToken,
+      (newToken) async {
+        await storage.saveToken(newToken);
+        final session = await authTokenStorage.read();
+        if (session != null) {
+          await registrar.register(overrideToken: newToken);
+        }
+      },
       onError: (Object e) {
-        if (kDebugMode) debugPrint('push: token refresh error → $e');
+        if (kDebugMode) debugPrint('🔥 FCM: token refresh error → $e');
       },
     );
-  } catch (e) {
-    if (kDebugMode) debugPrint('push: initial token fetch failed → $e');
+  } catch (e, st) {
+    if (kDebugMode) {
+      debugPrint('🔥 FCM: initial token fetch failed → $e');
+      debugPrintStack(stackTrace: st);
+    }
   }
 }

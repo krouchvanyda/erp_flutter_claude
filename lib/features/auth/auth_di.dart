@@ -5,6 +5,7 @@ import '../../core/di/app_env.dart';
 import '../../core/error/crash_reporter.dart';
 import '../../core/network/session_signal.dart';
 import '../../core/network/token_storage.dart';
+import '../../core/push/device_registrar.dart';
 import '../../core/utils/logger/app_logger.dart';
 import 'data/datasources/auth_remote_data_source.dart';
 import 'data/datasources/biometric_service.dart';
@@ -52,6 +53,7 @@ void registerAuthModule(GetIt getIt) {
         analytics: getIt<AnalyticsService>(),
         logger: getIt<AppLogger>(),
         crashReporter: getIt<CrashReporter>(),
+        deviceRegistrar: getIt<DeviceRegistrar>(),
       ),
     );
   }

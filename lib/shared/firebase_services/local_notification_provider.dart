@@ -1,7 +1,10 @@
 import 'dart:convert';
 import 'dart:developer';
+import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+import '../../features/chat/presentation/widgets/call_notification_router.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
@@ -10,11 +13,30 @@ class LocalNotificationProvider {
   static const String _channelName = 'High Importance Notifications';
   static const String _channelDescription = 'This channel is for important notifications';
 
+  /// Dedicated channel for incoming calls. Android requires a SEPARATE
+  /// channel from the regular one because the ringtone / vibrate /
+  /// LED pattern is per-channel, not per-notification. Users also
+  /// expect to be able to mute chat notifications without muting
+  /// calls.
+  static const String _callChannelId = 'calls';
+  static const String _callChannelName = 'Incoming calls';
+  static const String _callChannelDescription =
+      'Heads-up ringer for incoming voice and video calls';
+
   static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
     _channelId,
     _channelName,
     description: _channelDescription,
     importance: Importance.max,
+  );
+
+  static const AndroidNotificationChannel _callChannel = AndroidNotificationChannel(
+    _callChannelId,
+    _callChannelName,
+    description: _callChannelDescription,
+    importance: Importance.max,
+    playSound: true,
+    enableVibration: true,
   );
 
   /// Idempotent guard so a stray double-call from `main.dart` + a
@@ -49,7 +71,15 @@ class LocalNotificationProvider {
         // events. Old code did `payload!.payload != null` which would
         // crash before checking. Guard both layers.
         final body = payload?.payload;
-        if (body != null) {
+        if (body == null) return;
+        // Call invites get first crack — if it dispatches, the legacy
+        // (no-op) handler is skipped. Accept / Reject action buttons
+        // route here too (the OS attaches the actionId).
+        final handled = await CallNotificationRouter.dispatch(
+          body,
+          actionId: payload?.actionId,
+        );
+        if (!handled) {
           _handleNotificationResponse(body);
         }
       },
@@ -66,6 +96,10 @@ class LocalNotificationProvider {
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
     await androidPlugin?.createNotificationChannel(_channel);
+    // Separate channel for incoming calls so the ringtone / vibrate
+    // pattern is independent of regular chat pushes (and users can
+    // mute one without muting the other).
+    await androidPlugin?.createNotificationChannel(_callChannel);
 
     _initialized = true;
 
@@ -114,6 +148,88 @@ class LocalNotificationProvider {
     } catch (e, stackTrace) {
       if (kDebugMode) {
         log("❌ Error sending notification: $e", stackTrace: stackTrace);
+      }
+    }
+  }
+
+  /// Heads-up incoming-call notification with Accept / Reject action
+  /// buttons. Used when an FCM `call.invite` arrives while the app
+  /// is paused/killed — `LocalNotificationProvider.sendNotification`
+  /// renders a plain banner, this renders the ring-style sheet.
+  ///
+  /// Persists until the user taps a button (`ongoing: true` +
+  /// `autoCancel: false`) so it behaves like a real phone ring rather
+  /// than fading away after a few seconds.
+  ///
+  /// [data] is round-tripped as the payload — the response handler
+  /// uses it to seed `CallSignalingService._active` so accept /
+  /// reject can resolve the right call.
+  Future<void> sendCallInvite({
+    required String title,
+    required String body,
+    required int id,
+    required Map<String, dynamic> data,
+  }) async {
+    try {
+      if (kDebugMode) {
+        log('📞 Local CALL invite id=$id data=$data');
+      }
+      final details = NotificationDetails(
+        android: AndroidNotificationDetails(
+          _callChannel.id,
+          _callChannel.name,
+          channelDescription: _callChannel.description,
+          importance: Importance.max,
+          priority: Priority.high,
+          // Keep the notification on screen until the user picks one
+          // of the actions (or the caller hangs up, which cancels it
+          // via id).
+          ongoing: true,
+          autoCancel: false,
+          // Heads-up + lockscreen visibility so the user actually
+          // sees the ring on Android 13+ even from a locked device.
+          fullScreenIntent: true,
+          category: AndroidNotificationCategory.call,
+          visibility: NotificationVisibility.public,
+          playSound: true,
+          enableVibration: true,
+          actions: <AndroidNotificationAction>[
+            AndroidNotificationAction(
+              kCallRejectActionId,
+              'Reject',
+              titleColor: const Color.fromARGB(255, 220, 38, 38),
+              cancelNotification: true,
+              showsUserInterface: false,
+            ),
+            AndroidNotificationAction(
+              kCallAcceptActionId,
+              'Accept',
+              titleColor: const Color.fromARGB(255, 22, 163, 74),
+              cancelNotification: true,
+              showsUserInterface: true,
+            ),
+          ],
+        ),
+        iOS: const DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          // CallKit / PushKit is the right way to do this on iOS;
+          // for now we just heads-up the same payload so the user at
+          // least sees something.
+          interruptionLevel: InterruptionLevel.timeSensitive,
+        ),
+      );
+      await flutterLocalNotificationsPlugin.show(
+        id,
+        title,
+        body,
+        details,
+        payload: jsonEncode(data),
+      );
+    } catch (e, st) {
+      if (kDebugMode) {
+        log('❌ Error sending call invite notification: $e', stackTrace: st);
       }
     }
   }

@@ -44,6 +44,15 @@ dependencies:
   # accepted, using a per-call CID + JWT issued by our backend at
   # `GET /api/v1/chats/calls/stream-token`.
   stream_video_flutter: ^0.10.0
+  # Native incoming-call ringer for Stream Video. Provides the
+  # `PushNotificationManager` impl that StreamVideo() needs to actually
+  # display a proper ring screen (vs the silent grouped notification
+  # the SDK fires by default when no PN manager is configured). Talks
+  # to `flutter_callkit_incoming` natively on Android / iOS — no Dart
+  # render path needed for the heads-up itself.
+  # Pin to the same minor as stream_video_flutter — newer pn versions
+  # require stream_video_flutter ^1.x.
+  stream_video_push_notification: ^0.10.4
 
   # ── Local persistence ───────────────────────────────────────────
   drift: ^2.21.0

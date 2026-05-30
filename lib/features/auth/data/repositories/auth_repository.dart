@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
 
@@ -10,6 +12,7 @@ import '../../../../core/error/failure_from_dio.dart';
 import '../../../../core/network/api_envelope.dart';
 import '../../../../core/network/session_signal.dart';
 import '../../../../core/network/token_storage.dart';
+import '../../../../core/push/device_registrar.dart';
 import '../../../../core/utils/logger/app_logger.dart';
 import '../../entities/user.dart';
 import '../datasources/auth_remote_data_source.dart';
@@ -46,6 +49,7 @@ class AuthRepository {
     required AnalyticsService analytics,
     required AppLogger logger,
     required CrashReporter crashReporter,
+    required DeviceRegistrar deviceRegistrar,
   })  : _tokenStorage = tokenStorage,
         _remote = remote,
         _cache = cachedUserDao,
@@ -57,7 +61,8 @@ class AuthRepository {
         _sessionSignal = sessionSignal,
         _analytics = analytics,
         _logger = logger.child('auth.repository'),
-        _crash = crashReporter;
+        _crash = crashReporter,
+        _deviceRegistrar = deviceRegistrar;
 
   final TokenStorage _tokenStorage;
   final AuthRemoteDataSource _remote;
@@ -71,6 +76,7 @@ class AuthRepository {
   final AnalyticsService _analytics;
   final AppLogger _logger;
   final CrashReporter _crash;
+  final DeviceRegistrar _deviceRegistrar;
 
   /// Email + password sign-in against the Spring `/auth/login` endpoint.
   ///
@@ -100,6 +106,11 @@ class AuthRepository {
       await _analytics.identify(user.id, traits: <String, Object?>{
         'email': user.email,
       });
+      // Ship the device's FCM token to the backend so it can target
+      // this device with `call.invite` pushes. Fire-and-forget — a
+      // missing device row only means we won't get call notifications
+      // when minimized, it must NOT block sign-in.
+      unawaited(_deviceRegistrar.register());
       _logger.info('login OK for ${user.id}');
       return ok(user);
     } on ApiEnvelopeException catch (e) {
@@ -140,6 +151,9 @@ class AuthRepository {
       await _analytics.identify(user.id, traits: <String, Object?>{
         'email': user.email,
       });
+      // Same FCM device registration as login — register-account is
+      // login's twin, the user is signed in immediately afterward.
+      unawaited(_deviceRegistrar.register());
       _logger.info('register OK for ${user.id}');
       return ok(user);
     } on ApiEnvelopeException catch (e) {
@@ -183,6 +197,17 @@ class AuthRepository {
       }
     } else {
       _logger.info('no tokens to revoke — local cleanup only');
+    }
+
+    // Step 1b — revoke this device server-side BEFORE wiping tokens.
+    // The DELETE /me/devices/{id} call needs the access token to
+    // authenticate; if we wiped first, the call would 401 and the
+    // backend would keep trying to push call.invites to a phone the
+    // user is no longer signed into. Best-effort: failures are
+    // logged but don't block the local wipe (the registrar itself
+    // already swallows + logs, so this just guarantees ordering).
+    if (tokens != null) {
+      await _deviceRegistrar.unregister();
     }
 
     // Step 2 — local cleanup. These two must both run even if one

@@ -29,6 +29,12 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // in `WidgetsBindingObserver.didChangeAppLifecycleState` and check
   // it from the foreground (impossible in this isolate).
   _logPush('🟡 MINI / KILLED (tray)', message);
+  if (kDebugMode) {
+    // Belt-and-braces: same rationale as the foreground listener — make
+    // sure this line shows up even in consoles that filter dart:developer.
+    debugPrint('🟡 FCM BG/KILLED · messageId=${message.messageId} · '
+        'data=${message.data} · notification=${message.notification?.title}');
+  }
 
   // ── De-duplication rule ─────────────────────────────────────────
   // When the FCM payload includes a `notification` block AND the app
@@ -49,6 +55,56 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // registry.
   final local = LocalNotificationProvider();
   await local.initialize();
+
+  // call.cancel — caller hung up before the callee answered, or
+  // another device for the same user already picked up. Dismiss the
+  // ring so the wrong device doesn't keep showing the heads-up.
+  // Must run BEFORE the invite branch since the two share the
+  // stableId derivation (so cancel + invite for the same callId
+  // collapse to the same row id).
+  if (message.data['type'] == 'call.cancel') {
+    if (kDebugMode) {
+      log('📞 [call.cancel] BG/KILLED · '
+          'callId=${message.data['callId']} · '
+          'reason=${message.data['reason']}');
+    }
+    // Build a synthetic stable id matching the one the invite used —
+    // same `messageId == null` fallback path uses the data map's
+    // hashCode, so we have to feed it the SAME callId-keyed shape.
+    // Easiest: just cancel by the local notification's id (`_stableId`
+    // is deterministic per RemoteMessage). Backend MUST set
+    // `messageId` on both invite and cancel to the SAME value (e.g.
+    // "call-{callId}") for this dedupe to work — see plan §3.
+    await local.cancelNotification(_stableId(message));
+    return;
+  }
+
+  // Call invites get a ring-style notification with Accept / Reject
+  // action buttons instead of a plain banner. The payload is round-
+  // tripped so the response router can seed `CallSignalingService`
+  // when the user taps Accept (handled by `CallNotificationRouter`).
+  if (message.data['type'] == 'call.invite') {
+    if (kDebugMode) {
+      log('📞 [call.invite] BG/KILLED · '
+          'callId=${message.data['callId']} · '
+          'conversationId=${message.data['conversationId']} · '
+          'callerId=${message.data['callerId']} · '
+          'callerName=${message.data['callerName']} · '
+          'callType=${message.data['callType']} · '
+          'streamCallCid=${message.data['streamCallCid']} · '
+          'startedAt=${message.data['startedAt']}');
+    }
+    final callerName = message.data['callerName']?.toString() ?? 'Unknown';
+    final isVideo = message.data['callType']?.toString() == 'video';
+    await local.sendCallInvite(
+      title: 'Incoming ${isVideo ? 'video' : 'voice'} call',
+      body: callerName,
+      id: _stableId(message),
+      data: Map<String, dynamic>.from(message.data),
+    );
+    return;
+  }
+
   await local.sendNotification(
     title: message.data['title']?.toString(),
     body: message.data['body']?.toString(),
@@ -82,10 +138,22 @@ void _logPush(String state, RemoteMessage m) {
 ///     into one tray row (the OS uses id as the merge key)
 ///   - app restarts don't reset to 0 and overwrite previous rows
 ///
-/// Uses `messageId` when present (FCM guarantees uniqueness), falls
-/// back to a hash of the data payload. `.abs()` because flutter_local_notifications
-/// requires a non-negative int.
+/// Special-case for calls: `call.invite` and `call.cancel` for the
+/// SAME `callId` must hash to the same notification id, otherwise
+/// the cancel can't dismiss the invite (FCM `messageId` is unique
+/// per push, so it'd differ across the two messages). We key calls
+/// on `call:<callId>` so the cancel finds + dismisses the ring.
+///
+/// All other pushes fall back to `messageId`, then to a hash of the
+/// data payload. `.abs() & 0x7fffffff` keeps the value in the
+/// non-negative int range that flutter_local_notifications requires.
 int _stableId(RemoteMessage m) {
+  final type = m.data['type']?.toString();
+  final callId = m.data['callId']?.toString();
+  if (callId != null && callId.isNotEmpty &&
+      (type == 'call.invite' || type == 'call.cancel')) {
+    return 'call:$callId'.hashCode.abs() & 0x7fffffff;
+  }
   final raw = m.messageId ?? m.data.toString();
   return raw.hashCode.abs() & 0x7fffffff;
 }
@@ -184,24 +252,41 @@ class FirebaseNotificationProvider {
   ///
   /// Token logging is gated on `kDebugMode` so release builds don't
   /// leak auth-equivalent material into logcat / Crashlytics breadcrumbs.
+  /// Uses `debugPrint` (not `log`) so the lines always appear in
+  /// `flutter run`'s default console — the previous `dart:developer`
+  /// `log()` calls were silently filtered out of some terminals.
   Future<String?> getFirebaseToken() async {
+    if (kDebugMode) debugPrint('🔥 FCM: getFirebaseToken() entered');
     try {
       if (Platform.isIOS) {
+        if (kDebugMode) debugPrint('🔥 FCM: iOS — requesting APNs token…');
         final apnsToken = await messaging.getAPNSToken();
         if (apnsToken == null) {
           // APNS token not yet provisioned — common on simulator and
           // immediately after a fresh install. Caller can retry.
-          if (kDebugMode) log('APNs token not ready yet');
+          if (kDebugMode) debugPrint('🔥 FCM: APNs token NOT READY yet (null)');
           return null;
         }
-        if (kDebugMode) log('APNs Token: $apnsToken');
+        if (kDebugMode) debugPrint('🔥 FCM: APNs token OK (len=${apnsToken.length})');
       }
 
+      if (kDebugMode) debugPrint('🔥 FCM: calling messaging.getToken()…');
       final token = await messaging.getToken();
-      if (kDebugMode) log('FCM Token: $token');
+      if (kDebugMode) {
+        if (token == null) {
+          debugPrint(
+              '🔥 FCM: ❌ getToken() returned NULL '
+              '(no Play Services? token rotation? network blocked?)');
+        } else {
+          debugPrint('🔥 FCM: ✅ TOKEN (len=${token.length}) → $token');
+        }
+      }
       return token;
-    } catch (e) {
-      if (kDebugMode) log('Error retrieving device token: $e');
+    } catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('🔥 FCM: ❌ getToken() THREW: $e');
+        debugPrintStack(stackTrace: st, label: '🔥 FCM stack');
+      }
       return null;
     }
   }
@@ -233,6 +318,14 @@ class FirebaseNotificationProvider {
     _onMessageSub = FirebaseMessaging.onMessage.listen((message) {
       try {
         _logPush('🟢 IN APP', message);
+        // Belt-and-braces: also debugPrint so the line shows up in
+        // `flutter run` consoles that filter `dart:developer` log()
+        // output. This is what proves whether FCM is reaching B's
+        // device AT ALL when diagnosing call.invite no-shows.
+        if (kDebugMode) {
+          debugPrint('🟢 FCM IN APP · messageId=${message.messageId} · '
+              'data=${message.data} · notification=${message.notification?.title}');
+        }
         getData(message);
 
         // ── De-duplication rule (foreground) ────────────────────
@@ -253,6 +346,46 @@ class FirebaseNotificationProvider {
         final notif = message.notification;
         final iosWillAutoDisplay = Platform.isIOS && notif != null;
         if (iosWillAutoDisplay) return;
+
+        // call.cancel — mirror of the background-isolate branch:
+        // dismiss the heads-up notification so the user doesn't keep
+        // seeing the ring after the caller hung up.
+        if (message.data['type'] == 'call.cancel') {
+          if (kDebugMode) {
+            log('📞 [call.cancel] FOREGROUND · '
+                'callId=${message.data['callId']} · '
+                'reason=${message.data['reason']}');
+          }
+          LocalNotificationProvider().cancelNotification(_stableId(message));
+          return;
+        }
+
+        // Call invites get the same ring-style rendering as the
+        // background isolate uses (Accept / Reject actions, persistent
+        // heads-up). Without this branch the foreground path would
+        // render a plain banner that the user couldn't act on.
+        if (message.data['type'] == 'call.invite') {
+          if (kDebugMode) {
+            log('📞 [call.invite] FOREGROUND · '
+                'callId=${message.data['callId']} · '
+                'conversationId=${message.data['conversationId']} · '
+                'callerId=${message.data['callerId']} · '
+                'callerName=${message.data['callerName']} · '
+                'callType=${message.data['callType']} · '
+                'streamCallCid=${message.data['streamCallCid']} · '
+                'startedAt=${message.data['startedAt']}');
+          }
+          final callerName =
+              message.data['callerName']?.toString() ?? 'Unknown';
+          final isVideo = message.data['callType']?.toString() == 'video';
+          LocalNotificationProvider().sendCallInvite(
+            title: 'Incoming ${isVideo ? 'video' : 'voice'} call',
+            body: callerName,
+            id: _stableId(message),
+            data: Map<String, dynamic>.from(message.data),
+          );
+          return;
+        }
 
         LocalNotificationProvider().sendNotification(
           title: notif?.title ?? message.data['title']?.toString(),

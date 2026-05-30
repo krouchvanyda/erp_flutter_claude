@@ -15,6 +15,9 @@ import '../network/error_interceptor.dart';
 import '../network/session_signal.dart';
 import '../network/token_refresher.dart';
 import '../network/token_storage.dart';
+import '../push/device_id_storage.dart';
+import '../push/device_registrar.dart';
+import '../push/devices_remote_data_source.dart';
 import '../push/local_push_simulator.dart';
 import '../push/push_message_router.dart';
 import '../push/push_notification_service.dart';
@@ -278,6 +281,38 @@ abstract class AppModule {
   @lazySingleton
   PushTokenStorage pushTokenStorage(SecretStore secrets) =>
       SecretStorePushTokenStorage(secrets: secrets);
+
+  /// Stable per-install device id. Lives in the same secret store as
+  /// the push token so a full app reinstall wipes both together.
+  @lazySingleton
+  DeviceIdStorage deviceIdStorage(SecretStore secrets) =>
+      SecretStoreDeviceIdStorage(secrets: secrets);
+
+  /// REST client for `POST /me/devices` / `DELETE /me/devices/{id}`.
+  /// Uses the project-wide [Dio] so the auth interceptor is already
+  /// attached.
+  @lazySingleton
+  DevicesRemoteDataSource devicesRemoteDataSource(Dio dio) =>
+      DioDevicesRemoteDataSource(dio: dio);
+
+  /// Coordinates the three-step register handshake (fetch FCM token →
+  /// read-or-create stable id → POST). One call per lifecycle event,
+  /// invoked from auth login/logout + the FCM token-refresh listener.
+  @lazySingleton
+  DeviceRegistrar deviceRegistrar(
+    DevicesRemoteDataSource remote,
+    PushNotificationService push,
+    PushTokenStorage tokenStorage,
+    DeviceIdStorage deviceIdStorage,
+    AppLogger logger,
+  ) =>
+      DeviceRegistrar(
+        remote: remote,
+        push: push,
+        tokenStorage: tokenStorage,
+        deviceIdStorage: deviceIdStorage,
+        logger: logger.child('devices'),
+      );
 
   @lazySingleton
   PushMessageRouter pushMessageRouter(

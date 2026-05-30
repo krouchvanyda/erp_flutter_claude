@@ -399,6 +399,88 @@ class CallSignalingService {
     return active;
   }
 
+  /// Seed `_active` from an FCM `call.invite` push payload — used when
+  /// the app was minimized or killed and missed the matching STOMP
+  /// envelope. Once `_active` is set to `incomingRinging`, the existing
+  /// [acceptIncoming] / [rejectIncoming] paths and the in-app
+  /// `IncomingCallOverlay` all work identically to the WS path.
+  ///
+  /// Expected payload (matches `docs/FCM_BACKGROUND_CALLS_PLAN.md`):
+  /// ```json
+  /// { "type": "call.invite",
+  ///   "callId": "...",
+  ///   "conversationId": "...",
+  ///   "callerId": "...",
+  ///   "callerName": "...",
+  ///   "callType": "voice" | "video",
+  ///   "startedAt": "<ISO-8601>",
+  ///   "streamCallCid": "default:..." }
+  /// ```
+  ///
+  /// Idempotent: if `_active` is already set to the same callId (the
+  /// WS event raced ahead of the push), this is a no-op so the user
+  /// doesn't see the incoming sheet flash twice.
+  Future<void> handleIncomingFromPush(Map<String, dynamic> data) async {
+    if (data['type'] != 'call.invite') return;
+    final callId = data['callId']?.toString();
+    final conversationId = data['conversationId']?.toString();
+    final callerId = data['callerId']?.toString();
+    final callerName = data['callerName']?.toString() ?? 'Unknown';
+    if (callId == null || conversationId == null || callerId == null) return;
+
+    // Race-window dedupe — WS may have already delivered the same
+    // invite by the time the user taps the notification.
+    if (_active?.callId == callId) return;
+
+    // Busy: already in a non-pending call. Surface the busy reason to
+    // the caller; do NOT replace our own state.
+    if (_active != null &&
+        _active!.state != CallSignalState.incomingRinging &&
+        _active!.state != CallSignalState.ended) {
+      transport.sendCallReject(callId, reason: 'busy');
+      return;
+    }
+
+    final callType = data['callType']?.toString() == 'video'
+        ? ChatCallType.video
+        : ChatCallType.voice;
+    final startedAt =
+        DateTime.tryParse(data['startedAt']?.toString() ?? '')?.toUtc() ??
+            DateTime.now().toUtc();
+    final streamCallCid = data['streamCallCid']?.toString();
+
+    // Log a missed-by-default row so the inbox tile / call history
+    // reflects the call attempt even if the user never opens it.
+    final logged = await callLog.logStart(
+      conversationId: conversationId,
+      callerId: callerId,
+      callerName: callerName,
+      callType: callType,
+      at: startedAt,
+    );
+    _logIdByCallId[callId] = logged.id;
+
+    final conv = await conversations.findById(conversationId);
+    _setActive(ActiveCall(
+      callId: callId,
+      conversationId: conversationId,
+      peerId: callerId,
+      peerName: callerName,
+      callType: callType,
+      state: CallSignalState.incomingRinging,
+      startedAt: startedAt,
+      callerId: callerId,
+      conversationName: conv?.name,
+      isGroup: conv?.isGroup ?? false,
+      conversationAvatarFilePath: conv?.avatarFilePath,
+      streamCallCid: streamCallCid,
+    ));
+    // Subscribe so the matching `call.hangup` / `call.accept` frames
+    // that arrive AFTER reconnect land on this service instead of
+    // disappearing into the void.
+    transport.subscribeConversation(conversationId);
+  }
+
   /// Pull the human-readable `message` out of a DioException body
   /// (the backend's standard envelope is `{success, message, …}`).
   /// Returns null if the error isn't a DioException with a JSON body.
