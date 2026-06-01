@@ -238,7 +238,15 @@ Future<void> _rehydrateChatIdentityOnAuth(GetIt getIt) async {
   print('🎬 CHAT: rehydrating identity after sign-in');
   try {
     final users = getIt<UsersRemoteDataSource>();
-    final me = await users.me();
+    // Hard timeout — earlier symptom was rehydrate hanging silently
+    // (no error log, no success log, just dead). Hung `users.me()`
+    // blocked the entire downstream chain. 8s is generous for a
+    // healthy backend and not painful when offline.
+    final me = await users.me().timeout(
+      const Duration(seconds: 8),
+      onTimeout: () => throw TimeoutException(
+          'users.me() did not return within 8s'),
+    );
     final displayName = me.fullName.trim().isEmpty ? me.email : me.fullName;
     await getIt<ChatSettings>().setIdentity(
       userId: me.id,
@@ -274,16 +282,17 @@ void _wireStreamWarmUpToAuth(AuthSession session, StreamCallEngine engine) {
         'wasAuthed=$wasAuthed nowAuthed=$nowAuthed');
     if (!wasAuthed && nowAuthed) {
       // ignore: avoid_print
-      print('🎬 STREAM: transition false→true → rehydrate then warmUp');
-      // Chain them: rehydrate populates UsersCache.instance with our
-      // display name + avatar. Stream's warmUp reads from that cache
-      // when building the StreamVideo client, so the VoIP notification
-      // on callees shows "Mr A is calling…" instead of "10 is
-      // calling…". Run rehydrate first; warmUp waits.
-      unawaited(() async {
-        await _rehydrateChatIdentityOnAuth(GetIt.instance);
-        await engine.warmUp();
-      }());
+      print('🎬 STREAM: transition false→true → rehydrate + warmUp (parallel)');
+      // Parallel — NOT chained. Chaining was an attempt to populate
+      // UsersCache before Stream's client construction so the VoIP
+      // ringer shows "Mr A" instead of "10", but it blocked the entire
+      // ring path: if `users.me()` hung (network blip, slow backend)
+      // warmUp never fired and no ring went out at all. The race is
+      // acceptable — StreamCallEngine reads UsersCache lazily AND
+      // refreshes on every Call via getOrCreate. First call may show
+      // the bare id; subsequent ones land on the cached name.
+      unawaited(_rehydrateChatIdentityOnAuth(GetIt.instance));
+      unawaited(engine.warmUp());
     }
     wasAuthed = nowAuthed;
   });

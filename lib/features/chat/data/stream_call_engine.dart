@@ -37,6 +37,44 @@ class StreamCallEngine {
   /// avatar forever even though the media leg is healthy.
   final ValueNotifier<Call?> callNotifier = ValueNotifier<Call?>(null);
 
+  /// Fires every time Stream pushes a new incoming-call event over
+  /// the live WebSocket (i.e. when B is FOREGROUNDED and A initiates
+  /// a call with `ring=true`). The native CallKit ringer only fires
+  /// for backgrounded/killed apps — for foreground, Stream just sets
+  /// `client.state.incomingCall` and expects the app to render its
+  /// own incoming-call UI.
+  ///
+  /// `CallSignalingService` subscribes to this and forwards the data
+  /// into `handleIncomingFromPush(...)` so the existing
+  /// `IncomingCallOverlay` (the Flutter widget that paints the in-app
+  /// Accept/Reject sheet) lights up.
+  Stream<Call> get onStreamIncomingCall => _incomingCallController.stream;
+  final StreamController<Call> _incomingCallController =
+      StreamController<Call>.broadcast();
+  StreamSubscription<Call?>? _incomingCallSub;
+
+  /// Pending incoming Stream Call — the one currently ringing. We keep
+  /// a reference because Stream needs us to call `accept()` / `reject()`
+  /// on the SAME object that fired in `state.incomingCall`. Creating a
+  /// new Call via `client.makeCall(id)` and joining it would bypass
+  /// Stream's ringing-acceptance flow → no audio.
+  Call? _pendingIncomingCall;
+
+  /// True when there's a Stream incoming Call awaiting accept/reject.
+  /// Signaling layer uses this to decide between
+  /// `acceptPendingIncoming()` (preserves ringing acceptance, audio
+  /// flows) and a fresh `join()` (FCM-push fallback path).
+  bool get hasPendingIncoming => _pendingIncomingCall != null;
+
+  /// Fires when Stream signals the active call has ended (caller hung
+  /// up before callee answered, peer left, etc.). The signaling layer
+  /// subscribes so it can pop the local UI even when the end event
+  /// came from Stream instead of our STOMP/REST backend.
+  Stream<void> get onStreamCallEnded => _callEndedController.stream;
+  final StreamController<void> _callEndedController =
+      StreamController<void>.broadcast();
+  StreamSubscription<CallState>? _activeStateSub;
+
   /// Join the media leg of the call carried by [streamCallCid]
   /// (e.g. `default:abc123`). The chat ceremony is responsible for
   /// reaching the "connected" state BEFORE this is called — Stream
@@ -112,6 +150,75 @@ class StreamCallEngine {
         debugPrint('StreamCallEngine.join failed: $e\n$st');
       }
     }
+  }
+
+  /// Accept the currently-pending incoming Stream call (the one
+  /// surfaced via `onStreamIncomingCall`). MUST be called on the SAME
+  /// `Call` instance Stream gave us — `client.makeCall(id)` returns
+  /// a fresh reference that hasn't gone through ringing-acceptance,
+  /// so `accept()` on a fresh ref would fail and audio wouldn't flow.
+  Future<void> acceptPendingIncoming({required bool isVideo}) async {
+    final call = _pendingIncomingCall;
+    if (call == null) {
+      // ignore: avoid_print
+      print('[StreamCallEngine] acceptPendingIncoming: no pending call');
+      return;
+    }
+    try {
+      // ignore: avoid_print
+      print('[StreamCallEngine] accept() on incoming call ${call.callCid}');
+      await call.accept();
+      await call.join(
+        connectOptions: CallConnectOptions(
+          camera: isVideo ? TrackOption.enabled() : TrackOption.disabled(),
+          microphone: TrackOption.enabled(),
+        ),
+      );
+      _activeCall = call;
+      callNotifier.value = call;
+      _pendingIncomingCall = null;
+      // ignore: avoid_print
+      print('[StreamCallEngine] accept+join OK — media leg up');
+    } catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('[StreamCallEngine] acceptPendingIncoming failed: $e\n$st');
+      }
+    }
+  }
+
+  /// Reject the currently-pending incoming Stream call.
+  Future<void> rejectPendingIncoming() async {
+    final call = _pendingIncomingCall;
+    if (call == null) return;
+    try {
+      await call.reject();
+      _pendingIncomingCall = null;
+    } catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('[StreamCallEngine] rejectPendingIncoming failed: $e\n$st');
+      }
+    }
+  }
+
+  /// Subscribe to [call.state] so we detect Stream-side end events
+  /// (peer hung up, network disconnect, etc.) and surface them
+  /// through [onStreamCallEnded] for the signaling layer to pop the
+  /// local UI. Only one active subscription at a time — replaces the
+  /// previous one so we don't fan out duplicate end events when a new
+  /// call comes in.
+  void _attachEndListener(Call call) {
+    _activeStateSub?.cancel();
+    _activeStateSub = call.state.valueStream.listen((s) {
+      final status = s.status;
+      if (status is CallStatusDisconnected ||
+          status is CallStatusReconnectionFailed) {
+        // ignore: avoid_print
+        print('[StreamCallEngine] Stream call ended · status=$status');
+        if (!_callEndedController.isClosed) {
+          _callEndedController.add(null);
+        }
+      }
+    });
   }
 
   /// Eagerly connect the Stream client so the SDK's
@@ -240,6 +347,35 @@ class StreamCallEngine {
     // to call init once per client; it auto-starts on every join and
     // auto-stops on every leave.
     StreamBackgroundService.init(_client!);
+    // Subscribe to Stream's live incoming-call channel BEFORE we
+    // connect — Stream sets `state.incomingCall` the instant the
+    // backend fan-outs a `ring=true` call to a foregrounded peer.
+    // For backgrounded/killed peers the native push handler kicks in
+    // instead; this stream only fires while the WebSocket is alive.
+    await _incomingCallSub?.cancel();
+    _incomingCallSub = _client!.state.incomingCall.valueStream.listen((call) {
+      if (call == null) {
+        // Stream cleared the incoming call — caller withdrew before
+        // we answered. Surface as "ended" so the local overlay pops.
+        _pendingIncomingCall = null;
+        if (!_callEndedController.isClosed) {
+          _callEndedController.add(null);
+        }
+        return;
+      }
+      _pendingIncomingCall = call;
+      // ignore: avoid_print
+      print('[StreamCallEngine] 📞 incoming Stream call · '
+          'cid=${call.callCid} · type=${call.type}');
+      // Listen for THIS call's lifecycle so we can detect caller-end
+      // even after the incoming-call slot has been cleared (e.g. once
+      // we accept). When Stream's status flips to disconnected /
+      // ended, surface it through onStreamCallEnded.
+      _attachEndListener(call);
+      if (!_incomingCallController.isClosed) {
+        _incomingCallController.add(call);
+      }
+    });
     try {
       await _client!.connect();
       // ignore: avoid_print
@@ -262,10 +398,17 @@ class StreamCallEngine {
   /// to call this — the client lives for the app's lifetime.
   Future<void> dispose() async {
     await leave();
+    await _incomingCallSub?.cancel();
+    _incomingCallSub = null;
+    await _activeStateSub?.cancel();
+    _activeStateSub = null;
+    await _incomingCallController.close();
+    await _callEndedController.close();
     try {
       await _client?.disconnect();
     } catch (_) {}
     _client = null;
     _clientUserId = null;
+    _pendingIncomingCall = null;
   }
 }

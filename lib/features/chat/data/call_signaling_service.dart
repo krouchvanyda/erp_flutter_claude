@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:stream_video_flutter/stream_video_flutter.dart' show Call;
+
+import 'users_cache.dart';
 
 import '../entities/call_log.dart';
 import 'chat_settings.dart';
@@ -143,6 +146,25 @@ class CallSignalingService {
     required this.streamEngine,
   }) {
     _sub = transport.events.listen(_onEvent);
+    // Bridge Stream's live incoming-call channel (foreground path)
+    // into the same handler the FCM-push path uses. Without this, a
+    // foregrounded callee whose Stream WebSocket received a `ring=true`
+    // call would silently join in the background and the in-app
+    // IncomingCallOverlay would never light up — the user only sees
+    // the Stream "Call in progress" persistent notification.
+    _streamIncomingSub = streamEngine.onStreamIncomingCall.listen(
+      _handleStreamIncomingCall,
+    );
+    // When Stream signals the active call has ended (caller hung up
+    // before callee answered, peer disconnected, etc.) tear down the
+    // local state so the overlay / call page pops on its own. Without
+    // this, B's incoming-call overlay stayed up forever after A hit
+    // End — the chat-ceremony backend wasn't sending hangup events
+    // for Stream-originated calls, and Stream's WS signal had nowhere
+    // to land.
+    _streamEndedSub = streamEngine.onStreamCallEnded.listen((_) {
+      _handleStreamCallEnded();
+    });
   }
 
   final ChatTransport transport;
@@ -153,6 +175,8 @@ class CallSignalingService {
   final StreamCallEngine streamEngine;
 
   StreamSubscription<ChatTransportEvent>? _sub;
+  StreamSubscription<Call>? _streamIncomingSub;
+  StreamSubscription<void>? _streamEndedSub;
   ActiveCall? _active;
   // Maps callId → callLog entry id so we can update on accept / end.
   final Map<String, String> _logIdByCallId = {};
@@ -186,6 +210,8 @@ class CallSignalingService {
 
   Future<void> dispose() async {
     await _sub?.cancel();
+    await _streamIncomingSub?.cancel();
+    await _streamEndedSub?.cancel();
     _ringTimeout?.cancel();
     activeCallListenable.dispose();
   }
@@ -404,6 +430,139 @@ class CallSignalingService {
       });
     }));
     return active;
+  }
+
+  /// Bridge from Stream's `state.incomingCall` (foreground WebSocket
+  /// ring path) into the same handler the FCM-push (background path)
+  /// uses. Reformats the Stream [Call] into the canonical map shape
+  /// `handleIncomingFromPush` expects.
+  ///
+  /// The caller's display name comes from Stream's `createdBy` field
+  /// (populated when the caller's app built its `StreamVideo` client
+  /// with `User.regular(name: …)` — that's why we wired display names
+  /// through earlier).
+  ///
+  /// `conversationId` is best-effort: pulled from Stream's `custom`
+  /// map if the caller's `getOrCreate` included it, else falls back
+  /// to the call's CID id so the existing overlay at least renders.
+  /// Fired when Stream's WS signals the active call has ended — peer
+  /// hung up, caller withdrew before we answered, network dropped on
+  /// the far side. Mirrors the local hangup path so the overlay /
+  /// call page pops without waiting for the user.
+  ///
+  /// Idempotent — guarded on whether we still have an `_active` call
+  /// (the local end path may have already torn it down).
+  void _handleStreamCallEnded() {
+    final active = _active;
+    if (active == null) return;
+    if (kDebugMode) {
+      debugPrint('[CallSignaling] Stream signaled call ended — '
+          'tearing down local state for callId=${active.callId}');
+    }
+    // Flip to "ended" so listening UI pops. The voice/video pages
+    // already watch this transition (Slice 10.2.4 — endReason).
+    _setActive(active.copyWith(
+      state: CallSignalState.ended,
+      endReason: 'hangup',
+    ));
+    // Clear after a short delay so the snackbar / page-pop animation
+    // gets a chance to run, same pattern as the local hangup path.
+    Future.delayed(const Duration(milliseconds: 400), () {
+      if (_active?.callId == active.callId &&
+          _active?.state == CallSignalState.ended) {
+        _setActive(null);
+      }
+    });
+    // Drop the call-log mapping so the next call doesn't inherit it.
+    final logId = _logIdByCallId.remove(active.callId);
+    if (logId != null) {
+      unawaited(callLog.logEnded(
+        id: logId,
+        durationSeconds: active.connectedAt == null
+            ? 0
+            : DateTime.now().difference(active.connectedAt!).inSeconds,
+        finalStatus: active.connectedAt == null
+            ? ChatCallStatus.missed
+            : ChatCallStatus.answered,
+      ));
+    }
+  }
+
+  Future<void> _handleStreamIncomingCall(Call call) async {
+    final state = call.state.valueOrNull;
+    final createdBy = state?.createdByUser;
+    final callerId = createdBy?.id ?? '';
+
+    // ── Caller display name resolution ───────────────────────────
+    // Prefer Stream's createdByUser.name (set when the caller's
+    // StreamVideo client was built with User.regular(name: …)). If
+    // empty (race: A's UsersCache wasn't populated when A's client
+    // was built), fall back to OUR local UsersCache which was
+    // hydrated by /users on this device. Last resort: use the id.
+    String callerName = (createdBy != null && createdBy.name.isNotEmpty)
+        ? createdBy.name
+        : '';
+    if (callerName.isEmpty) {
+      callerName = UsersCache.instance.nameOf(callerId) ?? callerId;
+    }
+
+    // ── Backend call id resolution ───────────────────────────────
+    // The Accept / Reject buttons POST to `/chats/calls/{id}/{action}`
+    // which expects the BACKEND's numeric call id (e.g. "42"), NOT
+    // Stream's call id (e.g. "erp-call-42"). Three paths, first wins:
+    //   1. custom['backendCallId'] — caller-set, cleanest.
+    //   2. Parse "erp-call-<digits>" prefix off call.id.
+    //   3. Fall back to call.id verbatim (will 404 but the call ends
+    //      cleanly via the existing failure path).
+    final custom = state?.custom ?? const <String, Object?>{};
+    String backendCallId = custom['backendCallId']?.toString() ?? '';
+    if (backendCallId.isEmpty) {
+      final match = RegExp(r'^(?:erp-call-)?(\d+)').firstMatch(call.id);
+      backendCallId = match?.group(1) ?? call.id;
+    }
+
+    // ── Conversation id resolution ───────────────────────────────
+    // The call page renders peer name + avatar from the LOCAL
+    // conversation entity (`ConversationsRepository.watchById`). So
+    // the payload's `conversationId` must be a real LOCAL conv id,
+    // otherwise the lookup misses and the page shows nothing.
+    //
+    // Priority:
+    //   1. custom['conversationId'] — backend-set (correct).
+    //   2. Look up the direct conv with the caller by userId — this
+    //      handles every 1:1 call even when the backend didn't set
+    //      custom data.
+    //   3. Fall back to call.id (broken but at least the call
+    //      ceremony works).
+    String conversationId = custom['conversationId']?.toString() ?? '';
+    if (conversationId.isEmpty) {
+      final directConv = await conversations.findDirectWith(callerId);
+      if (directConv != null) {
+        conversationId = directConv.id;
+      }
+    }
+    if (conversationId.isEmpty) {
+      conversationId = call.id;
+    }
+
+    final isVideo = state?.callType.value == 'video';
+    final payload = <String, dynamic>{
+      'type': 'call.invite',
+      'callId': backendCallId,
+      'conversationId': conversationId,
+      'callerId': callerId,
+      'callerName': callerName,
+      'callType': isVideo ? 'video' : 'voice',
+      'startedAt': DateTime.now().toUtc().toIso8601String(),
+      'streamCallCid': call.callCid.value,
+    };
+    if (kDebugMode) {
+      debugPrint('[CallSignaling] Stream incoming bridged → '
+          'caller="$callerName" ($callerId) · '
+          'backendCallId=$backendCallId · '
+          'convId=$conversationId (resolved from ${call.id})');
+    }
+    await handleIncomingFromPush(payload);
   }
 
   /// Seed `_active` from an FCM `call.invite` push payload — used when
@@ -660,16 +819,31 @@ class CallSignalingService {
       ),
     );
     // Bring the media leg up — audio + (for video calls) camera.
-    // `shouldRing: false` because we're the CALLEE accepting an
-    // invite — the call has already been ringing us. Re-firing the
-    // ring from this side would push the VoIP notification to
-    // ourselves + the caller (loop).
+    //
+    // We MUST call `acceptPendingIncoming` (not `join`) when the
+    // ringing came from Stream's WebSocket. Stream's flow for a
+    // ringing call is `.accept()` → `.join()` on the SAME Call
+    // reference that fired in `state.incomingCall`. Creating a fresh
+    // Call via `client.makeCall(id)` and calling `getOrCreate` +
+    // `join` bypasses ringing acceptance — audio doesn't flow.
+    //
+    // Fallback to plain `join(shouldRing: false)` for the case where
+    // the engine never saw a pending incoming Call (e.g. FCM-push
+    // path on a backgrounded device that's coming back to foreground
+    // for the first time, and the in-app overlay fired off of
+    // handleIncomingFromPush rather than the Stream WS stream).
     if (streamCallCid != null && streamCallCid.isNotEmpty) {
-      unawaited(streamEngine.join(
-        streamCallCid: streamCallCid,
-        isVideo: active.callType == ChatCallType.video,
-        shouldRing: false,
-      ));
+      if (streamEngine.hasPendingIncoming) {
+        unawaited(streamEngine.acceptPendingIncoming(
+          isVideo: active.callType == ChatCallType.video,
+        ));
+      } else {
+        unawaited(streamEngine.join(
+          streamCallCid: streamCallCid,
+          isVideo: active.callType == ChatCallType.video,
+          shouldRing: false,
+        ));
+      }
     }
   }
 
