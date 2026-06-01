@@ -1,8 +1,10 @@
 import 'package:flutter/widgets.dart';
 
+import 'callkit_event_handler.dart';
 import 'chat_settings.dart';
 import 'chat_transport.dart';
 import 'repositories/presence_repository.dart';
+import 'stream_call_engine.dart';
 
 /// Slice 10.2.6 — keeps [ChatTransport] in sync with the app's
 /// foreground / background lifecycle.
@@ -32,11 +34,13 @@ class ChatLifecycleBridge with WidgetsBindingObserver {
     required this.transport,
     required this.settings,
     required this.presence,
+    required this.streamEngine,
   });
 
   final ChatTransport transport;
   final ChatSettings settings;
   final PresenceRepository presence;
+  final StreamCallEngine streamEngine;
 
   void attach() {
     WidgetsBinding.instance.addObserver(this);
@@ -61,6 +65,18 @@ class ChatLifecycleBridge with WidgetsBindingObserver {
         // 5-min effectiveStatus heuristic on the receiver maps a
         // fresh-OFFLINE to AWAY for the right amber-dot rendering).
         transport.pause();
+        // ALSO drop Stream's WebSocket so the SDK's coordinator marks
+        // this client offline. Stream prefers WS over FCM when it
+        // thinks a client is online — if we leave the WS up while
+        // backgrounded, Stream pushes the incoming-call event over
+        // WS only, our in-app overlay can't render (app not visible),
+        // and the native ringer never fires. Dropping the WS makes
+        // Stream fall back to FCM, which `flutter_callkit_incoming`
+        // renders as a native full-screen ringer.
+        //
+        // No-op when there's an active call (would kill audio mid-
+        // conversation; the engine itself enforces that guard).
+        streamEngine.disconnectForBackground();
       case AppLifecycleState.resumed:
         // Re-open the socket so we're Online again. Once connected
         // our presence flips back to ONLINE server-side and peers'
@@ -70,6 +86,17 @@ class ChatLifecycleBridge with WidgetsBindingObserver {
         // were backgrounded, and `/topic/presence` only delivers
         // deltas (not the current snapshot) once we reconnect.
         presence.loadAll();
+        // Re-warm Stream so incoming-call events flow over the live
+        // WS path again while we're in foreground. Idempotent.
+        streamEngine.warmUp();
+        // Re-subscribe + check for any pending CallKit accept that
+        // fired while we were backgrounded. The plugin's onEvent
+        // stream drops events while the app's main isolate is paused,
+        // so the user tapping Accept on the native ringer may have
+        // brought us back to foreground without us catching the
+        // Accept event. This re-runs the subscription and queries
+        // `activeCalls()` to recover from that.
+        CallkitEventHandler.instance.onAppResumed();
       case AppLifecycleState.inactive:
         // Brief transition (incoming call sheet, control-center on
         // iOS, etc.) — don't tear the socket down here, the user

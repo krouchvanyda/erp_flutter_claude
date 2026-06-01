@@ -18,6 +18,7 @@ import 'core/push/device_registrar.dart';
 import 'core/push/push_di.dart';
 import 'core/push/push_token_storage.dart';
 import 'core/router/auth_session.dart';
+import 'features/chat/data/callkit_event_handler.dart';
 import 'features/chat/data/chat_settings.dart';
 import 'features/chat/data/stream_call_engine.dart';
 import 'features/chat/data/users_cache.dart';
@@ -129,6 +130,15 @@ Future <void> main() async {
       // We listen for auth transitions so the warm-up fires both on
       // fresh login and on auto-login (splash → markAuthenticated).
       _wireStreamWarmUpToAuth(getIt<AuthSession>(), getIt<StreamCallEngine>());
+
+      // Subscribe to flutter_callkit_incoming events (Accept / Reject
+      // on the native ringer) so they actually drive the call
+      // ceremony. Without this, tapping Accept on the system ring
+      // does nothing — the ringer dismisses and the user is stuck on
+      // the home screen with no audio. Attached here (pre-runApp) so
+      // it catches accept events from a cold-start triggered by the
+      // tap itself.
+      CallkitEventHandler.instance.attach();
       // Start listening to connectivity transitions so the queue drains
       // automatically when the device comes back online.
       getIt<SyncEngine>().start();

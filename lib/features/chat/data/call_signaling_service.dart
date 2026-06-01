@@ -165,6 +165,15 @@ class CallSignalingService {
     _streamEndedSub = streamEngine.onStreamCallEnded.listen((_) {
       _handleStreamCallEnded();
     });
+    // Stream's media-layer "peer joined" signal — used as a fallback
+    // for A's UI when the chat-ceremony backend never broadcasts
+    // `call.accept` to A. Symptom this fixes: A stays on "Calling…"
+    // even after B has accepted and is already in the audio call,
+    // because the backend's own ring timer fired and it never sent
+    // the canonical accept STOMP frame to A.
+    _streamPeerJoinedSub = streamEngine.onStreamPeerJoined.listen((_) {
+      _handleStreamPeerJoined();
+    });
   }
 
   final ChatTransport transport;
@@ -177,6 +186,7 @@ class CallSignalingService {
   StreamSubscription<ChatTransportEvent>? _sub;
   StreamSubscription<Call>? _streamIncomingSub;
   StreamSubscription<void>? _streamEndedSub;
+  StreamSubscription<void>? _streamPeerJoinedSub;
   ActiveCall? _active;
   // Maps callId → callLog entry id so we can update on accept / end.
   final Map<String, String> _logIdByCallId = {};
@@ -212,6 +222,7 @@ class CallSignalingService {
     await _sub?.cancel();
     await _streamIncomingSub?.cancel();
     await _streamEndedSub?.cancel();
+    await _streamPeerJoinedSub?.cancel();
     _ringTimeout?.cancel();
     activeCallListenable.dispose();
   }
@@ -359,37 +370,93 @@ class CallSignalingService {
     // with a non-numeric id and silently no-op (transport's
     // `int.tryParse` would fail). Fire-and-forget so the call page
     // can render the ringing UI immediately.
-    unawaited(transport
-        .sendCallInvite(
-      callId: callId,
-      conversationId: conversationId,
-      callerId: me,
-      callerName: myName,
-      callType: callType,
-      startedAt: now,
-      targetIds: targetIds,
-    )
-        .then((response) async {
-      if (response == null) return;
+    unawaited(() async {
+      Map<String, dynamic>? response;
+      Object? lastError;
+      try {
+        response = await transport.sendCallInvite(
+          callId: callId,
+          conversationId: conversationId,
+          callerId: me,
+          callerName: myName,
+          callType: callType,
+          startedAt: now,
+          targetIds: targetIds,
+        );
+      } catch (e) {
+        lastError = e;
+        // Auto-recover from stale "already in an active call" rows.
+        // Cause: a previous call timed out / failed without the
+        // server-side row being cleaned up (backend's own 30 s ring
+        // timer leaves rows in inconsistent states, or the app was
+        // force-killed mid-call). We list the user's recent calls,
+        // end anything still RINGING/ANSWERED, then retry the invite
+        // once. Without this, the user has to wait for the server to
+        // GC its stale rows (could be minutes) or restart their phone.
+        final message = _extractBackendMessage(e);
+        if (message != null &&
+            message.toLowerCase().contains('already in an active call')) {
+          final cleaned = await _endStaleActiveCalls();
+          if (cleaned > 0) {
+            if (kDebugMode) {
+              debugPrint('[CallSignaling] auto-cleaned $cleaned stale '
+                  'call row(s) — retrying sendCallInvite');
+            }
+            try {
+              response = await transport.sendCallInvite(
+                callId: callId,
+                conversationId: conversationId,
+                callerId: me,
+                callerName: myName,
+                callType: callType,
+                startedAt: now,
+                targetIds: targetIds,
+              );
+              lastError = null;
+            } catch (e2) {
+              lastError = e2;
+            }
+          }
+        }
+      }
+
+      // Failure path: roll back outgoingRinging → ended so the call
+      // page pops itself.
+      if (response == null) {
+        final cur = _active;
+        if (cur == null || cur.callId != callId) return;
+        final message =
+            lastError == null ? null : _extractBackendMessage(lastError);
+        final reason = (message != null &&
+                message.toLowerCase().contains('already in an active call'))
+            ? 'already_in_call'
+            : 'failed';
+        _setActive(cur.copyWith(
+          state: CallSignalState.ended,
+          endReason: reason,
+        ));
+        Future.delayed(const Duration(milliseconds: 600), () {
+          if (_active?.callId == callId &&
+              _active?.state == CallSignalState.ended) {
+            _setActive(null);
+          }
+        });
+        return;
+      }
+
+      // Success path: swap the local placeholder callId for the
+      // backend's canonical id, then bring the Stream media leg up.
       final backendCallId = response['id']?.toString() ?? '';
       final streamCallCid = response['streamCallCid'] as String?;
       if (backendCallId.isEmpty) return;
       final cur = _active;
-      // Only swap if this is still the same call (user might have
-      // hung up before the backend responded).
       if (cur == null || cur.callId != callId) return;
-      // Move the call-log mapping over so end / reject can still
-      // find the right log row.
       final logId = _logIdByCallId.remove(callId);
       if (logId != null) _logIdByCallId[backendCallId] = logId;
       _setActive(cur.copyWith(
         callId: backendCallId,
         streamCallCid: streamCallCid,
       ));
-      // Bring the media leg up (audio/video) once the chat side has
-      // acknowledged the call. join() is idempotent + swallows
-      // failures internally; if the backend hasn't shipped Stream
-      // integration the call falls back to signalling-only.
       if (streamCallCid != null && streamCallCid.isNotEmpty) {
         // Pass `calleeUserIds` + `shouldRing: true` so Stream's
         // backend pushes the VoIP notification to every callee — that
@@ -403,32 +470,7 @@ class CallSignalingService {
           shouldRing: true,
         ));
       }
-    }).catchError((Object e) {
-      // POST failed — most common cause is a stale RINGING/ANSWERED
-      // call row on the server (force-killed app, crash mid-call).
-      // Roll back from outgoingRinging → ended so the call page
-      // pops itself and the user sees the snackbar instead of being
-      // stuck on "Calling…" until the 30 s ring timeout fires.
-      final cur = _active;
-      if (cur == null || cur.callId != callId) return;
-      final message = _extractBackendMessage(e);
-      final reason = (message != null &&
-              message.toLowerCase().contains('already in an active call'))
-          ? 'already_in_call'
-          : 'failed';
-      _setActive(cur.copyWith(
-        state: CallSignalState.ended,
-        endReason: reason,
-      ));
-      // Drop the active reference after the page has had a beat to
-      // render the ended state.
-      Future.delayed(const Duration(milliseconds: 600), () {
-        if (_active?.callId == callId &&
-            _active?.state == CallSignalState.ended) {
-          _setActive(null);
-        }
-      });
-    }));
+    }());
     return active;
   }
 
@@ -452,13 +494,51 @@ class CallSignalingService {
   ///
   /// Idempotent — guarded on whether we still have an `_active` call
   /// (the local end path may have already torn it down).
-  void _handleStreamCallEnded() {
+  /// Fallback path for A's UI: Stream's media layer has just observed
+  /// a remote participant joining our call. That means B accepted on
+  /// their device (either through the chat ceremony or via the
+  /// Stream-only fallback in [acceptIncoming]). Flip our local state
+  /// from `outgoingRinging` → `connected` so the call page replaces
+  /// "Calling…" with the timer + waveform — without waiting for the
+  /// chat backend's `call.accept` STOMP broadcast, which may never
+  /// arrive if the backend's own ring timer fired first.
+  void _handleStreamPeerJoined() {
     final active = _active;
     if (active == null) return;
+    // Only act on the caller-side ringing transition. If we're already
+    // connected, idle, or in some other state, this event is either
+    // late or stale and should be ignored.
+    if (active.state != CallSignalState.outgoingRinging) return;
+    if (kDebugMode) {
+      debugPrint('[CallSignaling] Stream peer joined — flipping '
+          '${active.callId} from outgoingRinging → connected');
+    }
+    final connectedAt = DateTime.now();
+    final logId = _logIdByCallId[active.callId];
+    if (logId != null) unawaited(callLog.logAnswered(logId));
+    _setActive(active.copyWith(
+      state: CallSignalState.connected,
+      connectedAt: connectedAt,
+    ));
+  }
+
+  void _handleStreamCallEnded() {
+    final active = _active;
     if (kDebugMode) {
       debugPrint('[CallSignaling] Stream signaled call ended — '
-          'tearing down local state for callId=${active.callId}');
+          'tearing down local state for callId=${active?.callId ?? "none"}');
     }
+    // CRITICAL: also tear down the engine's _activeCall so its
+    // `hasPendingIncoming` / active-call guard doesn't leak into the
+    // next call. Symptom of the leak: minimize after a call would log
+    // "disconnectForBackground: skipped (active call in flight)" even
+    // though no call was actually live → Stream's WS stayed up →
+    // Stream treated B as online → next ring went over WS (where the
+    // overlay can't render while backgrounded) → A's call timed out
+    // as a "missed call".
+    unawaited(streamEngine.leave());
+
+    if (active == null) return;
     // Flip to "ended" so listening UI pops. The voice/video pages
     // already watch this transition (Slice 10.2.4 — endReason).
     _setActive(active.copyWith(
@@ -647,6 +727,54 @@ class CallSignalingService {
     transport.subscribeConversation(conversationId);
   }
 
+  /// Best-effort cleanup of stale `RINGING` / `ANSWERED` call rows on
+  /// the server for the current user. Called automatically when
+  /// `startOutgoing` catches "already in an active call" — most of
+  /// the time those rows are orphans from a previous test where the
+  /// backend's ring timer left the row in an inconsistent state.
+  ///
+  /// Lists the user's most recent calls (page 1, up to 20), POSTs
+  /// `endCall` on anything still RINGING/ANSWERED, and returns the
+  /// number of rows successfully ended. Failures per-row are
+  /// swallowed so a single 404 doesn't block the rest. Returns 0
+  /// when the list endpoint itself fails — the caller will treat
+  /// that as "nothing to recover" and surface the original error.
+  Future<int> _endStaleActiveCalls() async {
+    final Map<String, dynamic> page;
+    try {
+      page = await remote.listCalls(page: 1, pageSize: 20);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[CallSignaling] _endStaleActiveCalls listCalls '
+            'failed: $e');
+      }
+      return 0;
+    }
+    final items = page['items'];
+    if (items is! List) return 0;
+    int ended = 0;
+    for (final item in items) {
+      if (item is! Map) continue;
+      final status = (item['status']?.toString() ?? '').toUpperCase();
+      if (status != 'RINGING' && status != 'ANSWERED') continue;
+      final id = int.tryParse(item['id']?.toString() ?? '');
+      if (id == null) continue;
+      try {
+        await remote.endCall(id);
+        ended++;
+        if (kDebugMode) {
+          debugPrint('[CallSignaling] auto-ended stale call $id '
+              '(was $status)');
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('[CallSignaling] failed to end stale call $id: $e');
+        }
+      }
+    }
+    return ended;
+  }
+
   /// Pull the human-readable `message` out of a DioException body
   /// (the backend's standard envelope is `{success, message, …}`).
   /// Returns null if the error isn't a DioException with a JSON body.
@@ -797,11 +925,86 @@ class CallSignalingService {
       accepterId: settings.userId,
     );
     if (response == null) {
-      // Accept failed — surface as "ended" so the page pops itself.
+      // The chat-ceremony POST failed (most commonly 400 "Call already
+      // ended" because the backend's own ring timer fired before the
+      // user tapped Accept on the CallKit notification). DO NOT give
+      // up yet: Stream and the chat backend run independent timers,
+      // and Stream's call may still be live. Try Stream's accept path
+      // directly — if it succeeds, media flows and the user can talk,
+      // even though the chat_call_log row will be wrong. Only when
+      // Stream also bails do we treat this as a true missed call.
+      final fallbackCid = active.streamCallCid;
+      if (fallbackCid != null && fallbackCid.isNotEmpty) {
+        if (kDebugMode) {
+          debugPrint('[CallSignaling] chat accept POST 400 — '
+              'attempting Stream-only accept on cid=$fallbackCid');
+        }
+        // Optimistically flip to connected so the in-call page mounts
+        // and the user gets the "Connecting…" UI instead of an instant
+        // "Call ended". If Stream rejects we roll back below.
+        _setActive(active.copyWith(
+          state: CallSignalState.connected,
+          connectedAt: DateTime.now(),
+          streamCallCid: fallbackCid,
+        ));
+        try {
+          if (streamEngine.hasPendingIncoming) {
+            await streamEngine.acceptPendingIncoming(
+              isVideo: active.callType == ChatCallType.video,
+              expectedCid: fallbackCid,
+            );
+            if (!streamEngine.hasPendingIncoming) {
+              await streamEngine.acceptByCid(
+                callCid: fallbackCid,
+                isVideo: active.callType == ChatCallType.video,
+              );
+            }
+          } else {
+            await streamEngine.acceptByCid(
+              callCid: fallbackCid,
+              isVideo: active.callType == ChatCallType.video,
+            );
+          }
+          // Stream accept didn't throw — best-effort log the answered
+          // state on the local row so the call history reflects it
+          // even though the backend ceremony missed the accept.
+          final logId = _logIdByCallId[active.callId];
+          if (logId != null) await callLog.logAnswered(logId);
+          return;
+        } catch (e) {
+          if (kDebugMode) {
+            debugPrint('[CallSignaling] Stream-only accept also '
+                'failed — falling through to missed: $e');
+          }
+          // Fall through to the missed-call cleanup below.
+        }
+      }
+      // Stream had no live call either — treat as a true missed call:
+      // close the call_log row, write the inbox preview, and let the
+      // page pop itself.
+      final logId = _logIdByCallId.remove(active.callId);
+      if (logId != null) {
+        await callLog.logEnded(
+          id: logId,
+          durationSeconds: 0,
+          finalStatus: ChatCallStatus.missed,
+        );
+      }
+      unawaited(_writeCallSummary(
+        active,
+        finalStatus: ChatCallStatus.missed,
+        durationSeconds: 0,
+      ));
       _setActive(active.copyWith(
         state: CallSignalState.ended,
-        endReason: 'hangup',
+        endReason: 'no_answer',
       ));
+      Future.delayed(const Duration(milliseconds: 600), () {
+        if (_active?.callId == active.callId &&
+            _active?.state == CallSignalState.ended) {
+          _setActive(null);
+        }
+      });
       return;
     }
     final connectedAt = DateTime.now();
@@ -833,17 +1036,35 @@ class CallSignalingService {
     // for the first time, and the in-app overlay fired off of
     // handleIncomingFromPush rather than the Stream WS stream).
     if (streamCallCid != null && streamCallCid.isNotEmpty) {
-      if (streamEngine.hasPendingIncoming) {
-        unawaited(streamEngine.acceptPendingIncoming(
-          isVideo: active.callType == ChatCallType.video,
-        ));
-      } else {
-        unawaited(streamEngine.join(
-          streamCallCid: streamCallCid,
-          isVideo: active.callType == ChatCallType.video,
-          shouldRing: false,
-        ));
-      }
+      // Try the WS-pending path first (uses the SAME Call ref Stream
+      // pushed via state.incomingCall — required for Stream's ring-
+      // acceptance flow to register the answer). If the pending ref
+      // is stale (different CID — happens after prior call cleared
+      // partially), it self-clears and we fall through to
+      // `acceptByCid` which makes a fresh Call ref with the right CID.
+      unawaited(() async {
+        if (streamEngine.hasPendingIncoming) {
+          await streamEngine.acceptPendingIncoming(
+            isVideo: active.callType == ChatCallType.video,
+            expectedCid: streamCallCid,
+          );
+          // If acceptPendingIncoming bailed (CID mismatch),
+          // hasPendingIncoming is now false → run acceptByCid below.
+          if (!streamEngine.hasPendingIncoming) {
+            await streamEngine.acceptByCid(
+              callCid: streamCallCid,
+              isVideo: active.callType == ChatCallType.video,
+            );
+          }
+        } else {
+          // No WS-pending ref (FCM/CallKit path on cold-start) — go
+          // straight to acceptByCid which makes a fresh Call ref.
+          await streamEngine.acceptByCid(
+            callCid: streamCallCid,
+            isVideo: active.callType == ChatCallType.video,
+          );
+        }
+      }());
     }
   }
 
@@ -1070,11 +1291,76 @@ class CallSignalingService {
     // rejecting follow-up invites.
     _ringTimeout?.cancel();
     if (next != null && next.state == CallSignalState.incomingRinging) {
-      _ringTimeout = Timer(const Duration(seconds: 30), () {
+      // 60 s matches Stream's overridden ring timeout (see
+      // StreamCallEngine.join). Earlier value (30 s) would auto-reject
+      // local invites halfway through the server-side ring, killing
+      // perfectly valid late accepts.
+      _ringTimeout = Timer(const Duration(seconds: 60), () {
         if (_active?.callId == next.callId &&
             _active?.state == CallSignalState.incomingRinging) {
           unawaited(rejectIncoming());
         }
+      });
+    } else if (next != null && next.state == CallSignalState.outgoingRinging) {
+      // Backstop for the caller side. Stream's ring timeout (now
+      // overridden to 60 s server-side via StreamRingSettings — see
+      // StreamCallEngine.join) is supposed to broadcast a `call.ended`
+      // event over the WS once the callee fails to answer in time —
+      // but when B accepts too late and the backend rejects the accept
+      // with 400 "Call already ended", no such event reaches A, and
+      // A's call page would stay on "Calling…" forever. 65 s is
+      // intentionally a touch longer than Stream's 60 s so the WS
+      // path still wins on the happy path; this only fires when the
+      // WS event is lost.
+      _ringTimeout = Timer(const Duration(seconds: 65), () {
+        final cur = _active;
+        if (cur == null ||
+            cur.callId != next.callId ||
+            cur.state != CallSignalState.outgoingRinging) {
+          return;
+        }
+        if (kDebugMode) {
+          debugPrint('[CallSignaling] outgoing ring timeout (35s) — '
+              'forcing call ${cur.callId} to ended (no_answer)');
+        }
+        // Log as missed so the inbox/Calls tab reflects the attempt.
+        final logId = _logIdByCallId.remove(cur.callId);
+        if (logId != null) {
+          unawaited(callLog.logEnded(
+            id: logId,
+            durationSeconds: 0,
+            finalStatus: ChatCallStatus.noAnswer,
+          ));
+        }
+        unawaited(_writeCallSummary(
+          cur,
+          finalStatus: ChatCallStatus.noAnswer,
+          durationSeconds: 0,
+        ));
+        // Best-effort: also tell the backend / peer so any straggling
+        // CallKit ringer on B can be dismissed. Fire-and-forget — if
+        // the call row is already CANCELLED on the server this is a
+        // no-op, and we don't want to block the local state cleanup.
+        try {
+          transport.sendCallHangup(
+            cur.callId,
+            hangerUpperId: settings.userId,
+          );
+        } catch (_) {}
+        // Tear down Stream's media leg too — without this, A's
+        // StreamVideo client keeps the call object alive and
+        // disconnectForBackground sees a stale activeCall on resume.
+        unawaited(streamEngine.leave());
+        _setActive(cur.copyWith(
+          state: CallSignalState.ended,
+          endReason: 'no_answer',
+        ));
+        Future.delayed(const Duration(milliseconds: 600), () {
+          if (_active?.callId == next.callId &&
+              _active?.state == CallSignalState.ended) {
+            _setActive(null);
+          }
+        });
       });
     }
 

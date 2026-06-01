@@ -125,6 +125,7 @@ class _VideoCallPageState extends State<VideoCallPage>
           _status = switch (call.endReason) {
             'busy' => 'Busy',
             'declined' => 'Declined',
+            'no_answer' => 'No answer',
             _ => 'Call ended',
           };
         case CallSignalState.idle:
@@ -140,6 +141,7 @@ class _VideoCallPageState extends State<VideoCallPage>
           'already_in_call' =>
             'You\'re already in another call. End it first.',
           'failed' => 'Could not start the call. Try again.',
+          'no_answer' => '${call.peerName} didn\'t answer.',
           _ => null,
         };
         if (reason != null) {

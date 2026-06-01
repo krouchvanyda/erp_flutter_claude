@@ -136,6 +136,7 @@ class _VoiceCallPageState extends State<VoiceCallPage>
           'already_in_call' =>
             'You\'re already in another call. End it first.',
           'failed' => 'Could not start the call. Try again.',
+          'no_answer' => '${call.peerName} didn\'t answer.',
           _ => null,
         };
         if (reason != null) {

@@ -4,6 +4,8 @@ import 'dart:io';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_callkit_incoming/entities/entities.dart';
+import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'local_notification_provider.dart';
@@ -55,6 +57,28 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // registry.
   final local = LocalNotificationProvider();
   await local.initialize();
+
+  // ── Stream Video VoIP push handoff ───────────────────────────────
+  // Stream's `stream_video_push_notification` package does NOT register
+  // its own FirebaseMessagingService, so every Stream push (sender =
+  // 'stream.video', type = 'call.ring' / 'call.missed') lands HERE in
+  // our handler. To get the native full-screen ringer the user
+  // expects, we must hand the call.ring payload off to
+  // `flutter_callkit_incoming` directly — `LocalNotificationProvider`
+  // can only render a plain tray notification, not a CallKit UI.
+  //
+  // call.missed pushes fall through to the legacy renderer below
+  // (which shows the "Missed call from …" tray entry).
+  if (message.data['sender'] == 'stream.video' &&
+      message.data['type'] == 'call.ring') {
+    if (kDebugMode) {
+      log('📞 [stream.call.ring] BG/KILLED — handoff to CallKit · '
+          'cid=${message.data['call_cid']} · '
+          'caller=${message.data['created_by_display_name']}');
+    }
+    await _showStreamCallkitRinger(message);
+    return;
+  }
 
   // call.cancel — caller hung up before the callee answered, or
   // another device for the same user already picked up. Dismiss the
@@ -131,6 +155,97 @@ void _logPush(String state, RemoteMessage m) {
       'title=${m.notification?.title ?? m.data['title']} · '
       'body=${m.notification?.body ?? m.data['body']} · '
       'data=${m.data}');
+}
+
+/// Hand off a Stream Video `call.ring` push to `flutter_callkit_incoming`
+/// so the native full-screen ringer wakes the device. Runs in the
+/// background isolate (no GetIt / no app state available).
+///
+/// Stream's push payload (data-only, no notification block):
+/// ```
+/// {
+///   sender: stream.video,
+///   type: call.ring,
+///   call_cid: default:erp-call-141,
+///   created_by_id: 9,
+///   created_by_display_name: Mr A,
+///   call_display_name: …,            -- usually conv/group name
+///   version: v2
+/// }
+/// ```
+///
+/// Without this handoff Stream's ring push falls through to the
+/// generic notification renderer (or gets silently dropped if it
+/// doesn't match `call.invite` / `call.cancel`) — the user sees no
+/// ringer and the call eventually times out as a missed call.
+@pragma('vm:entry-point')
+Future<void> _showStreamCallkitRinger(RemoteMessage message) async {
+  final data = message.data;
+  final callCid = data['call_cid']?.toString() ?? '';
+  if (callCid.isEmpty) return;
+
+  // Use the call CID as the ringer id so the matching `call.cancel`
+  // /  end push can dismiss it later via the same id.
+  final id = callCid;
+  final callerName = data['created_by_display_name']?.toString() ??
+      data['call_display_name']?.toString() ??
+      'Unknown caller';
+  final callerHandle = data['created_by_id']?.toString() ?? '';
+  // Stream encodes video calls as type=video in custom data; default
+  // to audio (type=0) when unknown.
+  final isVideo = (data['call_type']?.toString() == 'video') ||
+      (data['video']?.toString() == 'true');
+
+  final params = CallKitParams(
+    id: id,
+    nameCaller: callerName,
+    appName: 'ERP',
+    handle: callerHandle,
+    type: isVideo ? 1 : 0,
+    // Persist the whole Stream payload so the accept/decline handler
+    // (wired separately) can reconstruct what to do.
+    extra: <String, dynamic>{
+      'call_cid': callCid,
+      'caller_id': callerHandle,
+      'caller_name': callerName,
+      'type': data['type']?.toString() ?? '',
+    },
+    android: const AndroidParams(
+      isCustomNotification: true,
+      isShowLogo: false,
+      ringtonePath: 'system_ringtone_default',
+      backgroundColor: '#0955fa',
+      actionColor: '#4CAF50',
+      incomingCallNotificationChannelName: 'Incoming Calls',
+      missedCallNotificationChannelName: 'Missed Calls',
+    ),
+    ios: const IOSParams(
+      iconName: 'CallKitLogo',
+      handleType: 'generic',
+      supportsVideo: true,
+      maximumCallGroups: 2,
+      maximumCallsPerCallGroup: 1,
+      audioSessionMode: 'default',
+      audioSessionActive: true,
+      audioSessionPreferredSampleRate: 44100.0,
+      audioSessionPreferredIOBufferDuration: 0.005,
+      supportsDTMF: true,
+      supportsHolding: true,
+      supportsGrouping: false,
+      supportsUngrouping: false,
+      ringtonePath: 'system_ringtone_default',
+    ),
+  );
+  try {
+    await FlutterCallkitIncoming.showCallkitIncoming(params);
+    if (kDebugMode) {
+      log('📞 [stream.call.ring] CallKit shown · id=$id · caller=$callerName');
+    }
+  } catch (e, st) {
+    if (kDebugMode) {
+      log('📞 [stream.call.ring] CallKit handoff failed: $e', stackTrace: st);
+    }
+  }
 }
 
 /// Derive a stable notification id from the message so:

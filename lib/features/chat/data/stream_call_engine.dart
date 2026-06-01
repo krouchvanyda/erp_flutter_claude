@@ -25,6 +25,15 @@ class StreamCallEngine {
   StreamVideo? _client;
   Call? _activeCall;
 
+  /// Monotonic counter incremented on every join / accept entry.
+  /// Each invocation captures its value, then re-checks at every
+  /// await checkpoint — if `_callSeq` has moved on since, a newer
+  /// invocation is in flight and we abandon ours (leave the half-set-
+  /// up Call ref) so the newer one wins. This is the only thing that
+  /// stops back-to-back call attempts from racing and producing
+  /// Stream "Disconnected: Replaced" events on the brand-new call.
+  int _callSeq = 0;
+
   /// Cached identity used to bring the client up. We re-fetch the
   /// token if [_clientUserId] doesn't match the one we're being asked
   /// to join as (rare: sign-out → sign-in mid-session).
@@ -75,6 +84,18 @@ class StreamCallEngine {
       StreamController<void>.broadcast();
   StreamSubscription<CallState>? _activeStateSub;
 
+  /// Fires on the CALLER's side the first time a remote participant
+  /// joins the Stream call — i.e. our peer accepted on their device.
+  /// Used as a backup signal when the chat-ceremony backend never
+  /// broadcasts `call.accept` to us (its own 30 s timer fired and
+  /// closed the row before the callee tapped Accept). Without this,
+  /// A's UI stays on "Calling…" indefinitely even though B is already
+  /// in the media call.
+  Stream<void> get onStreamPeerJoined => _peerJoinedController.stream;
+  final StreamController<void> _peerJoinedController =
+      StreamController<void>.broadcast();
+  StreamSubscription<CallState>? _peerJoinedSub;
+
   /// Join the media leg of the call carried by [streamCallCid]
   /// (e.g. `default:abc123`). The chat ceremony is responsible for
   /// reaching the "connected" state BEFORE this is called — Stream
@@ -100,8 +121,31 @@ class StreamCallEngine {
     bool shouldRing = true,
   }) async {
     if (streamCallCid.isEmpty) return;
+    // Stake our claim BEFORE any await — anything kicked off after
+    // this call bumps the counter, so we'll see we've been superseded
+    // at the next checkpoint and bail out. Bumping (instead of just
+    // reading) also forces the prior in-flight join() to notice that
+    // a newer one started.
+    final mySeq = ++_callSeq;
     try {
+      // CRITICAL: tear down any prior Stream call before starting a
+      // new one. Stream's internal state can only host one active call
+      // per client — joining a second one fires a "Disconnected:
+      // Replaced" event on the previous one, and if that listener is
+      // still wired up it'll bubble through `onStreamCallEnded` and
+      // tear down our brand-new local signaling state for the NEW
+      // call. Symptom: A taps Call, A's UI immediately ends with
+      // "Call ended" even though B was never reached.
+      if (_activeCall != null) {
+        if (kDebugMode) {
+          debugPrint('[StreamCallEngine] leaving prior Stream call '
+              'before starting new one (cid=$streamCallCid)');
+        }
+        await leave();
+      }
+      if (mySeq != _callSeq) return; // superseded
       await _ensureClient();
+      if (mySeq != _callSeq) return; // superseded
       final client = _client;
       if (client == null) return;
 
@@ -121,14 +165,35 @@ class StreamCallEngine {
       // ringer on the callees' phones via the SDK's native
       // PushNotificationManager. Without this, Stream creates the
       // call silently and nobody else's phone ever rings.
+      //
+      // `ring` extends Stream's server-side ring timeouts from the
+      // 30 s default to 60 s. Without this extension the call is
+      // auto-cancelled on the coordinator before the callee has had
+      // time to: (1) notice the CallKit notification, (2) tap it,
+      // (3) the app wakes up, and (4) the accept POST round-trips.
+      // On a backgrounded device that whole chain easily eats 20–30 s.
+      // 60 s matches what most VoIP apps (WhatsApp, Telegram) use.
       // ignore: avoid_print
       print('[StreamCallEngine] getOrCreate(callId=$callId, '
-          'members=$calleeUserIds, ringing=$shouldRing)');
+          'members=$calleeUserIds, ringing=$shouldRing, ringTimeout=60s)');
       await call.getOrCreate(
         memberIds: calleeUserIds,
         ringing: shouldRing,
         video: isVideo,
+        ring: const StreamRingSettings(
+          autoCancelTimeout: Duration(seconds: 60),
+          autoRejectTimeout: Duration(seconds: 60),
+          missedCallTimeout: Duration(seconds: 60),
+        ),
       );
+      if (mySeq != _callSeq) {
+        // A newer join started while we were in getOrCreate — abandon
+        // our half-set-up Call. Leaving it would also fire a Replaced
+        // disconnect, but the newer invocation has already taken over
+        // _activeCall and the listener, so it can safely ignore it.
+        try { await call.leave(); } catch (_) {}
+        return;
+      }
       await call.join(
         connectOptions: CallConnectOptions(
           camera: isVideo
@@ -137,8 +202,20 @@ class StreamCallEngine {
           microphone: TrackOption.enabled(),
         ),
       );
+      if (mySeq != _callSeq) {
+        try { await call.leave(); } catch (_) {}
+        return;
+      }
       _activeCall = call;
       callNotifier.value = call;
+      // Caller-side path only: watch for the first remote participant
+      // to join so we can flip the chat-ceremony state to connected
+      // even when the backend's `call.accept` STOMP broadcast never
+      // reaches us.
+      if (shouldRing) {
+        _attachPeerJoinedListener(call);
+      }
+      _attachEndListener(call);
       if (kDebugMode) {
         debugPrint(
           '[StreamCallEngine] joined cid=$streamCallCid '
@@ -152,28 +229,172 @@ class StreamCallEngine {
     }
   }
 
-  /// Accept the currently-pending incoming Stream call (the one
-  /// surfaced via `onStreamIncomingCall`). MUST be called on the SAME
-  /// `Call` instance Stream gave us — `client.makeCall(id)` returns
-  /// a fresh reference that hasn't gone through ringing-acceptance,
-  /// so `accept()` on a fresh ref would fail and audio wouldn't flow.
-  Future<void> acceptPendingIncoming({required bool isVideo}) async {
-    final call = _pendingIncomingCall;
-    if (call == null) {
-      // ignore: avoid_print
-      print('[StreamCallEngine] acceptPendingIncoming: no pending call');
-      return;
-    }
+  /// Subscribe to [call.state] and fire [onStreamPeerJoined] the first
+  /// time a non-local participant appears. Used on the caller's side
+  /// as a fallback signal when the chat-ceremony backend fails to
+  /// broadcast `call.accept` to us (its own ring timer fired before
+  /// the callee tapped Accept, but the callee's media leg came up
+  /// anyway via the Stream-only fallback). Single-fire: we cancel the
+  /// subscription as soon as a peer is seen.
+  void _attachPeerJoinedListener(Call call) {
+    _peerJoinedSub?.cancel();
+    _peerJoinedSub = call.state.valueStream.listen((s) {
+      if (s.callParticipants.any((p) => !p.isLocal)) {
+        // ignore: avoid_print
+        print('[StreamCallEngine] remote peer joined the Stream call '
+            '— firing onStreamPeerJoined');
+        if (!_peerJoinedController.isClosed) {
+          _peerJoinedController.add(null);
+        }
+        _peerJoinedSub?.cancel();
+        _peerJoinedSub = null;
+      }
+    });
+  }
+
+  /// Accept a Stream call directly by its CID (e.g. from a CallKit
+  /// notification accept event). Used when there's no
+  /// `_pendingIncomingCall` to attach to — typically because the app
+  /// was minimized (Stream WS was down) or killed (no Dart isolate
+  /// running) when the ring push arrived.
+  ///
+  /// Reconnects the Stream client if needed, then `accept()` +
+  /// `join()`. Stream reconciles the call state from the coordinator.
+  Future<void> acceptByCid({
+    required String callCid,
+    required bool isVideo,
+  }) async {
+    if (callCid.isEmpty) return;
+    final mySeq = ++_callSeq;
     try {
+      // Same protection as join(): tear down any prior Stream call so
+      // Stream's "Replaced" disconnect on the OLD call doesn't fire
+      // through onStreamCallEnded and kill our NEW signaling state.
+      if (_activeCall != null) {
+        if (kDebugMode) {
+          debugPrint('[StreamCallEngine] acceptByCid: leaving prior '
+              'Stream call before accepting new one (cid=$callCid)');
+        }
+        await leave();
+      }
+      if (mySeq != _callSeq) return;
+      await _ensureClient();
+      if (mySeq != _callSeq) return;
+      final client = _client;
+      if (client == null) return;
+      final parts = callCid.split(':');
+      final callType = parts.length > 1 ? parts[0] : 'default';
+      final callId = parts.length > 1 ? parts[1] : callCid;
       // ignore: avoid_print
-      print('[StreamCallEngine] accept() on incoming call ${call.callCid}');
+      print('[StreamCallEngine] acceptByCid: $callCid (type=$callType id=$callId)');
+      final call = client.makeCall(
+        callType: StreamCallType.fromString(callType),
+        id: callId,
+      );
       await call.accept();
+      if (mySeq != _callSeq) {
+        try { await call.leave(); } catch (_) {}
+        return;
+      }
       await call.join(
         connectOptions: CallConnectOptions(
           camera: isVideo ? TrackOption.enabled() : TrackOption.disabled(),
           microphone: TrackOption.enabled(),
         ),
       );
+      if (mySeq != _callSeq) {
+        try { await call.leave(); } catch (_) {}
+        return;
+      }
+      _activeCall = call;
+      callNotifier.value = call;
+      _attachEndListener(call);
+      // ignore: avoid_print
+      print('[StreamCallEngine] acceptByCid: accept+join OK');
+    } catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('[StreamCallEngine] acceptByCid failed: $e\n$st');
+      }
+    }
+  }
+
+  /// Reject a Stream call by its CID (CallKit decline path).
+  Future<void> rejectByCid({required String callCid}) async {
+    if (callCid.isEmpty) return;
+    try {
+      await _ensureClient();
+      final client = _client;
+      if (client == null) return;
+      final parts = callCid.split(':');
+      final callType = parts.length > 1 ? parts[0] : 'default';
+      final callId = parts.length > 1 ? parts[1] : callCid;
+      final call = client.makeCall(
+        callType: StreamCallType.fromString(callType),
+        id: callId,
+      );
+      // ignore: avoid_print
+      print('[StreamCallEngine] rejectByCid: $callCid');
+      await call.reject();
+    } catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('[StreamCallEngine] rejectByCid failed: $e\n$st');
+      }
+    }
+  }
+
+  /// Accept the currently-pending incoming Stream call (the one
+  /// surfaced via `onStreamIncomingCall`). MUST be called on the SAME
+  /// `Call` instance Stream gave us — `client.makeCall(id)` returns
+  /// a fresh reference that hasn't gone through ringing-acceptance,
+  /// so `accept()` on a fresh ref would fail and audio wouldn't flow.
+  Future<void> acceptPendingIncoming({
+    required bool isVideo,
+    String? expectedCid,
+  }) async {
+    final call = _pendingIncomingCall;
+    if (call == null) {
+      // ignore: avoid_print
+      print('[StreamCallEngine] acceptPendingIncoming: no pending call');
+      return;
+    }
+    // Guard against stale references: a Stream WS push from a PRIOR
+    // call may have left _pendingIncomingCall set with the wrong CID.
+    // If the caller knows which call they want to accept, verify the
+    // pending one matches. Mismatch → bail out so caller's fallback
+    // (`acceptByCid` with the explicit CID) runs instead.
+    if (expectedCid != null &&
+        expectedCid.isNotEmpty &&
+        call.callCid.value != expectedCid) {
+      // ignore: avoid_print
+      print('[StreamCallEngine] acceptPendingIncoming: CID mismatch — '
+          'pending=${call.callCid.value} expected=$expectedCid — '
+          'clearing stale ref so caller falls back to acceptByCid');
+      _pendingIncomingCall = null;
+      return;
+    }
+    final mySeq = ++_callSeq;
+    try {
+      if (_activeCall != null) {
+        await leave();
+      }
+      if (mySeq != _callSeq) return;
+      // ignore: avoid_print
+      print('[StreamCallEngine] accept() on incoming call ${call.callCid}');
+      await call.accept();
+      if (mySeq != _callSeq) {
+        try { await call.leave(); } catch (_) {}
+        return;
+      }
+      await call.join(
+        connectOptions: CallConnectOptions(
+          camera: isVideo ? TrackOption.enabled() : TrackOption.disabled(),
+          microphone: TrackOption.enabled(),
+        ),
+      );
+      if (mySeq != _callSeq) {
+        try { await call.leave(); } catch (_) {}
+        return;
+      }
       _activeCall = call;
       callNotifier.value = call;
       _pendingIncomingCall = null;
@@ -209,6 +430,14 @@ class StreamCallEngine {
   void _attachEndListener(Call call) {
     _activeStateSub?.cancel();
     _activeStateSub = call.state.valueStream.listen((s) {
+      // Defence-in-depth: only fire `onStreamCallEnded` when the
+      // disconnect is for our CURRENT active call. If `_activeCall`
+      // has been swapped for a newer Call ref (e.g. by a back-to-back
+      // call attempt that won the latest-wins race in join()), the
+      // old call's disconnect event arriving late on this subscription
+      // must NOT bubble through — it would tear down the NEW call's
+      // local signaling state.
+      if (_activeCall != call) return;
       final status = s.status;
       if (status is CallStatusDisconnected ||
           status is CallStatusReconnectionFailed) {
@@ -240,6 +469,67 @@ class StreamCallEngine {
     await _ensureClient();
   }
 
+  /// Disconnect Stream's WebSocket (but keep cached identity) when
+  /// the app goes to background, IF there's no active call. Why:
+  /// Stream prefers WS over FCM when a client is "online" — so a
+  /// minimized peer with a live WS gets the incoming-call event in-
+  /// process where we can't render UI (the app isn't visible). By
+  /// dropping the WS on pause, we force Stream to use the FCM push
+  /// path, which `flutter_callkit_incoming` renders as a native
+  /// full-screen ringer. Reconnect on resume via [warmUp].
+  ///
+  /// Skipped during an active call so the audio leg isn't torn down
+  /// when the user briefly backgrounds the app mid-conversation.
+  Future<void> disconnectForBackground() async {
+    // Detect a STALE _activeCall: if the underlying Stream call is
+    // already in a disconnected state, the reference is leftover from
+    // a previous ended call. Clear it eagerly so the next minimize
+    // doesn't get blocked by the leak (symptom: subsequent A→B calls
+    // come in over WS we can't render → A times out → "missed call").
+    final stale = _activeCall;
+    if (stale != null) {
+      final status = stale.state.valueOrNull?.status;
+      final isLive = !(status is CallStatusDisconnected ||
+          status is CallStatusReconnectionFailed ||
+          status is CallStatusIdle);
+      if (!isLive) {
+        // ignore: avoid_print
+        print('[StreamCallEngine] disconnectForBackground: '
+            'stale _activeCall found (status=$status) — clearing');
+        try {
+          await stale.leave();
+        } catch (_) {}
+        _activeCall = null;
+        callNotifier.value = null;
+      }
+    }
+    if (_activeCall != null) {
+      // ignore: avoid_print
+      print('[StreamCallEngine] disconnectForBackground: skipped '
+          '(active call in flight, audio must stay alive)');
+      return;
+    }
+    final client = _client;
+    if (client == null) return;
+    try {
+      // ignore: avoid_print
+      print('[StreamCallEngine] disconnectForBackground: dropping WS '
+          'so Stream falls back to FCM push for incoming calls');
+      await _incomingCallSub?.cancel();
+      _incomingCallSub = null;
+      await client.disconnect();
+    } catch (e) {
+      // ignore: avoid_print
+      print('[StreamCallEngine] disconnectForBackground failed: $e');
+    }
+    // Null out so the next `warmUp` triggers a fresh _ensureClient
+    // (re-fetch /stream-token, rebuild StreamVideo, reattach the
+    // incoming-call listener). One extra HTTP per resume — acceptable.
+    _client = null;
+    _clientUserId = null;
+    _pendingIncomingCall = null;
+  }
+
   /// Leave the active Stream call (if any) and clear the cached
   /// handle. Safe to call multiple times. Does NOT tear down the
   /// shared client — that stays for the next call.
@@ -247,6 +537,15 @@ class StreamCallEngine {
     final call = _activeCall;
     _activeCall = null;
     callNotifier.value = null;
+    await _peerJoinedSub?.cancel();
+    _peerJoinedSub = null;
+    // CRITICAL: cancel the end-listener too. Without this, when we
+    // leave THIS call and start a NEW one, Stream emits a "Replaced"
+    // disconnect on the old call after our cancellation but before
+    // its Future completes — the still-attached listener pushes it
+    // into onStreamCallEnded and kills the brand-new call's state.
+    await _activeStateSub?.cancel();
+    _activeStateSub = null;
     if (call == null) return;
     try {
       await call.leave();
@@ -298,6 +597,14 @@ class StreamCallEngine {
     try {
       await _client?.disconnect();
     } catch (_) {/* swallow */}
+    // Reset Stream's GLOBAL singleton too. Nulling our local `_client`
+    // isn't enough — Stream's internal `InstanceHolder` still holds a
+    // reference to the previous client, so a fresh `StreamVideo(...)`
+    // throws "already initialised". This happens after
+    // `disconnectForBackground` on minimize → warmUp on resume.
+    try {
+      await StreamVideo.reset(disconnect: true);
+    } catch (_) {/* swallow — reset has no effect if no instance */}
     // Look up our display name from the shared UsersCache (populated
     // by /users/me on login). Without this Stream falls back to the
     // bare userId in the VoIP notification body, so callees see a
@@ -402,8 +709,11 @@ class StreamCallEngine {
     _incomingCallSub = null;
     await _activeStateSub?.cancel();
     _activeStateSub = null;
+    await _peerJoinedSub?.cancel();
+    _peerJoinedSub = null;
     await _incomingCallController.close();
     await _callEndedController.close();
+    await _peerJoinedController.close();
     try {
       await _client?.disconnect();
     } catch (_) {}

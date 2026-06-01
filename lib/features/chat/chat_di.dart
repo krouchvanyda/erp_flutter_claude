@@ -297,6 +297,7 @@ Future<void> bootChatTransport(GetIt getIt) async {
     transport: transport,
     settings: settings,
     presence: presence,
+    streamEngine: getIt<StreamCallEngine>(),
   ).attach();
 
   // Open the socket with the current settings, and re-open whenever
