@@ -47,14 +47,20 @@ class _SplashPageState extends State<SplashPage> {
     final tokens = await GetIt.I<TokenStorage>().read();
     if (!mounted) return;
     final hasTokens = tokens != null && tokens.accessToken.isNotEmpty;
+    // ignore: avoid_print
+    print('🎬 SPLASH: _decide() — hasTokens=$hasTokens');
     if (hasTokens) {
       // Hydrate the in-process session BEFORE navigating — the router's
       // `redirect` checks `AuthSession.isAuthenticated` and would
       // bounce us back to /login otherwise (the stored tokens alone
       // don't tell the router the user is signed in).
+      // ignore: avoid_print
+      print('🎬 SPLASH: calling markAuthenticated()');
       GetIt.I<AuthSession>().markAuthenticated();
       context.goNamed(RoutePaths.dashboardName);
     } else {
+      // ignore: avoid_print
+      print('🎬 SPLASH: no tokens → routing to /login');
       context.goNamed(RoutePaths.loginName);
     }
   }

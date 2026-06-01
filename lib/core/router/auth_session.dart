@@ -53,8 +53,20 @@ class StubAuthSession extends ChangeNotifier implements AuthSession {
 
   @visibleForTesting
   void setAuthenticated({required bool value}) {
-    if (_isAuthenticated == value) return;
+    // ignore: avoid_print
+    print('🎬 AUTH: setAuthenticated($value) called — was $_isAuthenticated');
+    if (_isAuthenticated == value) {
+      // ignore: avoid_print
+      print('🎬 AUTH: no-op (already $value), notifyListeners NOT fired');
+      return;
+    }
     _isAuthenticated = value;
+    // ignore: avoid_print
+    print('🎬 AUTH: notifyListeners() firing — listener count=${_listenerCountForDebug()}');
     notifyListeners();
   }
+
+  /// Cheap debug helper — ChangeNotifier doesn't expose listener
+  /// count publicly, so we just return "?" rather than reflect.
+  String _listenerCountForDebug() => hasListeners ? '≥1' : '0';
 }

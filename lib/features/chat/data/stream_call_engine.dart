@@ -5,6 +5,7 @@ import 'package:stream_video_flutter/stream_video_flutter.dart';
 import 'package:stream_video_push_notification/stream_video_push_notification.dart';
 
 import 'chats_remote_data_source.dart';
+import 'users_cache.dart';
 
 /// Thin wrapper around `stream_video_flutter` so the rest of the
 /// chat module doesn't import the SDK directly. Exposes just three
@@ -46,6 +47,19 @@ class StreamCallEngine {
   Future<void> join({
     required String streamCallCid,
     required bool isVideo,
+    // ── Stream ring-on-call wiring ───────────────────────────────
+    // [calleeUserIds]: Stream user ids of everyone we want the SDK
+    //   to RING when this call is created. Empty list means caller-
+    //   only (no push will fire on anyone else). For a 1:1 call
+    //   from A→B, pass `['10']`. For a group, pass every other
+    //   participant.
+    // [shouldRing]: true on the caller's side (we want Stream to
+    //   broadcast the VoIP notification); false on the callee's
+    //   side (we're just joining a call that already rang us).
+    //   Defaults to true because the only caller of this method
+    //   today is the outgoing-call path.
+    List<String> calleeUserIds = const [],
+    bool shouldRing = true,
   }) async {
     if (streamCallCid.isEmpty) return;
     try {
@@ -64,7 +78,19 @@ class StreamCallEngine {
         callType: StreamCallType.fromString(callType),
         id: callId,
       );
-      await call.getOrCreate();
+      // `ringing: true` tells Stream to push the VoIP notification to
+      // every `memberId` — that's what lights up the full-screen
+      // ringer on the callees' phones via the SDK's native
+      // PushNotificationManager. Without this, Stream creates the
+      // call silently and nobody else's phone ever rings.
+      // ignore: avoid_print
+      print('[StreamCallEngine] getOrCreate(callId=$callId, '
+          'members=$calleeUserIds, ringing=$shouldRing)');
+      await call.getOrCreate(
+        memberIds: calleeUserIds,
+        ringing: shouldRing,
+        video: isVideo,
+      );
       await call.join(
         connectOptions: CallConnectOptions(
           camera: isVideo
@@ -86,6 +112,25 @@ class StreamCallEngine {
         debugPrint('StreamCallEngine.join failed: $e\n$st');
       }
     }
+  }
+
+  /// Eagerly connect the Stream client so the SDK's
+  /// [PushNotificationManager.registerDevice] runs against this
+  /// user's identity — without it, Stream's backend has no FCM token
+  /// recorded for this user and `call.getOrCreate({ring: true})` from
+  /// the caller side silently drops the ring.
+  ///
+  /// Call this from the auth login path AND from the cold-start auto-
+  /// login path. Safe to call repeatedly — `_ensureClient` short-
+  /// circuits when the client is already live for the same userId.
+  /// Failures (token fetch 401, network) are swallowed inside
+  /// `_ensureClient`; this is best-effort.
+  Future<void> warmUp() async {
+    // Unconditional print so this also fires in release while we
+    // triangulate the ring-not-arriving bug. Re-gate once confirmed.
+    // ignore: avoid_print
+    print('[StreamCallEngine] warmUp() invoked');
+    await _ensureClient();
   }
 
   /// Leave the active Stream call (if any) and clear the cached
@@ -120,14 +165,14 @@ class StreamCallEngine {
     final token = tokenJson['token']?.toString() ?? '';
     final userId = tokenJson['userId']?.toString() ?? '';
 
-    if (kDebugMode) {
-      debugPrint(
-        '[StreamCallEngine] /stream-token → '
-        'apiKey=$apiKey '
-        'userId=$userId '
-        'token=${_redactToken(token)}',
-      );
-    }
+    // Unconditional (release-visible) while diagnosing the ring bug.
+    // ignore: avoid_print
+    print(
+      '[StreamCallEngine] /stream-token → '
+      'apiKey=$apiKey '
+      'userId=$userId '
+      'token=${_redactToken(token)}',
+    );
 
     if (apiKey.isEmpty || token.isEmpty || userId.isEmpty) {
       if (kDebugMode) {
@@ -146,9 +191,22 @@ class StreamCallEngine {
     try {
       await _client?.disconnect();
     } catch (_) {/* swallow */}
+    // Look up our display name from the shared UsersCache (populated
+    // by /users/me on login). Without this Stream falls back to the
+    // bare userId in the VoIP notification body, so callees see a
+    // ringer saying "10 is calling…" instead of "Mr A is calling…".
+    final displayName = UsersCache.instance.nameOf(userId) ?? '';
+    final avatarUrl = UsersCache.instance.avatarOf(userId);
+    // ignore: avoid_print
+    print('[StreamCallEngine] building client as userId=$userId '
+        'name="$displayName" avatar=${avatarUrl ?? "none"}');
     _client = StreamVideo(
       apiKey,
-      user: User.regular(userId: userId),
+      user: User.regular(
+        userId: userId,
+        name: displayName,
+        image: avatarUrl,
+      ),
       userToken: token,
       // Native incoming-call ring screen. Without a PN manager the
       // SDK falls back to a silent grouped notification (the one that
@@ -184,11 +242,11 @@ class StreamCallEngine {
     StreamBackgroundService.init(_client!);
     try {
       await _client!.connect();
-      if (kDebugMode) {
-        debugPrint('[StreamCallEngine] connected as userId=$userId');
-      }
+      // ignore: avoid_print
+      print('[StreamCallEngine] connected as userId=$userId');
     } catch (e) {
-      if (kDebugMode) debugPrint('StreamVideo.connect failed: $e');
+      // ignore: avoid_print
+      print('[StreamCallEngine] ❌ connect failed: $e');
     }
   }
 

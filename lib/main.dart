@@ -17,6 +17,12 @@ import 'core/network/token_storage.dart';
 import 'core/push/device_registrar.dart';
 import 'core/push/push_di.dart';
 import 'core/push/push_token_storage.dart';
+import 'core/router/auth_session.dart';
+import 'features/chat/data/chat_settings.dart';
+import 'features/chat/data/stream_call_engine.dart';
+import 'features/chat/data/users_cache.dart';
+import 'features/settings/data/datasources/users_remote_data_source.dart';
+import 'package:get_it/get_it.dart';
 import 'core/sync/sync_engine.dart';
 import 'core/utils/logger/console_logger.dart';
 import 'features/auth/auth_di.dart';
@@ -114,6 +120,15 @@ Future <void> main() async {
       // URL and opens the WebSocket if one is configured. Errors
       // here must never block app launch (relay may be unreachable).
       unawaited(bootChatTransport(getIt));
+
+      // Stream Video client must connect EAGERLY (not lazily on first
+      // call) so its PushNotificationManager.registerDevice runs and
+      // associates B's FCM token with B's Stream identity. Without
+      // this, Stream's backend has no device id for B → ring=true
+      // pushes from A's side silently fail → B's phone never wakes.
+      // We listen for auth transitions so the warm-up fires both on
+      // fresh login and on auto-login (splash → markAuthenticated).
+      _wireStreamWarmUpToAuth(getIt<AuthSession>(), getIt<StreamCallEngine>());
       // Start listening to connectivity transitions so the queue drains
       // automatically when the device comes back online.
       getIt<SyncEngine>().start();
@@ -182,4 +197,94 @@ Future<void> _persistAndWatchPushToken(
       debugPrintStack(stackTrace: st);
     }
   }
+}
+
+/// Wires [StreamCallEngine.warmUp] to fire whenever the auth session
+/// transitions to `isAuthenticated == true`.
+///
+/// Covers two cases with one listener:
+///   1. **Cold-start auto-login** — splash reads tokens from secure
+///      storage and calls `session.markAuthenticated()`. AuthSession
+///      starts at `false` in-process, so this is a true transition →
+///      our listener catches it.
+///   2. **Fresh login** — login page calls `session.markAuthenticated()`
+///      after `AuthRepository.login()` succeeds. Same transition.
+///
+/// Why eager and not lazy: `_ensureClient()` is currently triggered
+/// from `StreamCallEngine.join()` (when this user PLACES a call). For
+/// a callee who has only logged in, the client never gets built, so
+/// `StreamVideoPushNotificationManager.registerDevice()` never runs,
+/// and Stream's backend has no FCM target for this user — `ring=true`
+/// from the caller side silently drops.
+/// Re-runs `bootChatTransport` on a sign-in transition so STOMP gets a
+/// real `userId` after the user authenticates. Without this, the
+/// presence channel never broadcasts this user's `presence.update`,
+/// so every peer sees them as Offline.
+///
+/// Why this is necessary: `bootChatTransport` runs once at app start
+/// (in `main()` below) — well before any login. Its `users.me()` call
+/// fails with 401 and is swallowed; `ChatSettings.setIdentity` is
+/// never reached, so STOMP connects (if at all) with `userId = ''`.
+/// Re-running on sign-in retries `me()` with the now-valid token,
+/// fires `setIdentity`, and the existing `settings.watch()` listener
+/// reconfigures STOMP with the real identity → presence works.
+///
+/// `bootChatTransport` IS NOT fully idempotent (the trailing
+/// `settings.watch().listen(...)` would double-attach), so we don't
+/// re-run the whole thing — we just fetch `users.me()` and call
+/// `setIdentity` directly. The existing watch listener catches it.
+Future<void> _rehydrateChatIdentityOnAuth(GetIt getIt) async {
+  // ignore: avoid_print
+  print('🎬 CHAT: rehydrating identity after sign-in');
+  try {
+    final users = getIt<UsersRemoteDataSource>();
+    final me = await users.me();
+    final displayName = me.fullName.trim().isEmpty ? me.email : me.fullName;
+    await getIt<ChatSettings>().setIdentity(
+      userId: me.id,
+      userName: displayName,
+    );
+    UsersCache.instance.put(userId: me.id, name: displayName);
+    // ignore: avoid_print
+    print('🎬 CHAT: setIdentity(userId=${me.id}, name=$displayName) OK '
+        '— STOMP will reconnect with this identity, presence will flow');
+  } catch (e) {
+    // ignore: avoid_print
+    print('🎬 CHAT: rehydrate failed → $e (presence may stay Offline)');
+  }
+}
+
+void _wireStreamWarmUpToAuth(AuthSession session, StreamCallEngine engine) {
+  // Unconditionally print (no kDebugMode guard) so the diagnostic
+  // also fires in release builds — needed while we triangulate why
+  // the ring isn't reaching B. Re-gate once the flow is confirmed.
+  // ignore: avoid_print
+  print('🎬 STREAM: _wireStreamWarmUpToAuth() called — '
+      'session.isAuthenticated=${session.isAuthenticated}');
+  if (session.isAuthenticated) {
+    // ignore: avoid_print
+    print('🎬 STREAM: already authenticated → warmUp() now');
+    unawaited(engine.warmUp());
+  }
+  bool wasAuthed = session.isAuthenticated;
+  session.addListener(() {
+    final nowAuthed = session.isAuthenticated;
+    // ignore: avoid_print
+    print('🎬 STREAM: AuthSession changed → '
+        'wasAuthed=$wasAuthed nowAuthed=$nowAuthed');
+    if (!wasAuthed && nowAuthed) {
+      // ignore: avoid_print
+      print('🎬 STREAM: transition false→true → rehydrate then warmUp');
+      // Chain them: rehydrate populates UsersCache.instance with our
+      // display name + avatar. Stream's warmUp reads from that cache
+      // when building the StreamVideo client, so the VoIP notification
+      // on callees shows "Mr A is calling…" instead of "10 is
+      // calling…". Run rehydrate first; warmUp waits.
+      unawaited(() async {
+        await _rehydrateChatIdentityOnAuth(GetIt.instance);
+        await engine.warmUp();
+      }());
+    }
+    wasAuthed = nowAuthed;
+  });
 }

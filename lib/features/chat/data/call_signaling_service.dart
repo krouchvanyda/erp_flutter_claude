@@ -365,9 +365,16 @@ class CallSignalingService {
       // failures internally; if the backend hasn't shipped Stream
       // integration the call falls back to signalling-only.
       if (streamCallCid != null && streamCallCid.isNotEmpty) {
+        // Pass `calleeUserIds` + `shouldRing: true` so Stream's
+        // backend pushes the VoIP notification to every callee — that
+        // is what triggers the native full-screen ringer on B's phone
+        // when A presses Call. Without these args Stream creates the
+        // call silently and nobody else's phone ever wakes up.
         unawaited(streamEngine.join(
           streamCallCid: streamCallCid,
           isVideo: callType == ChatCallType.video,
+          calleeUserIds: targetIds,
+          shouldRing: true,
         ));
       }
     }).catchError((Object e) {
@@ -653,10 +660,15 @@ class CallSignalingService {
       ),
     );
     // Bring the media leg up — audio + (for video calls) camera.
+    // `shouldRing: false` because we're the CALLEE accepting an
+    // invite — the call has already been ringing us. Re-firing the
+    // ring from this side would push the VoIP notification to
+    // ourselves + the caller (loop).
     if (streamCallCid != null && streamCallCid.isNotEmpty) {
       unawaited(streamEngine.join(
         streamCallCid: streamCallCid,
         isVideo: active.callType == ChatCallType.video,
+        shouldRing: false,
       ));
     }
   }
