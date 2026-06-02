@@ -968,6 +968,33 @@ class CallSignalingService {
       return;
     }
     final status = (dto['status'] as String? ?? '').toUpperCase();
+    // Just-accepted grace: if our local state shows the call freshly
+    // connected (< 5 s) but the backend says ENDED/MISSED/REJECTED,
+    // trust our local state and the Stream media leg over the
+    // backend's stale verdict. The chat backend's ring timer can
+    // fire during a slow cold-start accept (Stream + WS handshake +
+    // accept POST = 5–10 s), marking the row ENDED before our accept
+    // lands. reconcileActive would then re-import that stale ENDED
+    // status and pop our just-mounted call page. Skip in that
+    // window if Stream media is alive — the call is real.
+    final isTerminal = status == 'ENDED' ||
+        status == 'MISSED' ||
+        status == 'NO_ANSWER' ||
+        status == 'REJECTED';
+    if (isTerminal &&
+        active.state == CallSignalState.connected &&
+        active.connectedAt != null) {
+      final connectedMs =
+          DateTime.now().difference(active.connectedAt!).inMilliseconds;
+      final streamMediaAlive = streamEngine.callNotifier.value != null;
+      if (connectedMs < 5000 && streamMediaAlive) {
+        // ignore: avoid_print
+        print('[CallSignaling] reconcileActive IGNORED backend $status — '
+            'call only ${connectedMs}ms old, Stream media is alive — '
+            'trusting local connected state over stale backend verdict');
+        return;
+      }
+    }
     switch (status) {
       case 'ANSWERED':
         // Already connected locally? leave the timer running.
@@ -1354,6 +1381,37 @@ class CallSignalingService {
       case CallHangupEvent(:final callId, :final hangerUpperId):
         final active = _active;
         if (active == null || active.callId != callId) return;
+        // Just-accepted grace period. When B's cold-start accept took
+        // longer than the chat backend's ring timeout (~30 s by default),
+        // the backend has already broadcast a CallHangupEvent by the
+        // time B's POST /accept lands. B's app then receives BOTH the
+        // 200 OK on the accept AND the stale hangup — and the hangup
+        // arrives microseconds after our state flipped to connected,
+        // killing the call page right when it just mounted.
+        //
+        // If we're the caller, the hangup wasn't from us (we'd know),
+        // and our local state shows the call has been connected for
+        // less than 5 s, AND Stream's media leg is alive, ignore the
+        // hangup as a stale-backend artefact. The caller wouldn't have
+        // hung up that fast after we connected — this is overwhelmingly
+        // a backend timer race, NOT a real user-initiated hangup.
+        if (active.state == CallSignalState.connected &&
+            active.connectedAt != null) {
+          final connectedMs =
+              DateTime.now().difference(active.connectedAt!).inMilliseconds;
+          final iAmThePeerWhoHungUp = hangerUpperId == settings.userId;
+          final streamMediaAlive = streamEngine.callNotifier.value != null;
+          if (connectedMs < 5000 &&
+              !iAmThePeerWhoHungUp &&
+              streamMediaAlive) {
+            // ignore: avoid_print
+            print('[CallSignaling] CallHangupEvent IGNORED — call only '
+                '${connectedMs}ms old, hangerUpperId=$hangerUpperId, '
+                'Stream media is alive — treating as stale-backend '
+                'hangup that raced with our late accept');
+            return;
+          }
+        }
         // Slice 10.2.10 — multi-party group call semantics. When the
         // hangup is from one of the OTHER callees in a group call
         // (not the caller, not us), it means that one peer just left.

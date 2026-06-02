@@ -67,10 +67,14 @@ class _VoiceCallPageState extends State<VoiceCallPage>
     _streamEngine = GetIt.I<StreamCallEngine>();
     _signaling.activeCallListenable.addListener(_onActiveCallChanged);
     WidgetsBinding.instance.addObserver(this);
+    final existing = _signaling.current;
+    // ignore: avoid_print
+    print('[VoiceCallPage] 🟢 MOUNTED · conversationId=${widget.conversationId} '
+        '· existing=${existing?.callId}/${existing?.state} '
+        '· isMounted set to true');
     // If we already have an active call for this conversation we're
     // the callee on an accepted invite — start in connected. Otherwise
     // place an outgoing invite.
-    final existing = _signaling.current;
     if (existing != null &&
         existing.conversationId == widget.conversationId) {
       if (existing.state == CallSignalState.connected) {
@@ -89,6 +93,10 @@ class _VoiceCallPageState extends State<VoiceCallPage>
   @override
   void dispose() {
     VoiceCallPage.isMounted = false;
+    // ignore: avoid_print
+    print('[VoiceCallPage] 🔴 DISPOSED · conversationId=${widget.conversationId} '
+        '· final _stage=$_stage · final active=${_signaling.current?.callId}'
+        '/${_signaling.current?.state} · isMounted set to false');
     _ticker?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _signaling.activeCallListenable.removeListener(_onActiveCallChanged);
@@ -97,12 +105,18 @@ class _VoiceCallPageState extends State<VoiceCallPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // ignore: avoid_print
+    print('[VoiceCallPage] lifecycle → $state · active=${_signaling.current?.callId}'
+        '/${_signaling.current?.state}');
     // GET /chats/calls/{id} — recover canonical state if STOMP missed
     // a `call.accept` / `call.hangup` while we were backgrounded.
     // No-op when the active call doesn't have a backend id yet
     // (the swap from `call-<me>-<ts>` to numeric happens once
     // `sendCallInvite` returns).
     if (state == AppLifecycleState.resumed) {
+      // ignore: avoid_print
+      print('[VoiceCallPage] resumed → calling signaling.reconcileActive() '
+          '(guarded by 5 s grace; backend ENDED in that window will be ignored)');
       unawaited(_signaling.reconcileActive());
       // Re-apply the audio route. Android's audio manager often
       // resets Speakerphone/Earpiece routing when the activity loses
@@ -151,16 +165,26 @@ class _VoiceCallPageState extends State<VoiceCallPage>
     final call = _signaling.activeCallListenable.value;
     if (!mounted) return;
     if (call == null) {
+      // ignore: avoid_print
+      print('[VoiceCallPage] _onActiveCallChanged · call=NULL — '
+          'scheduling pop in 200 ms (active was cleared)');
       // Service cleared the active call (other side hung up + grace
       // period elapsed). Close ourselves if not already ending.
       if (_stage != _CallStage.ended) {
         setState(() => _stage = _CallStage.ended);
       }
       Future.delayed(const Duration(milliseconds: 200), () {
-        if (mounted && Navigator.canPop(context)) Navigator.pop(context);
+        if (mounted && Navigator.canPop(context)) {
+          // ignore: avoid_print
+          print('[VoiceCallPage] popping route now (after 200 ms grace)');
+          Navigator.pop(context);
+        }
       });
       return;
     }
+    // ignore: avoid_print
+    print('[VoiceCallPage] _onActiveCallChanged · ${call.callId}/${call.state} '
+        '· endReason=${call.endReason}');
     setState(() {
       _stage = switch (call.state) {
         CallSignalState.outgoingRinging => _CallStage.calling,

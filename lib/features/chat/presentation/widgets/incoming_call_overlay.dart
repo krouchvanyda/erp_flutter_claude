@@ -36,44 +36,94 @@ class _IncomingCallOverlayState extends State<IncomingCallOverlay> {
   /// `_handleAccept` push (it happens while go_router is still
   /// transitioning splash → dashboard, and the pushed route gets
   /// replaced when the redirect lands).
-  ///
-  /// Dedupe via the call pages' static `isMounted` flag — set in
-  /// initState, cleared in dispose. If a call page is already on
-  /// the navigator stack, skip; otherwise push. This handles BOTH
-  /// the happy path (_handleAccept pushed successfully → isMounted
-  /// becomes true → we skip) AND the cold-start wipe (push was
-  /// undone by go_router → isMounted stays false → we re-push).
   void _autoPushOnConnected() {
     final call = _signaling?.activeCallListenable.value;
     if (call == null) return;
     if (call.state != CallSignalState.connected) return;
-    final isVideo = call.callType == ChatCallType.video;
-    final alreadyMounted = isVideo
-        ? VideoCallPage.isMounted
-        : VoiceCallPage.isMounted;
-    if (alreadyMounted) {
-      // The call page is already on the navigator stack (pushed by
-      // `_handleAccept` step 2 on a warm app, or by a previous fire
-      // of this listener that's still mounted). No need to push.
+    // Kick off the retry loop. It self-cancels when the page sticks
+    // (isMounted=true) OR when the call ends (state != connected)
+    // OR after the max attempts run out.
+    _ensureCallPagePushedWithRetry(call);
+  }
+
+  /// Tracks whether a retry loop is already running for the current
+  /// call, so we don't stack overlapping loops if the state listener
+  /// fires multiple times (e.g. participant updates emit while
+  /// connected).
+  String? _activeRetryLoopCallId;
+
+  /// Push the call page repeatedly during the 6 s WATCH WINDOW after
+  /// state→connected. On cold-start, go_router's splash → dashboard
+  /// `context.go()` REPLACES the route stack — wiping any route we
+  /// pushed before the redirect completed. The wipe can happen AFTER
+  /// our initial push succeeded (so the simple "already mounted →
+  /// done" check exits the loop prematurely, then the wipe happens
+  /// later with no one watching).
+  ///
+  /// To handle that: we KEEP CHECKING for the full 6 s. Each tick:
+  ///   * if the call is gone → cancel
+  ///   * if the page is mounted → don't push, but DO continue
+  ///     watching (in case a later redirect wipes it)
+  ///   * if the page is NOT mounted → push it
+  void _ensureCallPagePushedWithRetry(ActiveCall call) {
+    // Don't stack loops — if one is already running for this call,
+    // it'll handle subsequent wipes too.
+    if (_activeRetryLoopCallId == call.callId) {
       return;
     }
-    final navigator = AppRouter.rootNavigatorKey.currentState;
-    if (navigator == null) return; // app not mounted yet — best-effort
+    _activeRetryLoopCallId = call.callId;
 
-    // ignore: avoid_print
-    print('[IncomingCallOverlay] auto-push '
-        '${isVideo ? "VideoCallPage" : "VoiceCallPage"} '
-        'for callId=${call.callId} '
-        '(state went to connected, call page is not mounted — '
-        '_handleAccept push was likely lost on cold-start)');
-    navigator.push(
-      MaterialPageRoute<void>(
-        builder: (_) => isVideo
-            ? VideoCallPage(conversationId: call.conversationId)
-            : VoiceCallPage(conversationId: call.conversationId),
-        fullscreenDialog: true,
-      ),
-    );
+    const maxTicks = 12; // 12 × 500 ms = 6 s watch window
+    var tickCount = 0;
+    void tick() {
+      tickCount++;
+      // Bail: call ended or replaced.
+      final current = _signaling?.activeCallListenable.value;
+      if (current == null ||
+          current.callId != call.callId ||
+          current.state != CallSignalState.connected) {
+        // ignore: avoid_print
+        print('[IncomingCallOverlay] auto-push: cancelling watch loop '
+            '(tick $tickCount) — call ${call.callId} no longer '
+            'connected (state=${current?.state})');
+        _activeRetryLoopCallId = null;
+        return;
+      }
+      final isVideo = call.callType == ChatCallType.video;
+      final alreadyMounted = isVideo
+          ? VideoCallPage.isMounted
+          : VoiceCallPage.isMounted;
+      if (!alreadyMounted) {
+        final navigator = AppRouter.rootNavigatorKey.currentState;
+        if (navigator != null) {
+          // ignore: avoid_print
+          print('[IncomingCallOverlay] auto-push tick $tickCount/$maxTicks '
+              '· pushing ${isVideo ? "VideoCallPage" : "VoiceCallPage"} '
+              'for callId=${call.callId} '
+              '(page not mounted — initial push wiped or never landed)');
+          navigator.push(
+            MaterialPageRoute<void>(
+              builder: (_) => isVideo
+                  ? VideoCallPage(conversationId: call.conversationId)
+                  : VoiceCallPage(conversationId: call.conversationId),
+              fullscreenDialog: true,
+            ),
+          );
+        }
+      }
+      // Continue watching even if mounted — a later redirect could
+      // still wipe the page. Stop only after the full watch window.
+      if (tickCount < maxTicks) {
+        Future.delayed(const Duration(milliseconds: 500), tick);
+      } else {
+        // ignore: avoid_print
+        print('[IncomingCallOverlay] auto-push: watch window closed '
+            '($maxTicks × 500 ms) for callId=${call.callId} · '
+            'finalMounted=$alreadyMounted');
+        _activeRetryLoopCallId = null;
+      }
+    }
+    tick();
   }
 
   @override
