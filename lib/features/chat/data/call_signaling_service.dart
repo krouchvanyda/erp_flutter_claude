@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart' show Call;
 
 import 'users_cache.dart';
@@ -285,6 +286,42 @@ class CallSignalingService {
     }
   }
 
+  /// Dismiss the CallKit-side notification for this call. Without
+  /// this, the ongoing-call heads-up + tray entry that
+  /// `_showStreamCallkitRinger` posted from the FCM BG handler stays
+  /// visible after the call has ended — and on some OEMs that
+  /// notification is what's keeping the foreground service alive,
+  /// which in turn holds the mic open. The user perceives this as
+  /// "still running in the background after the call ended."
+  ///
+  /// Best-effort: swallow errors (the entry may already be gone if
+  /// the user tapped Hang Up on the notification itself, or the
+  /// plugin's native side may not have a record of this id).
+  Future<void> _dismissCallkitForActive(ActiveCall? active) async {
+    final ids = <String>{};
+    final cid = active?.streamCallCid;
+    if (cid != null && cid.isNotEmpty) ids.add(cid);
+    // The plugin uses the CID verbatim as the notification id (see
+    // _showStreamCallkitRinger in firebase_notification_provider).
+    for (final id in ids) {
+      try {
+        // ignore: avoid_print
+        print('[CallSignaling] dismissing CallKit notification id=$id');
+        await FlutterCallkitIncoming.endCall(id);
+      } catch (e) {
+        // ignore: avoid_print
+        print('[CallSignaling] endCall($id) failed (likely already '
+            'gone): $e');
+      }
+    }
+    // Belt-and-suspenders: also nuke any other lingering CallKit
+    // entries for this app. Cheap and reliable; the user can only
+    // ever be in one call at a time in our flow.
+    try {
+      await FlutterCallkitIncoming.endAllCalls();
+    } catch (_) {/* swallow */}
+  }
+
   // ── Outbound (this device is the caller) ─────────────────────
 
   /// Place a new call. Pre-creates a local `chat_call_log` entry
@@ -385,23 +422,42 @@ class CallSignalingService {
         );
       } catch (e) {
         lastError = e;
-        // Auto-recover from stale "already in an active call" rows.
-        // Cause: a previous call timed out / failed without the
-        // server-side row being cleaned up (backend's own 30 s ring
-        // timer leaves rows in inconsistent states, or the app was
-        // force-killed mid-call). We list the user's recent calls,
-        // end anything still RINGING/ANSWERED, then retry the invite
-        // once. Without this, the user has to wait for the server to
-        // GC its stale rows (could be minutes) or restart their phone.
+        // Auto-recover from stale RINGING/ANSWERED rows. Cause: a
+        // previous call timed out / failed without the server-side
+        // row being cleaned up (backend's own ring timer leaves rows
+        // in inconsistent states, or B's app was force-killed
+        // mid-call). We list the user's recent calls, end anything
+        // still RINGING/ANSWERED, then retry the invite once.
+        //
+        // The backend can phrase this rejection a few different ways
+        // depending on whether A or B has the stale row:
+        //   * "already in an active call"        — A's row
+        //   * "user is already in an active call" — B's row
+        //   * "receiver is in another call"      — B's row, variant
+        //   * "is on another call"               — generic variant
+        // Match permissively on a small set of substrings — if the
+        // message looks anything like a stale-call collision, run
+        // the cleanup.
         final message = _extractBackendMessage(e);
-        if (message != null &&
-            message.toLowerCase().contains('already in an active call')) {
+        final isStaleCallError = message != null &&
+            (() {
+              final m = message.toLowerCase();
+              return m.contains('already in an active call') ||
+                  m.contains('already in a call') ||
+                  m.contains('in another call') ||
+                  m.contains('is in a call') ||
+                  m.contains('on another call') ||
+                  m.contains('busy');
+            })();
+        if (isStaleCallError) {
+          // ignore: avoid_print
+          print('[CallSignaling] stale-call rejection from backend '
+              '("$message") — running auto-cleanup');
           final cleaned = await _endStaleActiveCalls();
+          // ignore: avoid_print
+          print('[CallSignaling] auto-cleanup ended $cleaned stale '
+              'call row(s)');
           if (cleaned > 0) {
-            if (kDebugMode) {
-              debugPrint('[CallSignaling] auto-cleaned $cleaned stale '
-                  'call row(s) — retrying sendCallInvite');
-            }
             try {
               response = await transport.sendCallInvite(
                 callId: callId,
@@ -413,8 +469,13 @@ class CallSignalingService {
                 targetIds: targetIds,
               );
               lastError = null;
+              // ignore: avoid_print
+              print('[CallSignaling] retry after cleanup succeeded');
             } catch (e2) {
               lastError = e2;
+              // ignore: avoid_print
+              print('[CallSignaling] retry after cleanup ALSO failed: '
+                  '${_extractBackendMessage(e2) ?? e2}');
             }
           }
         }
@@ -427,8 +488,18 @@ class CallSignalingService {
         if (cur == null || cur.callId != callId) return;
         final message =
             lastError == null ? null : _extractBackendMessage(lastError);
-        final reason = (message != null &&
-                message.toLowerCase().contains('already in an active call'))
+        // Match the same set of "stale call" phrasings used above so
+        // the snackbar tells the user the truth ("X is in another
+        // call") even when the cleanup-and-retry path didn't recover.
+        final reason = (message != null && (() {
+          final m = message.toLowerCase();
+          return m.contains('already in an active call') ||
+              m.contains('already in a call') ||
+              m.contains('in another call') ||
+              m.contains('is in a call') ||
+              m.contains('on another call') ||
+              m.contains('busy');
+        })())
             ? 'already_in_call'
             : 'failed';
         _setActive(cur.copyWith(
@@ -524,9 +595,30 @@ class CallSignalingService {
 
   void _handleStreamCallEnded() {
     final active = _active;
-    if (kDebugMode) {
-      debugPrint('[CallSignaling] Stream signaled call ended — '
-          'tearing down local state for callId=${active?.callId ?? "none"}');
+    // ignore: avoid_print
+    print('[CallSignaling] _handleStreamCallEnded called — '
+        'active=${active?.callId} state=${active?.state} '
+        'connectedAt=${active?.connectedAt} '
+        'age=${active?.connectedAt == null ? "n/a" : "${DateTime.now().difference(active!.connectedAt!).inMilliseconds}ms"}');
+    // Guard against spurious "ended" events firing within the first
+    // 2 seconds of a freshly-connected call. Stream's SDK sometimes
+    // emits a transient Disconnected status during initial media
+    // setup (PeerConnection negotiation, ICE candidate exchange) that
+    // self-recovers — if we react to it we tear the call down within
+    // milliseconds of the user successfully tapping Accept, and they
+    // see the call page mount and immediately pop.
+    if (active != null &&
+        active.state == CallSignalState.connected &&
+        active.connectedAt != null) {
+      final ageMs =
+          DateTime.now().difference(active.connectedAt!).inMilliseconds;
+      if (ageMs < 2000) {
+        // ignore: avoid_print
+        print('[CallSignaling] _handleStreamCallEnded IGNORED — call '
+            'is only ${ageMs}ms old (under 2 s settle window), '
+            'treating as transient SDK state, not a real hangup');
+        return;
+      }
     }
     // CRITICAL: also tear down the engine's _activeCall so its
     // `hasPendingIncoming` / active-call guard doesn't leak into the
@@ -744,14 +836,29 @@ class CallSignalingService {
     try {
       page = await remote.listCalls(page: 1, pageSize: 20);
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[CallSignaling] _endStaleActiveCalls listCalls '
-            'failed: $e');
-      }
+      // ignore: avoid_print
+      print('[CallSignaling] _endStaleActiveCalls listCalls failed: $e');
       return 0;
     }
-    final items = page['items'];
-    if (items is! List) return 0;
+    // The backend's pagination envelope can nest the array under
+    // different keys depending on the endpoint version. Try the most
+    // common shapes in order:
+    //   * { items: [...] }    — Spring data page wrapper
+    //   * { content: [...] }  — Spring data page (Pageable)
+    //   * { data: [...] }     — ApiEnvelope wrapper kept literal
+    //   * [...] directly      — when ApiEnvelope unwrapped already
+    List? items;
+    for (final key in ['items', 'content', 'data', 'rows', 'results']) {
+      final v = page[key];
+      if (v is List) {
+        items = v;
+        break;
+      }
+    }
+    // ignore: avoid_print
+    print('[CallSignaling] listCalls response keys=${page.keys.toList()} · '
+        'resolved items=${items?.length ?? "none"}');
+    if (items == null || items.isEmpty) return 0;
     int ended = 0;
     for (final item in items) {
       if (item is! Map) continue;
@@ -762,14 +869,11 @@ class CallSignalingService {
       try {
         await remote.endCall(id);
         ended++;
-        if (kDebugMode) {
-          debugPrint('[CallSignaling] auto-ended stale call $id '
-              '(was $status)');
-        }
+        // ignore: avoid_print
+        print('[CallSignaling] auto-ended stale call $id (was $status)');
       } catch (e) {
-        if (kDebugMode) {
-          debugPrint('[CallSignaling] failed to end stale call $id: $e');
-        }
+        // ignore: avoid_print
+        print('[CallSignaling] failed to end stale call $id: $e');
       }
     }
     return ended;
@@ -907,23 +1011,25 @@ class CallSignalingService {
 
   /// Callee tapped Accept on the incoming sheet.
   Future<void> acceptIncoming() async {
+    // ignore: avoid_print
+    print('[CallSignaling] acceptIncoming ENTER · active=${_active?.callId} '
+        'state=${_active?.state} streamCid=${_active?.streamCallCid}');
     final active = _active;
     if (active == null || active.state != CallSignalState.incomingRinging) {
+      // ignore: avoid_print
+      print('[CallSignaling] acceptIncoming BAIL · '
+          'no active call or wrong state (need incomingRinging)');
       return;
     }
-    // Slice 10.2.11 — tag with our id so the caller can track which
-    // callees are currently joined and auto-end when the last one
-    // leaves a group call.
-    //
-    // Await the POST response so we can:
-    //   * pick up the latest `streamCallCid` from the canonical DTO
-    //     (the invite may not have included it on some backends)
-    //   * skip the Stream join + state transition entirely if the
-    //     server returned 4xx (call already ended on its side)
+    // ignore: avoid_print
+    print('[CallSignaling] acceptIncoming → POST /chats/calls/${active.callId}/accept');
     final response = await transport.sendCallAccept(
       active.callId,
       accepterId: settings.userId,
     );
+    // ignore: avoid_print
+    print('[CallSignaling] acceptIncoming · chat-backend response='
+        '${response == null ? "NULL (POST failed — likely 400)" : "OK id=${response['id']} streamCid=${response['streamCallCid']}"}');
     if (response == null) {
       // The chat-ceremony POST failed (most commonly 400 "Call already
       // ended" because the backend's own ring timer fired before the
@@ -934,11 +1040,11 @@ class CallSignalingService {
       // even though the chat_call_log row will be wrong. Only when
       // Stream also bails do we treat this as a true missed call.
       final fallbackCid = active.streamCallCid;
+      // ignore: avoid_print
+      print('[CallSignaling] chat accept failed — '
+          'fallbackCid=$fallbackCid hasPendingIncoming='
+          '${streamEngine.hasPendingIncoming}');
       if (fallbackCid != null && fallbackCid.isNotEmpty) {
-        if (kDebugMode) {
-          debugPrint('[CallSignaling] chat accept POST 400 — '
-              'attempting Stream-only accept on cid=$fallbackCid');
-        }
         // Optimistically flip to connected so the in-call page mounts
         // and the user gets the "Connecting…" UI instead of an instant
         // "Call ended". If Stream rejects we roll back below.
@@ -949,36 +1055,47 @@ class CallSignalingService {
         ));
         try {
           if (streamEngine.hasPendingIncoming) {
-            await streamEngine.acceptPendingIncoming(
+            // ignore: avoid_print
+            print('[CallSignaling] → streamEngine.acceptPendingIncoming(cid=$fallbackCid)');
+            final ok = await streamEngine.acceptPendingIncoming(
               isVideo: active.callType == ChatCallType.video,
               expectedCid: fallbackCid,
             );
-            if (!streamEngine.hasPendingIncoming) {
+            if (!ok) {
+              // ignore: avoid_print
+              print('[CallSignaling] acceptPendingIncoming bailed '
+                  '(CID mismatch or threw) — falling through to acceptByCid');
               await streamEngine.acceptByCid(
                 callCid: fallbackCid,
                 isVideo: active.callType == ChatCallType.video,
               );
             }
           } else {
+            // ignore: avoid_print
+            print('[CallSignaling] → streamEngine.acceptByCid(cid=$fallbackCid)');
             await streamEngine.acceptByCid(
               callCid: fallbackCid,
               isVideo: active.callType == ChatCallType.video,
             );
           }
+          // ignore: avoid_print
+          print('[CallSignaling] Stream accept SUCCEEDED — media leg '
+              'should be up. Final state=${_active?.state}');
           // Stream accept didn't throw — best-effort log the answered
           // state on the local row so the call history reflects it
           // even though the backend ceremony missed the accept.
           final logId = _logIdByCallId[active.callId];
           if (logId != null) await callLog.logAnswered(logId);
           return;
-        } catch (e) {
-          if (kDebugMode) {
-            debugPrint('[CallSignaling] Stream-only accept also '
-                'failed — falling through to missed: $e');
-          }
+        } catch (e, st) {
+          // ignore: avoid_print
+          print('[CallSignaling] Stream-only accept THREW: $e\n$st');
           // Fall through to the missed-call cleanup below.
         }
       }
+      // ignore: avoid_print
+      print('[CallSignaling] BOTH chat AND Stream accept failed — '
+          'marking as missed (page will pop)');
       // Stream had no live call either — treat as a true missed call:
       // close the call_log row, write the inbox preview, and let the
       // page pop itself.
@@ -1021,6 +1138,9 @@ class CallSignalingService {
         streamCallCid: streamCallCid,
       ),
     );
+    // ignore: avoid_print
+    print('[CallSignaling] chat accept SUCCEEDED — '
+        'state flipped to connected. Bringing Stream media up next.');
     // Bring the media leg up — audio + (for video calls) camera.
     //
     // We MUST call `acceptPendingIncoming` (not `join`) when the
@@ -1044,13 +1164,15 @@ class CallSignalingService {
       // `acceptByCid` which makes a fresh Call ref with the right CID.
       unawaited(() async {
         if (streamEngine.hasPendingIncoming) {
-          await streamEngine.acceptPendingIncoming(
+          final ok = await streamEngine.acceptPendingIncoming(
             isVideo: active.callType == ChatCallType.video,
             expectedCid: streamCallCid,
           );
-          // If acceptPendingIncoming bailed (CID mismatch),
-          // hasPendingIncoming is now false → run acceptByCid below.
-          if (!streamEngine.hasPendingIncoming) {
+          // Only fall back to acceptByCid when the pending accept
+          // actually bailed (CID mismatch or threw). If it succeeded,
+          // running acceptByCid would call leave() on the now-active
+          // call and tear down the working media leg.
+          if (!ok) {
             await streamEngine.acceptByCid(
               callCid: streamCallCid,
               isVideo: active.callType == ChatCallType.video,
@@ -1093,6 +1215,19 @@ class CallSignalingService {
   // ── Inbound transport events ─────────────────────────────────
 
   Future<void> _onEvent(ChatTransportEvent event) async {
+    // Diagnostic: log every chat-transport event that touches the
+    // call signaling layer. Helps trace what's coming in from the
+    // backend (call.invite, call.accept, call.reject, call.hangup)
+    // — especially useful when A's UI suddenly closes mid-call to
+    // see if the backend sent an unexpected hangup.
+    if (event is CallInviteEvent ||
+        event is CallAcceptEvent ||
+        event is CallRejectEvent ||
+        event is CallHangupEvent) {
+      // ignore: avoid_print
+      print('[CallSignaling] inbound transport event: '
+          '${event.runtimeType} · current=${_active?.callId}/${_active?.state}');
+    }
     switch (event) {
       case CallInviteEvent(:final callId, :final conversationId, :final callerId, :final callerName, :final callType, :final startedAt, :final targetIds):
         // Ignore self-echo if it ever happens.
@@ -1285,6 +1420,18 @@ class CallSignalingService {
     final prev = _active;
     _active = next;
     activeCallListenable.value = next;
+    // Diagnostic: log EVERY state transition so we can trace which
+    // path tore down the call. Grep for "STATE TRANSITION" to see
+    // the full lifecycle. Includes stack-trace-style hint via the
+    // current async invocation — Dart doesn't give us callers but
+    // the surrounding logs will identify the trigger.
+    if (prev?.callId != next?.callId || prev?.state != next?.state) {
+      // ignore: avoid_print
+      print('[CallSignaling] STATE TRANSITION · '
+          '${prev?.callId ?? "none"}/${prev?.state ?? "none"} '
+          '→ ${next?.callId ?? "none"}/${next?.state ?? "none"} '
+          '· endReason=${next?.endReason}');
+    }
     // (Re)start the 30s safety timeout whenever we enter
     // incomingRinging, so a stuck invite (sheet never shown, peer
     // never answered) eventually clears itself and stops auto-
@@ -1373,6 +1520,26 @@ class CallSignalingService {
     final stillLive = next?.state == CallSignalState.connected;
     if (wasLive && !stillLive) {
       unawaited(streamEngine.leave());
+    }
+
+    // Dismiss the CallKit notification (ongoing-call heads-up + tray
+    // entry) whenever the call leaves any LIVE state. Catches every
+    // end path through a single chokepoint: local hangup, peer
+    // hangup, decline, reject, missed, accept-failed, lifecycle
+    // detach. Without this the notification stays visible after the
+    // call has ended, and on some OEMs it keeps a foreground service
+    // alive which holds the mic open — the user perceives this as
+    // "call still running in the background after end".
+    final wasActive = prev != null &&
+        (prev.state == CallSignalState.connected ||
+            prev.state == CallSignalState.outgoingRinging ||
+            prev.state == CallSignalState.incomingRinging);
+    final stillActive = next != null &&
+        (next.state == CallSignalState.connected ||
+            next.state == CallSignalState.outgoingRinging ||
+            next.state == CallSignalState.incomingRinging);
+    if (wasActive && !stillActive) {
+      unawaited(_dismissCallkitForActive(prev));
     }
   }
 }

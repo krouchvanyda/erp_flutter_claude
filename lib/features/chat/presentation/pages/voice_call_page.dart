@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
+import 'package:stream_webrtc_flutter/stream_webrtc_flutter.dart' as rtc;
 
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';
 import '../../data/call_signaling_service.dart';
 import '../../data/repositories/conversations_repository.dart';
+import '../../data/stream_call_engine.dart';
 import '../../entities/call_log.dart';
 import '../../entities/conversation.dart';
 import '../widgets/chat_avatar.dart';
@@ -29,6 +31,13 @@ class VoiceCallPage extends StatefulWidget {
 
   final String conversationId;
 
+  /// Tracks whether a VoiceCallPage is currently mounted, so the
+  /// auto-push fallback in IncomingCallOverlay can detect when the
+  /// initial push was wiped by go_router's cold-start splash →
+  /// dashboard redirect. Single global because we only have one
+  /// call at a time. Set in initState / cleared in dispose.
+  static bool isMounted = false;
+
   @override
   State<VoiceCallPage> createState() => _VoiceCallPageState();
 }
@@ -39,16 +48,23 @@ class _VoiceCallPageState extends State<VoiceCallPage>
     with WidgetsBindingObserver {
   _CallStage _stage = _CallStage.calling;
   bool _muted = false;
-  bool _speaker = false;
+  // Default speaker ON for voice calls so the user can hear without
+  // putting the phone to their ear (especially important when testing
+  // with the device on a table). Toggle still works via the button.
+  bool _speaker = true;
+  bool _appliedInitialAudioRoute = false;
   int _elapsedSeconds = 0;
   Timer? _ticker;
   late final CallSignalingService _signaling;
+  late final StreamCallEngine _streamEngine;
   bool _placedInvite = false;
 
   @override
   void initState() {
     super.initState();
+    VoiceCallPage.isMounted = true;
     _signaling = GetIt.I<CallSignalingService>();
+    _streamEngine = GetIt.I<StreamCallEngine>();
     _signaling.activeCallListenable.addListener(_onActiveCallChanged);
     WidgetsBinding.instance.addObserver(this);
     // If we already have an active call for this conversation we're
@@ -72,6 +88,7 @@ class _VoiceCallPageState extends State<VoiceCallPage>
 
   @override
   void dispose() {
+    VoiceCallPage.isMounted = false;
     _ticker?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _signaling.activeCallListenable.removeListener(_onActiveCallChanged);
@@ -87,6 +104,17 @@ class _VoiceCallPageState extends State<VoiceCallPage>
     // `sendCallInvite` returns).
     if (state == AppLifecycleState.resumed) {
       unawaited(_signaling.reconcileActive());
+      // Re-apply the audio route. Android's audio manager often
+      // resets Speakerphone/Earpiece routing when the activity loses
+      // focus (minimize, screen-off, switch app). Without this
+      // re-apply, the user opens the call back up to silence even
+      // though Stream's foreground service kept the call alive — the
+      // audio is going to a device that has no output (earpiece on
+      // a phone lying on a table).
+      if (_stage == _CallStage.connected) {
+        unawaited(_applyAudioRoute(_speaker));
+        unawaited(_applyMicState(_muted));
+      }
     }
   }
 
@@ -96,6 +124,27 @@ class _VoiceCallPageState extends State<VoiceCallPage>
       if (!mounted) return;
       setState(() => _elapsedSeconds++);
     });
+  }
+
+  /// Route audio to the loudspeaker or earpiece via the platform
+  /// audio manager. Best-effort — swallows errors so a flaky route
+  /// switch never crashes the call page.
+  Future<void> _applyAudioRoute(bool speaker) async {
+    try {
+      await rtc.Helper.setSpeakerphoneOn(speaker);
+    } catch (_) {/* swallow */}
+  }
+
+  /// Toggle the local microphone on the active Stream call. The
+  /// engine's `callNotifier` holds the live `Call` ref once joined;
+  /// before that there's nothing to mute (the user shouldn't be able
+  /// to tap before the page reaches `connected`, but guard anyway).
+  Future<void> _applyMicState(bool muted) async {
+    final call = _streamEngine.callNotifier.value;
+    if (call == null) return;
+    try {
+      await call.setMicrophoneEnabled(enabled: !muted);
+    } catch (_) {/* swallow */}
   }
 
   void _onActiveCallChanged() {
@@ -124,6 +173,16 @@ class _VoiceCallPageState extends State<VoiceCallPage>
     if (call.state == CallSignalState.connected && _ticker == null) {
       _startTicker();
     }
+    // Apply the default audio route (speaker) the first time we reach
+    // connected. The Stream SDK defaults to earpiece for voice calls
+    // which is too quiet at arm's length — most users testing a demo
+    // expect speaker on. Done once per call so a user-toggle later
+    // isn't overridden on every state change.
+    if (call.state == CallSignalState.connected &&
+        !_appliedInitialAudioRoute) {
+      _appliedInitialAudioRoute = true;
+      unawaited(_applyAudioRoute(_speaker));
+    }
     // Slice 10.2.4 — show a friendly toast when the peer rejected
     // with a known reason. The page is about to pop in ~600ms; the
     // snackbar floats above the next route.
@@ -133,8 +192,11 @@ class _VoiceCallPageState extends State<VoiceCallPage>
         final reason = switch (call.endReason) {
           'busy' => '${call.peerName} is on another call.',
           'declined' => '${call.peerName} declined the call.',
+          // `already_in_call` can mean either side has a stale row.
+          // Avoid claiming A is the one in another call when it might
+          // actually be B — keep the message neutral.
           'already_in_call' =>
-            'You\'re already in another call. End it first.',
+            '${call.peerName} is in another call. Try again in a moment.',
           'failed' => 'Could not start the call. Try again.',
           'no_answer' => '${call.peerName} didn\'t answer.',
           _ => null,
@@ -242,8 +304,14 @@ class _VoiceCallPageState extends State<VoiceCallPage>
                     _ControlsRow(
                       muted: _muted,
                       speaker: _speaker,
-                      onMute: () => setState(() => _muted = !_muted),
-                      onSpeaker: () => setState(() => _speaker = !_speaker),
+                      onMute: () {
+                        setState(() => _muted = !_muted);
+                        unawaited(_applyMicState(_muted));
+                      },
+                      onSpeaker: () {
+                        setState(() => _speaker = !_speaker);
+                        unawaited(_applyAudioRoute(_speaker));
+                      },
                       onKeypad: () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(

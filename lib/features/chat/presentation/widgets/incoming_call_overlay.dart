@@ -30,13 +30,68 @@ class _IncomingCallOverlayState extends State<IncomingCallOverlay> {
   CallSignalingService? _signaling;
   String? _displayedCallId;
 
+  /// Listener installed on `activeCallListenable` to auto-push the
+  /// in-call page when state transitions to connected. Without this,
+  /// the cold-start kill→accept path can silently lose the
+  /// `_handleAccept` push (it happens while go_router is still
+  /// transitioning splash → dashboard, and the pushed route gets
+  /// replaced when the redirect lands).
+  ///
+  /// Dedupe via the call pages' static `isMounted` flag — set in
+  /// initState, cleared in dispose. If a call page is already on
+  /// the navigator stack, skip; otherwise push. This handles BOTH
+  /// the happy path (_handleAccept pushed successfully → isMounted
+  /// becomes true → we skip) AND the cold-start wipe (push was
+  /// undone by go_router → isMounted stays false → we re-push).
+  void _autoPushOnConnected() {
+    final call = _signaling?.activeCallListenable.value;
+    if (call == null) return;
+    if (call.state != CallSignalState.connected) return;
+    final isVideo = call.callType == ChatCallType.video;
+    final alreadyMounted = isVideo
+        ? VideoCallPage.isMounted
+        : VoiceCallPage.isMounted;
+    if (alreadyMounted) {
+      // The call page is already on the navigator stack (pushed by
+      // `_handleAccept` step 2 on a warm app, or by a previous fire
+      // of this listener that's still mounted). No need to push.
+      return;
+    }
+    final navigator = AppRouter.rootNavigatorKey.currentState;
+    if (navigator == null) return; // app not mounted yet — best-effort
+
+    // ignore: avoid_print
+    print('[IncomingCallOverlay] auto-push '
+        '${isVideo ? "VideoCallPage" : "VoiceCallPage"} '
+        'for callId=${call.callId} '
+        '(state went to connected, call page is not mounted — '
+        '_handleAccept push was likely lost on cold-start)');
+    navigator.push(
+      MaterialPageRoute<void>(
+        builder: (_) => isVideo
+            ? VideoCallPage(conversationId: call.conversationId)
+            : VoiceCallPage(conversationId: call.conversationId),
+        fullscreenDialog: true,
+      ),
+    );
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     // Resolve via GetIt lazily — the service is registered after
     // configureDependencies() in main.dart, so the very first build
     // could fall through if we resolved in initState.
-    _signaling ??= GetIt.I<CallSignalingService>();
+    if (_signaling == null) {
+      _signaling = GetIt.I<CallSignalingService>();
+      _signaling!.activeCallListenable.addListener(_autoPushOnConnected);
+    }
+  }
+
+  @override
+  void dispose() {
+    _signaling?.activeCallListenable.removeListener(_autoPushOnConnected);
+    super.dispose();
   }
 
   @override

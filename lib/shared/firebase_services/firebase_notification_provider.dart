@@ -298,7 +298,38 @@ class FirebaseNotificationProvider {
       if (Platform.isAndroid) {
         // Android 13+ POST_NOTIFICATIONS runtime permission. Older
         // Androids treat this as already granted.
-        await Permission.notification.request();
+        //
+        // permission_handler routes through the current Activity. When
+        // we're called from main() before runApp(), no Activity exists
+        // yet → PlatformException("Unable to detect current Android
+        // Activity."). Try once; if it throws with that exact error,
+        // wait a beat (giving the framework time to mount the activity)
+        // and retry. Failing both times is non-fatal — Android treats
+        // the permission as denied and we can re-request later.
+        try {
+          await Permission.notification.request();
+        } catch (e) {
+          if (e.toString().contains('Unable to detect current Android Activity')) {
+            if (kDebugMode) {
+              log('🔔 notification permission request fired pre-Activity '
+                  '— retrying after 1 s');
+            }
+            await Future.delayed(const Duration(seconds: 1));
+            try {
+              await Permission.notification.request();
+            } catch (e2) {
+              if (kDebugMode) {
+                log('🔔 second attempt at notification permission '
+                    'also failed: $e2 — skipping, will retry on next '
+                    'app launch / lifecycle resume');
+              }
+              // Don't rethrow — let the iOS / foreground-presentation
+              // setup below still run.
+            }
+          } else {
+            rethrow;
+          }
+        }
       }
 
       // Foreground presentation: alert/badge/sound all ON so the user

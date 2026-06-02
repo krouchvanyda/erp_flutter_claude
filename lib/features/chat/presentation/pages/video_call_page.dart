@@ -25,6 +25,13 @@ class VideoCallPage extends StatefulWidget {
 
   final String conversationId;
 
+  /// Tracks whether a VideoCallPage is currently mounted. Used by
+  /// IncomingCallOverlay's auto-push fallback to detect whether the
+  /// _handleAccept initial push was wiped by go_router's cold-start
+  /// splash → dashboard redirect. Single global because only one
+  /// call at a time. Set in initState / cleared in dispose.
+  static bool isMounted = false;
+
   @override
   State<VideoCallPage> createState() => _VideoCallPageState();
 }
@@ -49,6 +56,7 @@ class _VideoCallPageState extends State<VideoCallPage>
   @override
   void initState() {
     super.initState();
+    VideoCallPage.isMounted = true;
     _signaling = GetIt.I<CallSignalingService>();
     _engine = GetIt.I<StreamCallEngine>();
     _signaling.activeCallListenable.addListener(_onActiveCallChanged);
@@ -75,6 +83,7 @@ class _VideoCallPageState extends State<VideoCallPage>
 
   @override
   void dispose() {
+    VideoCallPage.isMounted = false;
     _hideTimer?.cancel();
     _ticker?.cancel();
     WidgetsBinding.instance.removeObserver(this);
@@ -139,7 +148,7 @@ class _VideoCallPageState extends State<VideoCallPage>
           'busy' => '${call.peerName} is on another call.',
           'declined' => '${call.peerName} declined the call.',
           'already_in_call' =>
-            'You\'re already in another call. End it first.',
+            '${call.peerName} is in another call. Try again in a moment.',
           'failed' => 'Could not start the call. Try again.',
           'no_answer' => '${call.peerName} didn\'t answer.',
           _ => null,

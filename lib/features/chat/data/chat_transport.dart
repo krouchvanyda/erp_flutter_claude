@@ -975,7 +975,23 @@ class ChatTransport {
       return null;
     }
     try {
-      return await _remote.acceptCall(id);
+      // Hard 8 s ceiling. The chat backend usually answers in <500 ms,
+      // but on a cold-start (app launched by CallKit Accept) the auth
+      // interceptor or dio client can take a beat to be ready and the
+      // POST can hang indefinitely waiting on token hydration. If it
+      // hangs the call page sits on "Connecting…" forever — better to
+      // bail out and fall through to the Stream-only accept path so
+      // audio at least flows.
+      return await _remote.acceptCall(id).timeout(
+        const Duration(seconds: 8),
+        onTimeout: () {
+          // ignore: avoid_print
+          print('[ChatTransport] sendCallAccept TIMEOUT after 8s on '
+              'callId=$callId — returning null so caller falls back '
+              'to Stream-only accept');
+          return <String, dynamic>{};
+        },
+      ).then((v) => v.isEmpty ? null : v);
     } catch (e, s) {
       _swallow('sendCallAccept')(e, s);
       return null;

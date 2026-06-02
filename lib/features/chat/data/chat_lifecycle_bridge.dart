@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 
+import '../entities/call_log.dart';
+import 'call_signaling_service.dart';
 import 'callkit_event_handler.dart';
 import 'chat_settings.dart';
 import 'chat_transport.dart';
@@ -35,12 +39,14 @@ class ChatLifecycleBridge with WidgetsBindingObserver {
     required this.settings,
     required this.presence,
     required this.streamEngine,
+    required this.signaling,
   });
 
   final ChatTransport transport;
   final ChatSettings settings;
   final PresenceRepository presence;
   final StreamCallEngine streamEngine;
+  final CallSignalingService signaling;
 
   void attach() {
     WidgetsBinding.instance.addObserver(this);
@@ -53,9 +59,34 @@ class ChatLifecycleBridge with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
+      case AppLifecycleState.detached:
+        // Process is about to die (user swiped from recents / OS
+        // low-memory kill / Force Stop). End any in-flight call
+        // FIRST so audio doesn't leak past the app and the peer
+        // gets a clean hangup envelope instead of an unexplained
+        // disconnect. detached is best-effort — Android sometimes
+        // skips it under aggressive task removal, in which case
+        // Stream's own 60 s ring timer will eventually catch up,
+        // but for the common path this is what stops "phone keeps
+        // ringing on A after B killed the app" cleanly.
+        final active = signaling.current;
+        if (active != null &&
+            active.state == CallSignalState.connected) {
+          // ignore: avoid_print
+          print('[ChatLifecycle] detached during active call '
+              '${active.callId} — hanging up before process death');
+          // Fire-and-forget: the await won't complete because the
+          // isolate is shutting down, but the wire call is queued
+          // and Dio will flush it before the OS reclaims the
+          // process in most cases. Same for streamEngine.leave().
+          unawaited(signaling.hangup(
+            finalStatus: ChatCallStatus.answered,
+          ));
+        }
+        transport.pause();
+        streamEngine.disconnectForBackground();
       case AppLifecycleState.paused:
       case AppLifecycleState.hidden:
-      case AppLifecycleState.detached:
         // Explicitly drop the STOMP socket so the backend's
         // heartbeat detects the disconnect immediately and fans
         // `presence.update {status: OFFLINE, lastSeenAt: now}` to
@@ -75,7 +106,9 @@ class ChatLifecycleBridge with WidgetsBindingObserver {
         // renders as a native full-screen ringer.
         //
         // No-op when there's an active call (would kill audio mid-
-        // conversation; the engine itself enforces that guard).
+        // conversation; the engine itself enforces that guard) —
+        // standard calling-app behaviour: minimize keeps the call
+        // alive so the user can multitask while talking.
         streamEngine.disconnectForBackground();
       case AppLifecycleState.resumed:
         // Re-open the socket so we're Online again. Once connected

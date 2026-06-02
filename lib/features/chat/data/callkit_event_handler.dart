@@ -39,6 +39,21 @@ class CallkitEventHandler {
   StreamSubscription<CallEvent?>? _sub;
   bool _attached = false;
 
+  /// Dedupe guard for `_handleAccept`. On a minimize→accept the live
+  /// `actionCallAccept` event AND the +2 s `_maybeAcceptStaleCallkit`
+  /// recovery can BOTH fire `_handleAccept` for the same call — the
+  /// second invocation runs another `acceptByCid` whose `leave()`
+  /// tears down the just-connected call, killing the audio. Track
+  /// which callCid we've already handled (or are handling) so the
+  /// duplicate is a no-op.
+  final Set<String> _handledCallCids = <String>{};
+
+  /// (Removed: was a pushed-call-id dedupe set. Replaced with
+  /// `VoiceCallPage.isMounted` / `VideoCallPage.isMounted` checks in
+  /// IncomingCallOverlay — those reflect actual route state on the
+  /// navigator stack, so they correctly detect when go_router wiped
+  /// our push, whereas a set entry stayed populated forever.)
+
   /// Idempotent — safe to call from multiple bootstrap points.
   void attach() {
     if (_attached) return;
@@ -100,6 +115,29 @@ class CallkitEventHandler {
     } catch (e) {
       // ignore: avoid_print
       print('[CallkitEventHandler] notification permission error: $e');
+    }
+
+    // Step 1b: RECORD_AUDIO (mic). Stream's `call.join()` triggers
+    // a runtime prompt the first time the mic is accessed, but that
+    // prompt is easy to miss in the middle of an active call — and
+    // if the user dismisses or denies, A or B silently publishes
+    // nothing and the other side just hears silence. Asking up-front
+    // means the permission is already granted by the time any call
+    // is placed or accepted.
+    try {
+      final micStatus = await Permission.microphone.status;
+      // ignore: avoid_print
+      print('[CallkitEventHandler] Microphone permission '
+          'status (before request)=$micStatus');
+      if (!micStatus.isGranted) {
+        final result = await Permission.microphone.request();
+        // ignore: avoid_print
+        print('[CallkitEventHandler] Microphone permission '
+            'request result=$result');
+      }
+    } catch (e) {
+      // ignore: avoid_print
+      print('[CallkitEventHandler] microphone permission error: $e');
     }
 
     // Step 2: USE_FULL_SCREEN_INTENT (Android 14+). NOT a normal
@@ -218,18 +256,23 @@ class CallkitEventHandler {
   Future<void> _maybeAcceptStaleCallkit() async {
     try {
       final calls = await FlutterCallkitIncoming.activeCalls();
-      // ALWAYS log so we can tell whether this path ran and what it
-      // saw — without this, a silent return on "empty list" makes it
-      // impossible to distinguish "ran but no call" from "didn't run".
       // ignore: avoid_print
       print('[CallkitEventHandler] activeCalls() returned: '
           'type=${calls.runtimeType} value=$calls');
       if (calls is! List || calls.isEmpty) {
+        // Empty has two meanings (we can't tell them apart from this
+        // signal alone):
+        //   (a) user declined — the plugin's broadcast receiver
+        //       `removeCall`s on ACTION_CALL_DECLINE, so the entry is
+        //       gone before we look.
+        //   (b) call never reached this device, or already ended.
+        // Either way, fall through to the Stream resync path scheduled
+        // at +5 s — if Stream still has the call ringing, that path
+        // can decide what to do.
         // ignore: avoid_print
         print('[CallkitEventHandler] no active CallKit call — '
-            'nothing to recover (this is expected if user opened the '
-            'app outside a call, or if the OS already cleared the '
-            'CallKit entry)');
+            'either user declined, call ended, or app opened outside '
+            'a call. Stream resync will follow at +5 s.');
         return;
       }
       final first = calls.first;
@@ -239,13 +282,32 @@ class CallkitEventHandler {
             '${first.runtimeType}');
         return;
       }
+      // The plugin sets `isAccepted: true` when the user taps Accept
+      // (CallkitIncomingBroadcastReceiver.kt line 126:
+      //   addCall(context, Data.fromBundle(data), true)).
+      // Anything else (isAccepted=false or missing) means the call is
+      // still ringing — user opened the app via the notification body
+      // without tapping Accept. In that case let the in-app
+      // IncomingCallOverlay handle it; don't auto-accept.
+      final isAccepted = first['isAccepted'] == true;
       // ignore: avoid_print
-      print('[CallkitEventHandler] resume: stale CallKit call detected → $first');
+      print('[CallkitEventHandler] stale CallKit call detected · '
+          'isAccepted=$isAccepted · entry=$first');
+      if (!isAccepted) {
+        // ignore: avoid_print
+        print('[CallkitEventHandler] call still ringing (user opened '
+            'the app body without tapping Accept) — leaving the in-app '
+            'IncomingCallOverlay to handle it');
+        return;
+      }
+      // ignore: avoid_print
+      print('[CallkitEventHandler] user already tapped Accept on '
+          'CallKit — synthesising the missed actionCallAccept event');
       await _handleAccept(first);
     } catch (e) {
       // PlatformException("content is null") = no active calls.
       // ignore: avoid_print
-      print('[CallkitEventHandler] resume: no stale call to recover ($e)');
+      print('[CallkitEventHandler] resume: activeCalls() failed ($e)');
     }
   }
 
@@ -263,15 +325,87 @@ class CallkitEventHandler {
       case Event.actionCallAccept:
         await _handleAccept(event.body);
       case Event.actionCallDecline:
+        // User tapped Decline on the INCOMING ringer (the call is
+        // still in incomingRinging state, no media leg up yet).
         await _handleDecline(event.body);
       case Event.actionCallEnded:
       case Event.actionCallTimeout:
-        await _handleDecline(event.body);
+        // User tapped Hang Up on the ONGOING-CALL notification (the
+        // persistent heads-up that shows while a call is connected
+        // and the app is minimized), or the call timed out. These
+        // are NOT the same as Decline — at this point the local
+        // signaling state is `connected` and we need to call
+        // hangup() not rejectIncoming(). rejectIncoming() bails out
+        // when state != incomingRinging, which is why tapping Hang
+        // Up on the notification used to do nothing.
+        await _handleHangup(event.body);
       default:
         // Ignore lifecycle/diagnostic events (incoming/start/etc.) —
         // they're informational only.
         break;
     }
+  }
+
+  /// Hang-up tap on the ongoing-call notification (or a CallKit
+  /// timeout while we were already connected). Routes through
+  /// `signaling.hangup()` if the call is connected, or
+  /// `signaling.rejectIncoming()` if somehow still ringing.
+  Future<void> _handleHangup(dynamic body) async {
+    final params = _params(body);
+    final callCid =
+        params['call_cid']?.toString() ?? params['id']?.toString() ?? '';
+    // ignore: avoid_print
+    print('[CallkitEventHandler] _handleHangup · callCid=$callCid');
+
+    final signaling = _safelyGet<CallSignalingService>();
+    if (signaling == null) {
+      // ignore: avoid_print
+      print('[CallkitEventHandler] _handleHangup BAIL · no signaling');
+      // Best-effort: tell Stream so its foreground service notification
+      // dismisses even without our local state.
+      final engine = _safelyGet<StreamCallEngine>();
+      if (engine != null) await engine.leave();
+      return;
+    }
+
+    final active = signaling.current;
+    if (active == null) {
+      // ignore: avoid_print
+      print('[CallkitEventHandler] _handleHangup: no active local call '
+          '— calling engine.leave() so Stream releases the foreground '
+          'service notification');
+      final engine = _safelyGet<StreamCallEngine>();
+      if (engine != null) await engine.leave();
+      return;
+    }
+
+    if (active.state == CallSignalState.connected) {
+      // ignore: avoid_print
+      print('[CallkitEventHandler] _handleHangup: active call is '
+          'connected — calling signaling.hangup()');
+      await signaling.hangup(finalStatus: ChatCallStatus.answered);
+    } else if (active.state == CallSignalState.incomingRinging) {
+      // ignore: avoid_print
+      print('[CallkitEventHandler] _handleHangup: state still '
+          'incomingRinging — treating as decline');
+      await signaling.rejectIncoming();
+    } else if (active.state == CallSignalState.outgoingRinging) {
+      // ignore: avoid_print
+      print('[CallkitEventHandler] _handleHangup: outgoing call '
+          'cancelled before answer — hangup');
+      await signaling.hangup(finalStatus: ChatCallStatus.noAnswer);
+    } else {
+      // ignore: avoid_print
+      print('[CallkitEventHandler] _handleHangup: state=${active.state} '
+          '— nothing actionable');
+    }
+    // Clear dedupe entry so a future call with this CID can run
+    // (in practice CIDs are unique per call, but defensive cleanup
+    // keeps the set from growing unbounded across a long session).
+    _handledCallCids.remove(callCid);
+    // ignore: avoid_print
+    print('[CallkitEventHandler] ✅ CALL ENDED via Hang Up · '
+        'callCid=$callCid · finalState=${signaling.current?.state}');
   }
 
   Future<void> _handleAccept(dynamic body) async {
@@ -284,6 +418,33 @@ class CallkitEventHandler {
       print('[CallkitEventHandler] _handleAccept BAIL · missing call_cid');
       return;
     }
+    // Dedupe: on minimize→accept the live `actionCallAccept` event
+    // AND the +2 s stale-CallKit recovery can BOTH fire for the same
+    // call. The second pass would run another `acceptByCid` whose
+    // `leave()` tears down the just-connected call — that's why the
+    // user heard nothing despite the chat backend returning 200 OK.
+    // Skip if we've already handled this CID in the current session
+    // OR if signaling already shows the call as connected.
+    if (_handledCallCids.contains(callCid)) {
+      // ignore: avoid_print
+      print('[CallkitEventHandler] _handleAccept SKIPPED (duplicate) · '
+          'callCid=$callCid is already being handled in another '
+          'invocation');
+      return;
+    }
+    final priorSignaling = _safelyGet<CallSignalingService>();
+    final prior = priorSignaling?.current;
+    if (prior != null &&
+        prior.streamCallCid == callCid &&
+        prior.state == CallSignalState.connected) {
+      // ignore: avoid_print
+      print('[CallkitEventHandler] _handleAccept SKIPPED (already connected) · '
+          'callCid=$callCid is already in connected state — '
+          'second pass would tear down the working call');
+      _handledCallCids.add(callCid);
+      return;
+    }
+    _handledCallCids.add(callCid);
     final isVideo = (params['type']?.toString() == '1');
     final signaling = _safelyGet<CallSignalingService>();
     final callerId = params['caller_id']?.toString() ?? '';
@@ -335,6 +496,14 @@ class CallkitEventHandler {
     //    (40 ms × 25 = 1 s total) before giving up — without this,
     //    the user lands on the home screen with audio flowing but
     //    no in-call UI ("Accept didn't work" from their POV).
+    //
+    // NOTE: even with the retry, on a true cold-start the push can
+    // race with go_router's splash → dashboard redirect — go_router
+    // replaces the stack and our pushed route is wiped. The
+    // IncomingCallOverlay has a backup `_autoPushOnConnected`
+    // listener that fires when state goes to connected and re-pushes
+    // if the call page isn't mounted (checked via
+    // `VoiceCallPage.isMounted` / `VideoCallPage.isMounted`).
     await _pushCallPageWithRetry(
       isVideo: isVideo,
       conversationId: resolvedConvId,
@@ -360,27 +529,52 @@ class CallkitEventHandler {
         await engine.acceptByCid(callCid: callCid, isVideo: isVideo);
       }
     }
-    // ignore: avoid_print
-    print('[CallkitEventHandler] _handleAccept EXIT');
+    // Terminal status log so the success/failure of the whole flow
+    // is unambiguous in the log stream — easy to grep for.
+    final finalState = signaling?.current?.state;
+    if (finalState == CallSignalState.connected) {
+      // ignore: avoid_print
+      print('[CallkitEventHandler] ✅ CALL CONNECTED · callCid=$callCid '
+          '· _handleAccept EXIT');
+    } else {
+      // ignore: avoid_print
+      print('[CallkitEventHandler] ⚠ ACCEPT DID NOT REACH CONNECTED · '
+          'finalState=$finalState callCid=$callCid · _handleAccept EXIT');
+    }
   }
 
   Future<void> _handleDecline(dynamic body) async {
+    // ignore: avoid_print
+    print('[CallkitEventHandler] _handleDecline ENTER · body=$body');
     final params = _params(body);
     final callCid = params['call_cid']?.toString() ?? params['id']?.toString();
-    if (callCid == null || callCid.isEmpty) return;
+    if (callCid == null || callCid.isEmpty) {
+      // ignore: avoid_print
+      print('[CallkitEventHandler] _handleDecline BAIL · missing call_cid');
+      return;
+    }
     final callerId = params['caller_id']?.toString() ?? '';
     final callerName = params['caller_name']?.toString() ?? callerId;
     final isVideo = (params['type']?.toString() == '1');
-
     // ignore: avoid_print
-    print('[CallkitEventHandler] decline: callCid=$callCid');
+    print('[CallkitEventHandler] _handleDecline · callCid=$callCid '
+        'callerId=$callerId callerName=$callerName isVideo=$isVideo');
 
     // 1) Tell Stream we're declining the ringing call. Uses a fresh
     //    Call reference + `.reject()` so the caller sees a "declined"
     //    signal immediately (without waiting for the ring timeout).
     final engine = _safelyGet<StreamCallEngine>();
     if (engine != null) {
+      // ignore: avoid_print
+      print('[CallkitEventHandler] _handleDecline step 1 → '
+          'streamEngine.rejectByCid(cid=$callCid)');
       await engine.rejectByCid(callCid: callCid);
+      // ignore: avoid_print
+      print('[CallkitEventHandler] _handleDecline step 1 done');
+    } else {
+      // ignore: avoid_print
+      print('[CallkitEventHandler] _handleDecline step 1 SKIPPED · '
+          'no StreamCallEngine in GetIt yet (cold-start race)');
     }
 
     // 2) Tell our backend via /chats/calls/{id}/reject. This requires
@@ -389,8 +583,18 @@ class CallkitEventHandler {
     //    no prior path populated _active). Lookup the local conv id
     //    too so the call-log entry attaches to the right conversation.
     final signaling = _safelyGet<CallSignalingService>();
-    if (signaling == null || callerId.isEmpty) return;
+    if (signaling == null || callerId.isEmpty) {
+      // ignore: avoid_print
+      print('[CallkitEventHandler] _handleDecline step 2 SKIPPED · '
+          'signaling=${signaling != null} callerId="$callerId"');
+      // ignore: avoid_print
+      print('[CallkitEventHandler] _handleDecline EXIT (partial)');
+      return;
+    }
     if (signaling.current == null) {
+      // ignore: avoid_print
+      print('[CallkitEventHandler] _handleDecline step 2 · '
+          'seeding signaling state via handleIncomingFromPush');
       String resolvedConvId = callCid;
       final conversations = _safelyGet<ConversationsRepository>();
       if (conversations != null) {
@@ -411,7 +615,15 @@ class CallkitEventHandler {
       };
       await signaling.handleIncomingFromPush(payload);
     }
+    // ignore: avoid_print
+    print('[CallkitEventHandler] _handleDecline step 2 → '
+        'signaling.rejectIncoming()');
     await signaling.rejectIncoming();
+    // Clear dedupe entry — declines also count as a terminal action.
+    _handledCallCids.remove(callCid);
+    // ignore: avoid_print
+    print('[CallkitEventHandler] _handleDecline EXIT · '
+        'active.state=${signaling.current?.state}');
   }
 
   /// Push the in-call page onto the root navigator, retrying briefly
@@ -423,6 +635,20 @@ class CallkitEventHandler {
     required bool isVideo,
     required String conversationId,
   }) async {
+    // Skip if a call page is already mounted (from a prior accept's
+    // push that succeeded, or from the IncomingCallOverlay's
+    // auto-push fallback that fired first). The mount flag is the
+    // single source of truth — it reflects ACTUAL route state, so
+    // it correctly says "no" when go_router wiped a prior push.
+    final alreadyMounted = isVideo
+        ? VideoCallPage.isMounted
+        : VoiceCallPage.isMounted;
+    if (alreadyMounted) {
+      // ignore: avoid_print
+      print('[CallkitEventHandler] step 2 SKIPPED · '
+          '${isVideo ? "Video" : "Voice"}CallPage already mounted');
+      return;
+    }
     for (var attempt = 0; attempt < 25; attempt++) {
       final navigator = AppRouter.rootNavigatorKey.currentState;
       if (navigator != null) {

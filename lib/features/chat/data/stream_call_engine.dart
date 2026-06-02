@@ -176,7 +176,7 @@ class StreamCallEngine {
       // ignore: avoid_print
       print('[StreamCallEngine] getOrCreate(callId=$callId, '
           'members=$calleeUserIds, ringing=$shouldRing, ringTimeout=60s)');
-      await call.getOrCreate(
+      final getOrCreateResult = await call.getOrCreate(
         memberIds: calleeUserIds,
         ringing: shouldRing,
         video: isVideo,
@@ -186,15 +186,18 @@ class StreamCallEngine {
           missedCallTimeout: Duration(seconds: 60),
         ),
       );
-      if (mySeq != _callSeq) {
-        // A newer join started while we were in getOrCreate — abandon
-        // our half-set-up Call. Leaving it would also fire a Replaced
-        // disconnect, but the newer invocation has already taken over
-        // _activeCall and the listener, so it can safely ignore it.
+      if (getOrCreateResult.isFailure) {
+        // ignore: avoid_print
+        print('[StreamCallEngine] getOrCreate FAILED: '
+            '$getOrCreateResult — aborting join');
         try { await call.leave(); } catch (_) {}
         return;
       }
-      await call.join(
+      if (mySeq != _callSeq) {
+        try { await call.leave(); } catch (_) {}
+        return;
+      }
+      final joinResult = await call.join(
         connectOptions: CallConnectOptions(
           camera: isVideo
               ? TrackOption.enabled()
@@ -202,10 +205,33 @@ class StreamCallEngine {
           microphone: TrackOption.enabled(),
         ),
       );
+      if (joinResult.isFailure) {
+        // ignore: avoid_print
+        print('[StreamCallEngine] call.join FAILED on outgoing: '
+            '$joinResult — A has no mic, B will hear silence');
+        try { await call.leave(); } catch (_) {}
+        return;
+      }
+      // ignore: avoid_print
+      print('[StreamCallEngine] call.join OK on outgoing — '
+          'setting _activeCall, mic should publish now');
       if (mySeq != _callSeq) {
         try { await call.leave(); } catch (_) {}
         return;
       }
+      // NOTE: We deliberately do NOT call _waitForCallSettled here.
+      // For the OUTGOING caller path, Stream's call status only
+      // transitions to Connected AFTER a remote participant joins —
+      // which can't happen until the callee taps Accept (potentially
+      // 30+ seconds after we placed the call). Waiting for Connected
+      // here would always time out, we'd leave() our own call, our
+      // mic would die, and when the callee finally joined they'd
+      // hear silence because the caller already bowed out. Trust
+      // that call.join() resolving means we're in the call as
+      // participant; the `_attachPeerJoinedListener` handles the
+      // moment the remote actually arrives. The settle-wait stays in
+      // acceptByCid / acceptPendingIncoming because on those paths a
+      // remote IS already in the call (the caller).
       _activeCall = call;
       callNotifier.value = call;
       // Caller-side path only: watch for the first remote participant
@@ -265,6 +291,45 @@ class StreamCallEngine {
     required bool isVideo,
   }) async {
     if (callCid.isEmpty) return;
+    // Retry on cold-start coordinator timeouts. The Stream SDK has a
+    // hardcoded 5 s ceiling in CoordinatorClientOpenApi._waitUntilConnected
+    // — on a CallKit-triggered cold-start the coordinator WS often
+    // isn't ready in time and the FIRST call.join() resolves but then
+    // the call asynchronously emits Disconnected{reason: Failure} via
+    // a TimeoutException. By the 2nd attempt the WS is up and join
+    // succeeds. Up to 3 attempts × 1 s back-off = ~3 s extra in the
+    // worst case, but resolves the cold-start race transparently.
+    const maxAttempts = 3;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      final ok = await _doAcceptByCid(
+        callCid: callCid,
+        isVideo: isVideo,
+        attempt: attempt,
+        maxAttempts: maxAttempts,
+      );
+      if (ok) return;
+      if (attempt < maxAttempts) {
+        // ignore: avoid_print
+        print('[StreamCallEngine] acceptByCid attempt $attempt failed '
+            '— retrying after 1 s');
+        await Future.delayed(const Duration(seconds: 1));
+      }
+    }
+    // ignore: avoid_print
+    print('[StreamCallEngine] acceptByCid exhausted $maxAttempts '
+        'attempts for cid=$callCid');
+  }
+
+  /// Single attempt of acceptByCid. Returns true if the accept + join
+  /// succeeded AND the call reached a Connected/Joined state within
+  /// 6 s. Returns false on cold-start timeout, network failure, or
+  /// when superseded by a newer invocation.
+  Future<bool> _doAcceptByCid({
+    required String callCid,
+    required bool isVideo,
+    required int attempt,
+    required int maxAttempts,
+  }) async {
     final mySeq = ++_callSeq;
     try {
       // Same protection as join(): tear down any prior Stream call so
@@ -277,45 +342,205 @@ class StreamCallEngine {
         }
         await leave();
       }
-      if (mySeq != _callSeq) return;
+      if (mySeq != _callSeq) return true; // superseded — caller stops too
       await _ensureClient();
-      if (mySeq != _callSeq) return;
+      if (mySeq != _callSeq) return true;
       final client = _client;
-      if (client == null) return;
+      if (client == null) return false;
       final parts = callCid.split(':');
       final callType = parts.length > 1 ? parts[0] : 'default';
       final callId = parts.length > 1 ? parts[1] : callCid;
       // ignore: avoid_print
-      print('[StreamCallEngine] acceptByCid: $callCid (type=$callType id=$callId)');
-      final call = client.makeCall(
-        callType: StreamCallType.fromString(callType),
-        id: callId,
+      print('[StreamCallEngine] acceptByCid attempt $attempt/$maxAttempts: '
+          '$callCid (type=$callType id=$callId)');
+
+      // CRITICAL: Stream's `Call.accept()` only works on a Call ref
+      // that's in `Incoming` state. A fresh ref from `client.makeCall`
+      // starts in `Idle` — accept() fails with "invalid status: Idle".
+      // The proper Incoming Call ref comes from Stream's
+      // `state.incomingCall` (populated when the WS receives the ring
+      // push). On cold-start the WS connect we just awaited might not
+      // have delivered that event yet — wait briefly for it to land
+      // and use it if it does. Falls through to the makeCall path only
+      // if Stream still hasn't surfaced the call after 3 s (in which
+      // case the accept WILL fail, but we tried).
+      final waited = await _waitForPendingIncoming(callCid,
+          timeout: const Duration(seconds: 3));
+      if (mySeq != _callSeq) return true;
+      if (waited != null) {
+        // ignore: avoid_print
+        print('[StreamCallEngine] acceptByCid attempt $attempt: '
+            'using Stream-provided incoming Call ref (cid=${waited.callCid}) '
+            'instead of fresh makeCall — accept will succeed');
+        return _acceptOnCallRef(waited, isVideo: isVideo, mySeq: mySeq,
+            attemptLabel: 'attempt $attempt');
+      }
+      // No pending incoming — Stream's WS connected after the ring
+      // already happened via FCM, and the coordinator doesn't replay
+      // missed ring events on reconnect, so `state.incomingCall`
+      // never populates.
+      //
+      // Use Stream's documented `consumeIncomingCall(uuid, cid)` —
+      // it calls `_client.getCall(cid)` internally then constructs
+      // the Call via `_makeCallFromRinging(data, ...)` which yields
+      // a Call ref in proper Incoming state. This is what the SDK
+      // intends for CallKit-fired accepts where state.incomingCall
+      // wasn't populated by a live WS event.
+      // ignore: avoid_print
+      print('[StreamCallEngine] acceptByCid attempt $attempt: '
+          'no pending incoming Call — using consumeIncomingCall to '
+          'fetch a proper Incoming Call ref');
+      final consumeResult = await client.consumeIncomingCall(
+        uuid: callCid, // any unique id; CID itself works
+        cid: callCid,
       );
-      await call.accept();
+      if (consumeResult.isFailure) {
+        // ignore: avoid_print
+        print('[StreamCallEngine] acceptByCid attempt $attempt: '
+            'consumeIncomingCall FAILED: $consumeResult');
+        return false;
+      }
+      if (mySeq != _callSeq) return true;
+      final call = (consumeResult as Success<Call>).data;
+      // ignore: avoid_print
+      print('[StreamCallEngine] acceptByCid attempt $attempt: '
+          'consumeIncomingCall returned Call ref · routing through '
+          '_acceptOnCallRef for accept+join');
+      return _acceptOnCallRef(call,
+          isVideo: isVideo, mySeq: mySeq,
+          attemptLabel: 'attempt $attempt (consumed)');
+    } catch (e, st) {
+      // ignore: avoid_print
+      print('[StreamCallEngine] acceptByCid attempt $attempt threw: $e\n$st');
+      return false;
+    }
+  }
+
+  /// Poll [_pendingIncomingCall] for up to [timeout] looking for a
+  /// Call ref whose CID matches [expectedCid]. Returns the Call if
+  /// found, null if it never arrives within the window.
+  ///
+  /// Used by [acceptByCid] on cold-start: after `_ensureClient`
+  /// connects the Stream WS, the coordinator may take a couple of
+  /// seconds to deliver the incoming-call event that populates
+  /// `state.incomingCall`. Calling `.accept()` on a fresh
+  /// `client.makeCall(id)` ref before that happens fails with
+  /// "invalid status: Idle" because the fresh ref starts in Idle —
+  /// only the Stream-provided ref is in Incoming state.
+  Future<Call?> _waitForPendingIncoming(
+    String expectedCid, {
+    required Duration timeout,
+  }) async {
+    // Fast path: already populated.
+    final existing = _pendingIncomingCall;
+    if (existing != null && existing.callCid.value == expectedCid) {
+      return existing;
+    }
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      await Future.delayed(const Duration(milliseconds: 100));
+      final current = _pendingIncomingCall;
+      if (current != null && current.callCid.value == expectedCid) {
+        return current;
+      }
+    }
+    return null;
+  }
+
+  /// Shared accept-and-join body. Called from both acceptByCid (when
+  /// it got a Stream-provided Call ref via _waitForPendingIncoming)
+  /// and could be called from acceptPendingIncoming. Encapsulates the
+  /// accept + join + settle-wait + listener attachment so the retry
+  /// loop in acceptByCid doesn't need two near-identical code paths.
+  Future<bool> _acceptOnCallRef(
+    Call call, {
+    required bool isVideo,
+    required int mySeq,
+    required String attemptLabel,
+  }) async {
+    try {
+      final acceptResult = await call.accept();
+      if (acceptResult.isFailure) {
+        // ignore: avoid_print
+        print('[StreamCallEngine] $attemptLabel: call.accept on '
+            'Stream-provided ref FAILED: $acceptResult');
+        try { await call.leave(); } catch (_) {}
+        return false;
+      }
       if (mySeq != _callSeq) {
         try { await call.leave(); } catch (_) {}
-        return;
+        return true;
       }
-      await call.join(
+      final joinResult = await call.join(
         connectOptions: CallConnectOptions(
           camera: isVideo ? TrackOption.enabled() : TrackOption.disabled(),
           microphone: TrackOption.enabled(),
         ),
       );
+      if (joinResult.isFailure) {
+        // ignore: avoid_print
+        print('[StreamCallEngine] $attemptLabel: call.join on '
+            'Stream-provided ref FAILED: $joinResult');
+        try { await call.leave(); } catch (_) {}
+        return false;
+      }
       if (mySeq != _callSeq) {
         try { await call.leave(); } catch (_) {}
-        return;
+        return true;
+      }
+      final settled = await _waitForCallSettled(call);
+      if (mySeq != _callSeq) {
+        try { await call.leave(); } catch (_) {}
+        return true;
+      }
+      if (!settled) {
+        // ignore: avoid_print
+        print('[StreamCallEngine] $attemptLabel: Stream-provided ref '
+            'did NOT settle to Connected — leaving and bailing');
+        try { await call.leave(); } catch (_) {}
+        return false;
       }
       _activeCall = call;
       callNotifier.value = call;
+      _pendingIncomingCall = null;
       _attachEndListener(call);
       // ignore: avoid_print
-      print('[StreamCallEngine] acceptByCid: accept+join OK');
+      print('[StreamCallEngine] $attemptLabel: accept+join OK on '
+          'Stream-provided ref — media leg up');
+      return true;
     } catch (e, st) {
-      if (kDebugMode) {
-        debugPrint('[StreamCallEngine] acceptByCid failed: $e\n$st');
-      }
+      // ignore: avoid_print
+      print('[StreamCallEngine] $attemptLabel: _acceptOnCallRef threw: '
+          '$e\n$st');
+      return false;
     }
+  }
+
+  /// Wait up to 6 s for [call] to reach a steady Connected/Joined
+  /// state. Returns false if the call hits Disconnected first or the
+  /// 6 s window expires without success — signal to the caller that
+  /// this attempt should be retried (typically the Stream SDK's
+  /// cold-start coordinator timeout firing asynchronously).
+  Future<bool> _waitForCallSettled(Call call) async {
+    final completer = Completer<bool>();
+    StreamSubscription<CallState>? sub;
+    final timer = Timer(const Duration(seconds: 6), () {
+      if (!completer.isCompleted) completer.complete(false);
+    });
+    sub = call.state.valueStream.listen((s) {
+      final status = s.status;
+      // Treat Joined / Connected as success.
+      if (status is CallStatusConnected || status is CallStatusJoined) {
+        if (!completer.isCompleted) completer.complete(true);
+      } else if (status is CallStatusDisconnected ||
+          status is CallStatusReconnectionFailed) {
+        if (!completer.isCompleted) completer.complete(false);
+      }
+    });
+    final result = await completer.future;
+    timer.cancel();
+    await sub.cancel();
+    return result;
   }
 
   /// Reject a Stream call by its CID (CallKit decline path).
@@ -347,7 +572,16 @@ class StreamCallEngine {
   /// `Call` instance Stream gave us — `client.makeCall(id)` returns
   /// a fresh reference that hasn't gone through ringing-acceptance,
   /// so `accept()` on a fresh ref would fail and audio wouldn't flow.
-  Future<void> acceptPendingIncoming({
+  ///
+  /// Returns true when the accept succeeded and the call is live;
+  /// false on any bail-out path (no pending ref, CID mismatch,
+  /// superseded by a newer call attempt, accept/join threw). The
+  /// caller uses this to decide whether to fall back to acceptByCid
+  /// — WITHOUT this signal the caller used to check
+  /// `hasPendingIncoming` which becomes false on BOTH success and
+  /// bail, making it impossible to tell the two apart, so it would
+  /// always re-run acceptByCid and tear down the just-connected call.
+  Future<bool> acceptPendingIncoming({
     required bool isVideo,
     String? expectedCid,
   }) async {
@@ -355,7 +589,7 @@ class StreamCallEngine {
     if (call == null) {
       // ignore: avoid_print
       print('[StreamCallEngine] acceptPendingIncoming: no pending call');
-      return;
+      return false;
     }
     // Guard against stale references: a Stream WS push from a PRIOR
     // call may have left _pendingIncomingCall set with the wrong CID.
@@ -370,40 +604,79 @@ class StreamCallEngine {
           'pending=${call.callCid.value} expected=$expectedCid — '
           'clearing stale ref so caller falls back to acceptByCid');
       _pendingIncomingCall = null;
-      return;
+      return false;
     }
     final mySeq = ++_callSeq;
     try {
       if (_activeCall != null) {
         await leave();
       }
-      if (mySeq != _callSeq) return;
+      if (mySeq != _callSeq) return false;
       // ignore: avoid_print
       print('[StreamCallEngine] accept() on incoming call ${call.callCid}');
-      await call.accept();
+      final acceptResult = await call.accept();
+      if (acceptResult.isFailure) {
+        // ignore: avoid_print
+        print('[StreamCallEngine] acceptPendingIncoming: '
+            'call.accept FAILED: $acceptResult');
+        try { await call.leave(); } catch (_) {}
+        return false;
+      }
       if (mySeq != _callSeq) {
         try { await call.leave(); } catch (_) {}
-        return;
+        return false;
       }
-      await call.join(
+      final joinResult = await call.join(
         connectOptions: CallConnectOptions(
           camera: isVideo ? TrackOption.enabled() : TrackOption.disabled(),
           microphone: TrackOption.enabled(),
         ),
       );
+      if (joinResult.isFailure) {
+        // ignore: avoid_print
+        print('[StreamCallEngine] acceptPendingIncoming: '
+            'call.join FAILED: $joinResult');
+        try { await call.leave(); } catch (_) {}
+        return false;
+      }
       if (mySeq != _callSeq) {
         try { await call.leave(); } catch (_) {}
-        return;
+        return false;
+      }
+      // Wait for the call to actually settle to Connected/Joined.
+      // Same cold-start coordinator race as acceptByCid — call.join()
+      // resolves before the coordinator confirms, and on a fresh WS
+      // (B was minimized, so disconnectForBackground had dropped it)
+      // _waitUntilConnected can time out 5 s later → call drops →
+      // both A and B end up with no audio.
+      final settled = await _waitForCallSettled(call);
+      if (mySeq != _callSeq) {
+        try { await call.leave(); } catch (_) {}
+        return false;
+      }
+      if (!settled) {
+        // ignore: avoid_print
+        print('[StreamCallEngine] acceptPendingIncoming: call did NOT '
+            'settle to Connected — leaving so caller can retry via '
+            'acceptByCid (which has its own retry loop)');
+        try { await call.leave(); } catch (_) {}
+        // Also clear _pendingIncomingCall so the caller's fallback
+        // doesn't loop back into acceptPendingIncoming.
+        _pendingIncomingCall = null;
+        return false;
       }
       _activeCall = call;
       callNotifier.value = call;
       _pendingIncomingCall = null;
+      _attachEndListener(call);
       // ignore: avoid_print
       print('[StreamCallEngine] accept+join OK — media leg up');
+      return true;
     } catch (e, st) {
       if (kDebugMode) {
         debugPrint('[StreamCallEngine] acceptPendingIncoming failed: $e\n$st');
       }
+      return false;
     }
   }
 
@@ -439,13 +712,41 @@ class StreamCallEngine {
       // local signaling state.
       if (_activeCall != call) return;
       final status = s.status;
-      if (status is CallStatusDisconnected ||
-          status is CallStatusReconnectionFailed) {
+      if (status is CallStatusDisconnected) {
+        final reason = status.reason;
+        // Filter out reasons that are NOT real "the call ended"
+        // signals. Stream emits Disconnected for several lifecycle
+        // events that aren't actual hangups:
+        //   * Replaced — another call took our slot (handled via
+        //     latest-wins guards in join()/acceptByCid; if a stale
+        //     listener does emit it, ignore here too)
+        //   * Reconnection states sometimes pass through Disconnected
+        //     transiently before recovering — but those are
+        //     CallStatusReconnecting, not Disconnected, so they don't
+        //     hit this branch
+        final reasonStr = reason.toString().toLowerCase();
+        final isReplaced = reasonStr.contains('replaced');
         // ignore: avoid_print
-        print('[StreamCallEngine] Stream call ended · status=$status');
+        print('[StreamCallEngine] Stream Disconnected · '
+            'reason=$reason · isReplaced=$isReplaced · '
+            'firing-end-event=${!isReplaced}');
+        if (isReplaced) return;
         if (!_callEndedController.isClosed) {
           _callEndedController.add(null);
         }
+      } else if (status is CallStatusReconnectionFailed) {
+        // ignore: avoid_print
+        print('[StreamCallEngine] Stream call ReconnectionFailed — '
+            'firing onStreamCallEnded');
+        if (!_callEndedController.isClosed) {
+          _callEndedController.add(null);
+        }
+      } else {
+        // Log every other state transition so we can see the call's
+        // lifecycle (Joining → Joined → Connected → ...) and spot any
+        // unexpected transitions that lead to a teardown.
+        // ignore: avoid_print
+        print('[StreamCallEngine] Stream state transition · status=$status');
       }
     });
   }
