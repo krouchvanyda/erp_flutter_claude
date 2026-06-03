@@ -236,6 +236,16 @@ class _VideoCallPageState extends State<VideoCallPage>
               .watchById(widget.conversationId),
           builder: (context, snap) {
             final conv = snap.data;
+            // Fallback identity for the cold-start / lock-screen accept
+            // path: watchById may return null before the local conv
+            // resolves, but the ActiveCall always carries the caller's
+            // name + avatar from the push payload.
+            final active = _signaling.activeCallListenable.value;
+            final displayName = conv?.name ??
+                active?.conversationName ??
+                active?.peerName;
+            final avatarPath =
+                conv?.avatarFilePath ?? active?.conversationAvatarFilePath;
             return Stack(
               children: [
                 // Remote video — real Stream tracks when the SDK has
@@ -251,8 +261,10 @@ class _VideoCallPageState extends State<VideoCallPage>
                     valueListenable: _engine.callNotifier,
                     builder: (context, call, _) {
                       Widget placeholder() => _remoteVideoOn
-                          ? _RemoteVideoPlaceholder(conversation: conv)
-                          : _RemoteOffPlaceholder(conversation: conv);
+                          ? _RemoteVideoPlaceholder(
+                              name: displayName, avatarFilePath: avatarPath)
+                          : _RemoteOffPlaceholder(
+                              name: displayName, avatarFilePath: avatarPath);
                       if (call == null || !_remoteVideoOn) {
                         return placeholder();
                       }
@@ -424,11 +436,21 @@ class _VideoCallPageState extends State<VideoCallPage>
 }
 
 class _RemoteVideoPlaceholder extends StatelessWidget {
-  const _RemoteVideoPlaceholder({required this.conversation});
-  final ChatConversation? conversation;
+  const _RemoteVideoPlaceholder({
+    required this.name,
+    required this.avatarFilePath,
+  });
+
+  /// Caller/peer display name. Comes from the local ChatConversation
+  /// when it resolves, else from the ActiveCall push payload — so the
+  /// cold-start / lock-screen accept path still shows WHO is calling
+  /// instead of a blank screen.
+  final String? name;
+  final String? avatarFilePath;
 
   @override
   Widget build(BuildContext context) {
+    final hasName = (name ?? '').isNotEmpty;
     return DecoratedBox(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -444,17 +466,17 @@ class _RemoteVideoPlaceholder extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (conversation != null) ...[
+            if (hasName) ...[
               ChatAvatar(
-                name: conversation!.name,
+                name: name!,
                 size: 132,
                 // Slice 10.2.10 — show the group photo if one is set.
-                avatarFilePath: conversation!.avatarFilePath,
+                avatarFilePath: avatarFilePath,
                 showStatus: false,
               ),
               const SizedBox(height: 16),
               AppLabel(
-                text: conversation!.name,
+                text: name!,
                 fontSize: AppFontSize.value24,
                 color: Colors.white,
                 fontWeight: FontWeight.w900,
@@ -474,22 +496,27 @@ class _RemoteVideoPlaceholder extends StatelessWidget {
 }
 
 class _RemoteOffPlaceholder extends StatelessWidget {
-  const _RemoteOffPlaceholder({required this.conversation});
-  final ChatConversation? conversation;
+  const _RemoteOffPlaceholder({
+    required this.name,
+    required this.avatarFilePath,
+  });
+  final String? name;
+  final String? avatarFilePath;
 
   @override
   Widget build(BuildContext context) {
+    final hasName = (name ?? '').isNotEmpty;
     return Container(
       color: const Color(0xFF111827),
       alignment: Alignment.center,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (conversation != null)
+          if (hasName)
             ChatAvatar(
-              name: conversation!.name,
+              name: name!,
               size: 96,
-              avatarFilePath: conversation!.avatarFilePath,
+              avatarFilePath: avatarFilePath,
               showStatus: false,
             ),
           const SizedBox(height: 16),

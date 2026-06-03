@@ -266,6 +266,21 @@ class _VoiceCallPageState extends State<VoiceCallPage>
             .watchById(widget.conversationId),
         builder: (context, snap) {
           final conv = snap.data;
+          // Fallback identity for the cold-start / lock-screen accept
+          // path: the pushed conversationId may not resolve to a local
+          // ChatConversation yet (watchById → null), but the ActiveCall
+          // always carries the caller's name + avatar from the push
+          // payload. Without this the screen showed only a waveform with
+          // no name/avatar.
+          final active = _signaling.activeCallListenable.value;
+          final displayName = conv?.name ??
+              active?.conversationName ??
+              active?.peerName ??
+              'Unknown';
+          final avatarPath =
+              conv?.avatarFilePath ?? active?.conversationAvatarFilePath;
+          final isGroup = conv?.isGroup ?? active?.isGroup ?? false;
+          final hasIdentity = conv != null || active != null;
           return Stack(
             children: [
               // Background gradient.
@@ -297,15 +312,18 @@ class _VoiceCallPageState extends State<VoiceCallPage>
                       ),
                     ),
                     const Spacer(),
-                    if (conv != null) ...[
+                    if (hasIdentity) ...[
                       _PulsingAvatar(
-                        conversation: conv,
+                        name: displayName,
+                        avatarFilePath: avatarPath,
+                        isGroup: isGroup,
+                        previews: conv?.participantPreviews ?? const [],
                         active: _stage == _CallStage.calling ||
                             _stage == _CallStage.ringing,
                       ),
                       const SizedBox(height: 24),
                       AppLabel(
-                        text: conv.name,
+                        text: displayName,
                         fontSize: AppFontSize.value25,
                         color: Colors.white,
                         fontWeight: FontWeight.w900,
@@ -360,33 +378,47 @@ class _VoiceCallPageState extends State<VoiceCallPage>
 }
 
 class _PulsingAvatar extends StatelessWidget {
-  const _PulsingAvatar({required this.conversation, required this.active});
-  final ChatConversation conversation;
+  const _PulsingAvatar({
+    required this.name,
+    required this.avatarFilePath,
+    required this.isGroup,
+    required this.previews,
+    required this.active,
+  });
+  final String name;
+  final String? avatarFilePath;
+  final bool isGroup;
+  final List<ChatParticipantPreview> previews;
   final bool active;
 
   @override
   Widget build(BuildContext context) {
+    // Render from PRIMITIVES (not a full ChatConversation) so the call
+    // screen still shows the caller's photo/initials on the cold-start /
+    // lock-screen accept path, where the local ChatConversation may not
+    // resolve yet — the values then come from the ActiveCall payload.
+    //
     // Slice 10.2.10 — render the group's photo when one has been set
     // (Slice 10.3.3 stored it on `avatarFilePath`). Falls back to the
     // 3-avatar cluster when no photo exists. Direct calls always use
     // ChatAvatar — same as before.
-    final hasPhoto = (conversation.avatarFilePath ?? '').isNotEmpty;
-    final avatar = conversation.isGroup
+    final hasPhoto = (avatarFilePath ?? '').isNotEmpty;
+    final avatar = isGroup
         ? (hasPhoto
             ? ChatAvatar(
-                name: conversation.name,
+                name: name,
                 size: 112,
-                avatarFilePath: conversation.avatarFilePath,
+                avatarFilePath: avatarFilePath,
                 showStatus: false,
               )
             : GroupAvatarCluster(
-                previews: conversation.participantPreviews,
+                previews: previews,
                 size: 112,
               ))
         : ChatAvatar(
-            name: conversation.name,
+            name: name,
             size: 112,
-            avatarFilePath: conversation.avatarFilePath,
+            avatarFilePath: avatarFilePath,
             showStatus: false,
           );
 

@@ -834,8 +834,33 @@ class StreamCallEngine {
   /// Leave the active Stream call (if any) and clear the cached
   /// handle. Safe to call multiple times. Does NOT tear down the
   /// shared client — that stays for the next call.
+  /// TERMINAL teardown — call this (not [leave]) when the call is
+  /// actually ending (hangup / reject / peer-hangup). It bumps
+  /// `_callSeq` FIRST so any in-flight `join()` / `acceptByCid()` /
+  /// `acceptPendingIncoming()` sees `mySeq != _callSeq` at its next
+  /// checkpoint and abandons (leaving its half-joined ref) instead of
+  /// finishing and re-publishing the mic AFTER we tore down — the
+  /// minimize→accept→end audio leak.
+  ///
+  /// MUST NOT be used for the transitional teardown inside
+  /// join()/acceptByCid() ("leave the prior call before starting a new
+  /// one") — those captured their own `mySeq` just before and a bump
+  /// here would make them self-abort. They call [leave] (no bump).
+  Future<void> endActiveCall() async {
+    ++_callSeq;
+    await leave();
+  }
+
   Future<void> leave() async {
     final call = _activeCall;
+    // Diagnostic (unconditional, release-visible) — proves whether a
+    // teardown actually reached a live Call ref. If this logs
+    // `activeCall=null` right after an End, the media leg we're hearing
+    // was never tracked in `_activeCall` (double-join or in-flight
+    // accept that finished after we cleared it).
+    // ignore: avoid_print
+    print('[StreamCallEngine] leave() ENTER · '
+        'activeCall=${call?.callCid.value ?? "null"} · seq=$_callSeq');
     _activeCall = null;
     callNotifier.value = null;
     await _peerJoinedSub?.cancel();
@@ -847,10 +872,21 @@ class StreamCallEngine {
     // into onStreamCallEnded and kills the brand-new call's state.
     await _activeStateSub?.cancel();
     _activeStateSub = null;
-    if (call == null) return;
+    if (call == null) {
+      // ignore: avoid_print
+      print('[StreamCallEngine] leave() · no active call ref to leave — '
+          'if audio is still flowing, the live call was NOT tracked here');
+      return;
+    }
     try {
       await call.leave();
+      // ignore: avoid_print
+      print('[StreamCallEngine] leave() · call.leave() OK for '
+          '${call.callCid.value} — mic/audio should now be released');
     } catch (e, st) {
+      // ignore: avoid_print
+      print('[StreamCallEngine] leave() · call.leave() FAILED for '
+          '${call.callCid.value}: $e');
       if (kDebugMode) {
         debugPrint('StreamCallEngine.leave failed: $e\n$st');
       }

@@ -1569,15 +1569,32 @@ class CallSignalingService {
       });
     }
 
-    // Tear down the Stream media leg the moment the call leaves
-    // `connected` (either ENDED in place or fully cleared to null).
-    // Covers every termination path — local End, peer hangup, busy,
-    // missed, accept-failed — without each caller having to
-    // remember to call `streamEngine.leave()` itself.
-    final wasLive = prev?.state == CallSignalState.connected;
-    final stillLive = next?.state == CallSignalState.connected;
+    // Tear down the Stream media leg the moment the call leaves ANY
+    // live state (connected OR either ringing state) for a terminal
+    // one (ended / idle / cleared). Covers every termination path —
+    // local End, peer hangup, busy, missed, accept-failed, AND the
+    // caller's `outgoingRinging → ended` on a reject/no-answer.
+    //
+    // CRITICAL: `outgoingRinging` MUST count as live. The caller's
+    // Stream join (and its "Call in progress / Connecting…" foreground-
+    // service notification) is already up while A is ringing B — B
+    // hasn't answered, so A never reached `connected`. If we only tore
+    // down from `connected`, a reject while ringing would leave A's
+    // Stream join (and that persistent notification) alive forever.
+    //
+    // Use endActiveCall() (NOT leave()) so a still-in-flight join /
+    // accept (caller's outgoing connect, or a slow minimized cold-
+    // reconnect) is cancelled too — otherwise it finishes AFTER this
+    // teardown, (re)starts the foreground service / re-publishes the
+    // mic, and nothing is left to end it.
+    bool isLive(CallSignalState? s) =>
+        s == CallSignalState.connected ||
+        s == CallSignalState.outgoingRinging ||
+        s == CallSignalState.incomingRinging;
+    final wasLive = isLive(prev?.state);
+    final stillLive = isLive(next?.state);
     if (wasLive && !stillLive) {
-      unawaited(streamEngine.leave());
+      unawaited(streamEngine.endActiveCall());
     }
 
     // Dismiss the CallKit notification (ongoing-call heads-up + tray
