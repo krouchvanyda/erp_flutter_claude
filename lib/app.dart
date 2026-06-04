@@ -120,6 +120,11 @@ class _ErpMobileAppState extends State<ErpMobileApp>
       var conversationId = data['conversationId']?.toString() ?? '';
       if (callId.isEmpty || callerId.isEmpty) return;
 
+      // The app is now handling this call in the foreground (in-app sheet
+      // or the in-call page), so the native heads-up notification is
+      // redundant — clear it immediately so its header bar disappears.
+      await ErpCallKit.dismiss(callId);
+
       CallSignalingService? signaling;
       ConversationsRepository? conversations;
       try {
