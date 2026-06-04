@@ -1,9 +1,7 @@
-import 'package:equatable/equatable.dart';
-
 /// Inputs to [GlobalSearchBloc] — kept tiny: the search bar emits one
 /// event on every keystroke; the bloc handles debouncing internally
 /// via an event transformer.
-sealed class GlobalSearchEvent extends Equatable {
+sealed class GlobalSearchEvent {
   const GlobalSearchEvent();
 
   /// User typed (or programmatic seed).
@@ -18,11 +16,23 @@ class GlobalSearchQueryChanged extends GlobalSearchEvent {
   const GlobalSearchQueryChanged(this.query);
   final String query;
   @override
-  List<Object?> get props => [query];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is GlobalSearchQueryChanged &&
+          runtimeType == other.runtimeType &&
+          query == other.query;
+
+  @override
+  int get hashCode => Object.hash(runtimeType, query);
 }
 
 class GlobalSearchCleared extends GlobalSearchEvent {
   const GlobalSearchCleared();
   @override
-  List<Object?> get props => const [];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is GlobalSearchCleared && runtimeType == other.runtimeType;
+
+  @override
+  int get hashCode => runtimeType.hashCode;
 }

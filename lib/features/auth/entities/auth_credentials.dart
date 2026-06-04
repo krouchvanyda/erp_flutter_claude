@@ -1,12 +1,10 @@
-import 'package:equatable/equatable.dart';
-
 /// Email + password pair submitted to the sign-in use case.
 ///
 /// Domain-layer guards (`isValid`, `validate`) catch the obvious shape
 /// errors so the use case can fail fast on `AuthCredentials.empty()`
 /// inputs without bouncing through the network. Form-level field-by-field
 /// error messages still belong in the presentation layer's validators.
-class AuthCredentials extends Equatable {
+class AuthCredentials {
   const AuthCredentials({
     required this.email,
     required this.password,
@@ -48,7 +46,15 @@ class AuthCredentials extends Equatable {
   }
 
   @override
-  List<Object?> get props => [email, password];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AuthCredentials &&
+          runtimeType == other.runtimeType &&
+          email == other.email &&
+          password == other.password;
+
+  @override
+  int get hashCode => Object.hash(runtimeType, email, password);
 }
 
 /// Reason a [AuthCredentials.validate] check failed.

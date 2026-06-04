@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+import 'package:collection/collection.dart';
 
 /// One data point in a [ChartSeries] (Slice 2.2.3).
 ///
@@ -6,7 +6,7 @@ import 'package:equatable/equatable.dart';
 /// The widget layer maps `ChartSeries` → fl_chart's `LineChartBarData` /
 /// `BarChartGroupData` at the boundary so feature blocs can construct
 /// chart data without depending on the chart library.
-class ChartPoint extends Equatable {
+class ChartPoint {
   const ChartPoint({
     required this.x,
     required this.y,
@@ -39,13 +39,22 @@ class ChartPoint extends Equatable {
   }
 
   @override
-  List<Object?> get props => [x, y, label];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ChartPoint &&
+          runtimeType == other.runtimeType &&
+          x == other.x &&
+          y == other.y &&
+          label == other.label;
+
+  @override
+  int get hashCode => Object.hash(runtimeType, x, y, label);
 }
 
 /// One named series — a labelled set of points with metadata used by
 /// the widget layer to drive colour assignment, legend display, and
 /// emphasis ("primary" series might render thicker, etc.).
-class ChartSeries extends Equatable {
+class ChartSeries {
   const ChartSeries({
     required this.id,
     required this.label,
@@ -74,5 +83,19 @@ class ChartSeries extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, label, points];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ChartSeries &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          label == other.label &&
+          const ListEquality<ChartPoint>().equals(points, other.points);
+
+  @override
+  int get hashCode => Object.hash(
+        runtimeType,
+        id,
+        label,
+        const ListEquality<ChartPoint>().hash(points),
+      );
 }

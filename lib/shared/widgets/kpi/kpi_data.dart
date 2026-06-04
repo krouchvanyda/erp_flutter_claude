@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+import 'package:collection/collection.dart';
 
 /// Direction of change for a KPI relative to the prior period.
 ///
@@ -38,7 +38,7 @@ enum KpiTrend {
 /// colour (an enum is the cleanest input to a `switch`), while
 /// `trendDelta` is the human-readable label sat beside it. Splitting
 /// them keeps the widget free of formatting code.
-class KpiData extends Equatable {
+class KpiData {
   const KpiData({
     required this.label,
     required this.value,
@@ -86,5 +86,23 @@ class KpiData extends Equatable {
   }
 
   @override
-  List<Object?> get props => [label, value, trend, trendDelta, sparkline];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is KpiData &&
+          runtimeType == other.runtimeType &&
+          label == other.label &&
+          value == other.value &&
+          trend == other.trend &&
+          trendDelta == other.trendDelta &&
+          const ListEquality<double>().equals(sparkline, other.sparkline);
+
+  @override
+  int get hashCode => Object.hash(
+        runtimeType,
+        label,
+        value,
+        trend,
+        trendDelta,
+        const ListEquality<double>().hash(sparkline),
+      );
 }

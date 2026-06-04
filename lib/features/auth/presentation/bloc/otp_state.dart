@@ -1,5 +1,3 @@
-import 'package:equatable/equatable.dart';
-
 import '../../entities/otp_verification_result.dart';
 
 /// Lifecycle of an OTP entry attempt.
@@ -10,7 +8,7 @@ enum OtpStatus { idle, submitting, success, error }
 /// Single class (not a sealed union per status) because every status
 /// shares the same scalar fields — exhaustive switching happens in the
 /// view via [OtpStatus] enum + the optional [rejectionReason] tag.
-class OtpState extends Equatable {
+class OtpState {
   const OtpState({
     this.length = 6,
     this.code = '',
@@ -60,5 +58,16 @@ class OtpState extends Equatable {
   }
 
   @override
-  List<Object?> get props => [length, code, status, rejectionReason];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is OtpState &&
+          runtimeType == other.runtimeType &&
+          length == other.length &&
+          code == other.code &&
+          status == other.status &&
+          rejectionReason == other.rejectionReason;
+
+  @override
+  int get hashCode =>
+      Object.hash(runtimeType, length, code, status, rejectionReason);
 }

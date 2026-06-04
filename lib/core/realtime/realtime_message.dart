@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:equatable/equatable.dart';
+import 'package:collection/collection.dart';
 
 /// Server-pushed message envelope for the dashboard real-time stream
 /// (Slice 2.2.4).
@@ -13,7 +13,7 @@ import 'package:equatable/equatable.dart';
 /// **Pure data**: no Flutter, no dio, no fl_chart. Feature blocs fan
 /// out incoming messages into their own state without depending on the
 /// realtime infrastructure.
-sealed class RealtimeMessage extends Equatable {
+sealed class RealtimeMessage {
   const RealtimeMessage();
 
   /// Updated KPI tile values. The widget layer maps `(id, value, ...)`
@@ -107,7 +107,17 @@ class RealtimeKpiUpdate extends RealtimeMessage {
   final String? trendDelta;
 
   @override
-  List<Object?> get props => [id, value, trend, trendDelta];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RealtimeKpiUpdate &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          value == other.value &&
+          trend == other.trend &&
+          trendDelta == other.trendDelta;
+
+  @override
+  int get hashCode => Object.hash(runtimeType, id, value, trend, trendDelta);
 }
 
 /// Replacement series payload for a chart slot.
@@ -121,7 +131,20 @@ class RealtimeChartUpdate extends RealtimeMessage {
   final List<RealtimeChartSeriesPayload> series;
 
   @override
-  List<Object?> get props => [id, series];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RealtimeChartUpdate &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          const ListEquality<RealtimeChartSeriesPayload>()
+              .equals(series, other.series);
+
+  @override
+  int get hashCode => Object.hash(
+        runtimeType,
+        id,
+        const ListEquality<RealtimeChartSeriesPayload>().hash(series),
+      );
 }
 
 /// Heartbeat ack.
@@ -129,7 +152,12 @@ class RealtimePong extends RealtimeMessage {
   const RealtimePong();
 
   @override
-  List<Object?> get props => const [];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RealtimePong && runtimeType == other.runtimeType;
+
+  @override
+  int get hashCode => runtimeType.hashCode;
 }
 
 /// Undecodable frame, surfaced for logging.
@@ -143,13 +171,21 @@ class RealtimeUnknown extends RealtimeMessage {
   final String? reason;
 
   @override
-  List<Object?> get props => [raw, reason];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RealtimeUnknown &&
+          runtimeType == other.runtimeType &&
+          raw == other.raw &&
+          reason == other.reason;
+
+  @override
+  int get hashCode => Object.hash(runtimeType, raw, reason);
 }
 
 /// One series in a [RealtimeChartUpdate] payload — kept structural
 /// (parallel arrays for x / y) so 100-point updates stay compact on
 /// the wire.
-class RealtimeChartSeriesPayload extends Equatable {
+class RealtimeChartSeriesPayload {
   const RealtimeChartSeriesPayload({
     required this.id,
     required this.label,
@@ -183,5 +219,21 @@ class RealtimeChartSeriesPayload extends Equatable {
       };
 
   @override
-  List<Object?> get props => [id, label, x, y];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RealtimeChartSeriesPayload &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          label == other.label &&
+          const ListEquality<double>().equals(x, other.x) &&
+          const ListEquality<double>().equals(y, other.y);
+
+  @override
+  int get hashCode => Object.hash(
+        runtimeType,
+        id,
+        label,
+        const ListEquality<double>().hash(x),
+        const ListEquality<double>().hash(y),
+      );
 }

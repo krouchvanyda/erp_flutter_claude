@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+import 'package:collection/collection.dart';
 
 /// One notification in the user's inbox (Slice 2.3.1).
 ///
@@ -13,7 +13,7 @@ import 'package:equatable/equatable.dart';
 /// **Categories** are free-form strings — the server can introduce new
 /// ones without a client schema bump. The UI maps unknown categories
 /// to a generic icon.
-class AppNotification extends Equatable {
+class AppNotification {
   const AppNotification({
     required this.id,
     required this.title,
@@ -88,15 +88,32 @@ class AppNotification extends Equatable {
   }
 
   @override
-  List<Object?> get props => [
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AppNotification &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          title == other.title &&
+          body == other.body &&
+          category == other.category &&
+          routeName == other.routeName &&
+          const MapEquality<String, String>()
+              .equals(pathParameters, other.pathParameters) &&
+          receivedAt == other.receivedAt &&
+          readAt == other.readAt &&
+          dismissed == other.dismissed;
+
+  @override
+  int get hashCode => Object.hash(
+        runtimeType,
         id,
         title,
         body,
         category,
         routeName,
-        pathParameters,
+        const MapEquality<String, String>().hash(pathParameters),
         receivedAt,
         readAt,
         dismissed,
-      ];
+      );
 }

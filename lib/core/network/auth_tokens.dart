@@ -1,12 +1,10 @@
-import 'package:equatable/equatable.dart';
-
 /// Pair of OAuth-style access + refresh tokens persisted by [TokenStorage]
 /// and rotated by [TokenRefresher].
 ///
 /// `accessExpiresAt` is optional — populated when the auth server returns an
 /// `expires_in`, so future slices can do *proactive* refresh ahead of the
 /// 401-driven *reactive* refresh wired in this slice.
-class AuthTokens extends Equatable {
+class AuthTokens {
   const AuthTokens({
     required this.accessToken,
     required this.refreshToken,
@@ -34,5 +32,15 @@ class AuthTokens extends Equatable {
   }
 
   @override
-  List<Object?> get props => [accessToken, refreshToken, accessExpiresAt];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AuthTokens &&
+          runtimeType == other.runtimeType &&
+          accessToken == other.accessToken &&
+          refreshToken == other.refreshToken &&
+          accessExpiresAt == other.accessExpiresAt;
+
+  @override
+  int get hashCode =>
+      Object.hash(runtimeType, accessToken, refreshToken, accessExpiresAt);
 }

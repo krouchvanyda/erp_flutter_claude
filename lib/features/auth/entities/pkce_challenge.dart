@@ -1,5 +1,3 @@
-import 'package:equatable/equatable.dart';
-
 /// PKCE proof material — RFC 7636.
 ///
 /// `verifier` is the high-entropy secret; `challenge` is the value the
@@ -10,7 +8,7 @@ import 'package:equatable/equatable.dart';
 /// in-flight `OAuthFlowSession`. Neither is ever written to drift,
 /// `flutter_secure_storage`, or `shared_preferences` — they're transient
 /// proof material with no value once the flow completes.
-class PkceChallenge extends Equatable {
+class PkceChallenge {
   const PkceChallenge({
     required this.verifier,
     required this.challenge,
@@ -41,5 +39,14 @@ class PkceChallenge extends Equatable {
   }
 
   @override
-  List<Object?> get props => [verifier, challenge, method];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PkceChallenge &&
+          runtimeType == other.runtimeType &&
+          verifier == other.verifier &&
+          challenge == other.challenge &&
+          method == other.method;
+
+  @override
+  int get hashCode => Object.hash(runtimeType, verifier, challenge, method);
 }

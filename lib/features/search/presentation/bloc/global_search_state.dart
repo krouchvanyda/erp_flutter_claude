@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+import 'package:collection/collection.dart';
 
 import '../../domain/entities/search_result.dart';
 
@@ -7,7 +7,7 @@ import '../../domain/entities/search_result.dart';
 /// **State carries the query** so the widget can decorate the bar (loader
 /// near the input, "no results for X" copy) without keeping its own
 /// shadow copy.
-sealed class GlobalSearchState extends Equatable {
+sealed class GlobalSearchState {
   const GlobalSearchState();
 
   /// No query yet — show empty / suggestion content.
@@ -36,14 +36,26 @@ sealed class GlobalSearchState extends Equatable {
 class GlobalSearchIdle extends GlobalSearchState {
   const GlobalSearchIdle();
   @override
-  List<Object?> get props => const [];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is GlobalSearchIdle && runtimeType == other.runtimeType;
+
+  @override
+  int get hashCode => runtimeType.hashCode;
 }
 
 class GlobalSearchLoading extends GlobalSearchState {
   const GlobalSearchLoading(this.query);
   final String query;
   @override
-  List<Object?> get props => [query];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is GlobalSearchLoading &&
+          runtimeType == other.runtimeType &&
+          query == other.query;
+
+  @override
+  int get hashCode => Object.hash(runtimeType, query);
 }
 
 class GlobalSearchSuccess extends GlobalSearchState {
@@ -54,7 +66,19 @@ class GlobalSearchSuccess extends GlobalSearchState {
   final String query;
   final List<SearchResultGroup> groups;
   @override
-  List<Object?> get props => [query, groups];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is GlobalSearchSuccess &&
+          runtimeType == other.runtimeType &&
+          query == other.query &&
+          const ListEquality<SearchResultGroup>().equals(groups, other.groups);
+
+  @override
+  int get hashCode => Object.hash(
+        runtimeType,
+        query,
+        const ListEquality<SearchResultGroup>().hash(groups),
+      );
 }
 
 class GlobalSearchFailure extends GlobalSearchState {
@@ -65,5 +89,13 @@ class GlobalSearchFailure extends GlobalSearchState {
   final String query;
   final String message;
   @override
-  List<Object?> get props => [query, message];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is GlobalSearchFailure &&
+          runtimeType == other.runtimeType &&
+          query == other.query &&
+          message == other.message;
+
+  @override
+  int get hashCode => Object.hash(runtimeType, query, message);
 }

@@ -1,7 +1,5 @@
-import 'package:equatable/equatable.dart';
-
 /// Inputs to [OtpBloc].
-sealed class OtpEvent extends Equatable {
+sealed class OtpEvent {
   const OtpEvent();
 
   /// User edited the digits. Empty string is valid (clears the field).
@@ -20,17 +18,34 @@ class OtpCodeChanged extends OtpEvent {
   const OtpCodeChanged(this.code);
   final String code;
   @override
-  List<Object?> get props => [code];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is OtpCodeChanged &&
+          runtimeType == other.runtimeType &&
+          code == other.code;
+
+  @override
+  int get hashCode => Object.hash(runtimeType, code);
 }
 
 class OtpSubmitted extends OtpEvent {
   const OtpSubmitted();
   @override
-  List<Object?> get props => const [];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is OtpSubmitted && runtimeType == other.runtimeType;
+
+  @override
+  int get hashCode => runtimeType.hashCode;
 }
 
 class OtpCleared extends OtpEvent {
   const OtpCleared();
   @override
-  List<Object?> get props => const [];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is OtpCleared && runtimeType == other.runtimeType;
+
+  @override
+  int get hashCode => runtimeType.hashCode;
 }

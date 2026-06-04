@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+import 'package:collection/collection.dart';
 
 import 'permission.dart';
 
@@ -11,7 +11,7 @@ import 'permission.dart';
 /// role badges, group permissions in the Settings page, and reason about
 /// role-shaped policies without re-deriving them from scattered string
 /// checks.
-class Role extends Equatable {
+class Role {
   const Role({
     required this.name,
     this.permissions = const <Permission>{},
@@ -35,5 +35,17 @@ class Role extends Equatable {
   }
 
   @override
-  List<Object?> get props => [name, permissions];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Role &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          const SetEquality<Permission>().equals(permissions, other.permissions);
+
+  @override
+  int get hashCode => Object.hash(
+        runtimeType,
+        name,
+        const SetEquality<Permission>().hash(permissions),
+      );
 }

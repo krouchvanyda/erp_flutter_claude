@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+import 'package:collection/collection.dart';
 
 /// One row returned by a [SearchProvider]'s response (Slice 2.1.3).
 ///
@@ -10,7 +10,7 @@ import 'package:equatable/equatable.dart';
 /// dispatch on `(providerId, id)`: for `providerId == 'modules'`, the
 /// UI looks up the matching [ModuleShortcut] in [ModuleShortcutCatalog]
 /// by `id` and calls its `builder()` via `ConfigRouter`.
-class SearchResult extends Equatable {
+class SearchResult {
   const SearchResult({
     required this.id,
     required this.title,
@@ -52,13 +52,23 @@ class SearchResult extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, title, subtitle, providerId];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SearchResult &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          title == other.title &&
+          subtitle == other.subtitle &&
+          providerId == other.providerId;
+
+  @override
+  int get hashCode => Object.hash(runtimeType, id, title, subtitle, providerId);
 }
 
 /// Aggregated response from one provider: the provider id + its rows.
 /// `FederatedSearchUseCase` returns a list of these so the UI can
 /// render section headers per module.
-class SearchResultGroup extends Equatable {
+class SearchResultGroup {
   const SearchResultGroup({
     required this.providerId,
     required this.results,
@@ -78,5 +88,17 @@ class SearchResultGroup extends Equatable {
   }
 
   @override
-  List<Object?> get props => [providerId, results];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SearchResultGroup &&
+          runtimeType == other.runtimeType &&
+          providerId == other.providerId &&
+          const ListEquality<SearchResult>().equals(results, other.results);
+
+  @override
+  int get hashCode => Object.hash(
+        runtimeType,
+        providerId,
+        const ListEquality<SearchResult>().hash(results),
+      );
 }

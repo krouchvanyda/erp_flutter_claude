@@ -1,5 +1,3 @@
-import 'package:equatable/equatable.dart';
-
 /// Typed wrapper for a single permission token — e.g.
 /// `'finance.invoice.create'`, `'inventory.stock.adjust'`, `'admin'`.
 ///
@@ -11,7 +9,7 @@ import 'package:equatable/equatable.dart';
 /// **Storage**: tokens round-trip as plain `String`. The `Permission`
 /// wrapper is constructed at the data-layer boundary — see
 /// `PermissionsRepository`.
-class Permission extends Equatable {
+class Permission {
   const Permission({required this.token});
 
   /// Trims surrounding whitespace; otherwise no validation. Tokens are
@@ -54,7 +52,14 @@ class Permission extends Equatable {
       Permission(token: token ?? this.token);
 
   @override
-  List<Object?> get props => [token];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Permission &&
+          runtimeType == other.runtimeType &&
+          token == other.token;
+
+  @override
+  int get hashCode => Object.hash(runtimeType, token);
 }
 
 /// Read-side helper: does *any* permission in this iterable satisfy

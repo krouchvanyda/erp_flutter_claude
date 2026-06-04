@@ -1,5 +1,3 @@
-import 'package:equatable/equatable.dart';
-
 /// Why the server / verifier turned a code down. Enum (not free-form
 /// string) so the presentation layer can pick a localised message per
 /// case via an exhaustive `switch`.
@@ -23,7 +21,7 @@ enum OtpRejectionReason {
 /// without falling into a default branch. `accepted` carries no payload
 /// for this slice — the real verifier in a future slice will extend the
 /// `accepted` variant with the next-step session token / claims.
-sealed class OtpVerificationResult extends Equatable {
+sealed class OtpVerificationResult {
   const OtpVerificationResult();
 
   const factory OtpVerificationResult.accepted() = OtpAccepted;
@@ -34,13 +32,27 @@ sealed class OtpVerificationResult extends Equatable {
 
 class OtpAccepted extends OtpVerificationResult {
   const OtpAccepted();
+
   @override
-  List<Object?> get props => const [];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is OtpAccepted && runtimeType == other.runtimeType;
+
+  @override
+  int get hashCode => runtimeType.hashCode;
 }
 
 class OtpRejected extends OtpVerificationResult {
   const OtpRejected({required this.reason});
   final OtpRejectionReason reason;
+
   @override
-  List<Object?> get props => [reason];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is OtpRejected &&
+          runtimeType == other.runtimeType &&
+          reason == other.reason;
+
+  @override
+  int get hashCode => Object.hash(runtimeType, reason);
 }

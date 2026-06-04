@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+import 'package:collection/collection.dart';
 
 /// Authenticated user — the domain-layer view of "who is signed in".
 ///
@@ -9,7 +9,7 @@ import 'package:equatable/equatable.dart';
 /// Roles are an unordered set of opaque permission tokens (e.g.
 /// `'finance.invoice.create'`, `'admin'`). Higher-level RBAC checks
 /// belong in domain use cases, not here.
-class User extends Equatable {
+class User {
   const User({
     required this.id,
     required this.email,
@@ -42,5 +42,21 @@ class User extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, email, displayName, roles];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is User &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          email == other.email &&
+          displayName == other.displayName &&
+          const SetEquality<String>().equals(roles, other.roles);
+
+  @override
+  int get hashCode => Object.hash(
+        runtimeType,
+        id,
+        email,
+        displayName,
+        const SetEquality<String>().hash(roles),
+      );
 }

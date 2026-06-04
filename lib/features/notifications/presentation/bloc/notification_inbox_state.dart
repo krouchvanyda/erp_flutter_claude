@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+import 'package:collection/collection.dart';
 
 import '../../domain/entities/notification.dart';
 
@@ -8,7 +8,7 @@ import '../../domain/entities/notification.dart';
 /// states for empty / non-empty**: the inbox view rebuilds the same
 /// scaffold either way; an `if (notifications.isEmpty)` in the widget
 /// is cheaper than a state-shape branch.
-sealed class NotificationInboxState extends Equatable {
+sealed class NotificationInboxState {
   const NotificationInboxState();
 
   /// Pre-subscribe — the bloc hasn't loaded the first snapshot yet.
@@ -34,13 +34,23 @@ sealed class NotificationInboxState extends Equatable {
 class NotificationInboxInitial extends NotificationInboxState {
   const NotificationInboxInitial();
   @override
-  List<Object?> get props => const [];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is NotificationInboxInitial && runtimeType == other.runtimeType;
+
+  @override
+  int get hashCode => runtimeType.hashCode;
 }
 
 class NotificationInboxLoading extends NotificationInboxState {
   const NotificationInboxLoading();
   @override
-  List<Object?> get props => const [];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is NotificationInboxLoading && runtimeType == other.runtimeType;
+
+  @override
+  int get hashCode => runtimeType.hashCode;
 }
 
 class NotificationInboxLoaded extends NotificationInboxState {
@@ -53,12 +63,32 @@ class NotificationInboxLoaded extends NotificationInboxState {
   final int unreadCount;
 
   @override
-  List<Object?> get props => [notifications, unreadCount];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is NotificationInboxLoaded &&
+          runtimeType == other.runtimeType &&
+          const ListEquality<AppNotification>()
+              .equals(notifications, other.notifications) &&
+          unreadCount == other.unreadCount;
+
+  @override
+  int get hashCode => Object.hash(
+        runtimeType,
+        const ListEquality<AppNotification>().hash(notifications),
+        unreadCount,
+      );
 }
 
 class NotificationInboxFailure extends NotificationInboxState {
   const NotificationInboxFailure(this.message);
   final String message;
   @override
-  List<Object?> get props => [message];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is NotificationInboxFailure &&
+          runtimeType == other.runtimeType &&
+          message == other.message;
+
+  @override
+  int get hashCode => Object.hash(runtimeType, message);
 }

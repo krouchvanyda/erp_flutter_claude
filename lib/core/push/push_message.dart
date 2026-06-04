@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+import 'package:collection/collection.dart';
 
 /// Server-pushed notification payload (Slice 2.3.2).
 ///
@@ -16,7 +16,7 @@ import 'package:equatable/equatable.dart';
 /// for display + a `data` map for routing — so the firebase adapter
 /// (when we ship it) is a one-method `RemoteMessage → PushMessage`
 /// translator.
-class PushMessage extends Equatable {
+class PushMessage {
   const PushMessage({
     this.id,
     required this.title,
@@ -68,5 +68,23 @@ class PushMessage extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, title, body, data, sentAt];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PushMessage &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          title == other.title &&
+          body == other.body &&
+          const MapEquality<String, String>().equals(data, other.data) &&
+          sentAt == other.sentAt;
+
+  @override
+  int get hashCode => Object.hash(
+        runtimeType,
+        id,
+        title,
+        body,
+        const MapEquality<String, String>().hash(data),
+        sentAt,
+      );
 }

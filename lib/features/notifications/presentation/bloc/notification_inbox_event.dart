@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+import 'package:collection/collection.dart';
 
 import '../../domain/entities/notification.dart';
 
@@ -8,7 +8,7 @@ import '../../domain/entities/notification.dart';
 /// handler. `NotificationInboxUpdated` / `NotificationInboxFailed` are
 /// fired by the bloc's own subscription to the repository's watch stream
 /// (the UI doesn't dispatch them directly — that's the bloc's concern).
-sealed class NotificationInboxEvent extends Equatable {
+sealed class NotificationInboxEvent {
   const NotificationInboxEvent();
 
   /// Subscribe to the repo's watch stream. Idempotent — calling twice
@@ -43,39 +43,82 @@ sealed class NotificationInboxEvent extends Equatable {
 class NotificationInboxStarted extends NotificationInboxEvent {
   const NotificationInboxStarted();
   @override
-  List<Object?> get props => const [];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is NotificationInboxStarted && runtimeType == other.runtimeType;
+
+  @override
+  int get hashCode => runtimeType.hashCode;
 }
 
 class NotificationInboxMarkedRead extends NotificationInboxEvent {
   const NotificationInboxMarkedRead(this.id);
   final String id;
   @override
-  List<Object?> get props => [id];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is NotificationInboxMarkedRead &&
+          runtimeType == other.runtimeType &&
+          id == other.id;
+
+  @override
+  int get hashCode => Object.hash(runtimeType, id);
 }
 
 class NotificationInboxMarkedAllRead extends NotificationInboxEvent {
   const NotificationInboxMarkedAllRead();
   @override
-  List<Object?> get props => const [];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is NotificationInboxMarkedAllRead &&
+          runtimeType == other.runtimeType;
+
+  @override
+  int get hashCode => runtimeType.hashCode;
 }
 
 class NotificationInboxDismissed extends NotificationInboxEvent {
   const NotificationInboxDismissed(this.id);
   final String id;
   @override
-  List<Object?> get props => [id];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is NotificationInboxDismissed &&
+          runtimeType == other.runtimeType &&
+          id == other.id;
+
+  @override
+  int get hashCode => Object.hash(runtimeType, id);
 }
 
 class NotificationInboxUpdated extends NotificationInboxEvent {
   const NotificationInboxUpdated(this.notifications);
   final List<AppNotification> notifications;
   @override
-  List<Object?> get props => [notifications];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is NotificationInboxUpdated &&
+          runtimeType == other.runtimeType &&
+          const ListEquality<AppNotification>()
+              .equals(notifications, other.notifications);
+
+  @override
+  int get hashCode => Object.hash(
+        runtimeType,
+        const ListEquality<AppNotification>().hash(notifications),
+      );
 }
 
 class NotificationInboxFailed extends NotificationInboxEvent {
   const NotificationInboxFailed(this.message);
   final String message;
   @override
-  List<Object?> get props => [message];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is NotificationInboxFailed &&
+          runtimeType == other.runtimeType &&
+          message == other.message;
+
+  @override
+  int get hashCode => Object.hash(runtimeType, message);
 }
