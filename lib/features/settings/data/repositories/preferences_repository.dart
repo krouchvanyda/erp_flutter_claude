@@ -1,8 +1,7 @@
 import 'dart:async';
-import 'package:get_it/get_it.dart';
 
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/i18n/app_language.dart' as core_lang;
-import '../../../../core/i18n/locale_service.dart';
 import '../../entities/user_preferences.dart';
 
 /// Slice 9.1.x — single repository for the device-local preferences
@@ -41,7 +40,7 @@ class PreferencesRepository {
       final coreLang = language == AppLanguage.en
           ? core_lang.AppLanguage.english
           : core_lang.AppLanguage.khmer;
-      GetIt.I<LocaleService>().setLanguage(coreLang);
+      AppDependencies.I.localeService.setLanguage(coreLang);
     } catch (_) {}
 
     _emit();

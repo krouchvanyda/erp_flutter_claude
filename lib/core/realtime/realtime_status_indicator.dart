@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
-import '../di/injection.dart';
+import '../di/app_dependencies.dart';
 import '../theme/app_font_size.dart';
 import '../theme/app_label.dart';
 import 'realtime_connection_state.dart';
@@ -15,7 +15,7 @@ import 'realtime_service.dart';
 /// progresses without the parent widget rebuilding.
 ///
 /// **Test seam**: production callers don't pass [service]; the widget
-/// resolves it from `getIt`. Tests pass a fake.
+/// resolves it from `AppDependencies.I`. Tests pass a fake.
 class RealtimeStatusIndicator extends StatelessWidget {
   const RealtimeStatusIndicator({super.key, RealtimeService? service})
       : _serviceOverride = service;
@@ -24,7 +24,7 @@ class RealtimeStatusIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final svc = _serviceOverride ?? getIt<RealtimeService>();
+    final svc = _serviceOverride ?? AppDependencies.I.realtimeService;
     return StreamBuilder<RealtimeConnectionState>(
       stream: svc.connectionState,
       initialData: svc.state,

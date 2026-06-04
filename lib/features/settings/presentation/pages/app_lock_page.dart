@@ -2,8 +2,8 @@ import 'package:erp_mobile/shared/widgets/app_background_gradient.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:get_it/get_it.dart';
 
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/error/failure.dart';
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';
@@ -20,7 +20,7 @@ class AppLockPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settingsRepo = GetIt.I<AppLockSettingsRepository>();
+    final settingsRepo = AppDependencies.I.appLockSettingsRepository;
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
 
@@ -106,13 +106,13 @@ class AppLockPage extends StatelessWidget {
                               if (v) {
                                 final pin = await _promptForNewPin(context);
                                 if (pin == null) return;
-                                await GetIt.I<InMemoryPinSecretStore>().setPin(pin);
+                                await AppDependencies.I.inMemoryPinSecretStore.setPin(pin);
                                 await settingsRepo.setPinEnabled(
                                   current: settings,
                                   enabled: true,
                                 );
                               } else {
-                                await GetIt.I<InMemoryPinSecretStore>().clearPin();
+                                await AppDependencies.I.inMemoryPinSecretStore.clearPin();
                                 await settingsRepo.setPinEnabled(
                                   current: settings,
                                   enabled: false,
@@ -263,7 +263,7 @@ class AppLockPage extends StatelessWidget {
                                 final messenger = ScaffoldMessenger.of(context);
                                 final pin = await _promptForNewPin(context);
                                 if (pin == null) return;
-                                await GetIt.I<InMemoryPinSecretStore>().setPin(pin);
+                                await AppDependencies.I.inMemoryPinSecretStore.setPin(pin);
                                 messenger.showSnackBar(
                                   SnackBar(
                                     content: Text(l10n.appLockPinUpdatedSnack),
@@ -315,7 +315,7 @@ class AppLockPage extends StatelessWidget {
   Future<void> _pickAutoLock(BuildContext context, AppLockSettings settings) async {
     final messenger = ScaffoldMessenger.of(context);
     final l10n = AppLocalizations.of(context);
-    final repo = GetIt.I<AppLockSettingsRepository>();
+    final repo = AppDependencies.I.appLockSettingsRepository;
     final theme = Theme.of(context);
 
     final value = await showModalBottomSheet<int>(

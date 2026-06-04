@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:get_it/get_it.dart';
 
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';
@@ -12,12 +12,8 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
-import '../../../settings/data/datasources/users_remote_data_source.dart';
 import '../../../settings/data/models/user_dto.dart';
 import '../../data/chat_dto_mappers.dart';
-import '../../data/chat_settings.dart';
-import '../../data/chats_remote_data_source.dart';
-import '../../data/repositories/conversations_repository.dart';
 import '../../data/users_cache.dart';
 import '../../entities/conversation.dart';
 import '../widgets/chat_avatar.dart';
@@ -63,8 +59,8 @@ class _NewConversationPageState extends State<NewConversationPage> {
   }
 
   Future<void> _loadDirectory() async {
-    final users = GetIt.I<UsersRemoteDataSource>();
-    final settings = GetIt.I<ChatSettings>();
+    final users = AppDependencies.I.usersRemoteDataSource;
+    final settings = AppDependencies.I.chatSettings;
     // Resolve the real backend user id BEFORE filtering — `ChatSettings`
     // boots with the demo-seed default (e.g. "u-001") so a bare
     // `settings.userId` check would let the signed-in user show up in
@@ -236,9 +232,9 @@ class _NewConversationPageState extends State<NewConversationPage> {
         memberIds.add(n);
       }
 
-      final remote = GetIt.I<ChatsRemoteDataSource>();
-      final repo = GetIt.I<ConversationsRepository>();
-      final settings = GetIt.I<ChatSettings>();
+      final remote = AppDependencies.I.chatsRemoteDataSource;
+      final repo = AppDependencies.I.conversationsRepository;
+      final settings = AppDependencies.I.chatSettings;
 
       // POST /chats/conversations — backend validates membership,
       // assigns a real numeric id, and (typically) publishes

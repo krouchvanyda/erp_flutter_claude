@@ -4,8 +4,8 @@ import 'dart:developer';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/router/app_router.dart';
 import '../../data/call_signaling_service.dart';
 import '../pages/video_call_page.dart';
@@ -113,11 +113,10 @@ class CallNotificationRouter {
   /// killed-app push), so we'd rather log + skip than crash on the
   /// notification isolate.
   static T? _safelyGet<T extends Object>() {
-    try {
-      return GetIt.I<T>();
-    } catch (_) {
-      return null;
-    }
+    final deps = AppDependencies.maybeI;
+    if (deps == null) return null;
+    if (T == CallSignalingService) return deps.callSignalingService as T;
+    return null;
   }
 }
 

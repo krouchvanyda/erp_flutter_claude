@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
 
-import '../../core/di/injection.dart';
+import '../../core/di/app_dependencies.dart';
 import '../../core/router/permissions_snapshot.dart';
 import '../../features/auth/entities/permission.dart';
 
@@ -44,7 +44,7 @@ import '../../features/auth/entities/permission.dart';
 /// The optional [snapshot] override exists so tests / Storybook can pump
 /// in a fixed `PermissionsSnapshot` without standing up the full DI graph.
 /// Production callers should leave it null and let the widget resolve via
-/// `getIt`.
+/// `AppDependencies.I`.
 class PermissionGuard extends StatelessWidget {
   /// Show [child] when the user holds [required], else show [denied]
   /// (defaults to an invisible `SizedBox.shrink()`).
@@ -78,7 +78,7 @@ class PermissionGuard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final perms = snapshot ?? getIt<PermissionsSnapshot>();
+    final perms = snapshot ?? AppDependencies.I.permissionsSnapshot;
     return ListenableBuilder(
       listenable: perms,
       builder: (context, _) {

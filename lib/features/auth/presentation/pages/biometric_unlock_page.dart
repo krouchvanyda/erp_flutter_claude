@@ -2,16 +2,13 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../../core/di/injection.dart';
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/router/auth_session.dart';
-import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../../data/demo_sign_in.dart';
 
 class BiometricUnlockPage extends StatefulWidget {
   const BiometricUnlockPage({super.key});
@@ -31,8 +28,8 @@ class _BiometricUnlockPageState extends State<BiometricUnlockPage> {
     
     if (mounted) {
       // Perform demo sign-in simulation to trigger global auth state
-      await getIt<DemoSignInService>().seed();
-      final session = getIt<AuthSession>();
+      await AppDependencies.I.demoSignInService.seed();
+      final session = AppDependencies.I.authSession;
       if (session is StubAuthSession) {
         session.simulateSignIn();
       }

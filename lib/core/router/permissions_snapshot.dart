@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:injectable/injectable.dart';
 
 import '../../features/auth/data/datasources/cached_user_dao.dart';
 import '../../features/auth/data/repositories/permissions_repository.dart';
@@ -23,7 +22,6 @@ import '../../features/auth/permission_gate.dart';
 /// **Source of truth is still drift** — this class never writes; it only
 /// reads. Sign-out / wipe paths clear drift, which propagates through
 /// `watchCurrentUser` and empties the snapshot here.
-@lazySingleton
 class PermissionsSnapshot extends ChangeNotifier implements PermissionGate {
   PermissionsSnapshot({
     required CachedUserDao cachedUserDao,

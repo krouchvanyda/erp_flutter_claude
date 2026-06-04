@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_callkit_incoming/entities/entities.dart';
-import 'package:get_it/get_it.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../../core/di/app_dependencies.dart';
 import '../../../core/router/app_router.dart';
 import '../entities/call_log.dart';
 import '../presentation/pages/video_call_page.dart';
@@ -701,11 +701,12 @@ class CallkitEventHandler {
   /// `GetIt.I<T>()` throws if not yet registered (rare on cold-start
   /// from CallKit). Log + skip rather than crash on the event handler.
   T? _safelyGet<T extends Object>() {
-    try {
-      return GetIt.I<T>();
-    } catch (_) {
-      return null;
-    }
+    final deps = AppDependencies.maybeI;
+    if (deps == null) return null;
+    if (T == StreamCallEngine) return deps.streamCallEngine as T;
+    if (T == CallSignalingService) return deps.callSignalingService as T;
+    if (T == ConversationsRepository) return deps.conversationsRepository as T;
+    return null;
   }
 }
 

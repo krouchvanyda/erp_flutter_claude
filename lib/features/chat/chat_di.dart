@@ -2,116 +2,32 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:dio/dio.dart';
-import 'package:get_it/get_it.dart';
 import 'package:path_provider/path_provider.dart';
 
-import '../../core/network/token_storage.dart';
-import '../settings/data/datasources/users_remote_data_source.dart';
+import '../../core/di/app_dependencies.dart';
 import 'data/active_conversation_tracker.dart';
-import 'data/call_signaling_service.dart';
 import 'data/chat_lifecycle_bridge.dart';
 import 'data/chat_settings.dart';
 import 'data/chat_transport.dart';
-import 'data/chats_remote_data_source.dart';
-import 'data/repositories/call_log_repository.dart';
 import 'data/repositories/conversations_repository.dart';
-import 'data/repositories/messages_repository.dart';
-import 'data/repositories/presence_repository.dart';
-import 'data/stream_call_engine.dart';
 import 'data/users_cache.dart';
 import 'entities/chat_message.dart';
 import 'entities/conversation.dart';
 import 'entities/presence.dart';
-
-/// Manual DI registration for Module 10 (Chat & Voice / Video).
-///
-/// Same pattern as Modules 4–9: avoids re-running build_runner per
-/// repo tweak. Call once from `main.dart` after the other module
-/// registrations.
-void registerChatModule(GetIt getIt) {
-  if (!getIt.isRegistered<ConversationsRepository>()) {
-    getIt.registerLazySingleton<ConversationsRepository>(
-      ConversationsRepository.new,
-    );
-  }
-  if (!getIt.isRegistered<MessagesRepository>()) {
-    getIt.registerLazySingleton<MessagesRepository>(
-      MessagesRepository.new,
-    );
-  }
-  if (!getIt.isRegistered<CallLogRepository>()) {
-    getIt.registerLazySingleton<CallLogRepository>(
-      CallLogRepository.new,
-    );
-  }
-  if (!getIt.isRegistered<PresenceRepository>()) {
-    getIt.registerLazySingleton<PresenceRepository>(
-      () => PresenceRepository(remote: getIt<ChatsRemoteDataSource>()),
-    );
-  }
-  if (!getIt.isRegistered<ChatSettings>()) {
-    getIt.registerLazySingleton<ChatSettings>(() => ChatSettings.instance);
-  }
-  // Real-backend transport (Prompt 1 of
-  // CHAT_MODULE_BACKEND_INTEGRATIONGUIDE.md). Constructor now takes
-  // - ChatsRemoteDataSource for outbound REST calls
-  // - TokenStorage so the STOMP CONNECT frame can carry the
-  //   `Authorization: Bearer …` header.
-  // The data source itself is built from the shared `Dio` registered
-  // by `core/di/register_module.dart`, so it auto-inherits the
-  // AuthInterceptor + base URL.
-  if (!getIt.isRegistered<ChatsRemoteDataSource>()) {
-    getIt.registerLazySingleton<ChatsRemoteDataSource>(
-      () => DioChatsRemoteDataSource(dio: getIt<Dio>()),
-    );
-  }
-  if (!getIt.isRegistered<ChatTransport>()) {
-    getIt.registerLazySingleton<ChatTransport>(
-      () => ChatTransport(
-        remote: getIt<ChatsRemoteDataSource>(),
-        tokens: getIt<TokenStorage>(),
-      ),
-    );
-  }
-  // Stream Video — actual audio/video media leg under the
-  // signalling ceremony. Wraps `stream_video_flutter` so the rest
-  // of the chat module doesn't import the SDK directly.
-  if (!getIt.isRegistered<StreamCallEngine>()) {
-    getIt.registerLazySingleton<StreamCallEngine>(
-      () => StreamCallEngine(remote: getIt<ChatsRemoteDataSource>()),
-    );
-  }
-  // Slice 10.2.3 — call signalling. Built lazily but pulls the
-  // transport / settings / repos through its constructor so the
-  // subscription is live the first time something accesses it.
-  if (!getIt.isRegistered<CallSignalingService>()) {
-    getIt.registerLazySingleton<CallSignalingService>(
-      () => CallSignalingService(
-        transport: getIt<ChatTransport>(),
-        settings: getIt<ChatSettings>(),
-        conversations: getIt<ConversationsRepository>(),
-        callLog: getIt<CallLogRepository>(),
-        remote: getIt<ChatsRemoteDataSource>(),
-        streamEngine: getIt<StreamCallEngine>(),
-      ),
-    );
-  }
-}
 
 /// Boot the chat wire stack. Loads persisted settings, attaches the
 /// transport to the MessagesRepository, opens the WebSocket if a URL
 /// is configured, and keeps both wired together as settings change.
 ///
 /// Idempotent — safe to call once from `main` after
-/// `registerChatModule`.
-Future<void> bootChatTransport(GetIt getIt) async {
-  final settings = getIt<ChatSettings>();
-  final transport = getIt<ChatTransport>();
-  final messages = getIt<MessagesRepository>();
-  final conversations = getIt<ConversationsRepository>();
-  final presence = getIt<PresenceRepository>();
-  final remote = getIt<ChatsRemoteDataSource>();
+/// `AppDependencies.bootstrap()`.
+Future<void> bootChatTransport(AppDependencies deps) async {
+  final settings = deps.chatSettings;
+  final transport = deps.chatTransport;
+  final messages = deps.messagesRepository;
+  final conversations = deps.conversationsRepository;
+  final presence = deps.presenceRepository;
+  final remote = deps.chatsRemoteDataSource;
 
   await settings.load();
   messages.attachTransport(transport);
@@ -131,8 +47,8 @@ Future<void> bootChatTransport(GetIt getIt) async {
   //
   // Failures here are swallowed — the rest of the chat boot continues
   // with whatever the cache has (often just self).
-  if (GetIt.I.isRegistered<UsersRemoteDataSource>()) {
-    final users = GetIt.I<UsersRemoteDataSource>();
+  {
+    final users = deps.usersRemoteDataSource;
     try {
       final meUser = await users.me();
       final displayName = meUser.fullName.trim().isEmpty
@@ -284,11 +200,9 @@ Future<void> bootChatTransport(GetIt getIt) async {
     }
   });
 
-  // Eagerly resolve the call signalling service so its transport
-  // listener is wired before any peer can place a call. Without this,
-  // the first incoming invite would arrive before anyone reads the
-  // lazy singleton.
-  getIt<CallSignalingService>();
+  // The call signalling service is constructed eagerly by
+  // AppDependencies, so its transport listener is already wired before
+  // any peer can place a call.
 
   // Slice 10.2.6 — re-kick the WebSocket whenever the app returns to
   // the foreground, in case the OS dropped it while we were
@@ -297,8 +211,8 @@ Future<void> bootChatTransport(GetIt getIt) async {
     transport: transport,
     settings: settings,
     presence: presence,
-    streamEngine: getIt<StreamCallEngine>(),
-    signaling: getIt<CallSignalingService>(),
+    streamEngine: deps.streamCallEngine,
+    signaling: deps.callSignalingService,
   ).attach();
 
   // Open the socket with the current settings, and re-open whenever
@@ -318,8 +232,8 @@ Future<void> bootChatTransport(GetIt getIt) async {
   //   3. `settings.relayUrl` — legacy demo fallback
   String resolveStompBase() {
     if (settings.apiBaseUrl.isNotEmpty) return settings.apiBaseUrl;
-    if (GetIt.I.isRegistered<Dio>()) {
-      final dioBase = GetIt.I<Dio>().options.baseUrl;
+    {
+      final dioBase = deps.dio.options.baseUrl;
       if (dioBase.isNotEmpty) {
         // Strip `/api/v1` (and any trailing slash) so the transport
         // can append `/ws` cleanly. `Uri.parse` keeps us safe against
@@ -352,9 +266,7 @@ Future<void> bootChatTransport(GetIt getIt) async {
     // mid-call when the socket dropped, peers may have hung up
     // while we couldn't hear them; `GET /chats/calls/{id}` gives
     // us the canonical state. No-op when no active call.
-    if (getIt.isRegistered<CallSignalingService>()) {
-      unawaited(getIt<CallSignalingService>().reconcileActive());
-    }
+    unawaited(deps.callSignalingService.reconcileActive());
   }
 
   await apply();

@@ -2,10 +2,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/error/failure.dart';
 import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_font_size.dart';
@@ -16,8 +16,6 @@ import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../../../shared/widgets/avatar_picker_sheet.dart';
-import '../../data/repositories/my_profile_repository.dart';
-import '../../data/repositories/security_repositories.dart';
 import '../../entities/app_lock_settings.dart';
 import '../../entities/my_profile.dart';
 import 'app_lock_page.dart';
@@ -39,7 +37,7 @@ class MyProfilePage extends StatefulWidget {
 }
 
 class _MyProfilePageState extends State<MyProfilePage> {
-  final _profileRepo = GetIt.I<MyProfileRepository>();
+  final _profileRepo = AppDependencies.I.myProfileRepository;
 
   bool _editing = false;
   bool _saving = false;
@@ -1483,7 +1481,7 @@ class _SecurityCard extends StatefulWidget {
 }
 
 class _SecurityCardState extends State<_SecurityCard> {
-  final _appLockRepo = GetIt.I<AppLockSettingsRepository>();
+  final _appLockRepo = AppDependencies.I.appLockSettingsRepository;
 
   @override
   Widget build(BuildContext context) {

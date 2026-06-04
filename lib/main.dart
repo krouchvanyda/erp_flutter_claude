@@ -7,27 +7,20 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:injectable/injectable.dart';
 
 import 'app.dart';
-import 'core/di/injection.dart';
+import 'core/di/app_dependencies.dart';
 import 'core/error/crash_hooks.dart';
 import 'core/error/logging_crash_reporter.dart';
 import 'core/network/token_storage.dart';
 import 'core/push/device_registrar.dart';
-import 'core/push/push_di.dart';
 import 'core/push/push_token_storage.dart';
 import 'core/router/auth_session.dart';
 import 'features/chat/data/callkit_event_handler.dart';
-import 'features/chat/data/chat_settings.dart';
 import 'features/chat/data/stream_call_engine.dart';
 import 'features/chat/data/users_cache.dart';
-import 'features/settings/data/datasources/users_remote_data_source.dart';
-import 'package:get_it/get_it.dart';
 import 'core/utils/logger/console_logger.dart';
-import 'features/auth/auth_di.dart';
 import 'features/chat/chat_di.dart';
-import 'features/settings/settings_di.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 Future <void> main() async {
@@ -77,15 +70,10 @@ Future <void> main() async {
           statusBarBrightness: Brightness.light,
         ),
       );
-      configureDependencies(environment: Environment.prod);
-      // Hand-rolled DI for the device-registration stack. Must run
-      // BEFORE registerAuthModule because AuthRepository consumes
-      // DeviceRegistrar in its constructor (see push_di.dart for the
-      // codegen-skip rationale).
-      registerPushModule(getIt);
-      registerAuthModule(getIt);
-      registerSettingsModule(getIt);
-      registerChatModule(getIt);
+      // Hand-written composition root — builds the entire dependency
+      // graph once (replaces get_it + injectable + the generated
+      // injection.config.dart and the four register*Module helpers).
+      final deps = AppDependencies.bootstrap();
 
       // ── Persist the FCM token to secure storage ───────────────
       // PushTokenStorage is registered by `register_module.dart` as
@@ -99,15 +87,15 @@ Future <void> main() async {
       // target this device. `deleteFirebaseToken()` should be called
       // from the logout flow to deactivate it.
       unawaited(_persistAndWatchPushToken(
-        getIt<PushTokenStorage>(),
-        getIt<DeviceRegistrar>(),
-        getIt<TokenStorage>(),
+        deps.pushTokenStorage,
+        deps.deviceRegistrar,
+        deps.tokenStorage,
       ));
 
       // Boot the chat wire stack — loads persisted identity / relay
       // URL and opens the WebSocket if one is configured. Errors
       // here must never block app launch (relay may be unreachable).
-      unawaited(bootChatTransport(getIt));
+      unawaited(bootChatTransport(deps));
 
       // Stream Video client must connect EAGERLY (not lazily on first
       // call) so its PushNotificationManager.registerDevice runs and
@@ -116,7 +104,7 @@ Future <void> main() async {
       // pushes from A's side silently fail → B's phone never wakes.
       // We listen for auth transitions so the warm-up fires both on
       // fresh login and on auto-login (splash → markAuthenticated).
-      _wireStreamWarmUpToAuth(getIt<AuthSession>(), getIt<StreamCallEngine>());
+      _wireStreamWarmUpToAuth(deps.authSession, deps.streamCallEngine);
 
       // Subscribe to flutter_callkit_incoming events (Accept / Reject
       // on the native ringer) so they actually drive the call
@@ -227,11 +215,11 @@ Future<void> _persistAndWatchPushToken(
 /// `settings.watch().listen(...)` would double-attach), so we don't
 /// re-run the whole thing — we just fetch `users.me()` and call
 /// `setIdentity` directly. The existing watch listener catches it.
-Future<void> _rehydrateChatIdentityOnAuth(GetIt getIt) async {
+Future<void> _rehydrateChatIdentityOnAuth() async {
   // ignore: avoid_print
   print('🎬 CHAT: rehydrating identity after sign-in');
   try {
-    final users = getIt<UsersRemoteDataSource>();
+    final users = AppDependencies.I.usersRemoteDataSource;
     // Hard timeout — earlier symptom was rehydrate hanging silently
     // (no error log, no success log, just dead). Hung `users.me()`
     // blocked the entire downstream chain. 8s is generous for a
@@ -242,7 +230,7 @@ Future<void> _rehydrateChatIdentityOnAuth(GetIt getIt) async {
           'users.me() did not return within 8s'),
     );
     final displayName = me.fullName.trim().isEmpty ? me.email : me.fullName;
-    await getIt<ChatSettings>().setIdentity(
+    await AppDependencies.I.chatSettings.setIdentity(
       userId: me.id,
       userName: displayName,
     );
@@ -285,7 +273,7 @@ void _wireStreamWarmUpToAuth(AuthSession session, StreamCallEngine engine) {
       // acceptable — StreamCallEngine reads UsersCache lazily AND
       // refreshes on every Call via getOrCreate. First call may show
       // the bare id; subsequent ones land on the cached name.
-      unawaited(_rehydrateChatIdentityOnAuth(GetIt.instance));
+      unawaited(_rehydrateChatIdentityOnAuth());
       unawaited(engine.warmUp());
     }
     wasAuthed = nowAuthed;

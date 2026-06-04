@@ -19,8 +19,12 @@ dependencies:
   equatable: ^2.0.7
 
   # ── Dependency injection ────────────────────────────────────────
-  get_it: ^8.0.3
-  injectable: ^2.5.0
+  # Removed: get_it + injectable. The app now wires its dependency
+  # graph by hand in `lib/core/di/app_dependencies.dart` (a plain
+  # composition root, no service locator, no codegen). Widgets/BLoCs
+  # take deps via constructor / BlocProvider; non-widget callers
+  # (background isolates, native call handlers) reach the same
+  # singletons through `AppDependencies.I`.
 
   # ── Navigation ──────────────────────────────────────────────────
   go_router: ^14.6.3
@@ -116,10 +120,11 @@ dev_dependencies:
   very_good_analysis: ^6.0.0
 
   # ── Codegen ─────────────────────────────────────────────────────
+  # build_runner stays for freezed + json_serializable. injectable_generator
+  # was removed alongside get_it/injectable — there is no DI codegen anymore.
   build_runner: ^2.4.13
   freezed: ^2.5.7
   json_serializable: ^6.8.0
-  injectable_generator: ^2.6.2
 
   # ── Testing ─────────────────────────────────────────────────────
   bloc_test: ^9.1.7

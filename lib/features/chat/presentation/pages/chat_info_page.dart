@@ -2,10 +2,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';
@@ -14,12 +14,6 @@ import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../../../shared/widgets/avatar_picker_sheet.dart';
-import '../../../settings/data/datasources/users_remote_data_source.dart';
-import '../../data/chat_settings.dart';
-import '../../data/repositories/call_log_repository.dart';
-import '../../data/repositories/conversations_repository.dart';
-import '../../data/repositories/messages_repository.dart';
-import '../../data/repositories/presence_repository.dart';
 import '../../entities/call_log.dart';
 import '../../entities/chat_message.dart';
 import '../../entities/conversation.dart';
@@ -45,7 +39,7 @@ class ChatInfoPage extends StatelessWidget {
           children: [
             const AppBackgroundGradient(),
             StreamBuilder<ChatConversation?>(
-              stream: GetIt.I<ConversationsRepository>()
+              stream: AppDependencies.I.conversationsRepository
                   .watchById(conversationId),
               builder: (context, snap) {
                 final conv = snap.data;
@@ -239,7 +233,7 @@ class _Hero extends StatelessWidget {
         // going Online → Busy → Offline update without us re-opening
         // the page.
         AnimatedBuilder(
-          animation: GetIt.I<PresenceRepository>().revision,
+          animation: AppDependencies.I.presenceRepository.revision,
           builder: (_, __) => AppLabel(
             text: _subtitleFor(conversation),
             fontSize: AppFontSize.value12,
@@ -255,7 +249,7 @@ class _Hero extends StatelessWidget {
       // Online count derived live from PresenceRepository — the
       // ConversationDto's `onlineCount` is a snapshot at fetch time
       // and goes stale the moment a member's presence flips.
-      final repo = GetIt.I<PresenceRepository>();
+      final repo = AppDependencies.I.presenceRepository;
       final onlineNow = c.participantPreviews
           .where((p) =>
               repo.statusOf(p.employeeId).status == PresenceStatus.online)
@@ -264,7 +258,7 @@ class _Hero extends StatelessWidget {
     }
     if (c.participantPreviews.isEmpty) return 'Offline';
     final otherId = c.participantPreviews.first.employeeId;
-    final p = GetIt.I<PresenceRepository>().statusOf(otherId);
+    final p = AppDependencies.I.presenceRepository.statusOf(otherId);
     // `effectiveStatus` keeps a fresh-OFFLINE as AWAY for up to 5 min
     // so peers who just minimised show "Away · last seen X" instead
     // of skipping straight to plain "Last seen X" / "Offline".
@@ -362,7 +356,7 @@ class _SharedMedia extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return FutureBuilder<List<ChatMessage>>(
-      future: GetIt.I<MessagesRepository>().getForConversation(conversationId),
+      future: AppDependencies.I.messagesRepository.getForConversation(conversationId),
       builder: (context, snap) {
         final media = (snap.data ?? const <ChatMessage>[])
             .where((m) =>
@@ -535,7 +529,7 @@ class _CallHistorySection extends StatelessWidget {
     final theme = Theme.of(context);
     return FutureBuilder<List<ChatCallLog>>(
       future:
-          GetIt.I<CallLogRepository>().getForConversation(conversationId),
+          AppDependencies.I.callLogRepository.getForConversation(conversationId),
       builder: (context, snap) {
         final entries = (snap.data ?? const <ChatCallLog>[]).take(6).toList();
         if (entries.isEmpty) {
@@ -582,7 +576,7 @@ class _CallHistoryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final me = GetIt.I<ChatSettings>().userId;
+    final me = AppDependencies.I.chatSettings.userId;
     final isOutgoing = log.callerId == me;
     final isMissed = log.status == ChatCallStatus.missed ||
         log.status == ChatCallStatus.noAnswer ||
@@ -698,7 +692,7 @@ class _Settings extends StatelessWidget {
             iconColor: Colors.amber.shade700,
             label: 'Mute notifications',
             value: conversation.isMuted,
-            onChanged: (v) => GetIt.I<ConversationsRepository>()
+            onChanged: (v) => AppDependencies.I.conversationsRepository
                 .setMuted(conversation.id, v),
           ),
           if (conversation.pinnedMessageId != null) ...[
@@ -742,11 +736,11 @@ class _Members extends StatelessWidget {
           child: Column(
             children: [
               _MemberRow(
-                name: GetIt.I<ChatSettings>().userName,
+                name: AppDependencies.I.chatSettings.userName,
                 role: 'You',
                 presence: PresenceStatus.online,
                 isAdmin: true,
-                userId: GetIt.I<ChatSettings>().userId,
+                userId: AppDependencies.I.chatSettings.userId,
               ),
               for (final p in shown) ...[
                 const _Hairline(),
@@ -922,7 +916,7 @@ class _DangerZone extends StatelessWidget {
     // Backend removes us, fans `conversation.remove` to our other
     // sessions, and `conversation.update` to remaining members.
     try {
-      await GetIt.I<ConversationsRepository>()
+      await AppDependencies.I.conversationsRepository
           .leaveGroupRemote(conversation.id);
     } catch (e) {
       if (!context.mounted) return;
@@ -1160,7 +1154,7 @@ Future<void> _showAddMembersSheet(
     return;
   }
   try {
-    await GetIt.I<ConversationsRepository>()
+    await AppDependencies.I.conversationsRepository
         .addMembersRemote(conversation.id, memberIds);
   } catch (e) {
     if (!context.mounted) return;
@@ -1220,7 +1214,7 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
 
   Future<void> _loadDirectory() async {
     try {
-      final page = await GetIt.I<UsersRemoteDataSource>().listUsers(
+      final page = await AppDependencies.I.usersRemoteDataSource.listUsers(
         // 200 covers small/mid orgs in one shot; `_candidates` filters
         // out current group members + self locally.
         pageSize: 200,
@@ -1251,7 +1245,7 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
   }
 
   List<ChatParticipantPreview> get _candidates {
-    final me = GetIt.I<ChatSettings>().userId;
+    final me = AppDependencies.I.chatSettings.userId;
     final inGroup = {
       me,
       ...widget.conversation.participantPreviews.map((p) => p.employeeId),
@@ -1525,7 +1519,7 @@ Future<void> _showRenameSheet(
   // client-side broadcast needed (the previous relay-era
   // `sendConversationUpdate` call is gone).
   try {
-    await GetIt.I<ConversationsRepository>()
+    await AppDependencies.I.conversationsRepository
         .renameRemote(conversation.id, trimmed);
   } catch (e) {
     if (!context.mounted) return;
@@ -1689,7 +1683,7 @@ Future<void> _showChangePhotoSheet(
     case AvatarPickChoice.gallery:
       await _pickGroupPhoto(context, conversation, ImageSource.gallery);
     case AvatarPickChoice.remove:
-      await GetIt.I<ConversationsRepository>()
+      await AppDependencies.I.conversationsRepository
           .setAvatarPath(conversation.id, null);
       // Group avatar URL on the backend (op #5) is `null` here too —
       // PATCH `avatarUrl: ''` would clear it. Skipped while there's
@@ -1723,7 +1717,7 @@ Future<void> _pickGroupPhoto(
       );
       return;
     }
-    await GetIt.I<ConversationsRepository>()
+    await AppDependencies.I.conversationsRepository
         .setAvatarPath(conversation.id, picked.path);
     // Per-device avatar only — the previous relay-era base64 broadcast
     // is gone with the relay. Cross-device group avatar needs a binary

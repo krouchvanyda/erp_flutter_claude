@@ -1,8 +1,8 @@
 import 'package:erp_mobile/shared/widgets/app_background_gradient.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:get_it/get_it.dart';
 
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/router/config_router.dart';
 import '../../../../core/security/app_permissions.dart';
 import '../../../../core/theme/app_font_size.dart';
@@ -11,7 +11,6 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../core/widgets/loading_screen.dart';
-import '../../../../features/auth/data/datasources/cached_user_dao.dart';
 import '../../../../features/auth/entities/user.dart';
 import '../../../../l10n/app_localizations.dart';
 import 'api_config_page.dart';
@@ -245,7 +244,7 @@ class _SettingsHomePageState extends State<SettingsHomePage> {
                 // user (populated by AuthRepository.login) — no
                 // extra network call on every Settings open.
                 StreamBuilder<User?>(
-                  stream: GetIt.I<CachedUserDao>().watchCurrentUser(),
+                  stream: AppDependencies.I.cachedUserDao.watchCurrentUser(),
                   builder: (context, snap) {
                     final user = snap.data;
                     // TEMP DEBUG — remove once the gate is confirmed

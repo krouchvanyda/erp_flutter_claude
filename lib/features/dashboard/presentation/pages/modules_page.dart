@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
-import '../../../../core/di/injection.dart';
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/layout/responsive_breakpoint.dart';
 import '../../../../core/router/config_router.dart';
 import '../../../../core/router/permissions_snapshot.dart';
@@ -26,7 +26,7 @@ class ModulesPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final permissions = _snapshotOverride ?? getIt<PermissionsSnapshot>();
+    final permissions = _snapshotOverride ?? AppDependencies.I.permissionsSnapshot;
     
     return Scaffold(
       extendBodyBehindAppBar: true,

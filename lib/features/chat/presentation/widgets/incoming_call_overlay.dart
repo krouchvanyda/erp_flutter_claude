@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:get_it/get_it.dart';
 
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_font_size.dart';
@@ -45,7 +45,7 @@ class _IncomingCallOverlayState extends State<IncomingCallOverlay> {
   /// as not-yet-settled → keep waiting).
   bool _onSplashOrUnknown() {
     try {
-      final path = GetIt.I<AppRouter>()
+      final path = AppDependencies.I.appRouter
           .config
           .routerDelegate
           .currentConfiguration
@@ -193,7 +193,7 @@ class _IncomingCallOverlayState extends State<IncomingCallOverlay> {
     // configureDependencies() in main.dart, so the very first build
     // could fall through if we resolved in initState.
     if (_signaling == null) {
-      _signaling = GetIt.I<CallSignalingService>();
+      _signaling = AppDependencies.I.callSignalingService;
       _signaling!.activeCallListenable.addListener(_autoPushOnConnected);
     }
   }
@@ -291,7 +291,7 @@ class _IncomingCallSheet extends StatelessWidget {
                     label: 'Decline',
                     color: Colors.red.shade600,
                     onTap: () =>
-                        GetIt.I<CallSignalingService>().rejectIncoming(),
+                        AppDependencies.I.callSignalingService.rejectIncoming(),
                   ),
                   _BigCircleButton(
                     icon: call.callType == ChatCallType.video
@@ -300,7 +300,7 @@ class _IncomingCallSheet extends StatelessWidget {
                     label: 'Accept',
                     color: Colors.green.shade600,
                     onTap: () {
-                      final signaling = GetIt.I<CallSignalingService>();
+                      final signaling = AppDependencies.I.callSignalingService;
                       // Slice 10.2.9 — push via the root navigator's
                       // GlobalKey, NOT `Navigator.of(context)`. The
                       // overlay is mounted via `MaterialApp.builder` so

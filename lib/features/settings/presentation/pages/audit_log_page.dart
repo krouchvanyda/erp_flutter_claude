@@ -1,8 +1,8 @@
 import 'package:erp_mobile/shared/widgets/app_background_gradient.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:get_it/get_it.dart';
 
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
@@ -26,7 +26,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
 
   @override
   Widget build(BuildContext context) {
-    final repo = GetIt.I<AuditLogRepository>();
+    final repo = AppDependencies.I.auditLogRepository;
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
 

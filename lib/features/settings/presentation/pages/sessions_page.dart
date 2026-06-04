@@ -1,8 +1,8 @@
 import 'package:erp_mobile/shared/widgets/app_background_gradient.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:get_it/get_it.dart';
 
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/error/failure.dart';
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';
@@ -10,7 +10,6 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../../data/repositories/security_repositories.dart';
 import '../../entities/device_session.dart';
 
 /// Slice 9.3.1 — active devices list with revoke actions.
@@ -19,7 +18,7 @@ class SessionsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final repo = GetIt.I<DeviceSessionsRepository>();
+    final repo = AppDependencies.I.deviceSessionsRepository;
     final l10n = AppLocalizations.of(context);
 
     return Scaffold(
@@ -227,7 +226,7 @@ class _SessionCard extends StatelessWidget {
     final messenger = ScaffoldMessenger.of(context);
     final l10n = AppLocalizations.of(context);
     try {
-      await GetIt.I<DeviceSessionsRepository>().revokeGuarded(session);
+      await AppDependencies.I.deviceSessionsRepository.revokeGuarded(session);
       messenger.showSnackBar(
         SnackBar(
           content: Text(l10n.sessionsRevokedSnack(session.deviceLabel)),

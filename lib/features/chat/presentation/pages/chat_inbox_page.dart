@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';
@@ -13,11 +13,8 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
-import '../../data/chat_settings.dart';
 import '../../data/chat_transport.dart';
 import '../../data/users_cache.dart';
-import '../../data/repositories/call_log_repository.dart';
-import '../../data/repositories/conversations_repository.dart';
 import '../../data/repositories/presence_repository.dart';
 import '../../entities/call_log.dart';
 import '../../entities/conversation.dart';
@@ -98,7 +95,7 @@ class _ChatInboxPageState extends State<ChatInboxPage>
 
   @override
   Widget build(BuildContext context) {
-    final repo = GetIt.I<ConversationsRepository>();
+    final repo = AppDependencies.I.conversationsRepository;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -355,7 +352,7 @@ class _Tile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final repo = GetIt.I<ConversationsRepository>();
+    final repo = AppDependencies.I.conversationsRepository;
     final hasUnread = conversation.unreadCount > 0;
     return Dismissible(
       key: ValueKey(conversation.id),
@@ -476,7 +473,7 @@ class _Tile extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(AppRadii.lg),
           onTap: () async {
-            await GetIt.I<ConversationsRepository>().markRead(conversation.id);
+            await AppDependencies.I.conversationsRepository.markRead(conversation.id);
             if (!context.mounted) return;
             await ConfigRouter.pushPageAnimation(
               context,
@@ -641,7 +638,7 @@ class _Tile extends StatelessWidget {
     //                          who said what without opening the chat
     //   * direct / other    → no prefix (tile title is already the
     //                          other person's name)
-    final me = GetIt.I<ChatSettings>().userId;
+    final me = AppDependencies.I.chatSettings.userId;
     final isOwn = c.lastMessageSenderId == me;
     String prefix = '';
     if (isOwn) {
@@ -690,7 +687,7 @@ class _PresenceInline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final repo = GetIt.I<PresenceRepository>();
+    final repo = AppDependencies.I.presenceRepository;
     return AnimatedBuilder(
       animation: repo.revision,
       builder: (_, __) {
@@ -806,8 +803,8 @@ class _TransportStatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final transport = GetIt.I<ChatTransport>();
-    final settings = GetIt.I<ChatSettings>();
+    final transport = AppDependencies.I.chatTransport;
+    final settings = AppDependencies.I.chatSettings;
     return StreamBuilder<ChatTransportStatus>(
       stream: transport.status,
       initialData: transport.currentStatus,
@@ -935,13 +932,13 @@ class _IdentitySheetState extends State<_IdentitySheet> {
   @override
   void initState() {
     super.initState();
-    _selectedId = GetIt.I<ChatSettings>().userId;
+    _selectedId = AppDependencies.I.chatSettings.userId;
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final settings = GetIt.I<ChatSettings>();
+    final settings = AppDependencies.I.chatSettings;
     // Build the picker list from whatever the UsersCache has — which
     // gets seeded at boot (`/users/me`) and after the new-message
     // picker fetches `/users`. For non-admin users whose cache only
@@ -1012,7 +1009,7 @@ class _IdentitySheetState extends State<_IdentitySheet> {
                     child: InkWell(
                       onTap: () async {
                         setState(() => _selectedId = p.employeeId);
-                        await GetIt.I<ChatSettings>().setIdentity(
+                        await AppDependencies.I.chatSettings.setIdentity(
                           userId: p.employeeId,
                           userName: p.name,
                         );
@@ -1077,7 +1074,7 @@ class _RelayUrlSheetState extends State<_RelayUrlSheet> {
   @override
   void initState() {
     super.initState();
-    _ctrl = TextEditingController(text: GetIt.I<ChatSettings>().relayUrl);
+    _ctrl = TextEditingController(text: AppDependencies.I.chatSettings.relayUrl);
   }
 
   @override
@@ -1183,7 +1180,7 @@ class _RelayUrlSheetState extends State<_RelayUrlSheet> {
                 flex: 2,
                 child: FilledButton(
                   onPressed: () async {
-                    await GetIt.I<ChatSettings>().setRelayUrl(_ctrl.text);
+                    await AppDependencies.I.chatSettings.setRelayUrl(_ctrl.text);
                     if (context.mounted) Navigator.pop(context);
                   },
                   style: FilledButton.styleFrom(
@@ -1219,7 +1216,7 @@ class _RecentCallsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<ChatCallLog>>(
-      stream: GetIt.I<CallLogRepository>().watchAll(),
+      stream: AppDependencies.I.callLogRepository.watchAll(),
       builder: (context, snap) {
         final logs = snap.data ?? const <ChatCallLog>[];
         if (logs.isEmpty) {
@@ -1277,7 +1274,7 @@ class _RecentCallTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final me = GetIt.I<ChatSettings>().userId;
+    final me = AppDependencies.I.chatSettings.userId;
     final isOutgoing = log.callerId == me;
     final isMissed = log.status == ChatCallStatus.missed ||
         log.status == ChatCallStatus.noAnswer ||

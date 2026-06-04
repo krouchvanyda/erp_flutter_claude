@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/di/app_dependencies.dart';
 import 'chat_transport.dart';
 
 /// Persistent demo settings for the chat module — current user identity
@@ -102,8 +102,9 @@ class ChatSettings {
     // don't fire this — the transport reconnects with the new
     // identity anyway, and we don't want to clobber the original
     // user's name on peers.
-    if (nameChanged && GetIt.I.isRegistered<ChatTransport>()) {
-      GetIt.I<ChatTransport>().sendProfileUpdate(
+    final transport = AppDependencies.maybeI?.chatTransport;
+    if (nameChanged && transport != null) {
+      transport.sendProfileUpdate(
         userId: userId,
         newName: userName,
       );

@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/di/injection.dart';
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/router/config_router.dart';
-import '../../../../core/router/permissions_snapshot.dart';
 import '../../../../core/shortcuts/module_shortcut_catalog.dart';
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';
@@ -22,7 +20,7 @@ class GlobalSearchAnchor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final permissions = getIt<PermissionsSnapshot>();
+    final permissions = AppDependencies.I.permissionsSnapshot;
 
     return BlocProvider<GlobalSearchBloc>(
       create: (_) => GlobalSearchBloc(

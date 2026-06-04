@@ -2,13 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:get_it/get_it.dart';
 import 'package:stream_webrtc_flutter/stream_webrtc_flutter.dart' as rtc;
 
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';
 import '../../data/call_signaling_service.dart';
-import '../../data/repositories/conversations_repository.dart';
 import '../../data/stream_call_engine.dart';
 import '../../entities/call_log.dart';
 import '../../entities/conversation.dart';
@@ -63,8 +62,8 @@ class _VoiceCallPageState extends State<VoiceCallPage>
   void initState() {
     super.initState();
     VoiceCallPage.isMounted = true;
-    _signaling = GetIt.I<CallSignalingService>();
-    _streamEngine = GetIt.I<StreamCallEngine>();
+    _signaling = AppDependencies.I.callSignalingService;
+    _streamEngine = AppDependencies.I.streamCallEngine;
     _signaling.activeCallListenable.addListener(_onActiveCallChanged);
     WidgetsBinding.instance.addObserver(this);
     final existing = _signaling.current;
@@ -262,7 +261,7 @@ class _VoiceCallPageState extends State<VoiceCallPage>
     return Scaffold(
       backgroundColor: const Color(0xFF0F1117),
       body: StreamBuilder<ChatConversation?>(
-        stream: GetIt.I<ConversationsRepository>()
+        stream: AppDependencies.I.conversationsRepository
             .watchById(widget.conversationId),
         builder: (context, snap) {
           final conv = snap.data;

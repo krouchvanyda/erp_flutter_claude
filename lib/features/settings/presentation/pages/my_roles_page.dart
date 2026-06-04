@@ -3,9 +3,9 @@ import 'dart:developer' as developer;
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
@@ -14,7 +14,6 @@ import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../core/widgets/loading_screen.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
-import '../../data/datasources/users_remote_data_source.dart';
 import '../../data/permission_catalog.dart';
 import '../../entities/managed_user.dart';
 
@@ -34,7 +33,7 @@ class MyRolesPage extends StatefulWidget {
 }
 
 class _MyRolesPageState extends State<MyRolesPage> {
-  final _usersRemote = GetIt.I<UsersRemoteDataSource>();
+  final _usersRemote = AppDependencies.I.usersRemoteDataSource;
 
   final _searchCtrl = TextEditingController();
   String _query = '';

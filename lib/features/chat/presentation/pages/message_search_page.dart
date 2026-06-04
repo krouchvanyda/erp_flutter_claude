@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
-import '../../data/repositories/conversations_repository.dart';
-import '../../data/repositories/messages_repository.dart';
 import '../../entities/chat_message.dart';
 import '../../entities/conversation.dart';
 import '../widgets/chat_avatar.dart';
@@ -86,11 +84,11 @@ class _MessageSearchPageState extends State<MessageSearchPage> {
             const AppBackgroundGradient(),
             FutureBuilder<List<ChatMessage>>(
               future: widget.conversationId != null
-                  ? GetIt.I<MessagesRepository>().searchInConversation(
+                  ? AppDependencies.I.messagesRepository.searchInConversation(
                       widget.conversationId!,
                       _query,
                     )
-                  : GetIt.I<MessagesRepository>().search(_query),
+                  : AppDependencies.I.messagesRepository.search(_query),
               builder: (context, snap) {
                 if (_query.trim().isEmpty) {
                   return _Hint(
@@ -189,7 +187,7 @@ class _ResultTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     FutureBuilder<ChatConversation?>(
-                      future: GetIt.I<ConversationsRepository>()
+                      future: AppDependencies.I.conversationsRepository
                           .findById(message.conversationId),
                       builder: (context, snap) {
                         final conv = snap.data;

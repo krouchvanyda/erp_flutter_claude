@@ -2,8 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:get_it/get_it.dart';
 
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/error/failure.dart';
 import '../../../../core/router/config_router.dart';
 import '../../../../core/theme/app_font_size.dart';
@@ -13,7 +13,6 @@ import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../core/widgets/loading_screen.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_text_field.dart';
-import '../../data/repositories/auth_repository.dart';
 import 'biometric_unlock_page.dart';
 import 'forgot_password_page.dart';
 import 'register_page.dart';
@@ -49,7 +48,7 @@ class _LoginPageState extends State<LoginPage> {
     final l10n = AppLocalizations.of(context);
 
     setState(() => _submitting = true);
-    final result = await GetIt.I<AuthRepository>().login(
+    final result = await AppDependencies.I.authRepository.login(
       email: _emailController.text.trim(),
       password: _passwordController.text,
     );

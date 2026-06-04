@@ -1,8 +1,8 @@
 import 'package:erp_mobile/shared/widgets/app_background_gradient.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:get_it/get_it.dart';
 
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/error/failure.dart';
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';
@@ -11,7 +11,6 @@ import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_text_field.dart';
-import '../../data/repositories/admin_repositories.dart';
 import '../../entities/managed_user.dart';
 
 /// Slice 9.2.2 — role + permission scope editor.
@@ -33,7 +32,7 @@ class RoleEditorPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final repo = GetIt.I<RolesRepository>();
+    final repo = AppDependencies.I.rolesRepository;
     final l10n = AppLocalizations.of(context);
 
     return Scaffold(
@@ -218,7 +217,7 @@ class RoleEditorPage extends StatelessWidget {
                   child: FilledButton(
                     onPressed: () async {
                       try {
-                        await GetIt.I<RolesRepository>().createFromInput(
+                        await AppDependencies.I.rolesRepository.createFromInput(
                           name: nameCtrl.text,
                           description: descCtrl.text,
                           permissionTokens: selectedScopes.toList(),
@@ -431,7 +430,7 @@ class _RoleCardState extends State<_RoleCard> {
       next.remove(scope);
     }
     try {
-      await GetIt.I<RolesRepository>().updatePermissions(
+      await AppDependencies.I.rolesRepository.updatePermissions(
         role: widget.role,
         permissionTokens: next.toList(),
       );
@@ -448,8 +447,8 @@ class _RoleCardState extends State<_RoleCard> {
   Future<void> _confirmDelete(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
     final l10n = AppLocalizations.of(context);
-    final rolesRepo = GetIt.I<RolesRepository>();
-    final users = await GetIt.I<ManagedUsersRepository>().getAll();
+    final rolesRepo = AppDependencies.I.rolesRepository;
+    final users = await AppDependencies.I.managedUsersRepository.getAll();
     // Pre-check: refuse early so we don't even show the confirm dialog
     // for a guaranteed-fail delete.
     if (widget.role.isSystem ||

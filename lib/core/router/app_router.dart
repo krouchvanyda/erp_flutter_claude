@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
-import 'package:injectable/injectable.dart';
 
 import '../../features/auth/presentation/pages/biometric_unlock_page.dart';
 import '../../features/auth/presentation/pages/forgot_password_page.dart';
@@ -12,9 +11,7 @@ import '../../features/dashboard/presentation/pages/admin_demo_page.dart';
 import '../../features/dashboard/presentation/pages/coming_soon_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/dashboard/presentation/pages/modules_page.dart';
-import '../../features/auth/data/demo_sign_in.dart';
-import '../../features/auth/data/repositories/auth_repository.dart';
-import '../di/injection.dart';
+import '../di/app_dependencies.dart';
 import '../../features/notifications/presentation/pages/notification_inbox_page.dart';
 import '../../features/settings/presentation/pages/api_config_page.dart';
 import '../../features/settings/presentation/pages/app_lock_page.dart';
@@ -57,7 +54,6 @@ import 'route_paths.dart';
 /// can be unit-tested without Flutter. Permission lookups go through
 /// [RouteAccess] (the location → required Permission table) and
 /// [PermissionsSnapshot.holds] (the in-memory mirror of drift).
-@lazySingleton
 class AppRouter {
   AppRouter(AuthSession session, PermissionsSnapshot permissions)
       : config = _build(session, permissions);
@@ -116,7 +112,7 @@ class AppRouter {
                 // permission BEFORE flipping the auth flag so the
                 // permissions snapshot has a current user by the time
                 // the redirect bounces us into the dashboard.
-                await getIt<DemoSignInService>().seed();
+                await AppDependencies.I.demoSignInService.seed();
                 if (session is StubAuthSession) {
                   session.simulateSignIn();
                 }
@@ -214,7 +210,7 @@ class AppRouter {
                       // flutter_secure_storage, wipes the cached user from
                       // drift, then SessionSignal.invalidate() flips the
                       // AuthSession bool and the router bounces to /login.
-                      onSignOut: () => getIt<AuthRepository>().signOut(),
+                      onSignOut: () => AppDependencies.I.authRepository.signOut(),
                     ),
                   ),
                   // Phase 9.1 — preferences.

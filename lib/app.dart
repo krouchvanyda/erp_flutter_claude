@@ -2,7 +2,7 @@ import 'package:erp_callkit/erp_callkit.dart';
 import 'package:erp_mobile/shared/firebase_services/firebase_notification_provider.dart';
 import 'package:flutter/material.dart';
 
-import 'core/di/injection.dart';
+import 'core/di/app_dependencies.dart';
 import 'core/i18n/locale_service.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
@@ -123,18 +123,10 @@ class _ErpMobileAppState extends State<ErpMobileApp>
       // redundant — clear it immediately so its header bar disappears.
       await ErpCallKit.dismiss(callId);
 
-      CallSignalingService? signaling;
-      ConversationsRepository? conversations;
-      try {
-        signaling = getIt<CallSignalingService>();
-      } catch (_) {
-        signaling = null;
-      }
-      try {
-        conversations = getIt<ConversationsRepository>();
-      } catch (_) {
-        conversations = null;
-      }
+      final CallSignalingService? signaling =
+          AppDependencies.maybeI?.callSignalingService;
+      final ConversationsRepository? conversations =
+          AppDependencies.maybeI?.conversationsRepository;
       if (signaling == null) {
         debugPrint('[NativeCall] signaling not registered yet — skip');
         return;
@@ -180,8 +172,8 @@ class _ErpMobileAppState extends State<ErpMobileApp>
 
   @override
   Widget build(BuildContext context) {
-    final router = widget._injectedRouter ?? getIt<AppRouter>();
-    final prefRepo = getIt<PreferencesRepository>();
+    final router = widget._injectedRouter ?? AppDependencies.I.appRouter;
+    final prefRepo = AppDependencies.I.preferencesRepository;
 
     return StreamBuilder<pref_entities.UserPreferences>(
       stream: prefRepo.watch(),

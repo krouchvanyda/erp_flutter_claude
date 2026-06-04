@@ -9,13 +9,11 @@ import '../../../../core/dashboard/dashboard_grid.dart';
 import '../../../../core/dashboard/dashboard_widget.dart';
 import '../../../../core/dashboard/widgets/chart_dashboard_widgets.dart';
 import '../../../../core/dashboard/widgets/kpi_dashboard_widget.dart';
-import '../../../../core/di/app_env.dart';
-import '../../../../core/di/injection.dart';
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/push/local_push_simulator.dart';
 import '../../../../core/push/push_message_router.dart';
 import '../../../../core/push/push_notification_service.dart';
 import '../../../../core/realtime/realtime_service.dart';
-import '../../../../core/realtime/realtime_status_indicator.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';
@@ -27,7 +25,6 @@ import '../../../../features/search/presentation/widgets/global_search_anchor.da
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/charts/chart_data.dart';
 import '../../../../shared/widgets/kpi/kpi_data.dart';
-import '../../../../shared/widgets/permission_guard.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -47,11 +44,11 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void initState() {
     super.initState();
-    _realtime = getIt<RealtimeService>();
-    _pushRouter = getIt<PushMessageRouter>();
-    _pushService = getIt<PushNotificationService>();
-    
-    if (getIt<AppEnv>().realtimeEnabled) {
+    _realtime = AppDependencies.I.realtimeService;
+    _pushRouter = AppDependencies.I.pushMessageRouter;
+    _pushService = AppDependencies.I.pushNotificationService;
+
+    if (AppDependencies.I.appEnv.realtimeEnabled) {
       unawaited(_realtime.connect());
       _realtime.subscribe('dashboard.default');
     }

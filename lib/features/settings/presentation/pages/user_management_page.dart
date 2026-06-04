@@ -1,8 +1,8 @@
 import 'package:erp_mobile/shared/widgets/app_background_gradient.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:get_it/get_it.dart';
 
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/error/failure.dart';
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';
@@ -10,7 +10,6 @@ import '../../../../core/theme/app_radii.dart';
 import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../../data/repositories/admin_repositories.dart';
 import '../../entities/managed_user.dart';
 
 /// Slice 9.2.1 — admin-only user management.
@@ -27,7 +26,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
 
   @override
   Widget build(BuildContext context) {
-    final usersRepo = GetIt.I<ManagedUsersRepository>();
+    final usersRepo = AppDependencies.I.managedUsersRepository;
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
 
@@ -163,7 +162,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
     final nameCtrl = TextEditingController();
     Set<String> selectedRoles = {};
     String? errorMsg;
-    final rolesRepo = GetIt.I<RolesRepository>();
+    final rolesRepo = AppDependencies.I.rolesRepository;
     final allRoles = await rolesRepo.getAll();
     if (!mounted) return;
     final theme = Theme.of(context);
@@ -283,7 +282,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
                 child: FilledButton(
                   onPressed: () async {
                     try {
-                      await GetIt.I<ManagedUsersRepository>().invite(
+                      await AppDependencies.I.managedUsersRepository.invite(
                         email: emailCtrl.text,
                         name: nameCtrl.text,
                         roleIds: selectedRoles.toList(),
@@ -461,7 +460,7 @@ class _UserRow extends StatelessWidget {
   Future<void> _runAction(BuildContext context, String action) async {
     final messenger = ScaffoldMessenger.of(context);
     final l10n = AppLocalizations.of(context);
-    final repo = GetIt.I<ManagedUsersRepository>();
+    final repo = AppDependencies.I.managedUsersRepository;
     try {
       final next = await repo.changeStatus(
         user: user,

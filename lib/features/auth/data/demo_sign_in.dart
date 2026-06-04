@@ -1,5 +1,3 @@
-import 'package:injectable/injectable.dart';
-
 import '../entities/user.dart';
 import 'datasources/cached_user_dao.dart';
 
@@ -12,7 +10,6 @@ import 'datasources/cached_user_dao.dart';
 /// service exists so the no-backend developer flow ("simulated login"
 /// from `LoginPage`) lands in a state that's structurally identical to
 /// a real session — same drift rows, same permissions snapshot.
-@lazySingleton
 class DemoSignInService {
   DemoSignInService(this._dao);
 

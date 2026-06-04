@@ -1,13 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart';
 
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';
 import '../../data/call_signaling_service.dart';
-import '../../data/repositories/conversations_repository.dart';
 import '../../data/stream_call_engine.dart';
 import '../../entities/call_log.dart';
 import '../../entities/conversation.dart';
@@ -57,8 +56,8 @@ class _VideoCallPageState extends State<VideoCallPage>
   void initState() {
     super.initState();
     VideoCallPage.isMounted = true;
-    _signaling = GetIt.I<CallSignalingService>();
-    _engine = GetIt.I<StreamCallEngine>();
+    _signaling = AppDependencies.I.callSignalingService;
+    _engine = AppDependencies.I.streamCallEngine;
     _signaling.activeCallListenable.addListener(_onActiveCallChanged);
     WidgetsBinding.instance.addObserver(this);
     final existing = _signaling.current;
@@ -232,7 +231,7 @@ class _VideoCallPageState extends State<VideoCallPage>
       body: GestureDetector(
         onTap: _toggleControls,
         child: StreamBuilder<ChatConversation?>(
-          stream: GetIt.I<ConversationsRepository>()
+          stream: AppDependencies.I.conversationsRepository
               .watchById(widget.conversationId),
           builder: (context, snap) {
             final conv = snap.data;

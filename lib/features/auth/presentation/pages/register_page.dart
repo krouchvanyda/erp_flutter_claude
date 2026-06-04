@@ -2,8 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:get_it/get_it.dart';
 
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/error/failure.dart';
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';
@@ -12,7 +12,6 @@ import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../core/widgets/loading_screen.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_text_field.dart';
-import '../../data/repositories/auth_repository.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key, this.onSimulatedRegister});
@@ -59,7 +58,7 @@ class _RegisterPageState extends State<RegisterPage> {
     final l10n = AppLocalizations.of(context);
 
     setState(() => _submitting = true);
-    final result = await GetIt.I<AuthRepository>().register(
+    final result = await AppDependencies.I.authRepository.register(
       email: _emailController.text.trim(),
       password: _passwordController.text,
       fullName: _fullNameController.text.trim(),

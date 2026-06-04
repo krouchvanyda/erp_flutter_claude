@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/theme/app_label.dart';
 import '../../data/repositories/presence_repository.dart';
 import '../../entities/conversation.dart';
@@ -47,9 +47,8 @@ class ChatAvatar extends StatelessWidget {
     final colors = _gradientFor(hue);
     final dotSize = (size * 0.28).clamp(8.0, 18.0);
     final hasPhoto = avatarFilePath != null && avatarFilePath!.isNotEmpty;
-    final presenceRepo = (userId != null &&
-            GetIt.I.isRegistered<PresenceRepository>())
-        ? GetIt.I<PresenceRepository>()
+    final presenceRepo = userId != null
+        ? AppDependencies.maybeI?.presenceRepository
         : null;
     return SizedBox(
       width: size,

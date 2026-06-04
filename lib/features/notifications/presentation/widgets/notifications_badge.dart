@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/di/injection.dart';
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/router/config_router.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/repositories/notifications_repository.dart';
@@ -23,13 +23,13 @@ class NotificationsBadge extends StatelessWidget {
     NotificationsRepository? repository,
   }) : _repositoryOverride = repository;
 
-  /// Test seam — production code resolves via `getIt`.
+  /// Test seam — production code resolves via `AppDependencies.I`.
   final NotificationsRepository? _repositoryOverride;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final repo = _repositoryOverride ?? getIt<NotificationsRepository>();
+    final repo = _repositoryOverride ?? AppDependencies.I.notificationsRepository;
     return StreamBuilder<int>(
       stream: repo.watchUnreadCount(),
       initialData: 0,
