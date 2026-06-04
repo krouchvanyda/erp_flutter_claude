@@ -160,6 +160,7 @@ Future<void> _persistAndWatchPushToken(
     // otherwise the backend keeps pushing to a dead token. Same auth
     // gate as the cold-start path: skip the registrar.register when
     // there's no session, the next login will re-register with the
+    
     // current (rotated) token from the FCM SDK.
     FirebaseNotificationProvider.instance.onTokenRefresh.listen(
       (newToken) async {
