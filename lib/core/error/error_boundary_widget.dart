@@ -1,11 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../../l10n/app_localizations.dart';
-import '../theme/app_font_size.dart';
-import '../theme/app_label.dart';
-import '../theme/app_radii.dart';
-import '../theme/app_spacing.dart';
+import 'package:erp_mobile/l10n/app_localizations.dart';
+import 'package:erp_mobile/core/theme/app_font_size.dart';
+import 'package:erp_mobile/core/theme/app_label.dart';
+import 'package:erp_mobile/core/theme/app_radii.dart';
+import 'package:erp_mobile/core/theme/app_spacing.dart';
 
 /// Friendly replacement for Flutter's red-screen `ErrorWidget`.
 ///

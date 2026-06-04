@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
-import '../di/app_env.dart';
+import 'package:erp_mobile/core/di/app_env.dart';
 
 /// HTTP header names used across the app.
 ///

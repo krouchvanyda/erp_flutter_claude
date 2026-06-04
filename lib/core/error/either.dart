@@ -1,6 +1,6 @@
 import 'package:dartz/dartz.dart';
 
-import 'failure.dart';
+import 'package:erp_mobile/core/error/failure.dart';
 
 export 'package:dartz/dartz.dart' show Either, Left, Right;
 

@@ -1,4 +1,4 @@
-import 'auth_tokens.dart';
+import 'package:erp_mobile/core/network/auth_tokens.dart';
 
 /// Strategy that exchanges a refresh token for a fresh [AuthTokens] pair.
 ///

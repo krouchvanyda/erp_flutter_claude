@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'app_language.dart';
-import 'locale_service.dart';
+import 'package:erp_mobile/core/i18n/app_language.dart';
+import 'package:erp_mobile/core/i18n/locale_service.dart';
 
 /// Process-lifetime [LocaleService] backed by a broadcast stream.
 ///

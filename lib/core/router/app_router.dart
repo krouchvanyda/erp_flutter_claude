@@ -2,37 +2,37 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../features/auth/presentation/pages/biometric_unlock_page.dart';
-import '../../features/auth/presentation/pages/forgot_password_page.dart';
-import '../../features/auth/presentation/pages/login_page.dart';
-import '../../features/auth/presentation/pages/otp_entry_page.dart';
-import '../../features/auth/presentation/pages/splash_page.dart';
-import '../../features/dashboard/presentation/pages/admin_demo_page.dart';
-import '../../features/dashboard/presentation/pages/coming_soon_page.dart';
-import '../../features/dashboard/presentation/pages/dashboard_page.dart';
-import '../../features/dashboard/presentation/pages/modules_page.dart';
-import '../di/app_dependencies.dart';
-import '../../features/notifications/presentation/pages/notification_inbox_page.dart';
-import '../../features/settings/presentation/pages/api_config_page.dart';
-import '../../features/settings/presentation/pages/app_lock_page.dart';
-import '../../features/settings/presentation/pages/appearance_page.dart';
-import '../../features/settings/presentation/pages/assignments_page.dart';
-import '../../features/settings/presentation/pages/audit_log_page.dart';
-import '../../features/settings/presentation/pages/language_page.dart';
-import '../../features/settings/presentation/pages/notification_preferences_page.dart';
-import '../../features/settings/presentation/pages/role_editor_page.dart';
-import '../../features/settings/presentation/pages/sessions_page.dart';
-import '../../features/settings/presentation/pages/settings_home_page.dart';
-import '../../features/search/presentation/pages/global_search_page.dart';
-import '../../features/settings/presentation/pages/user_management_page.dart';
-import 'app_shell.dart';
-import 'auth_redirect_policy.dart';
-import 'auth_session.dart';
-import 'forbidden_page.dart';
-import 'not_found_page.dart';
-import 'permissions_snapshot.dart';
-import 'route_access.dart';
-import 'route_paths.dart';
+import 'package:erp_mobile/features/authentication/views/biometric_unlock_screen.dart';
+import 'package:erp_mobile/features/authentication/views/forgot_password_screen.dart';
+import 'package:erp_mobile/features/authentication/views/login_screen.dart';
+import 'package:erp_mobile/features/authentication/views/otp_entry_screen.dart';
+import 'package:erp_mobile/features/authentication/views/splash_screen.dart';
+import 'package:erp_mobile/features/dashboard/views/admin_demo_screen.dart';
+import 'package:erp_mobile/features/dashboard/views/coming_soon_screen.dart';
+import 'package:erp_mobile/features/dashboard/views/dashboard_screen.dart';
+import 'package:erp_mobile/features/dashboard/views/modules_screen.dart';
+import 'package:erp_mobile/core/di/app_dependencies.dart';
+import 'package:erp_mobile/features/notifications/views/notification_inbox_screen.dart';
+import 'package:erp_mobile/features/settings/views/api_config_screen.dart';
+import 'package:erp_mobile/features/settings/views/app_lock_screen.dart';
+import 'package:erp_mobile/features/settings/views/appearance_screen.dart';
+import 'package:erp_mobile/features/settings/views/assignments_screen.dart';
+import 'package:erp_mobile/features/settings/views/audit_log_screen.dart';
+import 'package:erp_mobile/features/settings/views/language_screen.dart';
+import 'package:erp_mobile/features/settings/views/notification_preferences_screen.dart';
+import 'package:erp_mobile/features/settings/views/role_editor_screen.dart';
+import 'package:erp_mobile/features/settings/views/sessions_screen.dart';
+import 'package:erp_mobile/features/settings/views/settings_home_screen.dart';
+import 'package:erp_mobile/features/search/views/global_search_screen.dart';
+import 'package:erp_mobile/features/settings/views/user_management_screen.dart';
+import 'package:erp_mobile/core/router/app_shell.dart';
+import 'package:erp_mobile/core/router/auth_redirect_policy.dart';
+import 'package:erp_mobile/core/router/auth_session.dart';
+import 'package:erp_mobile/core/router/forbidden_page.dart';
+import 'package:erp_mobile/core/router/not_found_page.dart';
+import 'package:erp_mobile/core/router/permissions_snapshot.dart';
+import 'package:erp_mobile/core/router/route_access.dart';
+import 'package:erp_mobile/core/router/route_paths.dart';
 
 /// Owns the app's [GoRouter] instance and wires both [AuthSession] and
 /// [PermissionsSnapshot] in as the `refreshListenable`, so a sign-in/out
@@ -97,12 +97,12 @@ class AppRouter {
           GoRoute(
             path: RoutePaths.splash,
             name: RoutePaths.splashName,
-            builder: (_, __) => const SplashPage(),
+            builder: (_, __) => const SplashScreen(),
           ),
           GoRoute(
             path: RoutePaths.login,
             name: RoutePaths.loginName,
-            builder: (_, __) => LoginPage(
+            builder: (_, __) => LoginScreen(
               // Placeholder wiring until the real AuthBloc lands: flipping
               // the stub auth session emits a listener notification, which
               // GoRouter picks up via `refreshListenable` and bounces to
@@ -122,17 +122,17 @@ class AppRouter {
           GoRoute(
             path: RoutePaths.otp,
             name: RoutePaths.otpName,
-            builder: (_, __) => const OtpEntryPage(),
+            builder: (_, __) => const OtpEntryScreen(),
           ),
           GoRoute(
             path: RoutePaths.biometricUnlock,
             name: RoutePaths.biometricUnlockName,
-            builder: (_, __) => const BiometricUnlockPage(),
+            builder: (_, __) => const BiometricUnlockScreen(),
           ),
           GoRoute(
             path: RoutePaths.forgotPassword,
             name: RoutePaths.forgotPasswordName,
-            builder: (_, __) => const ForgotPasswordPage(),
+            builder: (_, __) => const ForgotPasswordScreen(),
           ),
 
           // ── Authenticated shell (bottom nav / rail / drawer) ─────
@@ -148,12 +148,12 @@ class AppRouter {
                   GoRoute(
                     path: RoutePaths.dashboard,
                     name: RoutePaths.dashboardName,
-                    builder: (_, __) => const DashboardPage(),
+                    builder: (_, __) => const DashboardScreen(),
                   ),
                   GoRoute(
                     path: RoutePaths.adminDemo,
                     name: RoutePaths.adminDemoName,
-                    builder: (_, __) => const AdminDemoPage(),
+                    builder: (_, __) => const AdminDemoScreen(),
                   ),
                   GoRoute(
                     path: RoutePaths.forbidden,
@@ -165,12 +165,12 @@ class AppRouter {
                   GoRoute(
                     path: RoutePaths.notificationInbox,
                     name: RoutePaths.notificationInboxName,
-                    builder: (_, __) => const NotificationInboxPage(),
+                    builder: (_, __) => const NotificationInboxScreen(),
                   ),
                   GoRoute(
                     path: RoutePaths.search,
                     name: RoutePaths.searchName,
-                    builder: (_, __) => const GlobalSearchPage(),
+                    builder: (_, __) => const GlobalSearchScreen(),
                   ),
                 ],
               ),
@@ -182,12 +182,12 @@ class AppRouter {
                   GoRoute(
                     path: RoutePaths.modules,
                     name: RoutePaths.modulesName,
-                    builder: (_, __) => const ModulesPage(),
+                    builder: (_, __) => const ModulesScreen(),
                   ),
                   GoRoute(
                     path: RoutePaths.comingSoon,
                     name: RoutePaths.comingSoonName,
-                    builder: (_, state) => ComingSoonPage(
+                    builder: (_, state) => ComingSoonScreen(
                       moduleLabel: state.pathParameters[
                               RoutePaths.comingSoonLabelParam] ??
                           '',
@@ -204,7 +204,7 @@ class AppRouter {
                   GoRoute(
                     path: RoutePaths.settings,
                     name: RoutePaths.settingsName,
-                    builder: (_, __) => SettingsHomePage(
+                    builder: (_, __) => SettingsHomeScreen(
                       // Full sign-out via AuthRepository — revokes the
                       // refresh token server-side, clears
                       // flutter_secure_storage, wipes the cached user from
@@ -217,54 +217,54 @@ class AppRouter {
                   GoRoute(
                     path: RoutePaths.settingsAppearance,
                     name: RoutePaths.settingsAppearanceName,
-                    builder: (_, __) => const AppearancePage(),
+                    builder: (_, __) => const AppearanceScreen(),
                   ),
                   GoRoute(
                     path: RoutePaths.settingsLanguage,
                     name: RoutePaths.settingsLanguageName,
-                    builder: (_, __) => const LanguagePage(),
+                    builder: (_, __) => const LanguageScreen(),
                   ),
                   GoRoute(
                     path: RoutePaths.settingsNotifications,
                     name: RoutePaths.settingsNotificationsName,
-                    builder: (_, __) => const NotificationPreferencesPage(),
+                    builder: (_, __) => const NotificationPreferencesScreen(),
                   ),
                   // Phase 9.2 — admin.
                   GoRoute(
                     path: RoutePaths.settingsUsers,
                     name: RoutePaths.settingsUsersName,
-                    builder: (_, __) => const UserManagementPage(),
+                    builder: (_, __) => const UserManagementScreen(),
                   ),
                   GoRoute(
                     path: RoutePaths.settingsRoles,
                     name: RoutePaths.settingsRolesName,
-                    builder: (_, __) => const RoleEditorPage(),
+                    builder: (_, __) => const RoleEditorScreen(),
                   ),
                   GoRoute(
                     path: RoutePaths.settingsAssignments,
                     name: RoutePaths.settingsAssignmentsName,
-                    builder: (_, __) => const AssignmentsPage(),
+                    builder: (_, __) => const AssignmentsScreen(),
                   ),
                   GoRoute(
                     path: RoutePaths.settingsApiConfig,
                     name: RoutePaths.settingsApiConfigName,
-                    builder: (_, __) => const ApiConfigPage(),
+                    builder: (_, __) => const ApiConfigScreen(),
                   ),
                   // Phase 9.3 — security.
                   GoRoute(
                     path: RoutePaths.settingsSessions,
                     name: RoutePaths.settingsSessionsName,
-                    builder: (_, __) => const SessionsPage(),
+                    builder: (_, __) => const SessionsScreen(),
                   ),
                   GoRoute(
                     path: RoutePaths.settingsAuditLog,
                     name: RoutePaths.settingsAuditLogName,
-                    builder: (_, __) => const AuditLogPage(),
+                    builder: (_, __) => const AuditLogScreen(),
                   ),
                   GoRoute(
                     path: RoutePaths.settingsAppLock,
                     name: RoutePaths.settingsAppLockName,
-                    builder: (_, __) => const AppLockPage(),
+                    builder: (_, __) => const AppLockScreen(),
                   ),
                 ],
               ),

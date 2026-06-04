@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'app_font_size.dart';
+import 'package:erp_mobile/core/theme/app_font_size.dart';
 
 /// Reusable text widget that bundles the most common `Text` + `TextStyle`
 /// options into one place.

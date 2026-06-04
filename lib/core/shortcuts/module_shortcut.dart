@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 
-import '../../features/auth/entities/permission.dart';
-import '../../l10n/app_localizations.dart';
+import 'package:erp_mobile/features/authentication/models/permission_model.dart';
+import 'package:erp_mobile/l10n/app_localizations.dart';
 
 /// One tile in the Modules grid (Slice 2.1.2).
 ///

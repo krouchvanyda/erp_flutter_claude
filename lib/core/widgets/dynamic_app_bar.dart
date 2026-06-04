@@ -1,8 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
-import '../theme/app_font_size.dart';
-import '../theme/app_label.dart';
+import 'package:erp_mobile/core/theme/app_font_size.dart';
+import 'package:erp_mobile/core/theme/app_label.dart';
 
 /// A premium, dynamic AppBar that supports transitions and modern ERP aesthetics.
 /// 

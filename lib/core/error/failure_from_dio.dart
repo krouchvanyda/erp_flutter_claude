@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 
-import '../network/error_interceptor.dart';
-import 'failure.dart';
+import 'package:erp_mobile/core/network/error_interceptor.dart';
+import 'package:erp_mobile/core/error/failure.dart';
 
 /// Repository-side helper.
 ///

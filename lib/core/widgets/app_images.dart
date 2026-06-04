@@ -2,10 +2,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../assets/app_image_paths.dart';
-import '../config/environments.dart';
-import '../theme/app_colors.dart';
-import '../theme/app_radii.dart';
+import 'package:erp_mobile/core/assets/app_image_paths.dart';
+import 'package:erp_mobile/core/config/environments.dart';
+import 'package:erp_mobile/core/theme/app_colors.dart';
+import 'package:erp_mobile/core/theme/app_radii.dart';
 
 /// Centralised image factory.
 ///

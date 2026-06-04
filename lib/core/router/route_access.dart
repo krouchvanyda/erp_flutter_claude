@@ -1,5 +1,5 @@
-import '../../features/auth/entities/permission.dart';
-import 'route_paths.dart';
+import 'package:erp_mobile/features/authentication/models/permission_model.dart';
+import 'package:erp_mobile/core/router/route_paths.dart';
 
 /// Static permission requirements for permission-gated routes.
 ///

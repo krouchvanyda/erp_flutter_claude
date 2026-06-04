@@ -1,4 +1,4 @@
-import 'log_level.dart';
+import 'package:erp_mobile/core/utils/logger/log_level.dart';
 
 /// Cross-cutting structured logger. Every call carries:
 /// - a [LogLevel],

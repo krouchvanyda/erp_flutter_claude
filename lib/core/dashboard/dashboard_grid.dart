@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../layout/responsive_breakpoint.dart';
-import 'dashboard_layout_packer.dart';
-import 'dashboard_widget.dart';
+import 'package:erp_mobile/core/layout/responsive_breakpoint.dart';
+import 'package:erp_mobile/core/dashboard/dashboard_layout_packer.dart';
+import 'package:erp_mobile/core/dashboard/dashboard_widget.dart';
 
 /// Renders a [DashboardLayout] (Slice 2.2.2).
 ///

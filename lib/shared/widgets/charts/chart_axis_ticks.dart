@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'chart_data.dart';
+import 'package:erp_mobile/shared/widgets/charts/chart_data.dart';
 
 /// Pure-Dart axis-tick computation (Slice 2.2.3) — picks "nice" round
 /// numbers for an axis range so the chart's Y-axis labels read as

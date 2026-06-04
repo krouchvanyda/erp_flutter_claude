@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'app_colors.dart';
-import 'app_radii.dart';
-import 'app_spacing.dart';
-import 'app_typography.dart';
+import 'package:erp_mobile/core/theme/app_colors.dart';
+import 'package:erp_mobile/core/theme/app_radii.dart';
+import 'package:erp_mobile/core/theme/app_spacing.dart';
+import 'package:erp_mobile/core/theme/app_typography.dart';
 
 /// Builds the app's [ThemeData] for both [Brightness.light] and
 /// [Brightness.dark]. All component themes are sourced from tokens — no

@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
-import 'crash_reporter.dart';
-import 'error_boundary_widget.dart';
+import 'package:erp_mobile/core/error/crash_reporter.dart';
+import 'package:erp_mobile/core/error/error_boundary_widget.dart';
 
 /// Wires every global error capture point in the framework to [reporter]
 /// and runs [body] inside a guarded zone so async errors are caught too.

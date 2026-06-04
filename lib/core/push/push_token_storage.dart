@@ -1,4 +1,4 @@
-import '../../features/auth/data/datasources/secret_store.dart';
+import 'package:erp_mobile/data/services/secret_store.dart';
 
 /// Secure persistence for the device push token (Slice 2.3.2).
 ///

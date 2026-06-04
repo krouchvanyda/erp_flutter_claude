@@ -1,12 +1,12 @@
 import 'dart:async';
 
-import '../../features/notifications/domain/entities/notification.dart';
-import '../../features/notifications/domain/repositories/notifications_repository.dart';
-import '../utils/logger/app_logger.dart';
-import '../utils/uuid_generator.dart';
-import 'push_message.dart';
-import 'push_notification_service.dart';
-import 'push_token_storage.dart';
+import 'package:erp_mobile/features/notifications/models/notification_model.dart';
+import 'package:erp_mobile/data/repositories/notifications_repository.dart';
+import 'package:erp_mobile/core/utils/logger/app_logger.dart';
+import 'package:erp_mobile/core/utils/uuid_generator.dart';
+import 'package:erp_mobile/core/push/push_message.dart';
+import 'package:erp_mobile/core/push/push_notification_service.dart';
+import 'package:erp_mobile/core/push/push_token_storage.dart';
 
 /// Wires [PushNotificationService] into the rest of the app (Slice 2.3.2).
 ///

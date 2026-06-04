@@ -1,10 +1,10 @@
 import 'package:flutter/foundation.dart';
 
-import '../utils/logger/app_logger.dart';
-import 'device_id_storage.dart';
-import 'devices_remote_data_source.dart';
-import 'push_notification_service.dart';
-import 'push_token_storage.dart';
+import 'package:erp_mobile/core/utils/logger/app_logger.dart';
+import 'package:erp_mobile/core/push/device_id_storage.dart';
+import 'package:erp_mobile/core/push/devices_remote_data_source.dart';
+import 'package:erp_mobile/core/push/push_notification_service.dart';
+import 'package:erp_mobile/core/push/push_token_storage.dart';
 
 /// Front-of-house for the device registration handshake.
 ///

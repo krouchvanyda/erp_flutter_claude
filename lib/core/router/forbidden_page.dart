@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../l10n/app_localizations.dart';
-import '../theme/app_font_size.dart';
-import '../theme/app_label.dart';
-import 'route_paths.dart';
+import 'package:erp_mobile/l10n/app_localizations.dart';
+import 'package:erp_mobile/core/theme/app_font_size.dart';
+import 'package:erp_mobile/core/theme/app_label.dart';
+import 'package:erp_mobile/core/router/route_paths.dart';
 
 /// Landing page for an authenticated user who lacks the permission
 /// required by the route they tried to reach (Slice 1.3.2).

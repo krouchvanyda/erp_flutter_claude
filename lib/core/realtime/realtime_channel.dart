@@ -1,4 +1,4 @@
-import 'realtime_message.dart';
+import 'package:erp_mobile/core/realtime/realtime_message.dart';
 
 /// Transport-agnostic seam between the [RealtimeService] and the actual
 /// network library (web_socket_channel today, possibly socket.io / SSE

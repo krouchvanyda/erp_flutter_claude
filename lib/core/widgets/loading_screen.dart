@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'app_images.dart';
+import 'package:erp_mobile/core/widgets/app_images.dart';
 
 /// Centered logo with a circular progress ring orbiting it.
 ///

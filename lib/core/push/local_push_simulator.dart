@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'push_message.dart';
-import 'push_notification_service.dart';
+import 'package:erp_mobile/core/push/push_message.dart';
+import 'package:erp_mobile/core/push/push_notification_service.dart';
 
 /// Dev / demo / test [PushNotificationService] (Slice 2.3.2).
 ///

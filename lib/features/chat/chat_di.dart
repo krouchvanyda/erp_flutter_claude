@@ -4,16 +4,16 @@ import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
 
-import '../../core/di/app_dependencies.dart';
-import 'data/active_conversation_tracker.dart';
-import 'data/chat_lifecycle_bridge.dart';
-import 'data/chat_settings.dart';
-import 'data/chat_transport.dart';
-import 'data/repositories/conversations_repository.dart';
-import 'data/users_cache.dart';
-import 'entities/chat_message.dart';
-import 'entities/conversation.dart';
-import 'entities/presence.dart';
+import 'package:erp_mobile/core/di/app_dependencies.dart';
+import 'package:erp_mobile/data/services/active_conversation_tracker.dart';
+import 'package:erp_mobile/data/services/chat_lifecycle_bridge.dart';
+import 'package:erp_mobile/data/services/chat_settings.dart';
+import 'package:erp_mobile/data/services/chat_transport.dart';
+import 'package:erp_mobile/data/repositories/conversations_repository.dart';
+import 'package:erp_mobile/data/services/users_cache.dart';
+import 'package:erp_mobile/features/chat/models/chat_message_model.dart';
+import 'package:erp_mobile/features/chat/models/conversation_model.dart';
+import 'package:erp_mobile/features/chat/models/presence_model.dart';
 
 /// Boot the chat wire stack. Loads persisted settings, attaches the
 /// transport to the MessagesRepository, opens the WebSocket if a URL

@@ -1,5 +1,5 @@
-import 'analytics_event.dart';
-import 'analytics_service.dart';
+import 'package:erp_mobile/core/analytics/analytics_event.dart';
+import 'package:erp_mobile/core/analytics/analytics_service.dart';
 
 /// Default [AnalyticsService] — discards every call.
 ///

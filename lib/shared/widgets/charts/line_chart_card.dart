@@ -1,10 +1,10 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_font_size.dart';
-import '../../../core/theme/app_label.dart';
-import 'chart_axis_ticks.dart';
-import 'chart_data.dart';
+import 'package:erp_mobile/core/theme/app_font_size.dart';
+import 'package:erp_mobile/core/theme/app_label.dart';
+import 'package:erp_mobile/shared/widgets/charts/chart_axis_ticks.dart';
+import 'package:erp_mobile/shared/widgets/charts/chart_data.dart';
 
 /// Themed multi-series line chart wrapper around fl_chart (Slice 2.2.3).
 ///

@@ -1,8 +1,8 @@
 import 'package:flutter/widgets.dart';
 
-import '../../../shared/widgets/kpi/kpi_card.dart';
-import '../../../shared/widgets/kpi/kpi_data.dart';
-import '../dashboard_widget.dart';
+import 'package:erp_mobile/shared/widgets/kpi/kpi_card.dart';
+import 'package:erp_mobile/shared/widgets/kpi/kpi_data.dart';
+import 'package:erp_mobile/core/dashboard/dashboard_widget.dart';
 
 /// Adapter that lets a [KpiCard] (Slice 2.2.1) participate in the
 /// dashboard layout engine (Slice 2.2.2).

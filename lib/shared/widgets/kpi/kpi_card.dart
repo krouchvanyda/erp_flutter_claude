@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_font_size.dart';
-import '../../../core/theme/app_label.dart';
-import '../../../l10n/app_localizations.dart';
-import 'kpi_data.dart';
-import 'sparkline_geometry.dart';
+import 'package:erp_mobile/core/theme/app_font_size.dart';
+import 'package:erp_mobile/core/theme/app_label.dart';
+import 'package:erp_mobile/l10n/app_localizations.dart';
+import 'package:erp_mobile/shared/widgets/kpi/kpi_data.dart';
+import 'package:erp_mobile/shared/widgets/kpi/sparkline_geometry.dart';
 
 /// One KPI tile (Slice 2.2.1) — label, primary value, trend chip,
 /// inline sparkline.

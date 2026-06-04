@@ -8,19 +8,19 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'app.dart';
-import 'core/di/app_dependencies.dart';
-import 'core/error/crash_hooks.dart';
-import 'core/error/logging_crash_reporter.dart';
-import 'core/network/token_storage.dart';
-import 'core/push/device_registrar.dart';
-import 'core/push/push_token_storage.dart';
-import 'core/router/auth_session.dart';
-import 'features/chat/data/callkit_event_handler.dart';
-import 'features/chat/data/stream_call_engine.dart';
-import 'features/chat/data/users_cache.dart';
-import 'core/utils/logger/console_logger.dart';
-import 'features/chat/chat_di.dart';
+import 'package:erp_mobile/app.dart';
+import 'package:erp_mobile/core/di/app_dependencies.dart';
+import 'package:erp_mobile/core/error/crash_hooks.dart';
+import 'package:erp_mobile/core/error/logging_crash_reporter.dart';
+import 'package:erp_mobile/core/network/token_storage.dart';
+import 'package:erp_mobile/core/push/device_registrar.dart';
+import 'package:erp_mobile/core/push/push_token_storage.dart';
+import 'package:erp_mobile/core/router/auth_session.dart';
+import 'package:erp_mobile/data/services/callkit_event_handler.dart';
+import 'package:erp_mobile/data/services/stream_call_engine.dart';
+import 'package:erp_mobile/data/services/users_cache.dart';
+import 'package:erp_mobile/core/utils/logger/console_logger.dart';
+import 'package:erp_mobile/features/chat/chat_di.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 Future <void> main() async {

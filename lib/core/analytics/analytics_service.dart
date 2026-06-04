@@ -1,4 +1,4 @@
-import 'analytics_event.dart';
+import 'package:erp_mobile/core/analytics/analytics_event.dart';
 
 /// Cross-cutting analytics surface — the only contract feature code talks
 /// to. The framework ships a no-op default ([NoopAnalyticsService]); a

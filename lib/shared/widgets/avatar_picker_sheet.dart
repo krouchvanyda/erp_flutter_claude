@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_font_size.dart';
-import '../../core/theme/app_label.dart';
-import '../../core/theme/app_radii.dart';
+import 'package:erp_mobile/core/theme/app_font_size.dart';
+import 'package:erp_mobile/core/theme/app_label.dart';
+import 'package:erp_mobile/core/theme/app_radii.dart';
 
 /// What the user chose on the [AvatarPickerSheet]. Returned by
 /// [AvatarPickerSheet.show] — the caller still owns the actual

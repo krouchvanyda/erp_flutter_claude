@@ -2,7 +2,7 @@ import 'dart:io' show Platform;
 
 import 'package:dio/dio.dart';
 
-import '../network/api_envelope.dart';
+import 'package:erp_mobile/core/network/api_envelope.dart';
 
 /// REST surface for the device-token registry.
 ///

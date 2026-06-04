@@ -1,7 +1,7 @@
 import 'package:logger/logger.dart' as pkg;
 
-import 'app_logger.dart';
-import 'log_level.dart';
+import 'package:erp_mobile/core/utils/logger/app_logger.dart';
+import 'package:erp_mobile/core/utils/logger/log_level.dart';
 
 /// Production [AppLogger] backed by the `logger` package.
 ///

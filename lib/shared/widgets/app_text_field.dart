@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../core/theme/app_radii.dart';
+import 'package:erp_mobile/core/theme/app_radii.dart';
 
 /// Reusable form text field used across every form screen.
 ///

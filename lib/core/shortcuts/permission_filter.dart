@@ -1,4 +1,4 @@
-import '../../features/auth/entities/permission.dart';
+import 'package:erp_mobile/features/authentication/models/permission_model.dart';
 
 /// Pure-Dart generic permission filter.
 ///

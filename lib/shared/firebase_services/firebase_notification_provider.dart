@@ -9,8 +9,8 @@ import 'package:flutter_callkit_incoming/entities/entities.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import '../../core/config/environments.dart';
-import 'local_notification_provider.dart';
+import 'package:erp_mobile/core/config/environments.dart';
+import 'package:erp_mobile/shared/firebase_services/local_notification_provider.dart';
 
 /// Top-level background message handler. **Must be a top-level (or
 /// static) function annotated with `@pragma('vm:entry-point')`** so

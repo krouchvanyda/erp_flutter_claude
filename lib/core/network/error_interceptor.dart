@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 
-import '../error/failure.dart';
+import 'package:erp_mobile/core/error/failure.dart';
 
 /// Translates raw [DioException]s into typed [Failure]s and stuffs the
 /// result into `DioException.error` so repositories can pluck it out

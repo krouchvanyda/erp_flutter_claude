@@ -41,66 +41,73 @@ current 3-tab shell). Treat it as the target, not the as-built state.
 
 ## Project Architecture
 
+> **Current layout (as-built, 2026-06):** **feature-first MVVM tree directly
+> under `lib/`** (no `src/` wrapper). Models are plain immutable Dart classes
+> (no freezed / json_serializable / equatable — hand-written `==` /
+> `copyWith` / `fromJson`). DI is a hand-written composition root
+> (`AppDependencies`, no get_it / injectable). The **ViewModel is a
+> Cubit/Bloc** (`flutter_bloc`). Imports are **package-absolute**
+> (`package:erp_mobile/...`).
+
 ```
 lib/
-├── core/                      # Shared infrastructure
-│   ├── network/               # Dio client, interceptors, error handler
-│   ├── database/              # SQLite DB setup, DAOs
-│   ├── sync/                  # Offline-first sync engine
-│   ├── di/                    # Dependency injection setup
-│   ├── router/                # go_router configuration
-│   ├── error/                 # Failures, exceptions, Either type
-│   ├── utils/                 # Extensions, helpers
-│   └── theme/                 # Design tokens, typography
+├── main.dart                  # real bootstrap (AppDependencies + runApp)
+├── app.dart                   # root MaterialApp.router widget
+├── l10n/                      # generated localizations (flutter gen-l10n)
 │
-├── features/                  # One folder per ERP module
-│   └── [module]/              # Flat MVVM — no data/domain split
-│       ├── data/
-│       │   ├── datasources/   # Remote (API) + Local (SQLite DAO)
-│       │   ├── models/        # JSON ↔ Dart (freezed)
-│       │   └── repositories/  # Concrete repositories (no abstract interface)
-│       ├── entities/          # Pure value objects (formerly under domain/)
-│       └── presentation/
-│           ├── bloc/          # BLoC: events, states, bloc class
-│           ├── viewmodels/    # MVVM ViewModel wrapping BLoC
-│           ├── pages/         # Screens (views)
-│           └── widgets/       # Module-specific widgets
+├── core/                      # shared infrastructure
+│   └── network/ di/ router/ error/ realtime/ push/ theme/ i18n/ utils/ widgets/ …
 │
-└── shared/                    # Reusable UI components
-    ├── widgets/
-    └── validators/
+├── data/                      # SHARED data layer (flattened, cross-feature)
+│   ├── repositories/          # all concrete + abstract repositories
+│   └── services/              # all data sources / remote clients / DAOs /
+│                              #   transports / call-signalling services
+│
+├── features/                  # one folder per feature (MVVM)
+│   └── [feature]/             # authentication, chat, settings, dashboard, …
+│       ├── models/            # entities + DTOs (plain Dart, *_model.dart)
+│       ├── view_models/       # Cubit/Bloc ViewModels (*_view_model.dart)
+│       └── views/             # screens (*_screen.dart)
+│           └── widgets/       # feature-local widgets
+│
+└── shared/                    # reusable UI components
+    └── widgets/ validators/ firebase_services/ …
 ```
 
-> **Legacy note** — Modules 1–9 were built under the older "MVVM + Clean
-> Architecture" convention and still ship a `domain/repositories/`
-> (abstract interfaces) and a `domain/usecases/` folder. **Do not refactor
-> them.** New modules (and new features inside existing modules) follow the
-> flat layout above: one concrete repository, no abstract interface, no
-> separate use-case classes — business rules live in the repository or
-> the BLoC/ViewModel.
+**Naming conventions** (enforced by the restructure):
+- Views: `*_screen.dart` → `class XxxScreen`.
+- ViewModels: `*_view_model.dart` → `class XxxViewModel extends Cubit/Bloc`.
+- Models: `*_model.dart`; the class keeps the domain noun (`User`,
+  `Permission`, `Conversation`) — only the file carries the `_model` suffix.
+- Repositories + services live in the shared `lib/data/`, NOT per-feature.
 
-### MVVM + BLoC Data Flow
+### MVVM Data Flow (ViewModel = Cubit/Bloc)
 
 ```
-View (Flutter Widget)
+View (Screen widget)                  features/<f>/views/*_screen.dart
+   │  BlocProvider(create), context.read<XxxViewModel>().command()
+   │  BlocBuilder/BlocListener<XxxViewModel, XxxState>
+   ▼
+ViewModel (Cubit/Bloc)                 features/<f>/view_models/*_view_model.dart
+   │  runs the command, emits state — NEVER touches BuildContext
+   ▼
+Repository (business rules)            data/repositories/
    │  calls
    ▼
-ViewModel (exposes streams, commands)
-   │  dispatches events to / listens to
-   ▼
-BLoC (processes events → emits states)
-   │  calls
-   ▼
-Repository (concrete — business rules live here)
-   │  calls
-   ▼
-DataSource (Remote API / Local DB)
+Service / DataSource (API, transport)  data/services/
 ```
 
-> **Legacy variant** in Modules 1–9: an extra `UseCase` layer sits
-> between BLoC and Repository, and the Repository is reached through an
-> abstract interface. Keep that flow when editing those modules; use the
-> flat flow above for new work.
+> **State of the conversion:** `authentication` is the reference MVVM
+> module (LoginViewModel / RegisterViewModel / BiometricUnlockViewModel /
+> AppInitViewModel + OtpViewModel, GlobalSearchViewModel,
+> NotificationInboxViewModel). Features that still call repositories
+> directly from the View (chat, settings, dashboard) have `views/` +
+> `models/` but no `view_models/` yet — pending the same conversion.
+
+> **Legacy note** — the per-screen specs further down still reference the
+> old `data/`+`domain/`+`presentation/bloc` paths, freezed, `UseCase`
+> classes, get_it, and SQLite. Those layers no longer exist; treat the
+> `src/` tree above as authoritative for any new work.
 
 ---
 

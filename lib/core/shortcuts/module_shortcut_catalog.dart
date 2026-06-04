@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../features/auth/entities/permission.dart';
-import '../../features/chat/presentation/pages/chat_inbox_page.dart';
-import '../../features/dashboard/presentation/pages/admin_demo_page.dart';
-import '../../l10n/app_localizations.dart';
-import 'module_shortcut.dart';
+import 'package:erp_mobile/features/authentication/models/permission_model.dart';
+import 'package:erp_mobile/features/chat/views/chat_inbox_screen.dart';
+import 'package:erp_mobile/features/dashboard/views/admin_demo_screen.dart';
+import 'package:erp_mobile/l10n/app_localizations.dart';
+import 'package:erp_mobile/core/shortcuts/module_shortcut.dart';
 
 /// Single source of truth for the Modules grid (Slice 2.1.2).
 ///
@@ -39,5 +39,5 @@ String _adminDemoLabel(AppLocalizations l) => l.shortcutAdminDemo;
 // Module 10 — hardcoded until the chat ARB key lands.
 String _chatLabel(AppLocalizations l) => 'Chat';
 
-Widget _adminDemoPage() => const AdminDemoPage();
-Widget _chatPage() => const ChatInboxPage();
+Widget _adminDemoPage() => const AdminDemoScreen();
+Widget _chatPage() => const ChatInboxScreen();

@@ -1,9 +1,9 @@
 import 'package:flutter/widgets.dart';
 
-import '../../../shared/widgets/charts/bar_chart_card.dart';
-import '../../../shared/widgets/charts/chart_data.dart';
-import '../../../shared/widgets/charts/line_chart_card.dart';
-import '../dashboard_widget.dart';
+import 'package:erp_mobile/shared/widgets/charts/bar_chart_card.dart';
+import 'package:erp_mobile/shared/widgets/charts/chart_data.dart';
+import 'package:erp_mobile/shared/widgets/charts/line_chart_card.dart';
+import 'package:erp_mobile/core/dashboard/dashboard_widget.dart';
 
 /// Dashboard adapter for [LineChartCard] (Slice 2.2.3).
 ///

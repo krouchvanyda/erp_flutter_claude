@@ -1,8 +1,8 @@
 import 'package:flutter/widgets.dart';
 
-import '../../core/di/app_dependencies.dart';
-import '../../core/router/permissions_snapshot.dart';
-import '../../features/auth/entities/permission.dart';
+import 'package:erp_mobile/core/di/app_dependencies.dart';
+import 'package:erp_mobile/core/router/permissions_snapshot.dart';
+import 'package:erp_mobile/features/authentication/models/permission_model.dart';
 
 /// Conditionally renders [child] (or invokes [builder]) based on whether
 /// the signed-in user holds the [required] permission.

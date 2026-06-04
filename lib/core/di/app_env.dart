@@ -1,4 +1,4 @@
-import '../config/environments.dart';
+import 'package:erp_mobile/core/config/environments.dart';
 
 /// Application-wide environment / build-time configuration.
 ///

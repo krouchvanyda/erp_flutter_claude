@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../../features/auth/data/datasources/cached_user_dao.dart';
-import '../../features/auth/data/repositories/permissions_repository.dart';
-import '../../features/auth/entities/permission.dart';
-import '../../features/auth/entities/user.dart';
-import '../../features/auth/permission_gate.dart';
+import 'package:erp_mobile/data/services/cached_user_dao.dart';
+import 'package:erp_mobile/data/repositories/permissions_repository.dart';
+import 'package:erp_mobile/features/authentication/models/permission_model.dart';
+import 'package:erp_mobile/features/authentication/models/user_model.dart';
+import 'package:erp_mobile/features/authentication/permission_gate.dart';
 
 /// In-memory mirror of the signed-in user's permission set, updated
 /// reactively from drift.

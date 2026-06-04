@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'backoff_strategy.dart';
-import '../utils/logger/app_logger.dart';
-import 'realtime_channel.dart';
-import 'realtime_connection_state.dart';
-import 'realtime_message.dart';
+import 'package:erp_mobile/core/realtime/backoff_strategy.dart';
+import 'package:erp_mobile/core/utils/logger/app_logger.dart';
+import 'package:erp_mobile/core/realtime/realtime_channel.dart';
+import 'package:erp_mobile/core/realtime/realtime_connection_state.dart';
+import 'package:erp_mobile/core/realtime/realtime_message.dart';
 
 /// Manages the dashboard's WebSocket lifecycle (Slice 2.2.4).
 ///

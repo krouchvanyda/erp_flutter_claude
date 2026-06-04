@@ -1,6 +1,6 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 
-import 'connectivity_checker.dart';
+import 'package:erp_mobile/core/network/connectivity_checker.dart';
 
 /// `connectivity_plus`-backed [ConnectivityChecker].
 ///

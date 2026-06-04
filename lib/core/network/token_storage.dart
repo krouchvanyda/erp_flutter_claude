@@ -1,4 +1,4 @@
-import 'auth_tokens.dart';
+import 'package:erp_mobile/core/network/auth_tokens.dart';
 
 /// Read-write surface over the persisted [AuthTokens].
 ///

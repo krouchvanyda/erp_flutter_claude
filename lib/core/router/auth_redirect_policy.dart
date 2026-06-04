@@ -1,4 +1,4 @@
-import 'route_paths.dart';
+import 'package:erp_mobile/core/router/route_paths.dart';
 
 /// Pure auth + RBAC redirection policy — no Flutter imports.
 ///

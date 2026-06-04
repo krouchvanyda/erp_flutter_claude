@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-import 'realtime_channel.dart';
-import 'realtime_message.dart';
+import 'package:erp_mobile/core/realtime/realtime_channel.dart';
+import 'package:erp_mobile/core/realtime/realtime_message.dart';
 
 /// `web_socket_channel`-backed [RealtimeChannel].
 ///

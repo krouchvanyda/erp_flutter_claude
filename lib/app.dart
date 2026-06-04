@@ -2,16 +2,16 @@ import 'package:erp_callkit/erp_callkit.dart';
 import 'package:erp_mobile/shared/firebase_services/firebase_notification_provider.dart';
 import 'package:flutter/material.dart';
 
-import 'core/di/app_dependencies.dart';
-import 'core/i18n/locale_service.dart';
-import 'core/router/app_router.dart';
-import 'core/theme/app_theme.dart';
-import 'features/chat/data/call_signaling_service.dart';
-import 'features/chat/data/repositories/conversations_repository.dart';
-import 'features/chat/presentation/widgets/incoming_call_overlay.dart';
-import 'features/settings/data/repositories/preferences_repository.dart';
-import 'features/settings/entities/user_preferences.dart' as pref_entities;
-import 'l10n/app_localizations.dart';
+import 'package:erp_mobile/core/di/app_dependencies.dart';
+import 'package:erp_mobile/core/i18n/locale_service.dart';
+import 'package:erp_mobile/core/router/app_router.dart';
+import 'package:erp_mobile/core/theme/app_theme.dart';
+import 'package:erp_mobile/data/services/call_signaling_service.dart';
+import 'package:erp_mobile/data/repositories/conversations_repository.dart';
+import 'package:erp_mobile/features/chat/views/widgets/incoming_call_overlay.dart';
+import 'package:erp_mobile/data/repositories/preferences_repository.dart';
+import 'package:erp_mobile/features/settings/models/user_preferences_model.dart' as pref_entities;
+import 'package:erp_mobile/l10n/app_localizations.dart';
 
 /// Root application widget.
 ///
@@ -160,8 +160,8 @@ class _ErpMobileAppState extends State<ErpMobileApp>
       if (accept) {
         // Just accept — do NOT push the call page here. The mounted
         // IncomingCallOverlay listens for the connected transition and
-        // pushes the in-call page itself (guarded by VoiceCallPage/
-        // VideoCallPage.isMounted). Pushing here too stacked the page
+        // pushes the in-call page itself (guarded by VoiceCallScreen/
+        // VideoCallScreen.isMounted). Pushing here too stacked the page
         // twice.
         await signaling.acceptIncoming();
       }

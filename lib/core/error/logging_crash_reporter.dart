@@ -1,5 +1,5 @@
-import '../utils/logger/app_logger.dart';
-import 'crash_reporter.dart';
+import 'package:erp_mobile/core/utils/logger/app_logger.dart';
+import 'package:erp_mobile/core/error/crash_reporter.dart';
 
 /// Default [CrashReporter] — funnels every report to [AppLogger].
 ///

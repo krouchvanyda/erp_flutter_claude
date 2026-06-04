@@ -3,11 +3,11 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:meta/meta.dart';
 
-import 'auth_tokens.dart';
-import 'dio_client.dart' show HttpHeaders;
-import 'session_signal.dart';
-import 'token_refresher.dart';
-import 'token_storage.dart';
+import 'package:erp_mobile/core/network/auth_tokens.dart';
+import 'package:erp_mobile/core/network/dio_client.dart' show HttpHeaders;
+import 'package:erp_mobile/core/network/session_signal.dart';
+import 'package:erp_mobile/core/network/token_refresher.dart';
+import 'package:erp_mobile/core/network/token_storage.dart';
 
 /// Attaches the bearer access token to every outgoing request and silently
 /// refreshes it once on 401, retrying the original request transparently.

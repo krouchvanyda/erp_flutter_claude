@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../l10n/app_localizations.dart';
-import '../di/app_dependencies.dart';
-import '../theme/app_font_size.dart';
-import '../theme/app_label.dart';
-import 'realtime_connection_state.dart';
-import 'realtime_service.dart';
+import 'package:erp_mobile/l10n/app_localizations.dart';
+import 'package:erp_mobile/core/di/app_dependencies.dart';
+import 'package:erp_mobile/core/theme/app_font_size.dart';
+import 'package:erp_mobile/core/theme/app_label.dart';
+import 'package:erp_mobile/core/realtime/realtime_connection_state.dart';
+import 'package:erp_mobile/core/realtime/realtime_service.dart';
 
 /// AppBar-mounted dot + label that surfaces the current
 /// [RealtimeConnectionState] from [RealtimeService] (Slice 2.2.4).

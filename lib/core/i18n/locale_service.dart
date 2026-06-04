@@ -1,4 +1,4 @@
-import 'app_language.dart';
+import 'package:erp_mobile/core/i18n/app_language.dart';
 
 /// Active language surface — read by `MaterialApp.router` to drive the
 /// locale, written by Settings → "Change language".

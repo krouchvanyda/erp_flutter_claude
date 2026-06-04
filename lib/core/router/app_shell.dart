@@ -3,12 +3,12 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../l10n/app_localizations.dart';
-import '../layout/responsive_breakpoint.dart';
-import '../theme/app_font_size.dart';
-import '../theme/app_label.dart';
-import '../widgets/dynamic_status_bar.dart';
-import 'route_paths.dart';
+import 'package:erp_mobile/l10n/app_localizations.dart';
+import 'package:erp_mobile/core/layout/responsive_breakpoint.dart';
+import 'package:erp_mobile/core/theme/app_font_size.dart';
+import 'package:erp_mobile/core/theme/app_label.dart';
+import 'package:erp_mobile/core/widgets/dynamic_status_bar.dart';
+import 'package:erp_mobile/core/router/route_paths.dart';
 
 class ShellDestination {
   const ShellDestination({

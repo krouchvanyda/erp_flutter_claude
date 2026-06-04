@@ -1,4 +1,4 @@
-import 'push_message.dart';
+import 'package:erp_mobile/core/push/push_message.dart';
 
 /// Project-owned seam between push transport (FCM, APNs, custom WS)
 /// and the rest of the app (Slice 2.3.2).
