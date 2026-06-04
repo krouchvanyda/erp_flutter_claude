@@ -25,6 +25,15 @@ class StreamCallEngine {
   StreamVideo? _client;
   Call? _activeCall;
 
+  /// The call currently being set up by [join] but NOT yet promoted to
+  /// [_activeCall] (we only promote after `join()` resolves). Its
+  /// `getOrCreate(ringing: true)` already started Stream's outgoing
+  /// "Call in progress / Connecting…" foreground-service notification,
+  /// so if the callee rejects DURING this window, [leave] must leave
+  /// THIS ref too — otherwise that notification lingers forever because
+  /// `_activeCall` was still null when teardown ran.
+  Call? _inFlightCall;
+
   /// Monotonic counter incremented on every join / accept entry.
   /// Each invocation captures its value, then re-checks at every
   /// await checkpoint — if `_callSeq` has moved on since, a newer
@@ -127,6 +136,9 @@ class StreamCallEngine {
     // reading) also forces the prior in-flight join() to notice that
     // a newer one started.
     final mySeq = ++_callSeq;
+    // Drop any stale in-flight ref from a prior attempt — this attempt
+    // sets its own below once the Call is created.
+    _inFlightCall = null;
     try {
       // CRITICAL: tear down any prior Stream call before starting a
       // new one. Stream's internal state can only host one active call
@@ -160,6 +172,10 @@ class StreamCallEngine {
         callType: StreamCallType.fromString(callType),
         id: callId,
       );
+      // Track as in-flight from the moment it exists: getOrCreate below
+      // starts Stream's outgoing foreground-service notification, and a
+      // reject can land before we promote this to _activeCall.
+      _inFlightCall = call;
       // `ringing: true` tells Stream to push the VoIP notification to
       // every `memberId` — that's what lights up the full-screen
       // ringer on the callees' phones via the SDK's native
@@ -233,6 +249,7 @@ class StreamCallEngine {
       // acceptByCid / acceptPendingIncoming because on those paths a
       // remote IS already in the call (the caller).
       _activeCall = call;
+      _inFlightCall = null; // promoted — no longer "in flight"
       callNotifier.value = call;
       // Caller-side path only: watch for the first remote participant
       // to join so we can flip the chat-ceremony state to connected
@@ -853,6 +870,21 @@ class StreamCallEngine {
 
   Future<void> leave() async {
     final call = _activeCall;
+    // Capture + clear the in-flight ref up front so a call that's still
+    // mid-`join()` (callee rejected while A was "Connecting…") gets its
+    // Stream foreground-service notification stopped too — `call.leave()`
+    // is the only thing that dismisses it, and `_activeCall` is null at
+    // that point.
+    final inflight = _inFlightCall;
+    _inFlightCall = null;
+    if (inflight != null && !identical(inflight, call)) {
+      // ignore: avoid_print
+      print('[StreamCallEngine] leave() · also leaving in-flight call '
+          '${inflight.callCid.value} (connecting when teardown hit)');
+      try {
+        await inflight.leave();
+      } catch (_) {/* already gone / never fully created */}
+    }
     // Diagnostic (unconditional, release-visible) — proves whether a
     // teardown actually reached a live Call ref. If this logs
     // `activeCall=null` right after an End, the media leg we're hearing
