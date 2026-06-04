@@ -8,8 +8,6 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/chat/data/call_signaling_service.dart';
 import 'features/chat/data/repositories/conversations_repository.dart';
-import 'features/chat/presentation/pages/video_call_page.dart';
-import 'features/chat/presentation/pages/voice_call_page.dart';
 import 'features/chat/presentation/widgets/incoming_call_overlay.dart';
 import 'features/settings/data/repositories/preferences_repository.dart';
 import 'features/settings/entities/user_preferences.dart' as pref_entities;
@@ -168,17 +166,11 @@ class _ErpMobileAppState extends State<ErpMobileApp>
       await signaling.handleIncomingFromPush(payload);
 
       if (accept) {
-        // Push the call page now; IncomingCallOverlay's connected
-        // auto-push is the backstop if this races go_router's redirect.
-        final nav = AppRouter.rootNavigatorKey.currentState;
-        nav?.push(
-          MaterialPageRoute<void>(
-            builder: (_) => isVideo
-                ? VideoCallPage(conversationId: conversationId)
-                : VoiceCallPage(conversationId: conversationId),
-            fullscreenDialog: true,
-          ),
-        );
+        // Just accept — do NOT push the call page here. The mounted
+        // IncomingCallOverlay listens for the connected transition and
+        // pushes the in-call page itself (guarded by VoiceCallPage/
+        // VideoCallPage.isMounted). Pushing here too stacked the page
+        // twice.
         await signaling.acceptIncoming();
       }
     } catch (e) {

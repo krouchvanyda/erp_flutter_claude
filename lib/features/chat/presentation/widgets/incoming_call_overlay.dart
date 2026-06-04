@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../core/router/app_router.dart';
+import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';
 import '../../data/call_signaling_service.dart';
@@ -36,6 +37,26 @@ class _IncomingCallOverlayState extends State<IncomingCallOverlay> {
   /// `_handleAccept` push (it happens while go_router is still
   /// transitioning splash → dashboard, and the pushed route gets
   /// replaced when the redirect lands).
+  /// True while go_router is still resolving the cold-start splash
+  /// (`/`) — pushing the call page now would be wiped the instant the
+  /// splash→dashboard redirect lands (the "call page → dashboard flash →
+  /// call page" bug). We defer the push until the router settles on a
+  /// real destination. Returns true on any read failure (treat unknown
+  /// as not-yet-settled → keep waiting).
+  bool _onSplashOrUnknown() {
+    try {
+      final path = GetIt.I<AppRouter>()
+          .config
+          .routerDelegate
+          .currentConfiguration
+          .uri
+          .path;
+      return path.isEmpty || path == RoutePaths.splash;
+    } catch (_) {
+      return true;
+    }
+  }
+
   void _autoPushOnConnected() {
     final call = _signaling?.activeCallListenable.value;
     if (call == null) return;
@@ -75,9 +96,20 @@ class _IncomingCallOverlayState extends State<IncomingCallOverlay> {
 
     const maxTicks = 12; // 12 × 500 ms = 6 s watch window
     var tickCount = 0;
+    // Has the call page EVER mounted during this watch window? Once it
+    // has, a later not-mounted reading means go_router wiped it → re-push
+    // is correct. But BEFORE it has ever mounted, a not-mounted reading
+    // just means our (single) push is still landing on a busy cold-start
+    // engine — re-pushing there stacks a second page (the 2-page bug).
+    var everMounted = false;
+    // Have we already issued a push that's still pending its first mount?
+    var pushPending = false;
+    // Bounded poll count while the router is still on the splash, so a
+    // genuinely stuck splash can't loop forever (40 × 300 ms = 12 s).
+    var splashPolls = 0;
     void tick() {
-      tickCount++;
-      // Bail: call ended or replaced.
+      // Bail FIRST so we stop even while parked waiting for the splash
+      // redirect to settle.
       final current = _signaling?.activeCallListenable.value;
       if (current == null ||
           current.callId != call.callId ||
@@ -89,26 +121,54 @@ class _IncomingCallOverlayState extends State<IncomingCallOverlay> {
         _activeRetryLoopCallId = null;
         return;
       }
+      // Splash gate: while go_router is still resolving the cold-start
+      // splash→dashboard redirect, ANY push lands on a stack that's
+      // about to be replaced → it gets wiped and the user sees the
+      // dashboard flash before the page re-appears. Park here (polling
+      // every 300 ms) WITHOUT burning the post-splash watch budget until
+      // the router settles, then push exactly once.
+      if (_onSplashOrUnknown() && splashPolls < 40) {
+        splashPolls++;
+        // ignore: avoid_print
+        print('[IncomingCallOverlay] auto-push: router still on splash '
+            '(poll $splashPolls) — deferring push for callId=${call.callId}');
+        Future.delayed(const Duration(milliseconds: 300), tick);
+        return;
+      }
+      tickCount++;
       final isVideo = call.callType == ChatCallType.video;
       final alreadyMounted = isVideo
           ? VideoCallPage.isMounted
           : VoiceCallPage.isMounted;
-      if (!alreadyMounted) {
-        final navigator = AppRouter.rootNavigatorKey.currentState;
-        if (navigator != null) {
-          // ignore: avoid_print
-          print('[IncomingCallOverlay] auto-push tick $tickCount/$maxTicks '
-              '· pushing ${isVideo ? "VideoCallPage" : "VoiceCallPage"} '
-              'for callId=${call.callId} '
-              '(page not mounted — initial push wiped or never landed)');
-          navigator.push(
-            MaterialPageRoute<void>(
-              builder: (_) => isVideo
-                  ? VideoCallPage(conversationId: call.conversationId)
-                  : VoiceCallPage(conversationId: call.conversationId),
-              fullscreenDialog: true,
-            ),
-          );
+      if (alreadyMounted) {
+        // The page is up — our pending push (if any) landed.
+        everMounted = true;
+        pushPending = false;
+      } else {
+        // Push ONLY when this is the first attempt, or when the page had
+        // mounted and then got wiped (go_router redirect). Do NOT push
+        // again merely because a prior push hasn't mounted yet — that is
+        // what stacked the page twice on a slow cold start.
+        final shouldPush = (!pushPending && !everMounted) || everMounted;
+        if (shouldPush) {
+          final navigator = AppRouter.rootNavigatorKey.currentState;
+          if (navigator != null) {
+            // ignore: avoid_print
+            print('[IncomingCallOverlay] auto-push tick $tickCount/$maxTicks '
+                '· pushing ${isVideo ? "VideoCallPage" : "VoiceCallPage"} '
+                'for callId=${call.callId} '
+                '(${everMounted ? "page was wiped — re-pushing" : "first push"})');
+            navigator.push(
+              MaterialPageRoute<void>(
+                builder: (_) => isVideo
+                    ? VideoCallPage(conversationId: call.conversationId)
+                    : VoiceCallPage(conversationId: call.conversationId),
+                fullscreenDialog: true,
+              ),
+            );
+            pushPending = true;
+            everMounted = false; // wait for THIS push to mount
+          }
         }
       }
       // Continue watching even if mounted — a later redirect could
