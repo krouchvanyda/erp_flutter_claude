@@ -1,63 +1,47 @@
-import 'package:drift/drift.dart';
+import 'package:rxdart/rxdart.dart';
 
-import '../../../../core/database/app_database.dart';
-import 'tables/biometric_settings.dart';
-
-part 'biometric_settings_dao.g.dart';
-
-/// Drift-backed reader/writer for the per-user `biometric_on` preference.
+/// In-memory reader/writer for the per-user `biometric_on` preference.
 ///
-/// This is the **only** auth-feature surface that touches the
-/// `biometric_settings` table. The route guard (Slice 9.3.3-ish — App
-/// PIN lock / biometric re-auth on resume) and the Settings page
-/// (Module 9 Phase 9.1) both go through this DAO; nothing else needs
-/// to know.
-///
-/// **Storage rule reminder**: the bool flag lives here in drift; the
-/// crypto material stays in the OS-managed keychain via `local_auth`.
-/// We never see or store actual keys.
-@DriftAccessor(tables: [BiometricSettings])
-class BiometricSettingsDao extends DatabaseAccessor<AppDatabase>
-    with _$BiometricSettingsDaoMixin {
-  BiometricSettingsDao(super.db);
+/// **Local persistence removed** — was a drift accessor; now a
+/// process-lifetime in-memory store. The flag resets to `false` on a
+/// cold start (the OS keychain still holds the actual biometric crypto
+/// material via `local_auth`; only the opt-in bool lived here). Public
+/// API unchanged so `AuthRepository` + the Settings switch keep working.
+class BiometricSettingsDao {
+  final Map<String, bool> _enabled = <String, bool>{};
+  final Map<String, BehaviorSubject<bool>> _subjects =
+      <String, BehaviorSubject<bool>>{};
 
-  /// Returns `true` only when the user has explicitly opted in. Missing
-  /// row (never enrolled) is treated as `false`.
-  Future<bool> isEnabledFor(String userId) async {
-    final row = await (select(biometricSettings)
-          ..where((r) => r.userId.equals(userId)))
-        .getSingleOrNull();
-    return row?.enabled ?? false;
-  }
+  BehaviorSubject<bool> _subjectFor(String userId) => _subjects.putIfAbsent(
+        userId,
+        () => BehaviorSubject<bool>.seeded(_enabled[userId] ?? false),
+      );
 
-  /// Reactive variant for the Settings switch.
-  Stream<bool> watchEnabledFor(String userId) {
-    return (select(biometricSettings)
-          ..where((r) => r.userId.equals(userId)))
-        .watchSingleOrNull()
-        .map((r) => r?.enabled ?? false);
-  }
+  Future<bool> isEnabledFor(String userId) async => _enabled[userId] ?? false;
 
-  /// Toggles the preference, capturing the moment of opt-in for audit
-  /// purposes. Setting `enabled: false` clears `enrolledAt`.
+  Stream<bool> watchEnabledFor(String userId) => _subjectFor(userId).stream;
+
   Future<void> setEnabledFor(
     String userId, {
     required bool enabled,
     DateTime? enrolledAt,
   }) async {
-    await into(biometricSettings).insert(
-      BiometricSettingsCompanion.insert(
-        userId: userId,
-        enabled: Value(enabled),
-        enrolledAt: Value(enabled ? (enrolledAt ?? DateTime.now()) : null),
-      ),
-      mode: InsertMode.insertOrReplace,
-    );
+    _enabled[userId] = enabled;
+    final s = _subjects[userId];
+    if (s != null) s.add(enabled);
   }
 
-  /// Removes the preference row for [userId]. The FK CASCADE in
-  /// `cached_user` already covers full sign-out; this method exists
-  /// for explicit "forget my biometric pref" flows.
-  Future<int> deleteFor(String userId) =>
-      (delete(biometricSettings)..where((r) => r.userId.equals(userId))).go();
+  Future<int> deleteFor(String userId) async {
+    final existed = _enabled.remove(userId) != null;
+    final s = _subjects[userId];
+    if (s != null) s.add(false);
+    return existed ? 1 : 0;
+  }
+
+  Future<void> dispose() async {
+    for (final s in _subjects.values) {
+      await s.close();
+    }
+    _subjects.clear();
+  }
 }

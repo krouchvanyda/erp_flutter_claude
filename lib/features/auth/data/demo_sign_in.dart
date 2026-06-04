@@ -18,23 +18,12 @@ class DemoSignInService {
 
   final CachedUserDao _dao;
 
-  /// Permissions handed to the demo user. Includes `finance.approve`
-  /// (Slice 3.2.4) and a wildcard so future scopes don't require
-  /// touching this seed.
+  /// Permissions handed to the demo user. The finance/procurement/etc.
+  /// modules were removed; `admin` surfaces the admin-demo tile and chat
+  /// is ungated, so a single scope covers what's left. Matches the static
+  /// seed in `CachedUserDao`.
   static const Set<String> demoRoles = {
-    'finance.approve',
-    'finance.*',
-    // Module 4 — surfaces the procurement tile on the Modules grid.
-    'procurement.*',
-    // Module 5 — surfaces the inventory tile on the Modules grid
-    // (Slice 2.1.2 is permission-filtered).
-    'inventory.*',
-    // Module 6 — same for the sales tile.
-    'sales.*',
-    // Module 7 — same for the HR tile.
-    'hr.*',
-    // Module 8 — same for the Projects tile.
-    'projects.*',
+    'admin',
   };
 
   static const String demoUserId = 'user-demo';

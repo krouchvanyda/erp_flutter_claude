@@ -2,11 +2,6 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:injectable/injectable.dart';
 
-import '../database/app_database.dart';
-import '../database/app_metadata_dao.dart';
-import '../database/cache_freshness_dao.dart';
-import '../database/connection.dart';
-import '../database/sync_queue_dao.dart';
 import '../network/auth_interceptor.dart';
 import '../network/connectivity_checker.dart';
 import '../network/connectivity_plus_checker.dart';
@@ -25,11 +20,6 @@ import '../push/push_token_storage.dart';
 import '../realtime/realtime_service.dart';
 import '../realtime/web_socket_realtime_channel.dart';
 import '../router/auth_session.dart';
-import '../sync/conflict_policy.dart';
-import '../sync/conflict_policy_registry.dart';
-import '../sync/sync_bloc.dart';
-import '../sync/sync_engine.dart';
-import '../sync/sync_op_executor.dart';
 import '../analytics/analytics_service.dart';
 import '../analytics/noop_analytics_service.dart';
 import '../error/crash_reporter.dart';
@@ -95,65 +85,19 @@ abstract class AppModule {
   @lazySingleton
   LocaleService get localeService => InMemoryLocaleService();
 
-  // ── Local database ───────────────────────────────────────────
+  // ── In-memory data stores (local persistence removed) ───────
+  /// The drift `SQLite` database + offline sync engine were removed.
+  /// These DAOs are now process-lifetime in-memory stores seeded with
+  /// static data (see each class). The auth/notifications repositories
+  /// consume them through the same APIs as before.
   @lazySingleton
-  AppDatabase appDatabase() => AppDatabase(openAppDatabase());
+  CachedUserDao cachedUserDao() => CachedUserDao();
 
   @lazySingleton
-  AppMetadataDao appMetadataDao(AppDatabase db) => db.appMetadataDao;
+  BiometricSettingsDao biometricSettingsDao() => BiometricSettingsDao();
 
   @lazySingleton
-  CacheFreshnessDao cacheFreshnessDao(AppDatabase db) => db.cacheFreshnessDao;
-
-  @lazySingleton
-  SyncQueueDao syncQueueDao(AppDatabase db) => db.syncQueueDao;
-
-  @lazySingleton
-  CachedUserDao cachedUserDao(AppDatabase db) => db.cachedUserDao;
-
-  @lazySingleton
-  BiometricSettingsDao biometricSettingsDao(AppDatabase db) =>
-      db.biometricSettingsDao;
-
-  @lazySingleton
-  NotificationsDao notificationsDao(AppDatabase db) => db.notificationsDao;
-
-  // ── Sync conflict resolution ────────────────────────────────
-  /// The framework-wide default. Feature modules can swap this out by
-  /// providing a richer [ConflictPolicyRegistry] (with per-entity overrides)
-  /// once their sync flow needs more than server-wins.
-  @lazySingleton
-  ConflictPolicy get defaultConflictPolicy => const ServerWinsPolicy();
-
-  @lazySingleton
-  ConflictPolicyRegistry conflictPolicyRegistry(ConflictPolicy defaultPolicy) =>
-      ConflictPolicyRegistry(defaultPolicy: defaultPolicy);
-
-  // ── Sync engine ─────────────────────────────────────────────
-  @lazySingleton
-  SyncOpExecutor syncOpExecutor(Dio dio) => DioSyncOpExecutor(dio);
-
-  @lazySingleton
-  SyncEngine syncEngine(
-    SyncQueueDao queue,
-    SyncOpExecutor executor,
-    ConnectivityChecker connectivity,
-  ) =>
-      SyncEngine(
-        queue: queue,
-        executor: executor,
-        connectivity: connectivity,
-      );
-
-  /// UI-facing sync state holder. The bloc takes plain streams + a thunk so
-  /// it stays Flutter-free; the wiring here narrows the engine and queue
-  /// down to just the surfaces it actually uses.
-  @lazySingleton
-  SyncBloc syncBloc(SyncEngine engine, SyncQueueDao queue) => SyncBloc(
-        triggerSync: engine.triggerSync,
-        engineEvents: engine.events,
-        pendingCounts: queue.watchPendingCount(),
-      );
+  NotificationsDao notificationsDao() => NotificationsDao();
 
   // ── Connectivity ─────────────────────────────────────────────
   @lazySingleton

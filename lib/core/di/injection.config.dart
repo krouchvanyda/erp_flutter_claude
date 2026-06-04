@@ -35,10 +35,6 @@ import '../../features/notifications/domain/repositories/notifications_repositor
 import '../../features/notifications/presentation/bloc/notification_inbox_bloc.dart'
     as _i698;
 import '../analytics/analytics_service.dart' as _i726;
-import '../database/app_database.dart' as _i982;
-import '../database/app_metadata_dao.dart' as _i453;
-import '../database/cache_freshness_dao.dart' as _i298;
-import '../database/sync_queue_dao.dart' as _i733;
 import '../error/crash_reporter.dart' as _i267;
 import '../i18n/locale_service.dart' as _i705;
 import '../network/auth_interceptor.dart' as _i908;
@@ -57,11 +53,6 @@ import '../realtime/realtime_service.dart' as _i854;
 import '../router/app_router.dart' as _i81;
 import '../router/auth_session.dart' as _i778;
 import '../router/permissions_snapshot.dart' as _i407;
-import '../sync/conflict_policy.dart' as _i83;
-import '../sync/conflict_policy_registry.dart' as _i662;
-import '../sync/sync_bloc.dart' as _i454;
-import '../sync/sync_engine.dart' as _i846;
-import '../sync/sync_op_executor.dart' as _i687;
 import '../utils/logger/app_logger.dart' as _i712;
 import 'app_env.dart' as _i89;
 import 'register_module.dart' as _i291;
@@ -78,33 +69,18 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i712.AppLogger>(() => appModule.appLogger);
     gh.lazySingleton<_i726.AnalyticsService>(() => appModule.analyticsService);
     gh.lazySingleton<_i705.LocaleService>(() => appModule.localeService);
-    gh.lazySingleton<_i83.ConflictPolicy>(
-      () => appModule.defaultConflictPolicy,
-    );
     gh.lazySingleton<_i895.Connectivity>(() => appModule.connectivity);
     gh.lazySingleton<_i145.SecretStore>(() => appModule.secretStore);
     gh.lazySingleton<_i506.BiometricService>(() => appModule.biometricService);
     gh.lazySingleton<_i397.PkceGenerator>(() => appModule.pkceGenerator);
     gh.lazySingleton<_i196.OAuthFlowSession>(() => appModule.oauthFlowSession);
     gh.lazySingleton<_i1004.ErrorInterceptor>(() => appModule.errorInterceptor);
-    gh.lazySingleton<_i982.AppDatabase>(() => appModule.appDatabase());
-    gh.lazySingleton<_i453.AppMetadataDao>(
-      () => appModule.appMetadataDao(gh<_i982.AppDatabase>()),
-    );
-    gh.lazySingleton<_i298.CacheFreshnessDao>(
-      () => appModule.cacheFreshnessDao(gh<_i982.AppDatabase>()),
-    );
-    gh.lazySingleton<_i733.SyncQueueDao>(
-      () => appModule.syncQueueDao(gh<_i982.AppDatabase>()),
-    );
-    gh.lazySingleton<_i1072.CachedUserDao>(
-      () => appModule.cachedUserDao(gh<_i982.AppDatabase>()),
-    );
+    gh.lazySingleton<_i1072.CachedUserDao>(() => appModule.cachedUserDao());
     gh.lazySingleton<_i18.BiometricSettingsDao>(
-      () => appModule.biometricSettingsDao(gh<_i982.AppDatabase>()),
+      () => appModule.biometricSettingsDao(),
     );
     gh.lazySingleton<_i617.NotificationsDao>(
-      () => appModule.notificationsDao(gh<_i982.AppDatabase>()),
+      () => appModule.notificationsDao(),
     );
     gh.lazySingleton<_i778.AuthSession>(() => _i778.StubAuthSession());
     gh.lazySingleton<_i391.DemoSignInService>(
@@ -124,9 +100,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i402.ConnectivityChecker>(
       () => appModule.connectivityChecker(gh<_i895.Connectivity>()),
-    );
-    gh.lazySingleton<_i662.ConflictPolicyRegistry>(
-      () => appModule.conflictPolicyRegistry(gh<_i83.ConflictPolicy>()),
     );
     gh.lazySingleton<_i854.RealtimeService>(
       () => appModule.realtimeService(gh<_i89.AppEnv>(), gh<_i712.AppLogger>()),
@@ -192,18 +165,8 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i1004.ErrorInterceptor>(),
       ),
     );
-    gh.lazySingleton<_i687.SyncOpExecutor>(
-      () => appModule.syncOpExecutor(gh<_i361.Dio>()),
-    );
     gh.lazySingleton<_i875.DevicesRemoteDataSource>(
       () => appModule.devicesRemoteDataSource(gh<_i361.Dio>()),
-    );
-    gh.lazySingleton<_i846.SyncEngine>(
-      () => appModule.syncEngine(
-        gh<_i733.SyncQueueDao>(),
-        gh<_i687.SyncOpExecutor>(),
-        gh<_i402.ConnectivityChecker>(),
-      ),
     );
     gh.lazySingleton<_i374.DeviceRegistrar>(
       () => appModule.deviceRegistrar(
@@ -213,10 +176,6 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i1005.DeviceIdStorage>(),
         gh<_i712.AppLogger>(),
       ),
-    );
-    gh.lazySingleton<_i454.SyncBloc>(
-      () =>
-          appModule.syncBloc(gh<_i846.SyncEngine>(), gh<_i733.SyncQueueDao>()),
     );
     return this;
   }

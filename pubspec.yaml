@@ -55,8 +55,10 @@ dependencies:
   stream_video_push_notification: ^0.10.4
 
   # ── Local persistence ───────────────────────────────────────────
-  drift: ^2.21.0
-  sqlite3_flutter_libs: ^0.5.27
+  # drift + sqlite3 (the SQLite database) and the offline sync engine
+  # were removed — the app is now online-only with in-memory/static
+  # caches. path_provider/path stay (chat avatar file cache) and
+  # shared_preferences stays (theme/locale/chat identity).
   path_provider: ^2.1.5
   path: ^1.9.0
   shared_preferences: ^2.3.3
@@ -118,7 +120,6 @@ dev_dependencies:
   freezed: ^2.5.7
   json_serializable: ^6.8.0
   injectable_generator: ^2.6.2
-  drift_dev: ^2.21.0
 
   # ── Testing ─────────────────────────────────────────────────────
   bloc_test: ^9.1.7
