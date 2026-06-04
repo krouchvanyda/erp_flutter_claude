@@ -1,6 +1,4 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
-
-part 'notification.freezed.dart';
+import 'package:equatable/equatable.dart';
 
 /// One notification in the user's inbox (Slice 2.3.1).
 ///
@@ -8,44 +6,51 @@ part 'notification.freezed.dart';
 /// Flutter framework's `Notification` widget class — feature code that
 /// imports both wins.
 ///
-/// **Pure data**: no Flutter, no drift. The DAO maps `CachedNotificationRow`
-/// ↔ `AppNotification` at the boundary; the bloc + UI work with this
+/// **Pure data**: no Flutter. The DAO maps its in-memory row ↔
+/// `AppNotification` at the boundary; the bloc + UI work with this
 /// type alone.
 ///
 /// **Categories** are free-form strings — the server can introduce new
 /// ones without a client schema bump. The UI maps unknown categories
 /// to a generic icon.
-@freezed
-class AppNotification with _$AppNotification {
-  const factory AppNotification({
-    required String id,
-    required String title,
-    required String body,
+class AppNotification extends Equatable {
+  const AppNotification({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.category,
+    this.routeName,
+    this.pathParameters = const <String, String>{},
+    required this.receivedAt,
+    this.readAt,
+    this.dismissed = false,
+  });
 
-    /// Discriminator like `'invoice'`, `'leave-request'`, `'system'` —
-    /// drives icon / colour selection in the inbox UI.
-    required String category,
+  final String id;
+  final String title;
+  final String body;
 
-    /// Optional `go_router` named route for the deep-link target.
-    /// `null` means the notification is informational only.
-    String? routeName,
+  /// Discriminator like `'invoice'`, `'leave-request'`, `'system'` —
+  /// drives icon / colour selection in the inbox UI.
+  final String category;
 
-    /// Path parameters for the deep-link target. Empty when the route
-    /// has no params (or [routeName] is null).
-    @Default(<String, String>{}) Map<String, String> pathParameters,
+  /// Optional `go_router` named route for the deep-link target.
+  /// `null` means the notification is informational only.
+  final String? routeName;
 
-    /// When the notification was first emitted (server / push timestamp).
-    required DateTime receivedAt,
+  /// Path parameters for the deep-link target. Empty when the route
+  /// has no params (or [routeName] is null).
+  final Map<String, String> pathParameters;
 
-    /// `null` when unread. Set the first time the user opens the row.
-    DateTime? readAt,
+  /// When the notification was first emitted (server / push timestamp).
+  final DateTime receivedAt;
 
-    /// Tombstone — true when the user swiped to dismiss. Kept (not
-    /// deleted) so a future "show dismissed" toggle can restore.
-    @Default(false) bool dismissed,
-  }) = _AppNotification;
+  /// `null` when unread. Set the first time the user opens the row.
+  final DateTime? readAt;
 
-  const AppNotification._();
+  /// Tombstone — true when the user swiped to dismiss. Kept (not
+  /// deleted) so a future "show dismissed" toggle can restore.
+  final bool dismissed;
 
   /// Convenience predicate — `true` iff the user hasn't opened it yet.
   /// Dismissal is independent: a dismissed row can still be unread.
@@ -53,4 +58,45 @@ class AppNotification with _$AppNotification {
 
   /// `true` iff a tap on this notification should trigger navigation.
   bool get hasDeepLink => routeName != null;
+
+  static const Object _undefined = Object();
+
+  AppNotification copyWith({
+    String? id,
+    String? title,
+    String? body,
+    String? category,
+    Object? routeName = _undefined,
+    Map<String, String>? pathParameters,
+    DateTime? receivedAt,
+    Object? readAt = _undefined,
+    bool? dismissed,
+  }) {
+    return AppNotification(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      body: body ?? this.body,
+      category: category ?? this.category,
+      routeName: identical(routeName, _undefined)
+          ? this.routeName
+          : routeName as String?,
+      pathParameters: pathParameters ?? this.pathParameters,
+      receivedAt: receivedAt ?? this.receivedAt,
+      readAt: identical(readAt, _undefined) ? this.readAt : readAt as DateTime?,
+      dismissed: dismissed ?? this.dismissed,
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+        id,
+        title,
+        body,
+        category,
+        routeName,
+        pathParameters,
+        receivedAt,
+        readAt,
+        dismissed,
+      ];
 }

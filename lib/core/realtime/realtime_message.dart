@@ -1,24 +1,21 @@
 import 'dart:convert';
 
-import 'package:freezed_annotation/freezed_annotation.dart';
-
-part 'realtime_message.freezed.dart';
-part 'realtime_message.g.dart';
+import 'package:equatable/equatable.dart';
 
 /// Server-pushed message envelope for the dashboard real-time stream
 /// (Slice 2.2.4).
 ///
-/// Sealed union — adding a new push kind is a one-line freezed factory
-/// + a matching JSON discriminator. Intentionally NOT json_serializable:
-/// the discriminator-keyed `fromJson` is hand-rolled because freezed's
-/// auto-generated union deserialiser doesn't fit our wire format
-/// (`{"kind": "kpi.update", "id": ..., ...}`) without ceremony.
+/// Sealed union — adding a new push kind is a new subclass + a matching
+/// JSON discriminator in [fromWire]. The discriminator-keyed `fromWire`
+/// is hand-rolled because our wire format (`{"kind": "kpi.update", ...}`)
+/// doesn't fit an auto-generated union deserialiser without ceremony.
 ///
 /// **Pure data**: no Flutter, no dio, no fl_chart. Feature blocs fan
 /// out incoming messages into their own state without depending on the
 /// realtime infrastructure.
-@freezed
-sealed class RealtimeMessage with _$RealtimeMessage {
+sealed class RealtimeMessage extends Equatable {
+  const RealtimeMessage();
+
   /// Updated KPI tile values. The widget layer maps `(id, value, ...)`
   /// onto the dashboard layout via the slot's `id`.
   const factory RealtimeMessage.kpiUpdate({
@@ -95,19 +92,96 @@ sealed class RealtimeMessage with _$RealtimeMessage {
   }
 }
 
+/// Updated KPI tile values.
+class RealtimeKpiUpdate extends RealtimeMessage {
+  const RealtimeKpiUpdate({
+    required this.id,
+    required this.value,
+    required this.trend,
+    this.trendDelta,
+  });
+
+  final String id;
+  final String value;
+  final String trend;
+  final String? trendDelta;
+
+  @override
+  List<Object?> get props => [id, value, trend, trendDelta];
+}
+
+/// Replacement series payload for a chart slot.
+class RealtimeChartUpdate extends RealtimeMessage {
+  const RealtimeChartUpdate({
+    required this.id,
+    required this.series,
+  });
+
+  final String id;
+  final List<RealtimeChartSeriesPayload> series;
+
+  @override
+  List<Object?> get props => [id, series];
+}
+
+/// Heartbeat ack.
+class RealtimePong extends RealtimeMessage {
+  const RealtimePong();
+
+  @override
+  List<Object?> get props => const [];
+}
+
+/// Undecodable frame, surfaced for logging.
+class RealtimeUnknown extends RealtimeMessage {
+  const RealtimeUnknown({
+    required this.raw,
+    this.reason,
+  });
+
+  final String raw;
+  final String? reason;
+
+  @override
+  List<Object?> get props => [raw, reason];
+}
+
 /// One series in a [RealtimeChartUpdate] payload — kept structural
 /// (parallel arrays for x / y) so 100-point updates stay compact on
-/// the wire. JSON (de)serialization is delegated to json_serializable
-/// via the standard freezed convention.
-@freezed
-class RealtimeChartSeriesPayload with _$RealtimeChartSeriesPayload {
-  const factory RealtimeChartSeriesPayload({
-    required String id,
-    required String label,
-    required List<double> x,
-    required List<double> y,
-  }) = _RealtimeChartSeriesPayload;
+/// the wire.
+class RealtimeChartSeriesPayload extends Equatable {
+  const RealtimeChartSeriesPayload({
+    required this.id,
+    required this.label,
+    required this.x,
+    required this.y,
+  });
 
-  factory RealtimeChartSeriesPayload.fromJson(Map<String, dynamic> json) =>
-      _$RealtimeChartSeriesPayloadFromJson(json);
+  factory RealtimeChartSeriesPayload.fromJson(Map<String, dynamic> json) {
+    return RealtimeChartSeriesPayload(
+      id: json['id'] as String,
+      label: json['label'] as String,
+      x: (json['x'] as List<dynamic>)
+          .map((e) => (e as num).toDouble())
+          .toList(),
+      y: (json['y'] as List<dynamic>)
+          .map((e) => (e as num).toDouble())
+          .toList(),
+    );
+  }
+
+  final String id;
+  final String label;
+  final List<double> x;
+  final List<double> y;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'id': id,
+        'label': label,
+        'x': x,
+        'y': y,
+      };
+
+  @override
+  List<Object?> get props => [id, label, x, y];
 }

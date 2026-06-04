@@ -1,17 +1,16 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:equatable/equatable.dart';
 
 import '../../domain/entities/notification.dart';
 
-part 'notification_inbox_event.freezed.dart';
-
 /// Inputs to [NotificationInboxBloc] (Slice 2.3.1).
 ///
-/// Sealed union — adding a new event is one freezed factory + one
-/// `on<...>` handler. Internal `_InboxUpdated` is fired by the bloc's
-/// own subscription to the repository's watch stream (private so the
-/// UI can't dispatch it directly — that's the bloc's concern alone).
-@freezed
-sealed class NotificationInboxEvent with _$NotificationInboxEvent {
+/// Sealed union — adding a new event is one subclass + one `on<...>`
+/// handler. `NotificationInboxUpdated` / `NotificationInboxFailed` are
+/// fired by the bloc's own subscription to the repository's watch stream
+/// (the UI doesn't dispatch them directly — that's the bloc's concern).
+sealed class NotificationInboxEvent extends Equatable {
+  const NotificationInboxEvent();
+
   /// Subscribe to the repo's watch stream. Idempotent — calling twice
   /// is a no-op (the bloc tracks its own subscription).
   const factory NotificationInboxEvent.started() = NotificationInboxStarted;
@@ -35,9 +34,48 @@ sealed class NotificationInboxEvent with _$NotificationInboxEvent {
     List<AppNotification> notifications,
   ) = NotificationInboxUpdated;
 
-  /// Internal: the watch stream errored — rare (drift errors are
-  /// usually fatal) but surfaced as a `Failure` state instead of an
-  /// uncaught exception.
+  /// Internal: the watch stream errored — surfaced as a `Failure` state
+  /// instead of an uncaught exception.
   const factory NotificationInboxEvent.inboxFailed(String message) =
       NotificationInboxFailed;
+}
+
+class NotificationInboxStarted extends NotificationInboxEvent {
+  const NotificationInboxStarted();
+  @override
+  List<Object?> get props => const [];
+}
+
+class NotificationInboxMarkedRead extends NotificationInboxEvent {
+  const NotificationInboxMarkedRead(this.id);
+  final String id;
+  @override
+  List<Object?> get props => [id];
+}
+
+class NotificationInboxMarkedAllRead extends NotificationInboxEvent {
+  const NotificationInboxMarkedAllRead();
+  @override
+  List<Object?> get props => const [];
+}
+
+class NotificationInboxDismissed extends NotificationInboxEvent {
+  const NotificationInboxDismissed(this.id);
+  final String id;
+  @override
+  List<Object?> get props => [id];
+}
+
+class NotificationInboxUpdated extends NotificationInboxEvent {
+  const NotificationInboxUpdated(this.notifications);
+  final List<AppNotification> notifications;
+  @override
+  List<Object?> get props => [notifications];
+}
+
+class NotificationInboxFailed extends NotificationInboxEvent {
+  const NotificationInboxFailed(this.message);
+  final String message;
+  @override
+  List<Object?> get props => [message];
 }

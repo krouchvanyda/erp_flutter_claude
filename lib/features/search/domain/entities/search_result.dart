@@ -1,6 +1,4 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
-
-part 'search_result.freezed.dart';
+import 'package:equatable/equatable.dart';
 
 /// One row returned by a [SearchProvider]'s response (Slice 2.1.3).
 ///
@@ -12,34 +10,73 @@ part 'search_result.freezed.dart';
 /// dispatch on `(providerId, id)`: for `providerId == 'modules'`, the
 /// UI looks up the matching [ModuleShortcut] in [ModuleShortcutCatalog]
 /// by `id` and calls its `builder()` via `ConfigRouter`.
-@freezed
-class SearchResult with _$SearchResult {
-  const factory SearchResult({
-    /// Stable identity within [providerId] — used for keying widgets,
-    /// deduping within a provider's own response, AND for the consumer
-    /// to look up the destination page (e.g. by matching against
-    /// [ModuleShortcutCatalog]).
-    required String id,
+class SearchResult extends Equatable {
+  const SearchResult({
+    required this.id,
+    required this.title,
+    this.subtitle,
+    required this.providerId,
+  });
 
-    /// Primary line shown in the result tile.
-    required String title,
+  /// Stable identity within [providerId] — used for keying widgets,
+  /// deduping within a provider's own response, AND for the consumer
+  /// to look up the destination page (e.g. by matching against
+  /// [ModuleShortcutCatalog]).
+  final String id;
 
-    /// Optional secondary line (record code, customer name, etc.).
-    String? subtitle,
+  /// Primary line shown in the result tile.
+  final String title;
 
-    /// Which provider produced this row — drives grouping in the UI
-    /// AND the navigation dispatch.
-    required String providerId,
-  }) = _SearchResult;
+  /// Optional secondary line (record code, customer name, etc.).
+  final String? subtitle;
+
+  /// Which provider produced this row — drives grouping in the UI
+  /// AND the navigation dispatch.
+  final String providerId;
+
+  static const Object _undefined = Object();
+
+  SearchResult copyWith({
+    String? id,
+    String? title,
+    Object? subtitle = _undefined,
+    String? providerId,
+  }) {
+    return SearchResult(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      subtitle:
+          identical(subtitle, _undefined) ? this.subtitle : subtitle as String?,
+      providerId: providerId ?? this.providerId,
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, title, subtitle, providerId];
 }
 
 /// Aggregated response from one provider: the provider id + its rows.
 /// `FederatedSearchUseCase` returns a list of these so the UI can
 /// render section headers per module.
-@freezed
-class SearchResultGroup with _$SearchResultGroup {
-  const factory SearchResultGroup({
-    required String providerId,
-    required List<SearchResult> results,
-  }) = _SearchResultGroup;
+class SearchResultGroup extends Equatable {
+  const SearchResultGroup({
+    required this.providerId,
+    required this.results,
+  });
+
+  final String providerId;
+  final List<SearchResult> results;
+
+  SearchResultGroup copyWith({
+    String? providerId,
+    List<SearchResult>? results,
+  }) {
+    return SearchResultGroup(
+      providerId: providerId ?? this.providerId,
+      results: results ?? this.results,
+    );
+  }
+
+  @override
+  List<Object?> get props => [providerId, results];
 }

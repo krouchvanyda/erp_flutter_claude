@@ -1,6 +1,4 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
-
-part 'push_message.freezed.dart';
+import 'package:equatable/equatable.dart';
 
 /// Server-pushed notification payload (Slice 2.3.2).
 ///
@@ -18,31 +16,57 @@ part 'push_message.freezed.dart';
 /// for display + a `data` map for routing — so the firebase adapter
 /// (when we ship it) is a one-method `RemoteMessage → PushMessage`
 /// translator.
-@freezed
-class PushMessage with _$PushMessage {
-  const factory PushMessage({
-    /// Server-assigned message id. Used for dedupe — the same payload
-    /// arriving via foreground + background isolate must collapse to
-    /// one inbox row. Null when the source didn't supply one (the
-    /// router falls back to a generated id).
-    String? id,
+class PushMessage extends Equatable {
+  const PushMessage({
+    this.id,
+    required this.title,
+    required this.body,
+    this.data = const <String, String>{},
+    this.sentAt,
+  });
 
-    /// Display title — comes from FCM's `notification.title`.
-    required String title,
+  /// Server-assigned message id. Used for dedupe — the same payload
+  /// arriving via foreground + background isolate must collapse to
+  /// one inbox row. Null when the source didn't supply one (the
+  /// router falls back to a generated id).
+  final String? id;
 
-    /// Display body — FCM's `notification.body`.
-    required String body,
+  /// Display title — comes from FCM's `notification.title`.
+  final String title;
 
-    /// App-specific routing data — FCM's `data` map. Convention:
-    /// - `'category'` discriminates icon / colour in the inbox UI
-    ///   (defaults to `'system'` when absent).
-    /// - `'route'` is a `go_router` named route for the deep link.
-    /// - `'route.<key>'` entries become `go_router` path parameters.
-    @Default(<String, String>{}) Map<String, String> data,
+  /// Display body — FCM's `notification.body`.
+  final String body;
 
-    /// When the server / push transport says the message was emitted.
-    /// `null` falls back to "now" at the router boundary so inbox
-    /// ordering still works.
-    DateTime? sentAt,
-  }) = _PushMessage;
+  /// App-specific routing data — FCM's `data` map. Convention:
+  /// - `'category'` discriminates icon / colour in the inbox UI
+  ///   (defaults to `'system'` when absent).
+  /// - `'route'` is a `go_router` named route for the deep link.
+  /// - `'route.<key>'` entries become `go_router` path parameters.
+  final Map<String, String> data;
+
+  /// When the server / push transport says the message was emitted.
+  /// `null` falls back to "now" at the router boundary so inbox
+  /// ordering still works.
+  final DateTime? sentAt;
+
+  static const Object _undefined = Object();
+
+  PushMessage copyWith({
+    Object? id = _undefined,
+    String? title,
+    String? body,
+    Map<String, String>? data,
+    Object? sentAt = _undefined,
+  }) {
+    return PushMessage(
+      id: identical(id, _undefined) ? this.id : id as String?,
+      title: title ?? this.title,
+      body: body ?? this.body,
+      data: data ?? this.data,
+      sentAt: identical(sentAt, _undefined) ? this.sentAt : sentAt as DateTime?,
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, title, body, data, sentAt];
 }

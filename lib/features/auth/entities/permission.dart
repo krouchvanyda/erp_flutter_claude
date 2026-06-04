@@ -1,6 +1,4 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
-
-part 'permission.freezed.dart';
+import 'package:equatable/equatable.dart';
 
 /// Typed wrapper for a single permission token — e.g.
 /// `'finance.invoice.create'`, `'inventory.stock.adjust'`, `'admin'`.
@@ -10,18 +8,17 @@ part 'permission.freezed.dart';
 /// on top so the rest of the codebase stops scattering ad-hoc string
 /// splits.
 ///
-/// **Storage**: tokens round-trip as plain `String` through
-/// `user_permissions` (drift). The `Permission` wrapper is constructed
-/// at the data-layer boundary — see `PermissionsRepositoryImpl`.
-@freezed
-class Permission with _$Permission {
-  const factory Permission({required String token}) = _Permission;
-
-  const Permission._();
+/// **Storage**: tokens round-trip as plain `String`. The `Permission`
+/// wrapper is constructed at the data-layer boundary — see
+/// `PermissionsRepository`.
+class Permission extends Equatable {
+  const Permission({required this.token});
 
   /// Trims surrounding whitespace; otherwise no validation. Tokens are
   /// opaque to the client — the server is the canonical source.
   factory Permission.parse(String raw) => Permission(token: raw.trim());
+
+  final String token;
 
   List<String> get _segments => token.split('.');
 
@@ -52,13 +49,18 @@ class Permission with _$Permission {
     if (!hasWildcard) return token == required.token;
     return _wildcardPattern(token).hasMatch(required.token);
   }
+
+  Permission copyWith({String? token}) =>
+      Permission(token: token ?? this.token);
+
+  @override
+  List<Object?> get props => [token];
 }
 
 /// Read-side helper: does *any* permission in this iterable satisfy
 /// [required]?
 extension PermissionSetMatching on Iterable<Permission> {
-  bool grant(Permission required) =>
-      any((held) => held.grants(required));
+  bool grant(Permission required) => any((held) => held.grants(required));
 }
 
 /// Compiles a held-permission pattern into a regex once, anchored.

@@ -1,6 +1,4 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
-
-part 'otp_verification_result.freezed.dart';
+import 'package:equatable/equatable.dart';
 
 /// Why the server / verifier turned a code down. Enum (not free-form
 /// string) so the presentation layer can pick a localised message per
@@ -25,10 +23,24 @@ enum OtpRejectionReason {
 /// without falling into a default branch. `accepted` carries no payload
 /// for this slice — the real verifier in a future slice will extend the
 /// `accepted` variant with the next-step session token / claims.
-@freezed
-sealed class OtpVerificationResult with _$OtpVerificationResult {
+sealed class OtpVerificationResult extends Equatable {
+  const OtpVerificationResult();
+
   const factory OtpVerificationResult.accepted() = OtpAccepted;
   const factory OtpVerificationResult.rejected({
     required OtpRejectionReason reason,
   }) = OtpRejected;
+}
+
+class OtpAccepted extends OtpVerificationResult {
+  const OtpAccepted();
+  @override
+  List<Object?> get props => const [];
+}
+
+class OtpRejected extends OtpVerificationResult {
+  const OtpRejected({required this.reason});
+  final OtpRejectionReason reason;
+  @override
+  List<Object?> get props => [reason];
 }

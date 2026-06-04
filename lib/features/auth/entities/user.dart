@@ -1,6 +1,4 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
-
-part 'user.freezed.dart';
+import 'package:equatable/equatable.dart';
 
 /// Authenticated user — the domain-layer view of "who is signed in".
 ///
@@ -11,19 +9,38 @@ part 'user.freezed.dart';
 /// Roles are an unordered set of opaque permission tokens (e.g.
 /// `'finance.invoice.create'`, `'admin'`). Higher-level RBAC checks
 /// belong in domain use cases, not here.
-@freezed
-class User with _$User {
-  const factory User({
-    required String id,
-    required String email,
-    required String displayName,
-    @Default(<String>{}) Set<String> roles,
-  }) = _User;
+class User extends Equatable {
+  const User({
+    required this.id,
+    required this.email,
+    required this.displayName,
+    this.roles = const <String>{},
+  });
 
-  const User._();
+  final String id;
+  final String email;
+  final String displayName;
+  final Set<String> roles;
 
   bool hasRole(String role) => roles.contains(role);
   bool hasAnyRole(Iterable<String> wanted) => wanted.any(roles.contains);
   bool hasAllRoles(Iterable<String> required) =>
       required.every(roles.contains);
+
+  User copyWith({
+    String? id,
+    String? email,
+    String? displayName,
+    Set<String>? roles,
+  }) {
+    return User(
+      id: id ?? this.id,
+      email: email ?? this.email,
+      displayName: displayName ?? this.displayName,
+      roles: roles ?? this.roles,
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, email, displayName, roles];
 }

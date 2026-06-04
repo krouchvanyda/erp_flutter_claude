@@ -1,6 +1,4 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
-
-part 'kpi_data.freezed.dart';
+import 'package:equatable/equatable.dart';
 
 /// Direction of change for a KPI relative to the prior period.
 ///
@@ -40,25 +38,53 @@ enum KpiTrend {
 /// colour (an enum is the cleanest input to a `switch`), while
 /// `trendDelta` is the human-readable label sat beside it. Splitting
 /// them keeps the widget free of formatting code.
-@freezed
-class KpiData with _$KpiData {
-  const factory KpiData({
-    /// Short label (e.g. "Revenue", "AR aging > 30d").
-    required String label,
+class KpiData extends Equatable {
+  const KpiData({
+    required this.label,
+    required this.value,
+    required this.trend,
+    this.trendDelta,
+    this.sparkline = const <double>[],
+  });
 
-    /// Pre-formatted primary value (e.g. "$12,400", "82 %").
-    required String value,
+  /// Short label (e.g. "Revenue", "AR aging > 30d").
+  final String label;
 
-    /// Direction marker — drives icon + colour. Use [KpiTrend.fromDelta]
-    /// at the data source if you only have a numeric change.
-    required KpiTrend trend,
+  /// Pre-formatted primary value (e.g. "$12,400", "82 %").
+  final String value;
 
-    /// Pre-formatted change label (e.g. "+12.4 %", "-3 d"). `null`
-    /// suppresses the chip; use this for KPIs without comparison data.
-    String? trendDelta,
+  /// Direction marker — drives icon + colour. Use [KpiTrend.fromDelta]
+  /// at the data source if you only have a numeric change.
+  final KpiTrend trend;
 
-    /// Newest-last numeric series for the sparkline. Empty list = no
-    /// sparkline drawn. Single point is allowed and rendered as a dot.
-    @Default(<double>[]) List<double> sparkline,
-  }) = _KpiData;
+  /// Pre-formatted change label (e.g. "+12.4 %", "-3 d"). `null`
+  /// suppresses the chip; use this for KPIs without comparison data.
+  final String? trendDelta;
+
+  /// Newest-last numeric series for the sparkline. Empty list = no
+  /// sparkline drawn. Single point is allowed and rendered as a dot.
+  final List<double> sparkline;
+
+  static const Object _undefined = Object();
+
+  KpiData copyWith({
+    String? label,
+    String? value,
+    KpiTrend? trend,
+    Object? trendDelta = _undefined,
+    List<double>? sparkline,
+  }) {
+    return KpiData(
+      label: label ?? this.label,
+      value: value ?? this.value,
+      trend: trend ?? this.trend,
+      trendDelta: identical(trendDelta, _undefined)
+          ? this.trendDelta
+          : trendDelta as String?,
+      sparkline: sparkline ?? this.sparkline,
+    );
+  }
+
+  @override
+  List<Object?> get props => [label, value, trend, trendDelta, sparkline];
 }

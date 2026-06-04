@@ -1,6 +1,4 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
-
-part 'auth_tokens.freezed.dart';
+import 'package:equatable/equatable.dart';
 
 /// Pair of OAuth-style access + refresh tokens persisted by [TokenStorage]
 /// and rotated by [TokenRefresher].
@@ -8,11 +6,33 @@ part 'auth_tokens.freezed.dart';
 /// `accessExpiresAt` is optional — populated when the auth server returns an
 /// `expires_in`, so future slices can do *proactive* refresh ahead of the
 /// 401-driven *reactive* refresh wired in this slice.
-@freezed
-class AuthTokens with _$AuthTokens {
-  const factory AuthTokens({
-    required String accessToken,
-    required String refreshToken,
-    DateTime? accessExpiresAt,
-  }) = _AuthTokens;
+class AuthTokens extends Equatable {
+  const AuthTokens({
+    required this.accessToken,
+    required this.refreshToken,
+    this.accessExpiresAt,
+  });
+
+  final String accessToken;
+  final String refreshToken;
+  final DateTime? accessExpiresAt;
+
+  static const Object _undefined = Object();
+
+  AuthTokens copyWith({
+    String? accessToken,
+    String? refreshToken,
+    Object? accessExpiresAt = _undefined,
+  }) {
+    return AuthTokens(
+      accessToken: accessToken ?? this.accessToken,
+      refreshToken: refreshToken ?? this.refreshToken,
+      accessExpiresAt: identical(accessExpiresAt, _undefined)
+          ? this.accessExpiresAt
+          : accessExpiresAt as DateTime?,
+    );
+  }
+
+  @override
+  List<Object?> get props => [accessToken, refreshToken, accessExpiresAt];
 }

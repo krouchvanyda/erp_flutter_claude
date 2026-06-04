@@ -1,10 +1,8 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
-
-part 'failure.freezed.dart';
+import 'package:equatable/equatable.dart';
 
 /// Cross-cutting failure type returned by every repository.
 ///
-/// Sealed via `freezed` so callers can pattern-match exhaustively:
+/// Sealed so callers can pattern-match exhaustively:
 ///
 /// ```dart
 /// switch (failure) {
@@ -24,8 +22,9 @@ part 'failure.freezed.dart';
 ///   case UnknownFailure():       'unexpected';
 /// }
 /// ```
-@freezed
-sealed class Failure with _$Failure {
+sealed class Failure extends Equatable {
+  const Failure();
+
   /// No connectivity / DNS / TLS handshake failure.
   const factory Failure.network({String? message}) = NetworkFailure;
 
@@ -51,7 +50,7 @@ sealed class Failure with _$Failure {
   /// 400 / 422 — request shape was rejected. `fieldErrors` lists the
   /// per-field messages so forms can highlight inputs.
   const factory Failure.validation({
-    @Default(<String, List<String>>{}) Map<String, List<String>> fieldErrors,
+    Map<String, List<String>> fieldErrors,
     String? message,
   }) = ValidationFailure;
 
@@ -70,4 +69,86 @@ sealed class Failure with _$Failure {
 
   /// Catch-all. Always carries a message so logs aren't blind.
   const factory Failure.unknown({String? message}) = UnknownFailure;
+}
+
+class NetworkFailure extends Failure {
+  const NetworkFailure({this.message});
+  final String? message;
+  @override
+  List<Object?> get props => [message];
+}
+
+class TimeoutFailure extends Failure {
+  const TimeoutFailure({this.message});
+  final String? message;
+  @override
+  List<Object?> get props => [message];
+}
+
+class ServerFailure extends Failure {
+  const ServerFailure({this.statusCode, this.message});
+  final int? statusCode;
+  final String? message;
+  @override
+  List<Object?> get props => [statusCode, message];
+}
+
+class UnauthorizedFailure extends Failure {
+  const UnauthorizedFailure({this.message});
+  final String? message;
+  @override
+  List<Object?> get props => [message];
+}
+
+class ForbiddenFailure extends Failure {
+  const ForbiddenFailure({this.message});
+  final String? message;
+  @override
+  List<Object?> get props => [message];
+}
+
+class NotFoundFailure extends Failure {
+  const NotFoundFailure({this.message});
+  final String? message;
+  @override
+  List<Object?> get props => [message];
+}
+
+class ValidationFailure extends Failure {
+  const ValidationFailure({
+    this.fieldErrors = const <String, List<String>>{},
+    this.message,
+  });
+  final Map<String, List<String>> fieldErrors;
+  final String? message;
+  @override
+  List<Object?> get props => [fieldErrors, message];
+}
+
+class ConflictFailure extends Failure {
+  const ConflictFailure({this.message});
+  final String? message;
+  @override
+  List<Object?> get props => [message];
+}
+
+class RateLimitFailure extends Failure {
+  const RateLimitFailure({this.retryAfter, this.message});
+  final Duration? retryAfter;
+  final String? message;
+  @override
+  List<Object?> get props => [retryAfter, message];
+}
+
+class CancelledFailure extends Failure {
+  const CancelledFailure();
+  @override
+  List<Object?> get props => const [];
+}
+
+class UnknownFailure extends Failure {
+  const UnknownFailure({this.message});
+  final String? message;
+  @override
+  List<Object?> get props => [message];
 }

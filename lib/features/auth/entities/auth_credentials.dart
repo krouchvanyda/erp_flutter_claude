@@ -1,6 +1,4 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
-
-part 'auth_credentials.freezed.dart';
+import 'package:equatable/equatable.dart';
 
 /// Email + password pair submitted to the sign-in use case.
 ///
@@ -8,18 +6,18 @@ part 'auth_credentials.freezed.dart';
 /// errors so the use case can fail fast on `AuthCredentials.empty()`
 /// inputs without bouncing through the network. Form-level field-by-field
 /// error messages still belong in the presentation layer's validators.
-@freezed
-class AuthCredentials with _$AuthCredentials {
-  const factory AuthCredentials({
-    required String email,
-    required String password,
-  }) = _AuthCredentials;
-
-  const AuthCredentials._();
+class AuthCredentials extends Equatable {
+  const AuthCredentials({
+    required this.email,
+    required this.password,
+  });
 
   /// Empty pair — useful as the initial state in form holders.
   factory AuthCredentials.empty() =>
       const AuthCredentials(email: '', password: '');
+
+  final String email;
+  final String password;
 
   /// Coarse-grained "could plausibly be a credential pair" check. Keeps
   /// the regex permissive on purpose: real validation lives server-side.
@@ -38,6 +36,19 @@ class AuthCredentials with _$AuthCredentials {
     }
     return null;
   }
+
+  AuthCredentials copyWith({
+    String? email,
+    String? password,
+  }) {
+    return AuthCredentials(
+      email: email ?? this.email,
+      password: password ?? this.password,
+    );
+  }
+
+  @override
+  List<Object?> get props => [email, password];
 }
 
 /// Reason a [AuthCredentials.validate] check failed.
