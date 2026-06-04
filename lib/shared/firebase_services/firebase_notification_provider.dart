@@ -2,12 +2,14 @@ import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
 
+import 'package:erp_callkit/erp_callkit.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_callkit_incoming/entities/entities.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../core/config/environments.dart';
 import 'local_notification_provider.dart';
 
 /// Top-level background message handler. **Must be a top-level (or
@@ -71,12 +73,45 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // (which shows the "Missed call from …" tray entry).
   if (message.data['sender'] == 'stream.video' &&
       message.data['type'] == 'call.ring') {
-    if (kDebugMode) {
-      log('📞 [stream.call.ring] BG/KILLED — handoff to CallKit · '
-          'cid=${message.data['call_cid']} · '
-          'caller=${message.data['created_by_display_name']}');
+    // iOS keeps the CallKit/PushKit ringer (killed-app reject is an
+    // Android-specific problem; iOS handles decline natively via CallKit).
+    if (Platform.isIOS) {
+      if (kDebugMode) {
+        log('📞 [stream.call.ring] iOS — handoff to CallKit · '
+            'cid=${message.data['call_cid']}');
+      }
+      await _showStreamCallkitRinger(message);
+      return;
     }
-    await _showStreamCallkitRinger(message);
+    final data = message.data;
+    final callCid = data['call_cid']?.toString() ?? '';
+    final callId = _parseBackendCallId(callCid);
+    final callerName = data['created_by_display_name']?.toString() ??
+        data['call_display_name']?.toString() ??
+        'Unknown caller';
+    final callerId = data['created_by_id']?.toString() ?? '';
+    final isVideo = (data['call_type']?.toString() == 'video') ||
+        (data['video']?.toString() == 'true');
+    // call_display_name is usually the conversation/group name; treat a
+    // non-empty value that differs from the caller as a group title.
+    final convName = data['call_display_name']?.toString() ?? '';
+    final isGroup = convName.isNotEmpty && convName != callerName;
+    if (kDebugMode) {
+      log('📞 [stream.call.ring] BG/KILLED → native call notif · '
+          'cid=$callCid · callId=$callId · caller=$callerName');
+    }
+    debugPrint('[FCM-BG] call.ring → ErpCallKit.showIncomingCall '
+        'callId=$callId callCid=$callCid caller=$callerName');
+    await ErpCallKit.showIncomingCall(
+      callId: callId,
+      callCid: callCid,
+      callerId: callerId,
+      callerName: callerName,
+      isVideo: isVideo,
+      baseUrl: _callRejectBaseUrl,
+      conversationName: isGroup ? convName : '',
+      isGroup: isGroup,
+    );
     return;
   }
 
@@ -100,6 +135,16 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     // `messageId` on both invite and cancel to the SAME value (e.g.
     // "call-{callId}") for this dedupe to work — see plan §3.
     await local.cancelNotification(_stableId(message));
+    // Also dismiss the native incoming-call notification (keyed on the
+    // backend callId) so a caller hang-up before answer clears the ring.
+    final cancelCallId = message.data['callId']?.toString() ??
+        _parseBackendCallId(message.data['streamCallCid']?.toString() ??
+            message.data['call_cid']?.toString() ??
+            '');
+    if (cancelCallId.isNotEmpty) {
+      debugPrint('[FCM-BG] call.cancel → ErpCallKit.dismiss callId=$cancelCallId');
+      await ErpCallKit.dismiss(cancelCallId);
+    }
     return;
   }
 
@@ -118,13 +163,34 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
           'streamCallCid=${message.data['streamCallCid']} · '
           'startedAt=${message.data['startedAt']}');
     }
-    final callerName = message.data['callerName']?.toString() ?? 'Unknown';
-    final isVideo = message.data['callType']?.toString() == 'video';
-    await local.sendCallInvite(
-      title: 'Incoming ${isVideo ? 'video' : 'voice'} call',
-      body: callerName,
-      id: _stableId(message),
-      data: Map<String, dynamic>.from(message.data),
+    final data = message.data;
+    final callerName = data['callerName']?.toString() ?? 'Unknown';
+    final isVideo = data['callType']?.toString() == 'video';
+    // iOS keeps the existing heads-up; only Android gets the native
+    // own-notification path (the one with the killed-app Reject hook).
+    if (Platform.isIOS) {
+      await local.sendCallInvite(
+        title: 'Incoming ${isVideo ? 'video' : 'voice'} call',
+        body: callerName,
+        id: _stableId(message),
+        data: Map<String, dynamic>.from(data),
+      );
+      return;
+    }
+    final callId = data['callId']?.toString() ??
+        _parseBackendCallId(data['streamCallCid']?.toString() ?? '');
+    debugPrint('[FCM-BG] call.invite → ErpCallKit.showIncomingCall '
+        'callId=$callId caller=$callerName');
+    await ErpCallKit.showIncomingCall(
+      callId: callId,
+      callCid: data['streamCallCid']?.toString() ?? '',
+      callerId: data['callerId']?.toString() ?? '',
+      callerName: callerName,
+      isVideo: isVideo,
+      baseUrl: _callRejectBaseUrl,
+      conversationId: data['conversationId']?.toString() ?? '',
+      conversationName: data['conversationName']?.toString() ?? '',
+      isGroup: data['isGroup']?.toString() == 'true',
     );
     return;
   }
@@ -135,6 +201,22 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     id: _stableId(message),
     dataPayload: message.data,
   );
+}
+
+/// REST base the native Reject receiver POSTs to. Resolved from a
+/// compile-time const (the background isolate can't reach DI). All three
+/// `Environments` URLs point at the same host today; `prod` matches the
+/// `configureDependencies(environment: Environment.prod)` call in main().
+const String _callRejectBaseUrl = Environments.prodApiBaseUrl;
+
+/// Extract the backend numeric call id from a Stream CID
+/// (`default:erp-call-637` → `637`). Falls back to the trailing segment,
+/// then the raw input, so a non-standard id still yields *something*.
+String _parseBackendCallId(String callCid) {
+  if (callCid.isEmpty) return '';
+  final tail = callCid.contains(':') ? callCid.split(':').last : callCid;
+  final match = RegExp(r'^(?:erp-call-)?(\d+)').firstMatch(tail);
+  return match?.group(1) ?? tail;
 }
 
 /// Unified push-state log so every entry point emits the same shape.

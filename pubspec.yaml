@@ -96,6 +96,14 @@ dependencies:
   permission_handler: ^12.0.1
   flutter_local_notifications: ^19.1.0
 
+  # ── Native incoming-call notification (Module 10) ───────────────
+  # Local plugin that owns the Android incoming-call notification so
+  # the Reject button reaches native Kotlin even when the app is
+  # killed (→ HTTP reject → caller's call ends, app never opens).
+  # See packages/erp_callkit. Media still flows through Stream Video.
+  erp_callkit:
+    path: packages/erp_callkit
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

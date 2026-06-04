@@ -21,6 +21,11 @@
     <!-- For apps with targetSDK 31 (Android 12) and newer -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/> <!-- For android 13-->
 
+    <!-- Full-screen incoming-call notification (erp_callkit) so the
+         ringer shows OVER the lock screen and turns the screen on. -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
+    <uses-permission android:name="android.permission.TURN_SCREEN_ON"/>
+
     <!-- Hardware hints — don't block install on tablets without a camera -->
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
@@ -29,7 +34,14 @@
     <application
         android:label="ERP"
         android:name="${applicationName}"
-        android:icon="@mipmap/launcher_icon">
+        android:icon="@mipmap/launcher_icon"
+        android:usesCleartextTraffic="true">
+        <!-- usesCleartextTraffic: the killed-app Reject receiver
+             (packages/erp_callkit) POSTs over plain HTTP to the LAN
+             backend via java.net/HttpURLConnection, which — unlike Dart's
+             dart:io HttpClient that Dio uses — enforces Android's
+             NetworkSecurityPolicy. Without this the reject is blocked with
+             "Cleartext HTTP traffic not permitted". -->
         <!-- Add this inside the <application> tag -->  <!--    Add to check notification background-->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"

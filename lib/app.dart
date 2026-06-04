@@ -1,3 +1,4 @@
+import 'package:erp_callkit/erp_callkit.dart';
 import 'package:erp_mobile/shared/firebase_services/firebase_notification_provider.dart';
 import 'package:flutter/material.dart';
 
@@ -5,6 +6,10 @@ import 'core/di/injection.dart';
 import 'core/i18n/locale_service.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'features/chat/data/call_signaling_service.dart';
+import 'features/chat/data/repositories/conversations_repository.dart';
+import 'features/chat/presentation/pages/video_call_page.dart';
+import 'features/chat/presentation/pages/voice_call_page.dart';
 import 'features/chat/presentation/widgets/incoming_call_overlay.dart';
 import 'features/settings/data/repositories/preferences_repository.dart';
 import 'features/settings/entities/user_preferences.dart' as pref_entities;
@@ -32,10 +37,19 @@ class ErpMobileApp extends StatefulWidget {
   State<ErpMobileApp> createState() => _ErpMobileAppState();
 }
 
-class _ErpMobileAppState extends State<ErpMobileApp> {
+class _ErpMobileAppState extends State<ErpMobileApp>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Drain any pending native-call launch action: the app may have just
+    // been opened by tapping the body / Accept of the native incoming-
+    // call notification (see packages/erp_callkit). Reject is handled
+    // entirely in native Kotlin, so it never reaches here.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _consumeNativeCallLaunch();
+    });
     // FirebaseNotificationProvider is now a singleton (private
     // constructor + `.instance`) so subscription state, dedupe
     // counters, and the dispose hook don't fragment across callers.
@@ -71,6 +85,102 @@ class _ErpMobileAppState extends State<ErpMobileApp> {
       },
     );
   }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // The notification may have been tapped while the app was alive
+    // (minimised → singleTask brings MainActivity forward). Drain on
+    // every resume too, not just cold start.
+    if (state == AppLifecycleState.resumed) {
+      _consumeNativeCallLaunch();
+    }
+  }
+
+  /// Pull a pending native incoming-call tap (body or Accept) and route
+  /// it into the existing signalling so the in-app sheet / call page
+  /// behaves exactly like the WS / FCM path. No-op when nothing pending.
+  Future<void> _consumeNativeCallLaunch() async {
+    try {
+      final data = await ErpCallKit.consumeLaunchAction();
+      if (data == null) return;
+
+      final accept = data['accept'] == true;
+      final callId = data['callId']?.toString() ?? '';
+      final callerId = data['callerId']?.toString() ?? '';
+      final callerName = data['callerName']?.toString() ?? 'Unknown';
+      final isVideo = data['isVideo'] == true;
+      final streamCallCid = data['callCid']?.toString() ?? '';
+      var conversationId = data['conversationId']?.toString() ?? '';
+      if (callId.isEmpty || callerId.isEmpty) return;
+
+      CallSignalingService? signaling;
+      ConversationsRepository? conversations;
+      try {
+        signaling = getIt<CallSignalingService>();
+      } catch (_) {
+        signaling = null;
+      }
+      try {
+        conversations = getIt<ConversationsRepository>();
+      } catch (_) {
+        conversations = null;
+      }
+      if (signaling == null) {
+        debugPrint('[NativeCall] signaling not registered yet — skip');
+        return;
+      }
+
+      // Stream ring pushes carry no local conversationId — resolve the
+      // direct conversation with the caller so the call page renders the
+      // right name/avatar (mirrors CallkitEventHandler).
+      if (conversationId.isEmpty && conversations != null) {
+        try {
+          final direct = await conversations.findDirectWith(callerId);
+          if (direct != null) conversationId = direct.id;
+        } catch (_) {/* fall through */}
+      }
+      if (conversationId.isEmpty) conversationId = streamCallCid;
+
+      final payload = <String, dynamic>{
+        'type': 'call.invite',
+        'callId': callId,
+        'conversationId': conversationId,
+        'callerId': callerId,
+        'callerName': callerName,
+        'callType': isVideo ? 'video' : 'voice',
+        'startedAt': DateTime.now().toUtc().toIso8601String(),
+        'streamCallCid': streamCallCid,
+      };
+      debugPrint('[NativeCall] launch action accept=$accept '
+          'callId=$callId conv=$conversationId caller=$callerName');
+      await signaling.handleIncomingFromPush(payload);
+
+      if (accept) {
+        // Push the call page now; IncomingCallOverlay's connected
+        // auto-push is the backstop if this races go_router's redirect.
+        final nav = AppRouter.rootNavigatorKey.currentState;
+        nav?.push(
+          MaterialPageRoute<void>(
+            builder: (_) => isVideo
+                ? VideoCallPage(conversationId: conversationId)
+                : VoiceCallPage(conversationId: conversationId),
+            fullscreenDialog: true,
+          ),
+        );
+        await signaling.acceptIncoming();
+      }
+    } catch (e) {
+      debugPrint('[NativeCall] consume failed: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final router = widget._injectedRouter ?? getIt<AppRouter>();
