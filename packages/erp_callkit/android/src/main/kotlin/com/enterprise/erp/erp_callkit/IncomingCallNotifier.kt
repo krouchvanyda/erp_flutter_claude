@@ -1,5 +1,6 @@
 package com.enterprise.erp.erp_callkit
 
+import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -28,7 +29,17 @@ object IncomingCallNotifier {
     const val CHANNEL_ID = "erp_incoming_calls"
     const val EXTRA_CALL_DATA = "erp_call_data"
     const val ACTION_REJECT = "com.enterprise.erp.erp_callkit.ACTION_REJECT"
+    const val ACTION_TIMEOUT = "com.enterprise.erp.erp_callkit.ACTION_TIMEOUT"
     const val EXTRA_NOTIF_ID = "erp_notif_id"
+
+    /**
+     * Hard ceiling on how long the incoming-call heads-up may stay on
+     * screen with no user action and no cancel signal. Mirrors the 60 s
+     * ring timeout in `CallSignalingService` so a missed / orphaned ring
+     * self-clears instead of lingering forever. Slightly longer (65 s) so
+     * a real cancel push still wins the race on the happy path.
+     */
+    private const val RING_TIMEOUT_MS = 65_000L
 
     /**
      * Stable per-call notification id so [dismiss] can cancel the ring.
@@ -110,6 +121,15 @@ object IncomingCallNotifier {
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setOngoing(true)
             .setAutoCancel(false)
+            // Backend-independent safety net: if NO cancel signal ever
+            // reaches this device (caller ended the call but neither the
+            // STOMP `call.hangup` nor a Stream/backend end-push was
+            // delivered — common when the callee is killed and OEM battery
+            // savers drop the wake push), the ring would otherwise hang on
+            // screen forever. Auto-expire it after the ring window so it
+            // can never outlive a call that's already over. Matches the
+            // 60 s ring timeout in CallSignalingService.
+            .setTimeoutAfter(RING_TIMEOUT_MS)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(contentPending)
             .setFullScreenIntent(contentPending, true)
@@ -126,17 +146,67 @@ object IncomingCallNotifier {
             // POST_NOTIFICATIONS not granted — nothing we can do from here.
             Log.e(TAG, "notify() denied (no POST_NOTIFICATIONS?): ${e.message}")
         }
+
+        // OS-level safety net. `setTimeoutAfter` is ignored by some OEMs
+        // (Samsung One UI) on ongoing CATEGORY_CALL notifications, so we
+        // ALSO arm an AlarmManager dismiss. This survives the FCM
+        // background isolate being torn down right after it posted the
+        // ring (a Dart Timer would die with the isolate; the alarm is held
+        // by the OS), and it's the only mechanism that clears a stuck ring
+        // on a fully-killed callee when NO cancel push is ever delivered.
+        scheduleTimeout(context, id)
     }
 
     fun dismiss(context: Context, key: String) {
         if (key.isEmpty()) return
-        NotificationManagerCompat.from(context).cancel(notifId(key))
+        val id = notifId(key)
+        NotificationManagerCompat.from(context).cancel(id)
+        cancelTimeout(context, id)
         Log.i(TAG, "dismiss() key=$key")
     }
 
     fun dismissById(context: Context, id: Int) {
         if (id < 0) return
         NotificationManagerCompat.from(context).cancel(id)
+        cancelTimeout(context, id)
+    }
+
+    /** Build the (action + id)-keyed PendingIntent the alarm fires. */
+    private fun timeoutPending(context: Context, notifId: Int, flags: Int): PendingIntent? {
+        val intent = Intent(context, CallActionReceiver::class.java).apply {
+            action = ACTION_TIMEOUT
+            putExtra(EXTRA_NOTIF_ID, notifId)
+        }
+        return PendingIntent.getBroadcast(context, notifId, intent, flags)
+    }
+
+    /** Arm an AlarmManager dismiss [RING_TIMEOUT_MS] from now. */
+    private fun scheduleTimeout(context: Context, notifId: Int) {
+        val am = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+        val pending = timeoutPending(
+            context, notifId,
+            PendingIntent.FLAG_UPDATE_CURRENT or immutableFlag()
+        ) ?: return
+        val triggerAt = System.currentTimeMillis() + RING_TIMEOUT_MS
+        try {
+            // `setAndAllowWhileIdle` fires even in Doze and needs NO exact-
+            // alarm permission (unlike setExact* on Android 12+). Inexact
+            // batching is fine — this is a backstop, not the primary path.
+            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pending)
+            Log.i(TAG, "scheduleTimeout() id=$notifId in ${RING_TIMEOUT_MS}ms")
+        } catch (e: Exception) {
+            Log.e(TAG, "scheduleTimeout() failed: ${e.message}")
+        }
+    }
+
+    /** Cancel a previously-armed dismiss alarm (real cancel won the race). */
+    private fun cancelTimeout(context: Context, notifId: Int) {
+        val am = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+        val pending = timeoutPending(
+            context, notifId,
+            PendingIntent.FLAG_NO_CREATE or immutableFlag()
+        ) ?: return
+        am.cancel(pending)
     }
 
     private fun mainActivityIntent(context: Context, data: Bundle, accept: Boolean): Intent {

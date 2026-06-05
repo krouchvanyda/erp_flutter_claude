@@ -115,6 +115,42 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     return;
   }
 
+  // Any OTHER Stream Video push (sender == 'stream.video' but NOT
+  // 'call.ring') means a ringing call is OVER: the caller cancelled
+  // before we answered, another of our devices picked up, or the
+  // session ended. Stream does NOT emit a single uniform "cancel" type
+  // (it ships call.ended / call.session_ended / call.missed / …), and
+  // because this app draws the ring with its OWN `erp_callkit`
+  // notification — not Stream's CallKit integration — nothing else
+  // dismisses it. Treat every non-ring stream.video event as a dismiss
+  // signal, keyed on the SAME CID the call.ring branch used to show the
+  // notification, so only the matching ring is cancelled.
+  //
+  // This is the path that clears B's heads-up when A ends an unanswered
+  // call while B is backgrounded / killed (the STOMP `call.hangup`
+  // handler can't fire there — the socket is down).
+  if (message.data['sender'] == 'stream.video') {
+    final callCid = message.data['call_cid']?.toString() ?? '';
+    if (kDebugMode) {
+      log('📞 [stream.${message.data['type']}] BG/KILLED → dismiss ring · '
+          'cid=$callCid');
+    }
+    if (callCid.isNotEmpty) {
+      final dismissId = _parseBackendCallId(callCid);
+      debugPrint('[FCM-BG] stream.video ${message.data['type']} → '
+          'ErpCallKit.dismiss callId=$dismissId (cid=$callCid)');
+      if (dismissId.isNotEmpty) {
+        await ErpCallKit.dismiss(dismissId);
+      }
+      // iOS / flutter_callkit_incoming ringer is keyed on the CID verbatim
+      // (see _showStreamCallkitRinger). Best-effort end it too.
+      try {
+        await FlutterCallkitIncoming.endCall(callCid);
+      } catch (_) {/* swallow — entry may already be gone */}
+    }
+    return;
+  }
+
   // call.cancel — caller hung up before the callee answered, or
   // another device for the same user already picked up. Dismiss the
   // ring so the wrong device doesn't keep showing the heads-up.
@@ -574,6 +610,27 @@ class FirebaseNotificationProvider {
         final notif = message.notification;
         final iosWillAutoDisplay = Platform.isIOS && notif != null;
         if (iosWillAutoDisplay) return;
+
+        // Stream Video push in foreground — ring/connect is handled live
+        // over Stream's WebSocket (StreamCallEngine), so the only thing
+        // we owe a foreground FCM copy is housekeeping: a non-ring event
+        // means a ring is over → clear any native heads-up still showing
+        // and DON'T render a stray tray notification. (call.ring itself
+        // is a no-op in foreground; the WS path already rang the user.)
+        if (message.data['sender'] == 'stream.video') {
+          if (message.data['type'] != 'call.ring') {
+            final callCid = message.data['call_cid']?.toString() ?? '';
+            if (callCid.isNotEmpty) {
+              final dismissId = _parseBackendCallId(callCid);
+              if (dismissId.isNotEmpty) {
+                unawaited(ErpCallKit.dismiss(dismissId)
+                    .catchError((Object _) {}));
+              }
+              FlutterCallkitIncoming.endCall(callCid).catchError((Object _) {});
+            }
+          }
+          return;
+        }
 
         // call.cancel — mirror of the background-isolate branch:
         // dismiss the heads-up notification so the user doesn't keep

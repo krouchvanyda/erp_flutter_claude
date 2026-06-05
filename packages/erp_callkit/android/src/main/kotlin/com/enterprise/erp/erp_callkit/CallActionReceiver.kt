@@ -19,9 +19,21 @@ import android.util.Log
 class CallActionReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
+        val appContext = context.applicationContext
+
+        // Ring-timeout backstop (AlarmManager). The caller ended an
+        // unanswered call but no cancel signal reached this device, or
+        // nobody answered before the ring window elapsed — just clear the
+        // stuck heads-up. No network, no app launch.
+        if (intent.action == IncomingCallNotifier.ACTION_TIMEOUT) {
+            val notifId = intent.getIntExtra(IncomingCallNotifier.EXTRA_NOTIF_ID, -1)
+            Log.i(TAG, "ring timeout fired — dismissing notifId=$notifId")
+            IncomingCallNotifier.dismissById(appContext, notifId)
+            return
+        }
+
         if (intent.action != IncomingCallNotifier.ACTION_REJECT) return
 
-        val appContext = context.applicationContext
         val data = intent.getBundleExtra(IncomingCallNotifier.EXTRA_CALL_DATA)
         val notifId = intent.getIntExtra(IncomingCallNotifier.EXTRA_NOTIF_ID, -1)
 

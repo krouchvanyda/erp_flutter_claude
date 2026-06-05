@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:erp_callkit/erp_callkit.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart' show Call;
@@ -938,6 +939,24 @@ class CallSignalingService {
     });
   }
 
+  /// Clear any native incoming-call heads-up showing on THIS device for
+  /// [callId]. Covers our own `erp_callkit` notification (the Android
+  /// killed/background ring shown from the FCM isolate) AND any
+  /// flutter_callkit_incoming ringer. Safe no-op when nothing is
+  /// showing — used when a peer hang-up / reject means an unanswered
+  /// ring on this device must disappear (fixes: A ends the call but B's
+  /// heads-up stays on screen).
+  void _clearNativeIncoming(String callId) {
+    if (callId.isNotEmpty) {
+      unawaited(ErpCallKit.dismiss(callId).catchError((Object _) {}));
+    }
+    unawaited(Future(() async {
+      try {
+        await FlutterCallkitIncoming.endAllCalls();
+      } catch (_) {/* swallow */}
+    }));
+  }
+
   /// GET /chats/calls/{id} — recover the canonical call state from
   /// the backend. Used when the app resumes from background and
   /// might have missed `call.accept` / `call.hangup` STOMP frames
@@ -1353,7 +1372,13 @@ class CallSignalingService {
         ));
       case CallRejectEvent(:final callId, :final reason):
         final active = _active;
-        if (active == null || active.callId != callId) return;
+        if (active == null || active.callId != callId) {
+          // A reject for a call this device isn't actively tracking
+          // (e.g. another of our devices declined) — clear any native
+          // ring still showing here.
+          _clearNativeIncoming(callId);
+          return;
+        }
         final logId = _logIdByCallId.remove(callId);
         if (logId != null) {
           await callLog.logEnded(
@@ -1368,6 +1393,7 @@ class CallSignalingService {
           finalStatus: ChatCallStatus.rejected,
           durationSeconds: 0,
         ));
+        _clearNativeIncoming(active.callId);
         _setActive(active.copyWith(
           state: CallSignalState.ended,
           endReason: reason ?? 'declined',
@@ -1380,7 +1406,14 @@ class CallSignalingService {
         });
       case CallHangupEvent(:final callId, :final hangerUpperId):
         final active = _active;
-        if (active == null || active.callId != callId) return;
+        if (active == null || active.callId != callId) {
+          // No in-app active call to match (the FCM background isolate
+          // showed the native ring without our main isolate ever
+          // processing the invite). A hangup means the caller withdrew
+          // — clear the lingering native heads-up for this call id.
+          _clearNativeIncoming(callId);
+          return;
+        }
         // Just-accepted grace period. When B's cold-start accept took
         // longer than the chat backend's ring timeout (~30 s by default),
         // the backend has already broadcast a CallHangupEvent by the
@@ -1461,6 +1494,9 @@ class CallSignalingService {
           finalStatus: resolvedStatus,
           durationSeconds: duration,
         ));
+        // The call ended for us — clear any native incoming heads-up
+        // that was still ringing on this device.
+        _clearNativeIncoming(active.callId);
         _setActive(active.copyWith(state: CallSignalState.ended));
         Future.delayed(const Duration(milliseconds: 600), () {
           if (_active?.callId == active.callId &&
