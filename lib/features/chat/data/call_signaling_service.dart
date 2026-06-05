@@ -220,12 +220,17 @@ class CallSignalingService {
 
   Timer? _ringTimeout;
 
+  /// Periodic poll that resolves a `call.hangup` deferred inside the
+  /// just-connected grace window (see [_scheduleDeferredHangupRecheck]).
+  Timer? _deferredHangupTimer;
+
   Future<void> dispose() async {
     await _sub?.cancel();
     await _streamIncomingSub?.cancel();
     await _streamEndedSub?.cancel();
     await _streamPeerJoinedSub?.cancel();
     _ringTimeout?.cancel();
+    _deferredHangupTimer?.cancel();
     activeCallListenable.dispose();
   }
 
@@ -1449,28 +1454,25 @@ class CallSignalingService {
               DateTime.now().difference(active.connectedAt!).inMilliseconds;
           if (connectedMs < 5000 && streamEngine.hasRemoteParticipant) {
             // Caller still in the media call → treat as a stale-backend
-            // hangup and ignore. But STOMP can beat Stream's
-            // participant-left propagation, so re-check shortly: if the
+            // hangup and ignore *for now*. But STOMP can beat Stream's
+            // participant-left propagation, so we must re-check: if the
             // caller has since left, honour the hangup we deferred —
-            // otherwise B would hang on a call the caller already ended
-            // inside the grace window (the reported bug).
+            // otherwise B hangs on a call the caller already ended inside
+            // the grace window (the reported bug).
+            //
+            // A SINGLE one-shot re-check (the previous implementation)
+            // fired too early. When B accepted from a KILLED app, the
+            // cold-start Stream resync makes participant-left propagation
+            // lag several seconds, so the 1.5 s check still saw the caller
+            // "present", gave up forever, and B stayed stuck on Connected.
+            // Poll instead: honour the hangup the instant the caller
+            // leaves, and only discard it as a stale timer if the caller
+            // stays for the whole window.
             // ignore: avoid_print
             print('[CallSignaling] CallHangupEvent deferred — call only '
                 '${connectedMs}ms old, caller still in media call; '
-                're-checking in 1.5 s');
-            final deferredCallId = callId;
-            Timer(const Duration(milliseconds: 1500), () {
-              final cur = _active;
-              if (cur != null &&
-                  cur.callId == deferredCallId &&
-                  cur.state == CallSignalState.connected &&
-                  !streamEngine.hasRemoteParticipant) {
-                // ignore: avoid_print
-                print('[CallSignaling] deferred hangup re-check: caller '
-                    'has left the media call → ending now');
-                unawaited(_finishPeerHangup(cur));
-              }
-            });
+                'polling for caller-left');
+            _scheduleDeferredHangupRecheck(callId);
             return;
           }
         }
@@ -1544,6 +1546,60 @@ class CallSignalingService {
       if (_active?.callId == active.callId &&
           _active?.state == CallSignalState.ended) {
         _setActive(null);
+      }
+    });
+  }
+
+  /// Resolve a `call.hangup` that arrived inside the just-connected grace
+  /// window while the caller was still present in the Stream media
+  /// session. The hangup is ambiguous there — it can be the caller's real
+  /// End racing our just-landed accept, OR a stale backend ring-timer
+  /// hangup — and the envelope can't tell them apart. The reliable tell is
+  /// whether the caller actually LEAVES the media session: a real End
+  /// drops the remote participant; a stale timer fires while the caller is
+  /// still sitting in the call.
+  ///
+  /// So we POLL [StreamCallEngine.hasRemoteParticipant] rather than check
+  /// once. The previous one-shot re-check fired at a fixed 1.5 s and gave
+  /// up forever — but when B accepted from a KILLED app, the cold-start
+  /// Stream resync makes participant-left propagation lag well past 1.5 s,
+  /// so that single check saw the caller "still present" and B stayed
+  /// stuck on Connected (the reported bug). Polling honours the hangup the
+  /// instant the caller leaves, and only discards it (keeps the call) if
+  /// the caller stays for the whole window.
+  void _scheduleDeferredHangupRecheck(String callId) {
+    _deferredHangupTimer?.cancel();
+    const interval = Duration(milliseconds: 750);
+    const maxChecks = 12; // ~9 s — well past Stream's cold-start lag
+    var checks = 0;
+    _deferredHangupTimer = Timer.periodic(interval, (timer) {
+      checks++;
+      final cur = _active;
+      // The call changed or was torn down by another path → stop polling.
+      if (cur == null ||
+          cur.callId != callId ||
+          cur.state != CallSignalState.connected) {
+        timer.cancel();
+        return;
+      }
+      if (!streamEngine.hasRemoteParticipant) {
+        // Caller has left the media session → the deferred hangup was a
+        // real End. Honour it now.
+        timer.cancel();
+        // ignore: avoid_print
+        print('[CallSignaling] deferred hangup confirmed — caller left the '
+            'media call after ${checks * interval.inMilliseconds}ms → '
+            'ending now');
+        unawaited(_finishPeerHangup(cur));
+        return;
+      }
+      if (checks >= maxChecks) {
+        // Caller stayed in the media call for the whole window → treat the
+        // hangup as a stale backend ring-timer event and keep the call.
+        timer.cancel();
+        // ignore: avoid_print
+        print('[CallSignaling] deferred hangup discarded — caller still in '
+            'media call after full grace window; treating as stale timer');
       }
     });
   }
