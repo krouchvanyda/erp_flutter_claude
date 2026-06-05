@@ -113,9 +113,24 @@ object IncomingCallNotifier {
         val text = if (isGroup) "$callerName • Incoming group $kind call"
         else "Incoming $kind call"
 
+        // Telephony-style header: the caller is modelled as a [Person] and
+        // the Accept / Reject actions are rendered by [CallStyle] as round
+        // green / red phone buttons (matching the system dialer's incoming
+        // -call look), instead of the plain text "Reject | Accept" actions
+        // a vanilla notification shows. CallStyle.forIncomingCall takes the
+        // DECLINE intent first, then the ANSWER intent.
+        val caller = androidx.core.app.Person.Builder()
+            .setName(title)
+            .setImportant(true)
+            .build()
+        val callStyle = NotificationCompat.CallStyle
+            .forIncomingCall(caller, rejectPending, acceptPending)
+
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.sym_call_incoming)
-            .setContentTitle(title)
+            .setStyle(callStyle)
+            // CallStyle drives the title from the Person; keep contentText
+            // as the "Incoming voice call" subtitle for the collapsed row.
             .setContentText(text)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setPriority(NotificationCompat.PRIORITY_MAX)
@@ -133,12 +148,6 @@ object IncomingCallNotifier {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(contentPending)
             .setFullScreenIntent(contentPending, true)
-            .addAction(
-                android.R.drawable.ic_menu_close_clear_cancel, "Reject", rejectPending
-            )
-            .addAction(
-                android.R.drawable.sym_action_call, "Accept", acceptPending
-            )
 
         try {
             NotificationManagerCompat.from(context).notify(id, builder.build())
