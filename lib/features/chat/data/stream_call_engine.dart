@@ -734,6 +734,15 @@ class StreamCallEngine {
   /// call comes in.
   void _attachEndListener(Call call) {
     _activeStateSub?.cancel();
+    // Track whether a remote peer has EVER been present on this call.
+    // Once one has, their later disappearance means "the other party
+    // left" — which for a connected 1:1 is the ONLY end-signal we get:
+    // Stream keeps OUR call alive when the peer leaves (it never fires a
+    // Disconnected for us), and on a killed-app cold-start accept the
+    // STOMP `call.hangup` may never reach us (socket not subscribed in
+    // time). Watching the participant list works purely off the media
+    // layer we DID join, so it survives all of that.
+    var sawRemoteParticipant = false;
     _activeStateSub = call.state.valueStream.listen((s) {
       // Defence-in-depth: only fire `onStreamCallEnded` when the
       // disconnect is for our CURRENT active call. If `_activeCall`
@@ -743,7 +752,29 @@ class StreamCallEngine {
       // must NOT bubble through — it would tear down the NEW call's
       // local signaling state.
       if (_activeCall != call) return;
+
       final status = s.status;
+
+      // Remote-participant-left detection (peer hung up / left the call).
+      // Fires only AFTER a remote was seen, so the transient "no remote
+      // yet" window during our own join doesn't trip it; and only while
+      // WE are solidly connected/joined, so a reconnect blip that
+      // momentarily clears the participant list doesn't read as a leave.
+      // For groups this only fires when the LAST remote leaves (call
+      // emptied) — matching the last-person-out semantics.
+      final hasRemote = s.callParticipants.any((p) => !p.isLocal);
+      if (hasRemote) {
+        sawRemoteParticipant = true;
+      } else if (sawRemoteParticipant &&
+          (status is CallStatusConnected || status is CallStatusJoined)) {
+        // ignore: avoid_print
+        print('[StreamCallEngine] remote participant left (call emptied) '
+            '— firing onStreamCallEnded');
+        if (!_callEndedController.isClosed) {
+          _callEndedController.add(null);
+        }
+        return;
+      }
       if (status is CallStatusDisconnected) {
         final reason = status.reason;
         // Filter out reasons that are NOT real "the call ended"
