@@ -164,8 +164,8 @@ class CallSignalingService {
     // End — the chat-ceremony backend wasn't sending hangup events
     // for Stream-originated calls, and Stream's WS signal had nowhere
     // to land.
-    _streamEndedSub = streamEngine.onStreamCallEnded.listen((_) {
-      _handleStreamCallEnded();
+    _streamEndedSub = streamEngine.onStreamCallEnded.listen((reason) {
+      _handleStreamCallEnded(reason);
     });
     // Stream's media-layer "peer joined" signal — used as a fallback
     // for A's UI when the chat-ceremony backend never broadcasts
@@ -187,7 +187,7 @@ class CallSignalingService {
 
   StreamSubscription<ChatTransportEvent>? _sub;
   StreamSubscription<Call>? _streamIncomingSub;
-  StreamSubscription<void>? _streamEndedSub;
+  StreamSubscription<StreamCallEndReason>? _streamEndedSub;
   StreamSubscription<void>? _streamPeerJoinedSub;
   ActiveCall? _active;
   // Maps callId → callLog entry id so we can update on accept / end.
@@ -224,6 +224,14 @@ class CallSignalingService {
   /// just-connected grace window (see [_scheduleDeferredHangupRecheck]).
   Timer? _deferredHangupTimer;
 
+  /// Heartbeat that polls the backend's canonical call status while we are
+  /// `connected`, so the call tears down even when BOTH push end-signals
+  /// fail (STOMP `call.hangup` never delivered + Stream remote-left never
+  /// fires because we joined the media after the peer already left). See
+  /// [_startConnectedHeartbeat] — this is the fix for the "B stuck
+  /// Connected forever" bug.
+  Timer? _connectedHeartbeat;
+
   Future<void> dispose() async {
     await _sub?.cancel();
     await _streamIncomingSub?.cancel();
@@ -231,6 +239,7 @@ class CallSignalingService {
     await _streamPeerJoinedSub?.cancel();
     _ringTimeout?.cancel();
     _deferredHangupTimer?.cancel();
+    _connectedHeartbeat?.cancel();
     activeCallListenable.dispose();
   }
 
@@ -599,10 +608,10 @@ class CallSignalingService {
     ));
   }
 
-  void _handleStreamCallEnded() {
+  void _handleStreamCallEnded(StreamCallEndReason reason) {
     final active = _active;
     // ignore: avoid_print
-    print('[CallSignaling] _handleStreamCallEnded called — '
+    print('[CallSignaling] _handleStreamCallEnded called — reason=$reason '
         'active=${active?.callId} state=${active?.state} '
         'connectedAt=${active?.connectedAt} '
         'age=${active?.connectedAt == null ? "n/a" : "${DateTime.now().difference(active!.connectedAt!).inMilliseconds}ms"}');
@@ -613,7 +622,19 @@ class CallSignalingService {
     // self-recovers — if we react to it we tear the call down within
     // milliseconds of the user successfully tapping Accept, and they
     // see the call page mount and immediately pop.
-    if (active != null &&
+    //
+    // CRITICAL: the settle window applies ONLY to the possibly-transient
+    // `disconnected` reason. The DEFINITIVE reasons (a remote peer truly
+    // left, reconnection permanently failed, the caller withdrew the
+    // ring) never self-recover and must tear the call down immediately —
+    // even inside the 2 s window. Blanket-guarding all reasons was the
+    // LOCK-SCREEN bug: B accepts from the lock screen, A hangs up within
+    // the settle window, Stream fires a definitive `remoteLeft`, and the
+    // guard wrongly swallowed it → B stuck on Connected. When the STOMP
+    // `call.hangup` was missed (socket torn down while locked) this was
+    // the only end-signal left, so swallowing it stranded B forever.
+    if (reason == StreamCallEndReason.disconnected &&
+        active != null &&
         active.state == CallSignalState.connected &&
         active.connectedAt != null) {
       final ageMs =
@@ -621,8 +642,8 @@ class CallSignalingService {
       if (ageMs < 2000) {
         // ignore: avoid_print
         print('[CallSignaling] _handleStreamCallEnded IGNORED — call '
-            'is only ${ageMs}ms old (under 2 s settle window), '
-            'treating as transient SDK state, not a real hangup');
+            'is only ${ageMs}ms old (under 2 s settle window) and reason '
+            'is transient `disconnected`; not a real hangup');
         return;
       }
     }
@@ -634,9 +655,18 @@ class CallSignalingService {
     // Stream treated B as online → next ring went over WS (where the
     // overlay can't render while backgrounded) → A's call timed out
     // as a "missed call".
-    unawaited(streamEngine.leave());
+    // Use endActiveCall (bumps _callSeq) not leave — a terminal end must
+    // ABORT any in-flight acceptByCid retry loop, otherwise that loop can
+    // re-join the media AFTER teardown and create a ghost Stream call with
+    // no signaling state (the second "stuck Connected" we hit).
+    unawaited(streamEngine.endActiveCall());
 
     if (active == null) return;
+    // Sweep ALL call notifications — Stream just tore the media leg down,
+    // so its ongoing-call notification (and any leftover ring) must go too
+    // or it lingers as a phantom "Connected" on the lock screen.
+    _clearNativeIncoming(active.callId);
+    _clearAllCallNotifications();
     // Flip to "ended" so listening UI pops. The voice/video pages
     // already watch this transition (Slice 10.2.4 — endReason).
     _setActive(active.copyWith(
@@ -933,6 +963,11 @@ class CallSignalingService {
       finalStatus: resolvedStatus,
       durationSeconds: duration,
     ));
+    // The call is over — sweep our ring + Stream's ongoing-call
+    // notification so neither lingers as a phantom "Connected" on the
+    // lock screen.
+    _clearNativeIncoming(active.callId);
+    _clearAllCallNotifications();
     _setActive(active.copyWith(state: CallSignalState.ended));
     // Drop the active reference after a brief delay so the call page
     // can render the "ended" state before it pops itself.
@@ -967,6 +1002,29 @@ class CallSignalingService {
   /// native heads-up notification for the same call so the user doesn't
   /// see BOTH the notification header AND the full-screen sheet at once.
   void clearNativeIncoming(String callId) => _clearNativeIncoming(callId);
+
+  /// TERMINAL-only notification sweep: the call is genuinely over, so wipe
+  /// EVERY call notification off the screen — our own `erp_incoming_calls`
+  /// ring AND the Stream SDK's `stream_call_*` ongoing-call notification.
+  ///
+  /// Distinct from [_clearNativeIncoming], which only cancels a single
+  /// ringing call id and is also used MID-flow (overlay takeover). This
+  /// must run ONLY when the call has ended — otherwise it would nuke the
+  /// legitimate in-call notification of a live call.
+  ///
+  /// Fixes the reported "B still Connected" bug: on Samsung One UI a plain
+  /// per-id cancel leaves the ongoing CallStyle / Stream notification
+  /// pinned on the lock screen long after the call ended, so the user sees
+  /// a phantom call. The native `dismissAllCalls` enumerates the app's own
+  /// call notifications, demotes the sticky ongoing flag, and cancels them.
+  void _clearAllCallNotifications() {
+    unawaited(ErpCallKit.dismissAllCalls().catchError((Object _) {}));
+    unawaited(Future(() async {
+      try {
+        await FlutterCallkitIncoming.endAllCalls();
+      } catch (_) {/* swallow */}
+    }));
+  }
 
   /// GET /chats/calls/{id} — recover the canonical call state from
   /// the backend. Used when the app resumes from background and
@@ -1038,6 +1096,13 @@ class CallSignalingService {
         ));
       case 'REJECTED':
         final reason = dto['endReason'] as String? ?? 'declined';
+        // Full teardown — the backend says this call is over, so release
+        // the media leg + sweep call notifications (the heartbeat path
+        // relies on this to actually end a stuck call, not just flip the
+        // local flag).
+        unawaited(streamEngine.endActiveCall());
+        _clearNativeIncoming(active.callId);
+        _clearAllCallNotifications();
         _setActive(active.copyWith(
           state: CallSignalState.ended,
           endReason: reason,
@@ -1051,6 +1116,10 @@ class CallSignalingService {
       case 'ENDED':
       case 'MISSED':
       case 'NO_ANSWER':
+        // Same full teardown as REJECTED — see above.
+        unawaited(streamEngine.endActiveCall());
+        _clearNativeIncoming(active.callId);
+        _clearAllCallNotifications();
         _setActive(active.copyWith(state: CallSignalState.ended));
         Future.delayed(const Duration(milliseconds: 600), () {
           if (_active?.callId == active.callId &&
@@ -1266,6 +1335,10 @@ class CallSignalingService {
       finalStatus: ChatCallStatus.rejected,
       durationSeconds: 0,
     ));
+    // We declined — clear the ring + any Stream notification so nothing
+    // lingers on the lock screen.
+    _clearNativeIncoming(active.callId);
+    _clearAllCallNotifications();
     _setActive(null);
   }
 
@@ -1405,6 +1478,7 @@ class CallSignalingService {
           durationSeconds: 0,
         ));
         _clearNativeIncoming(active.callId);
+        _clearAllCallNotifications();
         _setActive(active.copyWith(
           state: CallSignalState.ended,
           endReason: reason ?? 'declined',
@@ -1538,9 +1612,13 @@ class CallSignalingService {
       finalStatus: resolvedStatus,
       durationSeconds: duration,
     ));
-    // The call ended for us — clear any native incoming heads-up that
-    // was still ringing on this device.
+    // The call ended for us — tear down the Stream media leg (endActiveCall
+    // bumps _callSeq so any in-flight acceptByCid retry aborts instead of
+    // re-joining a dead call), clear the native heads-up, then sweep ALL
+    // call notifications so nothing lingers as a phantom "Connected".
+    unawaited(streamEngine.endActiveCall());
     _clearNativeIncoming(active.callId);
+    _clearAllCallNotifications();
     _setActive(active.copyWith(state: CallSignalState.ended));
     Future.delayed(const Duration(milliseconds: 600), () {
       if (_active?.callId == active.callId &&
@@ -1604,6 +1682,43 @@ class CallSignalingService {
     });
   }
 
+  /// Start polling the backend's canonical call status every few seconds
+  /// while we're `connected`. This is the safety net for the "B stuck
+  /// Connected forever" bug: when the peer hangs up, A's `hangup()` hits
+  /// `POST /chats/calls/{id}/end` so the BACKEND records the call as
+  /// ENDED — but B can miss BOTH push paths that would normally tell it:
+  ///   * the STOMP `call.hangup` frame (cold-start accept subscribes to
+  ///     the call topic too late, so the broadcast is gone), AND
+  ///   * Stream's remote-left event (B joined the media leg AFTER the peer
+  ///     already left, so it never "saw" a remote to detect leaving).
+  /// With both push paths silent, B would sit on Connected indefinitely.
+  ///
+  /// [reconcileActive] already maps a backend `ENDED`/`MISSED`/`NO_ANSWER`/
+  /// `REJECTED` onto a local teardown (and guards the just-connected window
+  /// so a stale ring-timer verdict can't pop a fresh call). Polling it on a
+  /// heartbeat means the call always closes within one interval of the peer
+  /// hanging up, regardless of push delivery.
+  void _startConnectedHeartbeat(String callId) {
+    // Already polling this call → leave it running.
+    if (_connectedHeartbeat?.isActive ?? false) return;
+    const interval = Duration(seconds: 4);
+    _connectedHeartbeat = Timer.periodic(interval, (timer) {
+      final cur = _active;
+      if (cur == null || cur.state != CallSignalState.connected) {
+        timer.cancel();
+        return;
+      }
+      // reconcileActive is a no-op for non-numeric ids and self-guards the
+      // just-connected grace window; safe to call repeatedly.
+      unawaited(reconcileActive());
+    });
+  }
+
+  void _stopConnectedHeartbeat() {
+    _connectedHeartbeat?.cancel();
+    _connectedHeartbeat = null;
+  }
+
   void _setActive(ActiveCall? next) {
     final prev = _active;
     _active = next;
@@ -1619,6 +1734,13 @@ class CallSignalingService {
           '${prev?.callId ?? "none"}/${prev?.state ?? "none"} '
           '→ ${next?.callId ?? "none"}/${next?.state ?? "none"} '
           '· endReason=${next?.endReason}');
+    }
+    // Backend heartbeat: run ONLY while connected. It's the safety net
+    // that catches a peer hangup when neither push path delivered it.
+    if (next != null && next.state == CallSignalState.connected) {
+      _startConnectedHeartbeat(next.callId);
+    } else {
+      _stopConnectedHeartbeat();
     }
     // (Re)start the 30s safety timeout whenever we enter
     // incomingRinging, so a stuck invite (sheet never shown, peer
@@ -1685,7 +1807,7 @@ class CallSignalingService {
         // Tear down Stream's media leg too — without this, A's
         // StreamVideo client keeps the call object alive and
         // disconnectForBackground sees a stale activeCall on resume.
-        unawaited(streamEngine.leave());
+        unawaited(streamEngine.endActiveCall());
         _setActive(cur.copyWith(
           state: CallSignalState.ended,
           endReason: 'no_answer',

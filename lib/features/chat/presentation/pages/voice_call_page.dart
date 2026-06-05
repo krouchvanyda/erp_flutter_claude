@@ -104,7 +104,24 @@ class _VoiceCallPageState extends State<VoiceCallPage>
     // If this call was answered over the lock screen, drop the app back
     // behind the keyguard now that it's over — instead of revealing the
     // unlocked dashboard. No-op for calls started inside the unlocked app.
-    unawaited(LockScreenReturn.returnToLockScreenIfShownOver());
+    //
+    // CRITICAL: only do this when the call ACTUALLY ENDED. dispose() also
+    // fires when go_router's splash→dashboard redirect spuriously WIPES
+    // this page mid-call (the IncomingCallOverlay then re-pushes it). If we
+    // dropped to the lock screen on that wipe, the user would see the lock
+    // screen while the call is still live and connected — the reported
+    // "B accept → shows lock screen" bug. A live call leaves `_stage` at
+    // `connected`; only a real end sets it to `ended`.
+    final callReallyEnded = _stage == _CallStage.ended ||
+        _signaling.current == null ||
+        _signaling.current?.state == CallSignalState.ended;
+    if (callReallyEnded) {
+      unawaited(LockScreenReturn.returnToLockScreenIfShownOver());
+    } else {
+      // ignore: avoid_print
+      print('[VoiceCallPage] dispose while still connected (spurious wipe) '
+          '— NOT returning to lock screen; overlay will re-push');
+    }
     super.dispose();
   }
 

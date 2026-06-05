@@ -92,7 +92,21 @@ class _VideoCallPageState extends State<VideoCallPage>
     // If this call was answered over the lock screen, drop the app back
     // behind the keyguard now that it's over — instead of revealing the
     // unlocked dashboard. No-op for calls started inside the unlocked app.
-    unawaited(LockScreenReturn.returnToLockScreenIfShownOver());
+    //
+    // CRITICAL: only when the call ACTUALLY ENDED. dispose() also fires
+    // when go_router's splash→dashboard redirect spuriously WIPES this page
+    // mid-call (the IncomingCallOverlay then re-pushes it). Dropping to the
+    // lock screen on that wipe would hide a still-live call behind the
+    // keyguard — the reported "accept → shows lock screen" bug.
+    final callReallyEnded = _signaling.current == null ||
+        _signaling.current?.state == CallSignalState.ended;
+    if (callReallyEnded) {
+      unawaited(LockScreenReturn.returnToLockScreenIfShownOver());
+    } else {
+      // ignore: avoid_print
+      print('[VideoCallPage] dispose while still connected (spurious wipe) '
+          '— NOT returning to lock screen; overlay will re-push');
+    }
     super.dispose();
   }
 

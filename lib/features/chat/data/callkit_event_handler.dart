@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:erp_callkit/erp_callkit.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_callkit_incoming/entities/entities.dart';
 import 'package:get_it/get_it.dart';
@@ -204,6 +205,24 @@ class CallkitEventHandler {
   Future<void> onAppResumed() async {
     if (!_attached) return;
     _resubscribe();
+    // Orphan sweep: if the process was frozen/killed mid-call by an OEM
+    // battery saver (Samsung Freecess), the call could have ended on the
+    // peer side while we were suspended — and the call notification(s)
+    // (our ring + Stream's ongoing-call notif) get stranded on the lock
+    // screen, reading as a phantom "Connected". On resume, when there is
+    // NO call still in flight, wipe any leftover call notifications.
+    // Guarded so we never clear the notification of a genuinely-live call.
+    final signaling = _safelyGet<CallSignalingService>();
+    final engine = _safelyGet<StreamCallEngine>();
+    final hasLiveCall = (signaling?.current != null &&
+            signaling!.current!.state != CallSignalState.ended) ||
+        (engine?.hasPendingIncoming ?? false);
+    if (!hasLiveCall) {
+      // ignore: avoid_print
+      print('[CallkitEventHandler] resume orphan sweep — no live call, '
+          'clearing any stranded call notifications');
+      unawaited(ErpCallKit.dismissAllCalls().catchError((Object _) {}));
+    }
     await _maybeAcceptStaleCallkit();
     // Fallback path B: if activeCalls() didn't surface the call
     // (Android's "content is null" quirk), wait for Stream's WS to

@@ -180,6 +180,83 @@ object IncomingCallNotifier {
         cancelTimeout(context, id)
     }
 
+    /**
+     * Nuke EVERY call notification this app currently has on screen —
+     * regardless of which id or channel posted it.
+     *
+     * Why this exists: on call end the per-id [dismiss] is not enough.
+     *   1. The Stream SDK posts its own ongoing "call" notification
+     *      (channel `stream_call_*`) that we don't own and can't cancel by
+     *      a known id.
+     *   2. Samsung One UI keeps ongoing `CallStyle` (CATEGORY_CALL)
+     *      notifications pinned even after a plain `cancel(id)` — they
+     *      survive on the lock screen and read to the user as "still
+     *      Connected" long after the call actually ended.
+     *
+     * This enumerates the app's OWN active notifications (getActiveNotifi-
+     * cations is package-scoped, never touches other apps), filters to the
+     * call ones (CATEGORY_CALL or our / Stream's call channels), and for
+     * each: first RE-POSTS a throwaway non-ongoing, auto-cancel
+     * notification on the same id+channel — which demotes the sticky
+     * ongoing flag One UI is holding onto — then cancels it. The re-post is
+     * given a 1 ms timeout and cancelled immediately, so it never visibly
+     * renders.
+     *
+     * Call this on every terminal call path (peer hangup, local hangup,
+     * reject, Stream-ended) and on app resume to sweep orphans left behind
+     * when the OEM froze/killed the process mid-call.
+     */
+    fun dismissAllCallNotifications(context: Context) {
+        val nmc = NotificationManagerCompat.from(context)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            // Pre-23 can't enumerate; blunt fallback — we only ever post
+            // call notifications from this app, so cancelAll is safe.
+            try { nmc.cancelAll() } catch (_: Exception) {}
+            return
+        }
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE)
+            as? NotificationManager ?: return
+        val active = try { nm.activeNotifications } catch (_: Exception) { return }
+        var cleared = 0
+        for (sbn in active) {
+            val n = sbn.notification ?: continue
+            val channel = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                n.channelId ?: ""
+            } else ""
+            val isCall = n.category == Notification.CATEGORY_CALL ||
+                channel == CHANNEL_ID ||
+                channel.startsWith("stream_call")
+            if (!isCall) continue
+            val id = sbn.id
+            // Demote the sticky ongoing flag (Samsung One UI) by replacing
+            // the notification with a tame, non-ongoing, auto-cancel stub
+            // on the SAME id+channel, then cancel. The stub self-expires in
+            // 1 ms so it never renders.
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && channel.isNotEmpty()) {
+                    val tame = NotificationCompat.Builder(context, channel)
+                        .setSmallIcon(android.R.drawable.sym_call_missed)
+                        .setOngoing(false)
+                        .setAutoCancel(true)
+                        .setTimeoutAfter(1)
+                        .build()
+                    nmc.notify(id, tame)
+                }
+            } catch (_: Exception) {}
+            try { nmc.cancel(id) } catch (_: Exception) {}
+            cancelTimeout(context, id)
+            cleared++
+        }
+        // Reliable nuke: Samsung One UI ignores cancel(id) on ongoing
+        // foreground-service / CallStyle call notifications, and the Stream
+        // client's FGS notification can be orphaned by a dead process so it
+        // never appears in getActiveNotifications above. cancelAll() drops
+        // every notification this app owns regardless of id/process. The app
+        // only ever posts call notifications, so there's no collateral.
+        try { nmc.cancelAll() } catch (_: Exception) {}
+        Log.i(TAG, "dismissAllCallNotifications() cleared=$cleared of ${active.size} (+cancelAll)")
+    }
+
     /** Build the (action + id)-keyed PendingIntent the alarm fires. */
     private fun timeoutPending(context: Context, notifId: Int, flags: Int): PendingIntent? {
         val intent = Intent(context, CallActionReceiver::class.java).apply {

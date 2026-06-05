@@ -66,6 +66,23 @@ class ErpCallKit {
     });
   }
 
+  /// Nuke EVERY call notification this app currently has on screen — our
+  /// own `erp_incoming_calls` ring AND the Stream SDK's `stream_call_*`
+  /// ongoing-call notification — regardless of id or channel.
+  ///
+  /// Why a separate "all" sweep: a plain per-id [dismiss] doesn't clear
+  /// the Stream notification (we don't own its id) and Samsung One UI
+  /// keeps ongoing `CallStyle` notifications pinned even after `cancel()`.
+  /// The native side enumerates the app's OWN active notifications, filters
+  /// to CATEGORY_CALL / call channels, demotes the sticky ongoing flag and
+  /// cancels each — so nothing lingers as a phantom "Connected" call on the
+  /// lock screen after the call has actually ended.
+  ///
+  /// Call on every terminal call path and on app resume (orphan sweep).
+  static Future<void> dismissAllCalls() async {
+    await _channel.invokeMethod<void>('dismissAll');
+  }
+
   /// If the app was launched/resumed by tapping the notification body or
   /// the **Accept** action, returns the call payload (with an extra
   /// `accept` bool) and clears it. Returns null otherwise.

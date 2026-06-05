@@ -48,6 +48,10 @@ class ErpCallkitPlugin :
                 IncomingCallNotifier.dismiss(appContext, key)
                 result.success(null)
             }
+            "dismissAll" -> {
+                IncomingCallNotifier.dismissAllCallNotifications(appContext)
+                result.success(null)
+            }
             "consumeLaunchAction" -> {
                 result.success(LaunchActionStore.consume())
             }

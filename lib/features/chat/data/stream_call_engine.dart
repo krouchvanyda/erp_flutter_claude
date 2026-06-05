@@ -2,10 +2,34 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart';
+import 'package:stream_video_flutter/stream_video_flutter_background.dart';
 import 'package:stream_video_push_notification/stream_video_push_notification.dart';
 
 import 'chats_remote_data_source.dart';
 import 'users_cache.dart';
+
+/// Why Stream signalled that the active call ended. Lets the consumer
+/// distinguish DEFINITIVE ends (which must always tear the call down)
+/// from the one POSSIBLY-TRANSIENT case (a raw `Disconnected` that the
+/// SDK sometimes emits during media setup and then self-recovers, which
+/// is the only kind worth settle-guarding).
+enum StreamCallEndReason {
+  /// A remote participant that WAS present left the call (the peer hung
+  /// up / left). Definitive — never a transient SDK blip.
+  remoteLeft,
+
+  /// Stream's WebSocket flipped to `Disconnected`. May be a transient
+  /// media-setup blip that self-recovers, so the consumer settle-guards
+  /// it within the first couple seconds of a fresh connect.
+  disconnected,
+
+  /// Reconnection permanently failed. Definitive.
+  reconnectFailed,
+
+  /// Stream cleared the incoming-call slot — the caller withdrew before
+  /// we answered. Definitive.
+  incomingCleared,
+}
 
 /// Thin wrapper around `stream_video_flutter` so the rest of the
 /// chat module doesn't import the SDK directly. Exposes just three
@@ -103,9 +127,20 @@ class StreamCallEngine {
   /// up before callee answered, peer left, etc.). The signaling layer
   /// subscribes so it can pop the local UI even when the end event
   /// came from Stream instead of our STOMP/REST backend.
-  Stream<void> get onStreamCallEnded => _callEndedController.stream;
-  final StreamController<void> _callEndedController =
-      StreamController<void>.broadcast();
+  ///
+  /// The emitted [StreamCallEndReason] tells the consumer whether the
+  /// end is DEFINITIVE (a peer truly left / reconnect permanently failed
+  /// / caller withdrew) or POSSIBLY-TRANSIENT (a raw `Disconnected` that
+  /// Stream sometimes emits mid media-setup and then self-recovers).
+  /// Only the latter should be settle-guarded — see
+  /// `_handleStreamCallEnded` in CallSignalingService. Collapsing both
+  /// into a bare signal was a bug: B accepting from a LOCKED screen, then
+  /// A hanging up within the settle window, produced a definitive
+  /// `remoteLeft` that the guard wrongly swallowed → B stuck Connected.
+  Stream<StreamCallEndReason> get onStreamCallEnded =>
+      _callEndedController.stream;
+  final StreamController<StreamCallEndReason> _callEndedController =
+      StreamController<StreamCallEndReason>.broadcast();
   StreamSubscription<CallState>? _activeStateSub;
 
   /// Fires on the CALLER's side the first time a remote participant
@@ -323,6 +358,15 @@ class StreamCallEngine {
     required bool isVideo,
   }) async {
     if (callCid.isEmpty) return;
+    // Claim this accept ONCE for the whole retry loop. Previously each
+    // attempt re-bumped `_callSeq` inside `_doAcceptByCid`, which meant a
+    // terminal teardown's `_callSeq` bump was immediately overwritten by
+    // the next retry — so the loop happily re-joined a call that had
+    // already ended, producing a ghost Stream call with no signaling
+    // state (the second "stuck Connected"). Now the loop owns one seq and
+    // aborts the instant anything else (a teardown via endActiveCall, or a
+    // newer call) bumps `_callSeq` past it.
+    final mySeq = ++_callSeq;
     // Retry on cold-start coordinator timeouts. The Stream SDK has a
     // hardcoded 5 s ceiling in CoordinatorClientOpenApi._waitUntilConnected
     // — on a CallKit-triggered cold-start the coordinator WS often
@@ -333,13 +377,26 @@ class StreamCallEngine {
     // worst case, but resolves the cold-start race transparently.
     const maxAttempts = 3;
     for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      if (mySeq != _callSeq) {
+        // ignore: avoid_print
+        print('[StreamCallEngine] acceptByCid superseded (call ended or a '
+            'newer call started) — aborting before attempt $attempt');
+        return;
+      }
       final ok = await _doAcceptByCid(
         callCid: callCid,
         isVideo: isVideo,
         attempt: attempt,
         maxAttempts: maxAttempts,
+        mySeq: mySeq,
       );
       if (ok) return;
+      if (mySeq != _callSeq) {
+        // ignore: avoid_print
+        print('[StreamCallEngine] acceptByCid superseded after attempt '
+            '$attempt — not retrying');
+        return;
+      }
       if (attempt < maxAttempts) {
         // ignore: avoid_print
         print('[StreamCallEngine] acceptByCid attempt $attempt failed '
@@ -361,8 +418,11 @@ class StreamCallEngine {
     required bool isVideo,
     required int attempt,
     required int maxAttempts,
+    required int mySeq,
   }) async {
-    final mySeq = ++_callSeq;
+    // NOTE: do NOT bump `_callSeq` here — the seq is claimed once by the
+    // [acceptByCid] loop and passed in, so a terminal teardown can abort
+    // every retry. Bumping per-attempt was the ghost-call bug.
     try {
       // Same protection as join(): tear down any prior Stream call so
       // Stream's "Replaced" disconnect on the OLD call doesn't fire
@@ -771,7 +831,7 @@ class StreamCallEngine {
         print('[StreamCallEngine] remote participant left (call emptied) '
             '— firing onStreamCallEnded');
         if (!_callEndedController.isClosed) {
-          _callEndedController.add(null);
+          _callEndedController.add(StreamCallEndReason.remoteLeft);
         }
         return;
       }
@@ -795,14 +855,14 @@ class StreamCallEngine {
             'firing-end-event=${!isReplaced}');
         if (isReplaced) return;
         if (!_callEndedController.isClosed) {
-          _callEndedController.add(null);
+          _callEndedController.add(StreamCallEndReason.disconnected);
         }
       } else if (status is CallStatusReconnectionFailed) {
         // ignore: avoid_print
         print('[StreamCallEngine] Stream call ReconnectionFailed — '
             'firing onStreamCallEnded');
         if (!_callEndedController.isClosed) {
-          _callEndedController.add(null);
+          _callEndedController.add(StreamCallEndReason.reconnectFailed);
         }
       } else {
         // Log every other state transition so we can see the call's
@@ -930,6 +990,7 @@ class StreamCallEngine {
       try {
         await inflight.leave();
       } catch (_) {/* already gone / never fully created */}
+      await _stopCallForegroundService(inflight.callCid.value);
     }
     // Diagnostic (unconditional, release-visible) — proves whether a
     // teardown actually reached a live Call ref. If this logs
@@ -968,6 +1029,33 @@ class StreamCallEngine {
       if (kDebugMode) {
         debugPrint('StreamCallEngine.leave failed: $e\n$st');
       }
+    }
+    // CRITICAL (Samsung "still Connected" bug): `call.leave()` alone does
+    // NOT reliably tear down the call's foreground SERVICE on One UI, so
+    // its ongoing "call" notification (channel `stream_call_*`) lingers on
+    // the lock screen as a phantom Connected call — and once the FGS is
+    // still alive, NO `cancel()` / `cancelAll()` can remove that
+    // notification (the OS protects an active foreground-service notif).
+    // The ONLY reliable lever is to stop the service itself, which runs
+    // `stopForeground(STOP_FOREGROUND_REMOVE)` + cancels the notification
+    // natively. Do it explicitly for the call CID we just left.
+    await _stopCallForegroundService(call.callCid.value);
+  }
+
+  /// Force-stop the Stream call foreground service for [callCid] so its
+  /// ongoing notification is removed (see the note in [leave]). Best-effort
+  /// and idempotent — safe if the service already stopped.
+  Future<void> _stopCallForegroundService(String callCid) async {
+    try {
+      final stopped = await StreamVideoFlutterBackground.stopService(
+        ServiceType.call,
+        callCid: callCid,
+      );
+      // ignore: avoid_print
+      print('[StreamCallEngine] stopService(call, $callCid) → $stopped');
+    } catch (e) {
+      // ignore: avoid_print
+      print('[StreamCallEngine] stopService(call, $callCid) failed: $e');
     }
   }
 
@@ -1081,7 +1169,7 @@ class StreamCallEngine {
         // we answered. Surface as "ended" so the local overlay pops.
         _pendingIncomingCall = null;
         if (!_callEndedController.isClosed) {
-          _callEndedController.add(null);
+          _callEndedController.add(StreamCallEndReason.incomingCleared);
         }
         return;
       }
