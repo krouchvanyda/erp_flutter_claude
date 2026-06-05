@@ -957,6 +957,12 @@ class CallSignalingService {
     }));
   }
 
+  /// Public hook for the foreground in-app `IncomingCallOverlay`: when the
+  /// full-screen incoming sheet takes over a ringing call, clear the
+  /// native heads-up notification for the same call so the user doesn't
+  /// see BOTH the notification header AND the full-screen sheet at once.
+  void clearNativeIncoming(String callId) => _clearNativeIncoming(callId);
+
   /// GET /chats/calls/{id} — recover the canonical call state from
   /// the backend. Used when the app resumes from background and
   /// might have missed `call.accept` / `call.hangup` STOMP frames
@@ -1422,26 +1428,49 @@ class CallSignalingService {
         // arrives microseconds after our state flipped to connected,
         // killing the call page right when it just mounted.
         //
-        // If we're the caller, the hangup wasn't from us (we'd know),
-        // and our local state shows the call has been connected for
-        // less than 5 s, AND Stream's media leg is alive, ignore the
-        // hangup as a stale-backend artefact. The caller wouldn't have
-        // hung up that fast after we connected — this is overwhelmingly
-        // a backend timer race, NOT a real user-initiated hangup.
+        // Only the FRESHLY-connected window is ambiguous: a hangup here
+        // could be the caller's real End, OR a stale backend ring-timer
+        // hangup that raced our just-landed accept. We CANNOT tell them
+        // apart by `hangerUpperId` — the transport falls back to the
+        // caller id when no explicit hanger is set, so a timer hangup
+        // looks identical to a deliberate End.
+        //
+        // The reliable tell is whether the caller is still in the MEDIA
+        // call: a real End leaves the Stream session (no remote
+        // participant), whereas a stale timer hangup fires while the
+        // caller is still sitting in the call (remote participant
+        // present). Using `callNotifier.value != null` here was the bug —
+        // that only checks whether OUR OWN call object exists (always
+        // true once connected), so it swallowed the caller's real hangup
+        // for the whole 5 s window and B stayed stuck forever.
         if (active.state == CallSignalState.connected &&
             active.connectedAt != null) {
           final connectedMs =
               DateTime.now().difference(active.connectedAt!).inMilliseconds;
-          final iAmThePeerWhoHungUp = hangerUpperId == settings.userId;
-          final streamMediaAlive = streamEngine.callNotifier.value != null;
-          if (connectedMs < 5000 &&
-              !iAmThePeerWhoHungUp &&
-              streamMediaAlive) {
+          if (connectedMs < 5000 && streamEngine.hasRemoteParticipant) {
+            // Caller still in the media call → treat as a stale-backend
+            // hangup and ignore. But STOMP can beat Stream's
+            // participant-left propagation, so re-check shortly: if the
+            // caller has since left, honour the hangup we deferred —
+            // otherwise B would hang on a call the caller already ended
+            // inside the grace window (the reported bug).
             // ignore: avoid_print
-            print('[CallSignaling] CallHangupEvent IGNORED — call only '
-                '${connectedMs}ms old, hangerUpperId=$hangerUpperId, '
-                'Stream media is alive — treating as stale-backend '
-                'hangup that raced with our late accept');
+            print('[CallSignaling] CallHangupEvent deferred — call only '
+                '${connectedMs}ms old, caller still in media call; '
+                're-checking in 1.5 s');
+            final deferredCallId = callId;
+            Timer(const Duration(milliseconds: 1500), () {
+              final cur = _active;
+              if (cur != null &&
+                  cur.callId == deferredCallId &&
+                  cur.state == CallSignalState.connected &&
+                  !streamEngine.hasRemoteParticipant) {
+                // ignore: avoid_print
+                print('[CallSignaling] deferred hangup re-check: caller '
+                    'has left the media call → ending now');
+                unawaited(_finishPeerHangup(cur));
+              }
+            });
             return;
           }
         }
@@ -1473,41 +1502,50 @@ class CallSignalingService {
           }
           return;
         }
-        final endedAt = DateTime.now();
-        final duration = active.connectedAt == null
-            ? 0
-            : endedAt.difference(active.connectedAt!).inSeconds;
-        final logId = _logIdByCallId.remove(callId);
-        final resolvedStatus = duration > 0
-            ? ChatCallStatus.answered
-            : ChatCallStatus.noAnswer;
-        if (logId != null) {
-          await callLog.logEnded(
-            id: logId,
-            durationSeconds: duration,
-            finalStatus: resolvedStatus,
-          );
-        }
-        // Slice 10.2.10 — surface the call summary on the inbox tile.
-        unawaited(_writeCallSummary(
-          active,
-          finalStatus: resolvedStatus,
-          durationSeconds: duration,
-        ));
-        // The call ended for us — clear any native incoming heads-up
-        // that was still ringing on this device.
-        _clearNativeIncoming(active.callId);
-        _setActive(active.copyWith(state: CallSignalState.ended));
-        Future.delayed(const Duration(milliseconds: 600), () {
-          if (_active?.callId == active.callId &&
-              _active?.state == CallSignalState.ended) {
-            _setActive(null);
-          }
-        });
+        await _finishPeerHangup(active);
       default:
         // Chat-message + conversation-create events handled elsewhere.
         break;
     }
+  }
+
+  /// Tear down the local call after the PEER hung up (or after a deferred
+  /// hangup re-check confirms the caller left the media session): log the
+  /// end, write the inbox summary, clear any native ring, flip to `ended`,
+  /// then drop the active reference so the call page pops itself. Shared
+  /// by the immediate `CallHangupEvent` path and the grace-window deferred
+  /// re-check so both end the call identically.
+  Future<void> _finishPeerHangup(ActiveCall active) async {
+    final endedAt = DateTime.now();
+    final duration = active.connectedAt == null
+        ? 0
+        : endedAt.difference(active.connectedAt!).inSeconds;
+    final logId = _logIdByCallId.remove(active.callId);
+    final resolvedStatus =
+        duration > 0 ? ChatCallStatus.answered : ChatCallStatus.noAnswer;
+    if (logId != null) {
+      await callLog.logEnded(
+        id: logId,
+        durationSeconds: duration,
+        finalStatus: resolvedStatus,
+      );
+    }
+    // Slice 10.2.10 — surface the call summary on the inbox tile.
+    unawaited(_writeCallSummary(
+      active,
+      finalStatus: resolvedStatus,
+      durationSeconds: duration,
+    ));
+    // The call ended for us — clear any native incoming heads-up that
+    // was still ringing on this device.
+    _clearNativeIncoming(active.callId);
+    _setActive(active.copyWith(state: CallSignalState.ended));
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (_active?.callId == active.callId &&
+          _active?.state == CallSignalState.ended) {
+        _setActive(null);
+      }
+    });
   }
 
   void _setActive(ActiveCall? next) {

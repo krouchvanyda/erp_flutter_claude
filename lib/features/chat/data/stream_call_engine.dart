@@ -55,6 +55,21 @@ class StreamCallEngine {
   /// avatar forever even though the media leg is healthy.
   final ValueNotifier<Call?> callNotifier = ValueNotifier<Call?>(null);
 
+  /// True when the active Stream call currently has at least one REMOTE
+  /// (non-local) participant connected.
+  ///
+  /// This is the reliable discriminator the signalling layer uses to tell
+  /// a REAL peer hang-up from a stale backend hangup that raced a fresh
+  /// accept: when the caller deliberately ends the call they leave the
+  /// media session (→ false), whereas a backend ring-timer hangup fires
+  /// while the caller is still sitting in the call (→ true).
+  bool get hasRemoteParticipant {
+    final call = _activeCall ?? callNotifier.value;
+    if (call == null) return false;
+    final participants = call.state.valueOrNull?.callParticipants ?? const [];
+    return participants.any((p) => !p.isLocal);
+  }
+
   /// Fires every time Stream pushes a new incoming-call event over
   /// the live WebSocket (i.e. when B is FOREGROUNDED and A initiates
   /// a call with `ring=true`). The native CallKit ringer only fires

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';
 import '../../data/call_signaling_service.dart';
+import '../../data/lockscreen_return.dart';
 import '../../entities/call_log.dart';
 import '../pages/video_call_page.dart';
 import '../pages/voice_call_page.dart';
@@ -221,6 +223,12 @@ class _IncomingCallOverlayState extends State<IncomingCallOverlay> {
             if (shouldShow && call.callId != _displayedCallId) {
               _displayedCallId = call.callId;
               HapticFeedback.heavyImpact();
+              // The in-app full-screen sheet is now taking over this
+              // ringing call. Tear down any native heads-up notification
+              // for it (the `erp_callkit` CallStyle ring / CallKit ringer)
+              // so the user doesn't see BOTH the notification header AND
+              // this sheet stacked for the same call.
+              _signaling?.clearNativeIncoming(call.callId);
             } else if (!shouldShow) {
               _displayedCallId = null;
             }
@@ -233,111 +241,192 @@ class _IncomingCallOverlayState extends State<IncomingCallOverlay> {
   }
 }
 
-class _IncomingCallSheet extends StatelessWidget {
+class _IncomingCallSheet extends StatefulWidget {
   const _IncomingCallSheet({required this.call});
   final ActiveCall call;
+
+  @override
+  State<_IncomingCallSheet> createState() => _IncomingCallSheetState();
+}
+
+class _IncomingCallSheetState extends State<_IncomingCallSheet>
+    with SingleTickerProviderStateMixin {
+  /// Soft pulse driving the avatar glow ring — a calm "this is ringing"
+  /// cue, in keeping with the design guide's biometric/ring pulse rule
+  /// (scale 1.0→~1.18, 1.4 s, repeat-reverse). Lives here, not on the
+  /// avatar, so the avatar widget stays a dumb renderer.
+  late final AnimationController _pulse;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  ActiveCall get call => widget.call;
 
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
       child: Material(
-        color: Colors.black.withValues(alpha: 0.92),
-        child: SafeArea(
-          child: Column(
-            children: [
-              const SizedBox(height: 24),
-              // Slice 10.2.9 — surface "Incoming group voice/video
-              // call" for group calls so the recipient knows it's not
-              // a 1:1 invite.
-              AppLabel(
-                text: _typeLabel(call),
-                fontSize: AppFontSize.value13,
-                color: Colors.white.withValues(alpha: 0.75),
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.2,
-              ),
-              const Spacer(),
-              _IncomingAvatar(call: call),
-              const SizedBox(height: 20),
-              // For groups the title is the GROUP name (e.g. "TEST01").
-              // For direct calls it stays the caller's name.
-              AppLabel(
-                text: call.isGroup
-                    ? (call.conversationName ?? 'Group call')
-                    : call.peerName,
-                fontSize: AppFontSize.value25,
-                color: Colors.white,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.5,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              // Group calls add the caller as a subtitle so the
-              // recipient knows WHO started the call.
-              AppLabel(
-                text: call.isGroup
-                    ? '${call.peerName} is calling…'
-                    : 'Ringing…',
-                fontSize: AppFontSize.value16,
-                color: Colors.white.withValues(alpha: 0.7),
-                fontWeight: FontWeight.w600,
-              ),
-              const Spacer(flex: 2),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _BigCircleButton(
-                    icon: Icons.call_end_rounded,
-                    label: 'Decline',
-                    color: Colors.red.shade600,
-                    onTap: () =>
-                        GetIt.I<CallSignalingService>().rejectIncoming(),
+        // Polished dialer backdrop — vertical gradient instead of a flat
+        // black wash, so the hero + buttons read as a deliberate call
+        // screen rather than a dimmed sheet.
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFF1A2238),
+                Color(0xFF0B0D14),
+                Color(0xFF000000),
+              ],
+              stops: [0.0, 0.55, 1.0],
+            ),
+          ),
+          child: SafeArea(
+            child: Column(
+              children: [
+                const SizedBox(height: 28),
+                // Slice 10.2.9 — surface "Incoming group voice/video
+                // call" for group calls so the recipient knows it's not
+                // a 1:1 invite.
+                AppLabel(
+                  text: _typeLabel(call),
+                  fontSize: AppFontSize.value13,
+                  color: Colors.white.withValues(alpha: 0.7),
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.4,
+                ),
+                const Spacer(),
+                // Pulsing glow ring behind the avatar hero.
+                SizedBox(
+                  width: 196,
+                  height: 196,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      AnimatedBuilder(
+                        animation: _pulse,
+                        builder: (context, _) {
+                          final scale = 1.0 + 0.20 * _pulse.value;
+                          final alpha = 0.30 * (1 - _pulse.value);
+                          return Transform.scale(
+                            scale: scale,
+                            child: Container(
+                              width: 150,
+                              height: 150,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.greenAccent
+                                    .withValues(alpha: alpha),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      _IncomingAvatar(call: call),
+                    ],
                   ),
-                  _BigCircleButton(
-                    icon: call.callType == ChatCallType.video
-                        ? Icons.videocam_rounded
-                        : Icons.call_rounded,
-                    label: 'Accept',
-                    color: Colors.green.shade600,
-                    onTap: () {
-                      final signaling = GetIt.I<CallSignalingService>();
-                      // Slice 10.2.9 — push via the root navigator's
-                      // GlobalKey, NOT `Navigator.of(context)`. The
-                      // overlay is mounted via `MaterialApp.builder` so
-                      // the GoRouter's Navigator is a SIBLING (inside
-                      // `child` in the Stack), not an ancestor of this
-                      // sheet — `Navigator.of(context)` would walk up
-                      // and find no Navigator at all, silently dropping
-                      // the push. That was the "accept just closes" bug
-                      // that survived Slice 10.2.8.
-                      final navigator = AppRouter.rootNavigatorKey.currentState;
-                      if (navigator == null) {
-                        // Should never happen in practice — the router
-                        // owns the key for the whole app lifetime — but
-                        // bail rather than crash if the gate's somehow
-                        // not yet mounted.
-                        return;
-                      }
-                      navigator.push(
-                        MaterialPageRoute(
-                          builder: (_) => call.callType == ChatCallType.video
-                              ? VideoCallPage(
-                                  conversationId: call.conversationId)
-                              : VoiceCallPage(
-                                  conversationId: call.conversationId),
-                          fullscreenDialog: true,
-                        ),
-                      );
-                      // Fire-and-forget — the call page subscribes to
-                      // the service and reacts to the connected state
-                      // transition on its own.
-                      signaling.acceptIncoming();
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 32),
-            ],
+                ),
+                const SizedBox(height: 24),
+                // For groups the title is the GROUP name (e.g. "TEST01").
+                // For direct calls it stays the caller's name.
+                AppLabel(
+                  text: call.isGroup
+                      ? (call.conversationName ?? 'Group call')
+                      : call.peerName,
+                  fontSize: AppFontSize.value25,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.5,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                // Callee-side status line. "Ringing…" was wrong here —
+                // that's the CALLER's wording. The callee is RECEIVING
+                // the call, so phrase it as the caller calling them.
+                AppLabel(
+                  text: '${call.peerName} is calling…',
+                  fontSize: AppFontSize.value16,
+                  color: Colors.white.withValues(alpha: 0.7),
+                  fontWeight: FontWeight.w600,
+                  textAlign: TextAlign.center,
+                ),
+                const Spacer(flex: 2),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _BigCircleButton(
+                      icon: Icons.call_end_rounded,
+                      label: 'Decline',
+                      color: Colors.red.shade600,
+                      onTap: () {
+                        GetIt.I<CallSignalingService>().rejectIncoming();
+                        // Declined from the lock screen → drop back behind
+                        // the keyguard instead of revealing the dashboard.
+                        unawaited(
+                          LockScreenReturn.returnToLockScreenIfShownOver(),
+                        );
+                      },
+                    ),
+                    _BigCircleButton(
+                      icon: call.callType == ChatCallType.video
+                          ? Icons.videocam_rounded
+                          : Icons.call_rounded,
+                      label: 'Accept',
+                      color: Colors.green.shade600,
+                      onTap: () {
+                        final signaling = GetIt.I<CallSignalingService>();
+                        // Slice 10.2.9 — push via the root navigator's
+                        // GlobalKey, NOT `Navigator.of(context)`. The
+                        // overlay is mounted via `MaterialApp.builder` so
+                        // the GoRouter's Navigator is a SIBLING (inside
+                        // `child` in the Stack), not an ancestor of this
+                        // sheet — `Navigator.of(context)` would walk up
+                        // and find no Navigator at all, silently dropping
+                        // the push. That was the "accept just closes" bug
+                        // that survived Slice 10.2.8.
+                        final navigator =
+                            AppRouter.rootNavigatorKey.currentState;
+                        if (navigator == null) {
+                          // Should never happen in practice — the router
+                          // owns the key for the whole app lifetime — but
+                          // bail rather than crash if the gate's somehow
+                          // not yet mounted.
+                          return;
+                        }
+                        navigator.push(
+                          MaterialPageRoute(
+                            builder: (_) => call.callType == ChatCallType.video
+                                ? VideoCallPage(
+                                    conversationId: call.conversationId)
+                                : VoiceCallPage(
+                                    conversationId: call.conversationId),
+                            fullscreenDialog: true,
+                          ),
+                        );
+                        // Fire-and-forget — the call page subscribes to
+                        // the service and reacts to the connected state
+                        // transition on its own.
+                        signaling.acceptIncoming();
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 40),
+              ],
+            ),
           ),
         ),
       ),
@@ -349,9 +438,11 @@ class _IncomingCallSheet extends StatelessWidget {
   static String _typeLabel(ActiveCall call) {
     final isVideo = call.callType == ChatCallType.video;
     if (call.isGroup) {
-      return isVideo ? 'Incoming group video call' : 'Incoming group voice call';
+      return isVideo
+          ? 'INCOMING GROUP VIDEO CALL'
+          : 'INCOMING GROUP VOICE CALL';
     }
-    return isVideo ? 'Incoming video call' : 'Incoming voice call';
+    return isVideo ? 'INCOMING VIDEO CALL' : 'INCOMING VOICE CALL';
   }
 }
 

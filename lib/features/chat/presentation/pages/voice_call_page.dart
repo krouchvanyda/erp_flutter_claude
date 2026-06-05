@@ -8,6 +8,7 @@ import 'package:stream_webrtc_flutter/stream_webrtc_flutter.dart' as rtc;
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';
 import '../../data/call_signaling_service.dart';
+import '../../data/lockscreen_return.dart';
 import '../../data/repositories/conversations_repository.dart';
 import '../../data/stream_call_engine.dart';
 import '../../entities/call_log.dart';
@@ -100,6 +101,10 @@ class _VoiceCallPageState extends State<VoiceCallPage>
     _ticker?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _signaling.activeCallListenable.removeListener(_onActiveCallChanged);
+    // If this call was answered over the lock screen, drop the app back
+    // behind the keyguard now that it's over — instead of revealing the
+    // unlocked dashboard. No-op for calls started inside the unlocked app.
+    unawaited(LockScreenReturn.returnToLockScreenIfShownOver());
     super.dispose();
   }
 
