@@ -1,7 +1,7 @@
 import Flutter
 import UIKit
 import Firebase
-import flutter_local_notification
+import flutter_local_notifications
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -9,10 +9,13 @@ import flutter_local_notification
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    Firebase.configure()
+    FirebaseApp.configure()
     if #available(iOS 10.0, *) {
         UNUserNotificationCenter.current().delegate = self as UNUserNotificationCenterDelegate
     }
+      FlutterLocalNotificationsPlugin.setPluginRegistrantCallback { (registry) in
+          GeneratedPluginRegistrant.register(with: registry)
+      }
     GeneratedPluginRegistrant.register(with: self)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
