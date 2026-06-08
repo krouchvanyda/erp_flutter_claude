@@ -5,7 +5,9 @@
       "Bash(flutter analyze *)",
       "Bash(flutter --version)",
       "Bash(flutter doctor *)",
-      "Bash(plutil -lint ios/Runner/Info.plist)"
+      "Bash(plutil -lint ios/Runner/Info.plist)",
+      "Bash(yes)",
+      "Read(//Users/macbookpro/Library/Android/sdk/ndk/27.0.12077973/**)"
     ]
   }
 }
