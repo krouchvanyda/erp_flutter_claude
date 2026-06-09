@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -24,6 +26,33 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>ERP uses Bluetooth so you can take calls through wireless headsets.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>ERP uses Bluetooth so you can take calls through wireless headsets.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>ERP needs camera access for video calls and to take a profile photo.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>ERP uses the local network to establish low-latency voice and video calls.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>ERP needs microphone access for voice and video calls and voice messages.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>ERP needs photo library access so you can pick a profile photo or send images in chat.</string>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+		<string>voip</string>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -40,38 +69,6 @@
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>CADisableMinimumFrameDurationOnPhone</key>
-	<true/>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
-	<key>NSCameraUsageDescription</key>
-	<string>ERP needs camera access for video calls and to take a profile photo.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>ERP needs photo library access so you can pick a profile photo or send images in chat.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>ERP needs microphone access for voice and video calls and voice messages.</string>
-	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>ERP uses Bluetooth so you can take calls through wireless headsets.</string>
-	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>ERP uses Bluetooth so you can take calls through wireless headsets.</string>
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>ERP uses the local network to establish low-latency voice and video calls.</string>
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<!-- Dev/test: backend is served over cleartext HTTP/WS on a LAN IP
-		     (http://172.20.17.31:8080 + ws://…). iOS ATS blocks cleartext by
-		     default. Tighten this (HTTPS-only) before any App Store release. -->
-		<key>NSAllowsArbitraryLoads</key>
-		<true/>
-		<key>NSAllowsLocalNetworking</key>
-		<true/>
-	</dict>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>audio</string>
-		<string>voip</string>
-		<string>remote-notification</string>
 	</array>
 </dict>
 </plist>

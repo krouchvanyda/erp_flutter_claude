@@ -8,6 +8,7 @@ import 'package:stream_video_flutter/stream_video_flutter.dart' show Call;
 import 'users_cache.dart';
 
 import '../entities/call_log.dart';
+import 'callkit_call_id.dart';
 import 'chat_settings.dart';
 import 'chat_transport.dart';
 import 'chats_remote_data_source.dart';
@@ -320,9 +321,13 @@ class CallSignalingService {
     // _showStreamCallkitRinger in firebase_notification_provider).
     for (final id in ids) {
       try {
+        // iOS CallKit needs a UUID; `callkitIdForCid` maps the CID to the
+        // same deterministic UUID the show path used (no-op on Android).
+        final callkitId = callkitIdForCid(id);
         // ignore: avoid_print
-        print('[CallSignaling] dismissing CallKit notification id=$id');
-        await FlutterCallkitIncoming.endCall(id);
+        print('[CallSignaling] dismissing CallKit notification id=$id '
+            '(callkitId=$callkitId)');
+        await FlutterCallkitIncoming.endCall(callkitId);
       } catch (e) {
         // ignore: avoid_print
         print('[CallSignaling] endCall($id) failed (likely already '

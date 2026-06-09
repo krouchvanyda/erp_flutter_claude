@@ -10,6 +10,7 @@ import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/config/environments.dart';
+import '../../features/chat/data/callkit_call_id.dart';
 import 'local_notification_provider.dart';
 
 /// Top-level background message handler. **Must be a top-level (or
@@ -142,10 +143,10 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       if (dismissId.isNotEmpty) {
         await ErpCallKit.dismiss(dismissId);
       }
-      // iOS / flutter_callkit_incoming ringer is keyed on the CID verbatim
-      // (see _showStreamCallkitRinger). Best-effort end it too.
+      // iOS / flutter_callkit_incoming ringer is keyed on the CID-derived
+      // CallKit id (see _showStreamCallkitRinger). Best-effort end it too.
       try {
-        await FlutterCallkitIncoming.endCall(callCid);
+        await FlutterCallkitIncoming.endCall(callkitIdForCid(callCid));
       } catch (_) {/* swallow — entry may already be gone */}
     }
     return;
@@ -302,9 +303,12 @@ Future<void> _showStreamCallkitRinger(RemoteMessage message) async {
   final callCid = data['call_cid']?.toString() ?? '';
   if (callCid.isEmpty) return;
 
-  // Use the call CID as the ringer id so the matching `call.cancel`
-  // /  end push can dismiss it later via the same id.
-  final id = callCid;
+  // Ringer id: on Android this is the call CID verbatim; on iOS CallKit
+  // requires a UUID, so `callkitIdForCid` maps the CID to a deterministic
+  // UUID. Every dismiss/end path runs the same mapping, so the matching
+  // `call.cancel` / end push still cancels this exact entry. The raw CID is
+  // preserved below in `extra.call_cid` for accept/decline routing.
+  final id = callkitIdForCid(callCid);
   final callerName = data['created_by_display_name']?.toString() ??
       data['call_display_name']?.toString() ??
       'Unknown caller';
@@ -626,7 +630,8 @@ class FirebaseNotificationProvider {
                 unawaited(ErpCallKit.dismiss(dismissId)
                     .catchError((Object _) {}));
               }
-              FlutterCallkitIncoming.endCall(callCid).catchError((Object _) {});
+              FlutterCallkitIncoming.endCall(callkitIdForCid(callCid))
+                  .catchError((Object _) {});
             }
           }
           return;

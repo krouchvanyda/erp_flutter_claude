@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:erp_callkit/erp_callkit.dart';
@@ -48,6 +49,17 @@ class CallkitEventHandler {
   /// which callCid we've already handled (or are handling) so the
   /// duplicate is a no-op.
   final Set<String> _handledCallCids = <String>{};
+
+  /// When each callCid was accepted (iOS only). Used by `_handleHangup`
+  /// to ignore the spurious `actionCallEnded` that CallKit fires moments
+  /// after Accept — otherwise it becomes a `signaling.hangup()` that
+  /// closes the CALLER's call. A genuine End tap arrives well after this
+  /// window, so it still hangs up normally.
+  final Map<String, DateTime> _acceptedAt = <String, DateTime>{};
+
+  /// How long after Accept a CallKit `actionCallEnded` is treated as the
+  /// spurious post-accept handoff rather than a real hang-up.
+  static const Duration _acceptHandoffWindow = Duration(seconds: 6);
 
   /// (Removed: was a pushed-call-id dedupe set. Replaced with
   /// `VoiceCallPage.isMounted` / `VideoCallPage.isMounted` checks in
@@ -371,10 +383,34 @@ class CallkitEventHandler {
   /// `signaling.rejectIncoming()` if somehow still ringing.
   Future<void> _handleHangup(dynamic body) async {
     final params = _params(body);
-    final callCid =
-        params['call_cid']?.toString() ?? params['id']?.toString() ?? '';
+    // iOS VoIP-push entries use `callCid` (camelCase); FCM uses `call_cid`.
+    // Check both before the CallKit-UUID `id` fallback. (Additive — Android
+    // unaffected.)
+    final callCid = (params['call_cid'] ?? params['callCid'])?.toString() ??
+        params['id']?.toString() ??
+        '';
     // ignore: avoid_print
     print('[CallkitEventHandler] _handleHangup · callCid=$callCid');
+
+    // iOS only: CallKit fires a spurious `actionCallEnded` right after Accept
+    // (we can't call setCallConnected — it crashes the PushKit path). Ignore
+    // an end that lands within the handoff window of accepting THIS call, so
+    // it isn't turned into a `signaling.hangup()` that closes the caller's
+    // call. A real End tap arrives long after this window. (Android never
+    // populates `_acceptedAt`, so this is a no-op there.)
+    if (Platform.isIOS && callCid.isNotEmpty) {
+      final acceptedAt = _acceptedAt[callCid];
+      if (acceptedAt != null &&
+          DateTime.now().difference(acceptedAt) < _acceptHandoffWindow) {
+        // ignore: avoid_print
+        print('[CallkitEventHandler] _handleHangup IGNORED · spurious '
+            'actionCallEnded within ${_acceptHandoffWindow.inSeconds}s of '
+            'accept (CallKit handoff, not a real hang-up) · callCid=$callCid');
+        return;
+      }
+      // Past the window (or a genuine end) — let it proceed and stop tracking.
+      _acceptedAt.remove(callCid);
+    }
 
     final signaling = _safelyGet<CallSignalingService>();
     if (signaling == null) {
@@ -431,7 +467,13 @@ class CallkitEventHandler {
     // ignore: avoid_print
     print('[CallkitEventHandler] _handleAccept ENTER · body=$body');
     final params = _params(body);
-    final callCid = params['call_cid']?.toString() ?? params['id']?.toString();
+    // The CallKit entry built by Stream's native iOS VoIP-push handler stores
+    // the Stream cid under `callCid` (camelCase) in `extra`, whereas our own
+    // FCM path (Android) uses `call_cid` (snake_case). Check both before the
+    // `id` fallback — `id` is the CallKit UUID, never a Stream cid, so it's a
+    // last resort only. (Additive: Android's `call_cid` still wins first.)
+    final callCid = (params['call_cid'] ?? params['callCid'])?.toString() ??
+        params['id']?.toString();
     if (callCid == null || callCid.isEmpty) {
       // ignore: avoid_print
       print('[CallkitEventHandler] _handleAccept BAIL · missing call_cid');
@@ -464,10 +506,24 @@ class CallkitEventHandler {
       return;
     }
     _handledCallCids.add(callCid);
+    // Remember WHEN we accepted this call. iOS CallKit fires a spurious
+    // `actionCallEnded` a moment after Accept (we can't call the plugin's
+    // setCallConnected — its native PushKit path force-unwraps a nil and
+    // crashes). `_handleHangup` uses this timestamp to ignore that spurious
+    // end so it doesn't get turned into a hangup that closes the CALLER's
+    // call. iOS-only; Android neither writes nor reads this map.
+    if (Platform.isIOS) _acceptedAt[callCid] = DateTime.now();
     final isVideo = (params['type']?.toString() == '1');
     final signaling = _safelyGet<CallSignalingService>();
-    final callerId = params['caller_id']?.toString() ?? '';
-    final callerName = params['caller_name']?.toString() ?? callerId;
+    // VoIP-push CallKit entries carry the caller under CallKit's native keys
+    // (`handle` / `nameCaller`); our FCM path uses `caller_id` / `caller_name`.
+    // Accept both so the iOS background-accept flow has the caller context it
+    // needs to seed signaling (without it, step 1 below is skipped and
+    // acceptIncoming bails). Additive — Android's keys still take priority.
+    final callerId =
+        (params['caller_id'] ?? params['handle'])?.toString() ?? '';
+    final callerName =
+        (params['caller_name'] ?? params['nameCaller'])?.toString() ?? callerId;
     // ignore: avoid_print
     print('[CallkitEventHandler] _handleAccept · '
         'callCid=$callCid · callerId=$callerId · callerName=$callerName · '
@@ -566,14 +622,25 @@ class CallkitEventHandler {
     // ignore: avoid_print
     print('[CallkitEventHandler] _handleDecline ENTER · body=$body');
     final params = _params(body);
-    final callCid = params['call_cid']?.toString() ?? params['id']?.toString();
+    // iOS VoIP-push entries use `callCid` (camelCase); FCM uses `call_cid`.
+    // Check both before the CallKit-UUID `id` fallback. (Additive — Android
+    // unaffected.)
+    final callCid = (params['call_cid'] ?? params['callCid'])?.toString() ??
+        params['id']?.toString();
     if (callCid == null || callCid.isEmpty) {
       // ignore: avoid_print
       print('[CallkitEventHandler] _handleDecline BAIL · missing call_cid');
       return;
     }
-    final callerId = params['caller_id']?.toString() ?? '';
-    final callerName = params['caller_name']?.toString() ?? callerId;
+    // VoIP-push CallKit entries use CallKit's native keys (`handle` /
+    // `nameCaller`); the FCM path uses `caller_id` / `caller_name`. Read both
+    // so step 2 (backend reject + call-log) runs on an iOS background decline
+    // instead of being skipped for an empty callerId. Additive — Android keys
+    // take priority and are unaffected.
+    final callerId =
+        (params['caller_id'] ?? params['handle'])?.toString() ?? '';
+    final callerName =
+        (params['caller_name'] ?? params['nameCaller'])?.toString() ?? callerId;
     final isVideo = (params['type']?.toString() == '1');
     // ignore: avoid_print
     print('[CallkitEventHandler] _handleDecline · callCid=$callCid '

@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart';
 import 'package:stream_video_flutter/stream_video_flutter_background.dart';
 import 'package:stream_video_push_notification/stream_video_push_notification.dart';
@@ -1190,9 +1192,93 @@ class StreamCallEngine {
       await _client!.connect();
       // ignore: avoid_print
       print('[StreamCallEngine] connected as userId=$userId');
+      // iOS-only push diagnostic — answers "does APN work?" without a
+      // backend round-trip. Guarded to iOS so Android runtime is untouched.
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+        await _logPushDiagnostics();
+      }
     } catch (e) {
       // ignore: avoid_print
       print('[StreamCallEngine] ❌ connect failed: $e');
+    }
+  }
+
+  /// One-shot iOS push diagnostic. Logs two independent facts:
+  ///   1. Did iOS hand us an **APNs token**? (proves the push entitlement +
+  ///      provisioning profile are working — null means no push can arrive.)
+  ///   2. Is this device **registered with Stream** for call push, and is
+  ///      there an `apn` provider entry? (proves Stream knows where to send
+  ///      the incoming-call VoIP push.)
+  /// Both are read-only lookups; nothing here changes call behaviour. iOS
+  /// only — never runs on Android.
+  Future<void> _logPushDiagnostics() async {
+    // (1) FCM/remote APNs token — proves the push entitlement works.
+    try {
+      final apns = await FirebaseMessaging.instance.getAPNSToken();
+      // ignore: avoid_print
+      print(apns == null
+          ? '[PushDiag] ❌ APN NOT WORKING — iOS APNs token is NULL. '
+              '(entitlement/provisioning/paid-account issue.)'
+          : '[PushDiag] ✅ APN TOKEN OK — iOS APNs token present '
+              '(len=${apns.length}).');
+    } catch (e) {
+      // ignore: avoid_print
+      print('[PushDiag] APNs token lookup threw: $e');
+    }
+    // (2) VoIP (PushKit) token — the token Stream actually registers for
+    // CALL push. Separate from the APNs token above; delivered async by
+    // PushKit, so it may be empty for a beat right after launch.
+    try {
+      final voip = await FlutterCallkitIncoming.getDevicePushTokenVoIP();
+      // ignore: avoid_print
+      print(voip == null || voip.isEmpty
+          ? '[PushDiag] ⏳ VoIP (PushKit) token EMPTY so far — PushKit not yet '
+              'delivered. If still empty after +delay, call push can\'t register.'
+          : '[PushDiag] ✅ VoIP token present (len=${voip.length}).');
+    } catch (e) {
+      // ignore: avoid_print
+      print('[PushDiag] VoIP token lookup threw: $e');
+    }
+    // (3) Stream device list — check now AND again after registration has
+    // had time to settle (the VoIP token stream registers async).
+    await _checkStreamDevices('at-connect');
+    Future.delayed(const Duration(seconds: 10),
+        () => _checkStreamDevices('+10s'));
+  }
+
+  /// Logs whether this user has any push devices registered with Stream,
+  /// and whether an `apn` provider entry exists (the iOS call-push route).
+  Future<void> _checkStreamDevices(String when) async {
+    try {
+      final devices = (await _client?.getDevices())?.getDataOrNull();
+      if (devices == null) {
+        // ignore: avoid_print
+        print('[PushDiag/$when] ❌ getDevices() failed.');
+        return;
+      }
+      if (devices.isEmpty) {
+        // ignore: avoid_print
+        print('[PushDiag/$when] ⚠ Stream has 0 registered push devices — '
+            'call push will NOT be delivered.');
+        return;
+      }
+      final hasApn = devices.any((d) =>
+          d.pushProviderName == 'apn' ||
+          d.pushProvider.toString().toLowerCase().contains('apn'));
+      // ignore: avoid_print
+      print('[PushDiag/$when] Stream devices: ${devices.length} · apn '
+          'provider present: ${hasApn ? "✅ YES" : "❌ NO"}');
+      for (final d in devices) {
+        final tok = d.pushToken.length > 12
+            ? '${d.pushToken.substring(0, 12)}…'
+            : d.pushToken;
+        // ignore: avoid_print
+        print('[PushDiag/$when]   • provider=${d.pushProviderName ?? d.pushProvider} '
+            'voip=${d.voip} disabled=${d.disabled} token=$tok');
+      }
+    } catch (e) {
+      // ignore: avoid_print
+      print('[PushDiag/$when] getDevices() threw: $e');
     }
   }
 
