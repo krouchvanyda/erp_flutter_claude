@@ -290,21 +290,6 @@ Future<void> bootChatTransport(GetIt getIt) async {
   // lazy singleton.
   getIt<CallSignalingService>();
 
-  // iOS-only: warm up the Stream client at COLD START so the callee
-  // observes incoming calls on any screen. The incoming-call observer
-  // (`_incomingCallSub`) is only created inside `_ensureClient()`, which
-  // otherwise runs only on `AppLifecycleState.resumed` or when actively
-  // calling. A cold start never emits `resumed` (the app launches already
-  // resumed — no transition fires `didChangeAppLifecycleState`), so a
-  // freshly-launched callee sitting outside a conversation never connected
-  // the Stream WS and never rang. Warming here (after the signalling
-  // listener is wired above) makes the in-app IncomingCallOverlay light up
-  // regardless of which screen the callee is on. Android is unchanged: its
-  // working call flow is untouched per the iOS-only guardrail.
-  if (Platform.isIOS) {
-    unawaited(getIt<StreamCallEngine>().warmUp());
-  }
-
   // Slice 10.2.6 — re-kick the WebSocket whenever the app returns to
   // the foreground, in case the OS dropped it while we were
   // backgrounded. No-op when the socket is still alive.
