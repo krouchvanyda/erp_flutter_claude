@@ -16,12 +16,12 @@ class Environments {
   Environments._();
 
   // ── Production ────────────────────────────────────────────────
-  static const String prodApiBaseUrl = 'http://172.20.17.31:8080/api/v1';
-  static const String prodRealtimeUrl = 'ws://172.20.17.31:8080/realtime';
+  static const String prodApiBaseUrl = 'http://172.26.17.118:8080/api/v1';
+  static const String prodRealtimeUrl = 'ws://172.26.17.118:8080/realtime';
 
   // ── Staging ───────────────────────────────────────────────────
-  static const String stagingApiBaseUrl = 'http://172.20.17.31:8080/api/v1';
-  static const String stagingRealtimeUrl = 'ws://172.20.17.31:8080/realtime';
+  static const String stagingApiBaseUrl = 'http://172.26.17.118:8080/api/v1';
+  static const String stagingRealtimeUrl = 'ws://172.26.17.118:8080/realtime';
 
   // ── Local dev ─────────────────────────────────────────────────
   /// Points at the local Spring backend (`AuthController` at
@@ -34,8 +34,8 @@ class Environments {
   ///
   /// If your laptop's LAN IP changes (DHCP lease rolled, switched
   /// networks), update this value and hot-restart the app.
-  static const String localApiBaseUrl = 'http://172.20.17.31:8080/api/v1';
-  static const String localRealtimeUrl = 'ws://172.20.17.31:8080/realtime';
+  static const String localApiBaseUrl = 'http://172.26.17.118:8080/api/v1';
+  static const String localRealtimeUrl = 'ws://172.26.17.118:8080/realtime';
 
   // ── Common defaults ───────────────────────────────────────────
   /// Network timeouts in milliseconds. Override per-env if a slow
