@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../widgets/call_permission_gate.dart';
+
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart';
@@ -70,16 +72,33 @@ class _VideoCallPageState extends State<VideoCallPage>
       _startTicker();
     } else if (existing == null ||
         existing.conversationId != widget.conversationId) {
-      // Place a new outgoing video invite.
-      _signaling.startOutgoing(
-        conversationId: widget.conversationId,
-        callType: ChatCallType.video,
-      );
+      // Place a new outgoing video invite — gated on mic + camera
+      // permission (iOS-only; Android unchanged). Without them the Stream
+      // join fails silently and the ring never reaches the peer.
       _status = 'Calling…';
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_placeOutgoingWithPermission());
+      });
     } else {
       _status = 'Ringing…';
     }
     _resetHideTimer();
+  }
+
+  /// Ensure mic + camera permission, then place the outgoing invite. If a
+  /// permission is missing the gate shows an "Open Settings" dialog and we
+  /// pop the call page rather than placing a call that can't connect.
+  Future<void> _placeOutgoingWithPermission() async {
+    final granted = await ensureCallPermissions(needCamera: true);
+    if (!mounted) return;
+    if (!granted) {
+      Navigator.of(context).maybePop();
+      return;
+    }
+    _signaling.startOutgoing(
+      conversationId: widget.conversationId,
+      callType: ChatCallType.video,
+    );
   }
 
   @override

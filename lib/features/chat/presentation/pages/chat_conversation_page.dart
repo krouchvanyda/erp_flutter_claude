@@ -7,8 +7,10 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../../../core/router/config_router.dart';
+import '../widgets/call_permission_gate.dart';
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
@@ -135,6 +137,39 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     _inputCtrl.dispose();
     _scrollCtrl.dispose();
     super.dispose();
+  }
+
+  /// Start an outgoing call from the AppBar buttons. Checks mic (+ camera
+  /// for video) permission FIRST — so on a denial the "enable in Settings"
+  /// dialog shows over the chat, not over a "Calling…" screen. Only pushes
+  /// the call page once permission is granted. iOS-gated inside
+  /// [ensureCallPermissions]; Android pushes immediately as before.
+  Future<void> _startCall({required bool isVideo}) async {
+    final granted = await ensureCallPermissions(needCamera: isVideo);
+    if (!mounted) return;
+    if (!granted) {
+      // iOS-only path: mic/camera was previously denied so the native prompt
+      // can't re-appear. Give feedback (not the old lock-style dialog) with a
+      // one-tap shortcut to Settings, otherwise the call button looks dead.
+      final what = isVideo ? 'Microphone and camera' : 'Microphone';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$what access is off. Turn it on to make calls.'),
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(
+            label: 'Settings',
+            onPressed: openAppSettings,
+          ),
+        ),
+      );
+      return;
+    }
+    ConfigRouter.pushPageAnimation(
+      context,
+      isVideo
+          ? VideoCallPage(conversationId: widget.conversationId)
+          : VoiceCallPage(conversationId: widget.conversationId),
+    );
   }
 
   /// Section 7 op #9 — POST /chats/conversations/{id}/read with the
@@ -441,18 +476,12 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         IconButton(
           tooltip: 'Voice call',
           icon: const Icon(Icons.call_rounded),
-          onPressed: () => ConfigRouter.pushPageAnimation(
-            context,
-            VoiceCallPage(conversationId: widget.conversationId),
-          ),
+          onPressed: () => _startCall(isVideo: false),
         ),
         IconButton(
           tooltip: 'Video call',
           icon: const Icon(Icons.videocam_rounded),
-          onPressed: () => ConfigRouter.pushPageAnimation(
-            context,
-            VideoCallPage(conversationId: widget.conversationId),
-          ),
+          onPressed: () => _startCall(isVideo: true),
         ),
         IconButton(
           tooltip: 'Info',

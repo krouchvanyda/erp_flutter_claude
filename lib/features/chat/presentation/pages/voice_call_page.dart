@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+
+import '../widgets/call_permission_gate.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_webrtc_flutter/stream_webrtc_flutter.dart' as rtc;
@@ -84,11 +86,30 @@ class _VoiceCallPageState extends State<VoiceCallPage>
       }
     } else {
       _placedInvite = true;
-      _signaling.startOutgoing(
-        conversationId: widget.conversationId,
-        callType: ChatCallType.voice,
-      );
+      // Gate the outgoing call on microphone permission (iOS-only — Android
+      // unchanged). Without mic the Stream join fails silently and the ring
+      // never reaches the peer. Run after first frame so the dialog has a
+      // valid Overlay.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_placeOutgoingWithPermission());
+      });
     }
+  }
+
+  /// Ensure mic permission, then place the outgoing invite. If permission
+  /// is missing the gate shows an "Open Settings" dialog and we pop the
+  /// call page rather than placing a call that can't connect.
+  Future<void> _placeOutgoingWithPermission() async {
+    final granted = await ensureCallPermissions();
+    if (!mounted) return;
+    if (!granted) {
+      Navigator.of(context).maybePop();
+      return;
+    }
+    _signaling.startOutgoing(
+      conversationId: widget.conversationId,
+      callType: ChatCallType.voice,
+    );
   }
 
   @override
