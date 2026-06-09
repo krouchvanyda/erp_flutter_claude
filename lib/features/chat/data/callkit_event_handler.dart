@@ -137,20 +137,28 @@ class CallkitEventHandler {
     // nothing and the other side just hears silence. Asking up-front
     // means the permission is already granted by the time any call
     // is placed or accepted.
-    try {
-      final micStatus = await Permission.microphone.status;
-      // ignore: avoid_print
-      print('[CallkitEventHandler] Microphone permission '
-          'status (before request)=$micStatus');
-      if (!micStatus.isGranted) {
-        final result = await Permission.microphone.request();
+    //
+    // iOS-only carve-out: on iOS we do NOT ask up-front. The user wants
+    // the native mic/camera prompt to appear only when they tap the call
+    // button — that's handled by `ensureCallPermissions()` in the call
+    // pages. Android keeps the up-front request (the full-screen CallKit
+    // ringer depends on it).
+    if (!Platform.isIOS) {
+      try {
+        final micStatus = await Permission.microphone.status;
         // ignore: avoid_print
         print('[CallkitEventHandler] Microphone permission '
-            'request result=$result');
+            'status (before request)=$micStatus');
+        if (!micStatus.isGranted) {
+          final result = await Permission.microphone.request();
+          // ignore: avoid_print
+          print('[CallkitEventHandler] Microphone permission '
+              'request result=$result');
+        }
+      } catch (e) {
+        // ignore: avoid_print
+        print('[CallkitEventHandler] microphone permission error: $e');
       }
-    } catch (e) {
-      // ignore: avoid_print
-      print('[CallkitEventHandler] microphone permission error: $e');
     }
 
     // Step 2: USE_FULL_SCREEN_INTENT (Android 14+). NOT a normal
