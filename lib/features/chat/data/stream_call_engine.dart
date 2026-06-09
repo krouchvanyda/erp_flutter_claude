@@ -5,6 +5,10 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:permission_handler/permission_handler.dart';
+// ignore: depend_on_referenced_packages — pulled in transitively by
+// stream_video_flutter; we touch it directly only to pre-configure the
+// iOS AVAudioSession before a Stream join (see [_connectOptions]).
+import 'package:stream_webrtc_flutter/stream_webrtc_flutter.dart' as rtc;
 import 'package:stream_video_flutter/stream_video_flutter.dart';
 import 'package:stream_video_flutter/stream_video_flutter_background.dart';
 import 'package:stream_video_push_notification/stream_video_push_notification.dart';
@@ -46,7 +50,42 @@ enum StreamCallEndReason {
 /// want the signalling state machine, timers, and call logs to
 /// behave correctly so the user can hang up cleanly.
 class StreamCallEngine {
-  StreamCallEngine({required this.remote});
+  StreamCallEngine({required this.remote}) {
+    _primeWebRtcAudioEventSink();
+  }
+
+  /// Workaround for a use-after-free in `stream_webrtc_flutter` 1.0.13.
+  ///
+  /// Its `FlutterWebRTCPlugin.handleInterruption` posts to the
+  /// `FlutterWebRTC.Event` sink WITHOUT a nil-check (unlike
+  /// `didSessionRouteChange`, which guards `if (self.eventSink)`):
+  ///
+  /// ```objc
+  /// postEvent(self.eventSink, @{@"event": @"onInterruptionStart"});
+  /// ```
+  ///
+  /// When iOS fires an `AVAudioSession` interruption during a call's
+  /// audio setup and nothing has ever subscribed to that channel,
+  /// `self.eventSink` is nil, so `postEvent` does
+  /// `dispatch_async(^{ nil(event); })` → calling a nil block →
+  /// `EXC_BAD_ACCESS`. That is the crash the callee hits the instant
+  /// they accept and grant the mic (granting it enables the recording
+  /// unit, whose session activation triggers the interruption).
+  ///
+  /// Touching `navigator.mediaDevices` instantiates the package's
+  /// `MediaDeviceNative` singleton, whose constructor subscribes to
+  /// `FlutterWebRTC.Event` — so the native `_eventSink` becomes a
+  /// VALID block and the unguarded `postEvent` lands harmlessly (the
+  /// event is just ignored on the Dart side). One canonical subscription
+  /// for the whole process; never cancelled. iOS-only — Android's
+  /// (working) call flow is untouched.
+  void _primeWebRtcAudioEventSink() {
+    if (!Platform.isIOS) return;
+    try {
+      // ignore: unnecessary_statements
+      rtc.navigator.mediaDevices;
+    } catch (_) {/* best-effort priming — never block engine creation */}
+  }
 
   final ChatsRemoteDataSource remote;
 
@@ -184,12 +223,57 @@ class StreamCallEngine {
       // ignore: avoid_print
       print('[StreamCallEngine] iOS track gating · '
           'mic=$micEnabled cam=$camEnabled');
+      await configureIosCallAudio(isVideo: isVideo);
     }
     return CallConnectOptions(
       camera: camEnabled ? TrackOption.enabled() : TrackOption.disabled(),
       microphone:
           micEnabled ? TrackOption.enabled() : TrackOption.disabled(),
     );
+  }
+
+  /// Put the iOS `AVAudioSession` into `playAndRecord` / voiceChat
+  /// (videoChat for video) so the WebRTC recording unit can start.
+  ///
+  /// This MUST run before anything touches the audio route — both the
+  /// WebRTC mic unit that `call.join()` starts AND the call page's
+  /// `setSpeakerphoneOn(defaultToSpeaker)`. On iOS, accepting from the
+  /// in-app overlay (not CallKit's UI) means CallKit never activates the
+  /// session, so it stays in `playback`; starting the mic unit / setting
+  /// `defaultToSpeaker` on a non-`playAndRecord` session is the native
+  /// abort the callee hits the moment they grant the mic. Call this
+  /// EARLY (before flipping the call to `connected`), not just inside
+  /// [_connectOptions], because the page touches the route the instant
+  /// the connected state lands.
+  ///
+  /// No-op off iOS, and skipped when the mic isn't granted —
+  /// configuring `playAndRecord` without mic permission itself trips
+  /// iOS's privacy guard. Best-effort: failures are swallowed so they
+  /// can never crash the call. iOS-only — Android audio is untouched.
+  Future<void> configureIosCallAudio({required bool isVideo}) async {
+    if (!Platform.isIOS) return;
+    if (!await Permission.microphone.isGranted) return;
+    try {
+      await rtc.Helper.setAppleAudioConfiguration(
+        rtc.AppleAudioConfiguration(
+          appleAudioCategory: rtc.AppleAudioCategory.playAndRecord,
+          appleAudioCategoryOptions: <rtc.AppleAudioCategoryOption>{
+            rtc.AppleAudioCategoryOption.allowBluetooth,
+            rtc.AppleAudioCategoryOption.allowBluetoothA2DP,
+            rtc.AppleAudioCategoryOption.defaultToSpeaker,
+          },
+          appleAudioMode: isVideo
+              ? rtc.AppleAudioMode.videoChat
+              : rtc.AppleAudioMode.voiceChat,
+        ),
+      );
+      // ignore: avoid_print
+      print('[StreamCallEngine] iOS audio session → playAndRecord/'
+          '${isVideo ? "videoChat" : "voiceChat"}');
+    } catch (e) {
+      // ignore: avoid_print
+      print('[StreamCallEngine] setAppleAudioConfiguration failed: $e');
+    }
   }
 
   Future<void> join({

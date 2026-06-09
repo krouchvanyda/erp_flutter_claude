@@ -1176,6 +1176,11 @@ class CallSignalingService {
           'fallbackCid=$fallbackCid hasPendingIncoming='
           '${streamEngine.hasPendingIncoming}');
       if (fallbackCid != null && fallbackCid.isNotEmpty) {
+        // iOS: configure the audio session for record BEFORE the
+        // connected transition (see the success-path note above).
+        await streamEngine.configureIosCallAudio(
+          isVideo: active.callType == ChatCallType.video,
+        );
         // Optimistically flip to connected so the in-call page mounts
         // and the user gets the "Connecting…" UI instead of an instant
         // "Call ended". If Stream rejects we roll back below.
@@ -1262,6 +1267,14 @@ class CallSignalingService {
     // with whatever the invite carried.
     final streamCallCid = (response['streamCallCid'] as String?) ??
         active.streamCallCid;
+    // iOS: put the AVAudioSession into playAndRecord BEFORE flipping to
+    // connected. The connected transition synchronously notifies the
+    // call page, which immediately sets the speaker route — and that
+    // (plus the Stream mic unit that join starts next) crashes natively
+    // if the session is still `playback`. Must precede `_setActive`.
+    await streamEngine.configureIosCallAudio(
+      isVideo: active.callType == ChatCallType.video,
+    );
     _setActive(
       active.copyWith(
         state: CallSignalState.connected,
