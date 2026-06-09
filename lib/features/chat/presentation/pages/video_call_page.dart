@@ -85,16 +85,15 @@ class _VideoCallPageState extends State<VideoCallPage>
     _resetHideTimer();
   }
 
-  /// Ensure mic + camera permission, then place the outgoing invite. If a
-  /// permission is missing the gate shows an "Open Settings" dialog and we
-  /// pop the call page rather than placing a call that can't connect.
+  /// Trigger the native mic + camera prompt (iOS-only) the moment the call
+  /// page opens, then place the outgoing invite REGARDLESS of the result.
+  /// The ring sent to the callee is a REST invite that doesn't need the
+  /// mic/camera, so the other side must always ring; if the user denies, A
+  /// simply transmits no audio/video. (Old behaviour popped the page on
+  /// denial, so the callee never rang — that's the bug this fixes.)
   Future<void> _placeOutgoingWithPermission() async {
-    final granted = await ensureCallPermissions(needCamera: true);
+    await ensureCallPermissions(needCamera: true);
     if (!mounted) return;
-    if (!granted) {
-      Navigator.of(context).maybePop();
-      return;
-    }
     _signaling.startOutgoing(
       conversationId: widget.conversationId,
       callType: ChatCallType.video,

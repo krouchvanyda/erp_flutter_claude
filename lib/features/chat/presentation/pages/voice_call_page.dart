@@ -96,16 +96,15 @@ class _VoiceCallPageState extends State<VoiceCallPage>
     }
   }
 
-  /// Ensure mic permission, then place the outgoing invite. If permission
-  /// is missing the gate shows an "Open Settings" dialog and we pop the
-  /// call page rather than placing a call that can't connect.
+  /// Trigger the native mic prompt (iOS-only) the moment the call page
+  /// opens, then place the outgoing invite REGARDLESS of the result. The
+  /// ring sent to the callee is a REST invite that doesn't need the mic, so
+  /// the other side must always ring; if the user denies the mic, A simply
+  /// transmits no audio. (Old behaviour popped the page on denial, so the
+  /// callee never rang — that's the bug this fixes.)
   Future<void> _placeOutgoingWithPermission() async {
-    final granted = await ensureCallPermissions();
+    await ensureCallPermissions();
     if (!mounted) return;
-    if (!granted) {
-      Navigator.of(context).maybePop();
-      return;
-    }
     _signaling.startOutgoing(
       conversationId: widget.conversationId,
       callType: ChatCallType.voice,

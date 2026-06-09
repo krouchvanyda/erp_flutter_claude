@@ -7,10 +7,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 import '../../../../core/router/config_router.dart';
-import '../widgets/call_permission_gate.dart';
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';
 import '../../../../core/theme/app_radii.dart';
@@ -139,31 +137,14 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     super.dispose();
   }
 
-  /// Start an outgoing call from the AppBar buttons. Checks mic (+ camera
-  /// for video) permission FIRST — so on a denial the "enable in Settings"
-  /// dialog shows over the chat, not over a "Calling…" screen. Only pushes
-  /// the call page once permission is granted. iOS-gated inside
-  /// [ensureCallPermissions]; Android pushes immediately as before.
-  Future<void> _startCall({required bool isVideo}) async {
-    final granted = await ensureCallPermissions(needCamera: isVideo);
-    if (!mounted) return;
-    if (!granted) {
-      // iOS-only path: mic/camera was previously denied so the native prompt
-      // can't re-appear. Give feedback (not the old lock-style dialog) with a
-      // one-tap shortcut to Settings, otherwise the call button looks dead.
-      final what = isVideo ? 'Microphone and camera' : 'Microphone';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$what access is off. Turn it on to make calls.'),
-          behavior: SnackBarBehavior.floating,
-          action: SnackBarAction(
-            label: 'Settings',
-            onPressed: openAppSettings,
-          ),
-        ),
-      );
-      return;
-    }
+  /// Start an outgoing call from the AppBar buttons. We DON'T gate the call
+  /// on mic/camera permission here: the ring sent to the callee is just a
+  /// REST invite and doesn't need the mic, so the call must always be placed
+  /// (otherwise the other side never rings). The native mic/camera prompt is
+  /// triggered on the call page itself the moment it opens, and the call
+  /// proceeds whether or not the user grants it (no mic → A simply transmits
+  /// no audio). iOS-only prompt; Android unchanged.
+  void _startCall({required bool isVideo}) {
     ConfigRouter.pushPageAnimation(
       context,
       isVideo

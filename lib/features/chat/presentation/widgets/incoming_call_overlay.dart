@@ -14,6 +14,7 @@ import '../../data/lockscreen_return.dart';
 import '../../entities/call_log.dart';
 import '../pages/video_call_page.dart';
 import '../pages/voice_call_page.dart';
+import 'call_permission_gate.dart';
 
 /// Slice 10.2.3 — root-level overlay that listens to
 /// [CallSignalingService.activeCall] and shows a full-screen incoming-
@@ -386,7 +387,7 @@ class _IncomingCallSheetState extends State<_IncomingCallSheet>
                           : Icons.call_rounded,
                       label: 'Accept',
                       color: Colors.green.shade600,
-                      onTap: () {
+                      onTap: () async {
                         final signaling = GetIt.I<CallSignalingService>();
                         // Slice 10.2.9 — push via the root navigator's
                         // GlobalKey, NOT `Navigator.of(context)`. The
@@ -406,6 +407,14 @@ class _IncomingCallSheetState extends State<_IncomingCallSheet>
                           // not yet mounted.
                           return;
                         }
+                        // Show the callee's native mic (+ camera for video)
+                        // prompt the moment they accept (iOS-only; Android
+                        // unchanged). We DON'T block the call on the result —
+                        // accept regardless so the call still connects; a
+                        // denied mic just means the callee transmits no audio.
+                        await ensureCallPermissions(
+                          needCamera: call.callType == ChatCallType.video,
+                        );
                         navigator.push(
                           MaterialPageRoute(
                             builder: (_) => call.callType == ChatCallType.video

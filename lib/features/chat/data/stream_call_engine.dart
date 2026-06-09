@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart';
 import 'package:stream_video_flutter/stream_video_flutter_background.dart';
 import 'package:stream_video_push_notification/stream_video_push_notification.dart';
@@ -164,6 +166,32 @@ class StreamCallEngine {
   ///
   /// No-op when [streamCallCid] is null/empty (backend hasn't shipped
   /// Stream integration for this call) or the token endpoint fails.
+  /// Build the [CallConnectOptions] for a Stream join, gating each media
+  /// track on the OS permission **on iOS only**. Enabling a track the user
+  /// declined makes `call.join()` fail — and the failure path calls
+  /// `leave()`, which cancels the call (for the caller that stops the
+  /// callee's ring; for the callee it drops the call they just accepted).
+  /// Mapping a declined permission to a DISABLED track lets the join
+  /// succeed: the call connects, the user just publishes nothing on that
+  /// track. Android requests mic/camera up-front at launch, so both stay
+  /// enabled there exactly as before.
+  Future<CallConnectOptions> _connectOptions({required bool isVideo}) async {
+    var micEnabled = true;
+    var camEnabled = isVideo;
+    if (Platform.isIOS) {
+      micEnabled = await Permission.microphone.isGranted;
+      camEnabled = isVideo && await Permission.camera.isGranted;
+      // ignore: avoid_print
+      print('[StreamCallEngine] iOS track gating · '
+          'mic=$micEnabled cam=$camEnabled');
+    }
+    return CallConnectOptions(
+      camera: camEnabled ? TrackOption.enabled() : TrackOption.disabled(),
+      microphone:
+          micEnabled ? TrackOption.enabled() : TrackOption.disabled(),
+    );
+  }
+
   Future<void> join({
     required String streamCallCid,
     required bool isVideo,
@@ -265,13 +293,10 @@ class StreamCallEngine {
         try { await call.leave(); } catch (_) {}
         return;
       }
+      // Gate mic/camera on iOS so a declined permission becomes a disabled
+      // track instead of a join failure that would cancel B's ring.
       final joinResult = await call.join(
-        connectOptions: CallConnectOptions(
-          camera: isVideo
-              ? TrackOption.enabled()
-              : TrackOption.disabled(),
-          microphone: TrackOption.enabled(),
-        ),
+        connectOptions: await _connectOptions(isVideo: isVideo),
       );
       if (joinResult.isFailure) {
         // ignore: avoid_print
@@ -566,10 +591,7 @@ class StreamCallEngine {
         return true;
       }
       final joinResult = await call.join(
-        connectOptions: CallConnectOptions(
-          camera: isVideo ? TrackOption.enabled() : TrackOption.disabled(),
-          microphone: TrackOption.enabled(),
-        ),
+        connectOptions: await _connectOptions(isVideo: isVideo),
       );
       if (joinResult.isFailure) {
         // ignore: avoid_print
@@ -721,10 +743,7 @@ class StreamCallEngine {
         return false;
       }
       final joinResult = await call.join(
-        connectOptions: CallConnectOptions(
-          camera: isVideo ? TrackOption.enabled() : TrackOption.disabled(),
-          microphone: TrackOption.enabled(),
-        ),
+        connectOptions: await _connectOptions(isVideo: isVideo),
       );
       if (joinResult.isFailure) {
         // ignore: avoid_print
