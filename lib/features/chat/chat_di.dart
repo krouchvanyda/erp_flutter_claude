@@ -131,6 +131,12 @@ Future<void> bootChatTransport(GetIt getIt) async {
   //
   // Failures here are swallowed — the rest of the chat boot continues
   // with whatever the cache has (often just self).
+  // True once `/users/me` resolves — i.e. we cold-started with valid
+  // stored tokens (HTTP auth reads the secure-storage token directly,
+  // independent of the in-memory `AuthSession.isAuthenticated` flag,
+  // which the splash only flips ~2 s later). Used below to decide
+  // whether warming up Stream now would succeed or just 401.
+  var authReady = false;
   if (GetIt.I.isRegistered<UsersRemoteDataSource>()) {
     final users = GetIt.I<UsersRemoteDataSource>();
     try {
@@ -143,6 +149,7 @@ Future<void> bootChatTransport(GetIt getIt) async {
         userName: displayName,
       ));
       UsersCache.instance.put(userId: meUser.id, name: displayName);
+      authReady = true;
     } catch (_) {
       // Not signed in yet (401), no network, or tokens missing — fine.
     }
@@ -289,6 +296,45 @@ Future<void> bootChatTransport(GetIt getIt) async {
   // the first incoming invite would arrive before anyone reads the
   // lazy singleton.
   getIt<CallSignalingService>();
+
+  // Keep a CALL-topic subscription alive for every conversation the
+  // user belongs to, refreshed whenever the inbox changes. An incoming
+  // `call.invite` is broadcast on `/topic/conversations/{id}/call`, but
+  // that topic was previously only subscribed by the open chat page
+  // (`subscribeConversation` in `ChatConversationPage.initState`) — so a
+  // callee on the dashboard / inbox never received the frame and the
+  // in-app overlay stayed dark. Subscribing here (idempotent, call-topic
+  // only — no message double-processing) makes the incoming-call sheet
+  // appear on ANY screen, matching the behaviour the user only saw while
+  // inside the conversation. Covers conversations created mid-session
+  // too, since `watchAll()` re-emits on every inbox change.
+  //
+  // iOS-only per the call-flow guardrail — Android's working call path
+  // stays byte-for-byte unchanged (the transport methods are inert
+  // unless called).
+  if (Platform.isIOS) {
+    conversations.watchAll().listen((convs) {
+      transport.subscribeCallTopics(convs.map((c) => c.id));
+    });
+  }
+
+  // iOS-only: warm up the Stream client at COLD START so a callee
+  // observes incoming calls on ANY screen from launch. The Stream
+  // incoming-call observer (`_incomingCallSub`) is created only inside
+  // `StreamCallEngine._ensureClient()`, which otherwise runs on
+  // `AppLifecycleState.resumed`, on an active call, or once the splash
+  // flips the auth session ~2 s after launch. A cold start never emits
+  // `resumed` (the app launches already resumed — no transition fires
+  // `didChangeAppLifecycleState`), so until that delayed auth warm-up
+  // lands, a freshly-launched callee sitting on the dashboard/inbox has
+  // no live Stream WS and the in-app `IncomingCallOverlay` stays dark.
+  // Warming here — only when `/users/me` already resolved (i.e. we
+  // cold-started authenticated, so `/stream-token` will succeed rather
+  // than 401) — wires the observer immediately. Android is unchanged:
+  // its working call flow is untouched per the iOS-only guardrail.
+  if (authReady && Platform.isIOS) {
+    unawaited(getIt<StreamCallEngine>().warmUp());
+  }
 
   // Slice 10.2.6 — re-kick the WebSocket whenever the app returns to
   // the foreground, in case the OS dropped it while we were

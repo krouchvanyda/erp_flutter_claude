@@ -262,6 +262,14 @@ class ChatTransport {
   /// blip.
   final Set<String> _wantConvSubs = <String>{};
 
+  /// Conv ids we want the CALL topic (`…/call`) for, independent of
+  /// whether the chat page is open. Populated at boot from the inbox
+  /// (see [subscribeCallTopics]) so an incoming `call.invite` broadcast
+  /// on `/topic/conversations/{id}/call` lights up the in-app overlay on
+  /// ANY screen — not just while the user is sitting on that
+  /// conversation. Re-applied on reconnect like [_wantConvSubs].
+  final Set<String> _wantCallSubs = <String>{};
+
   /// Message ids the backend has just confirmed for us — populated
   /// inside [sendMessage] from the POST response. When the matching
   /// `/topic/conversations/{id}` echo arrives we drop it before
@@ -415,6 +423,11 @@ class ChatTransport {
     for (final id in _wantConvSubs.toList()) {
       _attachConvSubs(id);
     }
+    // Re-apply the boot-time call-topic subscriptions too so incoming
+    // invites keep landing on any screen after a reconnect.
+    for (final id in _wantCallSubs.toList()) {
+      _attachCallSub(id);
+    }
   }
 
   // ── conversation topic subscription management ──────────────
@@ -435,28 +448,65 @@ class ChatTransport {
     }
   }
 
+  /// Subscribe to ONLY the call topic (`…/call`) for each id in
+  /// [conversationIds], without the message topic. Call this at boot
+  /// with every conversation the user belongs to so an incoming
+  /// `call.invite` broadcast on `/topic/conversations/{id}/call` shows
+  /// the in-app incoming-call overlay on ANY screen — not just while
+  /// the chat page is open. (The message topic is left to
+  /// [subscribeConversation], which the open chat page manages, so we
+  /// don't double-process messages for every conversation.) Idempotent.
+  void subscribeCallTopics(Iterable<String> conversationIds) {
+    for (final id in conversationIds) {
+      if (id.isEmpty) continue;
+      _wantCallSubs.add(id);
+      if (_status == ChatTransportStatus.connected) {
+        _attachCallSub(id);
+      }
+    }
+  }
+
   /// Drop both subscriptions for [conversationId]. Idempotent.
+  ///
+  /// The call topic is preserved when the conversation is in
+  /// [_wantCallSubs] (a boot-time subscription) so closing the chat
+  /// page doesn't stop incoming invites for that conversation from
+  /// reaching the global overlay.
   void unsubscribeConversation(String conversationId) {
     _wantConvSubs.remove(conversationId);
     _convSubs.remove('$conversationId#msg')?.call();
-    _convSubs.remove('$conversationId#call')?.call();
+    if (!_wantCallSubs.contains(conversationId)) {
+      _convSubs.remove('$conversationId#call')?.call();
+    }
   }
 
   void _attachConvSubs(String conversationId) {
     final msgKey = '$conversationId#msg';
-    final callKey = '$conversationId#call';
-    if (_convSubs.containsKey(msgKey)) return; // already subscribed
     final client = _client;
     if (client == null) return;
-    final msgUnsub = client.subscribe(
-      destination: '/topic/conversations/$conversationId',
-      callback: (frame) => _handleEnvelope(frame, source: 'conv'),
-    );
+    if (!_convSubs.containsKey(msgKey)) {
+      final msgUnsub = client.subscribe(
+        destination: '/topic/conversations/$conversationId',
+        callback: (frame) => _handleEnvelope(frame, source: 'conv'),
+      );
+      _convSubs[msgKey] = msgUnsub;
+    }
+    // The call topic may already be attached by a boot-time
+    // [subscribeCallTopics]; guard it independently so we don't leak a
+    // second subscription (and overwrite the unsub handle).
+    _attachCallSub(conversationId);
+  }
+
+  /// Attach the call topic for [conversationId] if not already attached.
+  void _attachCallSub(String conversationId) {
+    final callKey = '$conversationId#call';
+    if (_convSubs.containsKey(callKey)) return; // already subscribed
+    final client = _client;
+    if (client == null) return;
     final callUnsub = client.subscribe(
       destination: '/topic/conversations/$conversationId/call',
       callback: (frame) => _handleEnvelope(frame, source: 'convCall'),
     );
-    _convSubs[msgKey] = msgUnsub;
     _convSubs[callKey] = callUnsub;
   }
 
