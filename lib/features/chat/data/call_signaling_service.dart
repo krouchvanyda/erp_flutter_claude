@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 
 import 'package:erp_callkit/erp_callkit.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show MethodChannel;
 import 'package:flutter/widgets.dart' show WidgetsBinding, AppLifecycleState;
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart' show Call;
@@ -583,19 +584,37 @@ class CallSignalingService {
           print('[CallSignaling] Stream members (iOS) → $streamMemberIds '
               '(targetIds was $targetIds)');
         }
-        // `ringing:true` fires Stream's VoIP push so a BACKGROUNDED /
-        // KILLED callee wakes and shows the native CallKit ring (the
-        // chat-backend STOMP invite can't reach a callee whose socket was
-        // dropped on background). The iOS side effect — the SDK's
-        // outgoing-call state machine cancelling our join on accept
-        // ("connect cancelled", no audio) — is neutralised inside
-        // `StreamCallEngine.join`, which detaches the call from the
-        // outgoing-call slot right after the ring fires (iOS-only).
+        // The RING (the VoIP push that lights the native CallKit incoming
+        // screen on a minimized/killed callee) is fired SERVER-SIDE by our
+        // backend now: `POST /chats/conversations/{id}/calls` does a Stream
+        // `getOrCreate(ring: true, members: [...])`. So the mobile client
+        // must NOT ring again — it only JOINS the already-created call for
+        // media.
+        //
+        // iOS (`shouldRing: false`): a client-side `ringing:true` puts the
+        // caller's `call.join()` into the "ringing flow", which WAITS for
+        // the accept and then cancels itself (`VideoError{connect
+        // cancelled}`) → caller never enters the SFU → no audio. Joining
+        // ring-free avoids that AND avoids double-ringing the callee on top
+        // of the backend push. `getOrCreate(ringing:false)` here is a plain
+        // GET of the existing backend-created call — it does NOT cancel the
+        // server-side ring (ring is a one-shot at create; a later get with
+        // ringing:false doesn't tear down members already in `ringing`).
+        //
+        // Android keeps `ringing:true` for now (its FCM ring path predates
+        // the backend ring). NOTE: with the backend now ringing every
+        // member, Android's client-side ring is redundant and may
+        // double-notify — switching Android to `false` too is a follow-up
+        // gated on the "no Android impact" rule.
+        //
+        // `isOutgoing:true` keeps the caller's peer-joined fallback listener
+        // attached despite shouldRing:false.
         unawaited(streamEngine.join(
           streamCallCid: streamCallCid,
           isVideo: callType == ChatCallType.video,
           calleeUserIds: streamMemberIds,
-          shouldRing: true,
+          shouldRing: !Platform.isIOS,
+          isOutgoing: true,
         ));
       }
     }());
@@ -1071,6 +1090,15 @@ class CallSignalingService {
   /// showing — used when a peer hang-up / reject means an unanswered
   /// ring on this device must disappear (fixes: A ends the call but B's
   /// heads-up stays on screen).
+  /// Native bridge to forcibly dismiss the iOS CallKit incoming screen via
+  /// `CXProvider.reportCall(with:endedAt:reason:)`. `flutter_callkit_incoming`
+  /// only exposes `endCall`/`endAllCalls`, which issue a `CXEndCallAction`
+  /// transaction — and that does NOT tear down a PushKit-reported incoming
+  /// call's UI (verified on-device: the transaction "succeeds" but the ring
+  /// header stays). `reportCall(endedAt:)` does. Implemented in
+  /// `ios/Runner/AppDelegate.swift`.
+  static const MethodChannel _iosCallkit = MethodChannel('erp/ios_callkit');
+
   void _clearNativeIncoming(String callId) {
     if (callId.isNotEmpty) {
       unawaited(ErpCallKit.dismiss(callId).catchError((Object _) {}));
@@ -1080,6 +1108,15 @@ class CallSignalingService {
         await FlutterCallkitIncoming.endAllCalls();
       } catch (_) {/* swallow */}
     }));
+    // iOS: endAllCalls (CXEndCallAction) can't dismiss a PushKit incoming
+    // screen — go through reportCall(endedAt:) in native code.
+    if (Platform.isIOS) {
+      unawaited(
+        _iosCallkit
+            .invokeMethod<dynamic>('dismissIncoming')
+            .catchError((Object _) => null),
+      );
+    }
   }
 
   /// Public hook for the foreground in-app `IncomingCallOverlay`: when the
@@ -1101,22 +1138,61 @@ class CallSignalingService {
   /// `CallkitEventHandler` while foreground, so this can't reject the call.
   void _suppressForegroundCallkit(String callId) {
     if (!Platform.isIOS) return;
-    final lc = WidgetsBinding.instance.lifecycleState;
-    final backgrounded = lc == AppLifecycleState.paused ||
-        lc == AppLifecycleState.hidden ||
-        lc == AppLifecycleState.detached;
-    if (backgrounded) return; // keep the native ring when backgrounded
+    // Keep dismissing the native CallKit incoming screen for as long as the
+    // call is STILL ringing AND we're STILL foreground — not just a fixed
+    // short burst. The screen is raised by Stream's server-side VoIP push,
+    // which arrives over APNs — a SEPARATE channel from the STOMP invite
+    // that triggers this call — so it can land several seconds late, after
+    // any fixed-length sweep would have given up (that's the "foreground
+    // still shows the header" bug once the backend started ringing every
+    // member). Looping until the ring resolves guarantees a late header is
+    // cleared within one tick.
+    //
+    // Stop conditions (re-checked every tick):
+    //   • app backgrounded → STOP; there the native ring is exactly what we
+    //     want (minimized/killed ring path).
+    //   • call left `incomingRinging` (accepted / ended / replaced) → STOP;
+    //     after connect we must not keep nuking CallKit (it would also kill
+    //     a legit ongoing-call notification).
+    //   • hard cap (~35 s, just past the ring timeout) → STOP, never loops
+    //     forever.
+    // `endAllCalls()` inside `_clearNativeIncoming` only touches native
+    // CallKit, never the Flutter in-app overlay, so this is safe to repeat.
+    const tick = Duration(milliseconds: 300);
+    const maxTicks = 120; // ~36 s
     var n = 0;
     void sweep() {
+      final lc = WidgetsBinding.instance.lifecycleState;
+      final backgrounded = lc == AppLifecycleState.paused ||
+          lc == AppLifecycleState.hidden ||
+          lc == AppLifecycleState.detached;
+      final stillRinging = _active?.callId == callId &&
+          _active?.state == CallSignalState.incomingRinging;
+      if (backgrounded || !stillRinging || n >= maxTicks) {
+        // ignore: avoid_print
+        print('[CallSignaling] suppressCallkit STOP · callId=$callId '
+            'lc=$lc backgrounded=$backgrounded stillRinging=$stillRinging '
+            'ticks=$n');
+        return;
+      }
+      // ignore: avoid_print
+      print('[CallSignaling] suppressCallkit dismiss#$n · callId=$callId '
+          'lc=$lc → endAllCalls()');
       _clearNativeIncoming(callId);
       n++;
-      if (n < 8) {
-        Future.delayed(const Duration(milliseconds: 400), sweep);
-      }
+      Future.delayed(tick, sweep);
     }
 
     sweep();
   }
+
+  /// Public trigger for the foreground CallKit-dismiss loop, callable from
+  /// `CallkitEventHandler` when it sees the native incoming screen actually
+  /// appear (`Event.actionCallIncoming`) — the one moment we KNOW CallKit is
+  /// on screen, regardless of whether the STOMP/WS invite path already
+  /// kicked the loop off.
+  void suppressForegroundCallkitFor(String callId) =>
+      _suppressForegroundCallkit(callId);
 
   /// TERMINAL-only notification sweep: the call is genuinely over, so wipe
   /// EVERY call notification off the screen — our own `erp_incoming_calls`

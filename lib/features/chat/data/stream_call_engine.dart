@@ -319,6 +319,106 @@ class StreamCallEngine {
     }
   }
 
+  /// iOS-only: re-apply the audio route AFTER the media `join()` has
+  /// completed — the fix for "connected but both sides are silent".
+  ///
+  /// The call page sets the speaker route the instant the signalling
+  /// state flips to `connected`. On the callee that flip happens BEFORE
+  /// the `unawaited` `join()` finishes, so WebRTC's audio device module
+  /// (ADM) starts a beat LATER and reconfigures the shared
+  /// `RTCAudioSession` with its own `webRTCConfiguration` defaults —
+  /// silently overriding the route the page just set, which the page then
+  /// never re-applies. Net effect on both phones: the session ends up on a
+  /// route that produces no audible output even though the SFU media is
+  /// healthy.
+  ///
+  /// Re-asserting here, once the ADM is up, restores output.
+  /// `ensureAudioSession()` first guarantees the category is
+  /// `playAndRecord` (the native `setSpeakerphoneOn` is a no-op otherwise,
+  /// see stream_webrtc `AudioUtils.setSpeakerphoneOn`). One-shot — runs
+  /// only at connect, so a later user earpiece/speaker toggle from the
+  /// page is NOT overridden. Best-effort; never throws. No-op off iOS, so
+  /// Android's route handling (managed entirely by the call page) is
+  /// untouched.
+  Future<void> _reassertIosAudioRoute() async {
+    if (!Platform.isIOS) return;
+    try {
+      await rtc.Helper.ensureAudioSession();
+      await rtc.Helper.setSpeakerphoneOn(true);
+      // ignore: avoid_print
+      print('[StreamCallEngine] iOS post-join audio re-assert · '
+          'ensureAudioSession + speakerphone(on)');
+    } catch (e) {
+      // ignore: avoid_print
+      print('[StreamCallEngine] post-join audio re-assert failed: $e');
+    }
+  }
+
+  /// Diagnostic: poll the active call's participants and log, per side,
+  /// whether each is PUBLISHING audio (its `publishedTracks` contains an
+  /// audio track) plus the live `audioLevel`. Answers "is A's mic
+  /// working / is B's mic working" directly from the SFU's view, which
+  /// is the only way to tell a publish failure (mic never reaches the
+  /// SFU) from a playback failure (audio arrives but the iOS session
+  /// routes it nowhere audible). Runs immediately then every 2 s for
+  /// ~16 s (long enough to see the remote join), and stops once both a
+  /// local and a remote audio publisher are seen. Best-effort; never
+  /// throws.
+  Timer? _audioDiagTimer;
+
+  void _startAudioDiagnostics(Call call, String tag) {
+    _audioDiagTimer?.cancel();
+    var ticks = 0;
+    void dump() {
+      ticks++;
+      final s = call.state.valueOrNull;
+      if (s == null) {
+        // ignore: avoid_print
+        print('[StreamAudio/$tag #$ticks] no call state yet');
+        return;
+      }
+      final parts = s.callParticipants;
+      // ignore: avoid_print
+      print('[StreamAudio/$tag #$ticks] cid=${call.callCid.value} '
+          'status=${s.status} participants=${parts.length}');
+      var sawLocalAudio = false;
+      var sawRemoteAudio = false;
+      for (final p in parts) {
+        final tracks = p.publishedTracks.keys
+            .map((t) => t.toString())
+            .toList(growable: false);
+        final publishesAudio =
+            tracks.any((t) => t.toLowerCase().contains('audio'));
+        if (publishesAudio && p.isLocal) sawLocalAudio = true;
+        if (publishesAudio && !p.isLocal) sawRemoteAudio = true;
+        // ignore: avoid_print
+        print('[StreamAudio/$tag #$ticks]   '
+            '${p.isLocal ? "LOCAL " : "remote"} userId=${p.userId} '
+            'name="${p.name}" publishesAudio=$publishesAudio '
+            'audioLevel=${p.audioLevel.toStringAsFixed(3)} tracks=$tracks');
+      }
+      if (sawLocalAudio && sawRemoteAudio) {
+        // ignore: avoid_print
+        print('[StreamAudio/$tag #$ticks] ✅ both LOCAL and REMOTE are '
+            'publishing audio — media path is healthy (if still silent, '
+            'the bug is iOS playback/route, not publish/subscribe)');
+        _audioDiagTimer?.cancel();
+        _audioDiagTimer = null;
+      } else if (ticks >= 8) {
+        // ignore: avoid_print
+        print('[StreamAudio/$tag #$ticks] ⚠ stopping diagnostics · '
+            'localAudio=$sawLocalAudio remoteAudio=$sawRemoteAudio '
+            '(if remoteAudio=false the other side never joined/published)');
+        _audioDiagTimer?.cancel();
+        _audioDiagTimer = null;
+      }
+    }
+
+    dump();
+    _audioDiagTimer =
+        Timer.periodic(const Duration(seconds: 2), (_) => dump());
+  }
+
   /// iOS-only: warm up an INCOMING call's media leg WHILE it's ringing.
   /// Runs the Stream `getOrCreate` (coordinator handshake → SFU
   /// credentials) on the call identified by [streamCallCid] but does NOT
@@ -404,14 +504,23 @@ class StreamCallEngine {
     //   only (no push will fire on anyone else). For a 1:1 call
     //   from A→B, pass `['10']`. For a group, pass every other
     //   participant.
-    // [shouldRing]: true on the caller's side (we want Stream to
-    //   broadcast the VoIP notification); false on the callee's
-    //   side (we're just joining a call that already rang us).
-    //   Defaults to true because the only caller of this method
-    //   today is the outgoing-call path.
+    // [shouldRing]: create the Stream call with `ringing: true` so Stream
+    //   fires its VoIP push to [calleeUserIds] — the push that lights the
+    //   native CallKit / FCM ring header on a BACKGROUNDED / KILLED callee.
+    //   The caller passes true on BOTH platforms; the callee side passes
+    //   false (it's joining a call that already rang it). The iOS
+    //   "connect cancelled" race that `ringing:true` used to trigger is
+    //   neutralised by creating the caller's call with
+    //   `dropIfAloneInRingingFlow: false` (see the makeCall below), NOT by
+    //   dropping the ring.
+    // [isOutgoing]: marks the caller's leg so the peer-joined fallback
+    //   listener is attached. Defaults to [shouldRing] for back-compat;
+    //   passed explicitly by the outgoing path for clarity.
     List<String> calleeUserIds = const [],
     bool shouldRing = true,
+    bool? isOutgoing,
   }) async {
+    final outgoing = isOutgoing ?? shouldRing;
     if (streamCallCid.isEmpty) return;
     // Stake our claim BEFORE any await — anything kicked off after
     // this call bumps the counter, so we'll see we've been superseded
@@ -577,12 +686,17 @@ class StreamCallEngine {
       // Caller-side path only: watch for the first remote participant
       // to join so we can flip the chat-ceremony state to connected
       // even when the backend's `call.accept` STOMP broadcast never
-      // reaches us.
-      if (shouldRing) {
+      // reaches us. Keyed on [outgoing] (not [shouldRing]) so the iOS
+      // caller — which now joins with shouldRing:false — still gets it.
+      if (outgoing) {
         _attachPeerJoinedListener(call);
       }
       _attachEndListener(call);
       unawaited(_ensureMicPublishing(call));
+      // iOS: re-apply the speaker route now that the ADM is up (the page
+      // set it before this join finished — see [_reassertIosAudioRoute]).
+      unawaited(_reassertIosAudioRoute());
+      _startAudioDiagnostics(call, outgoing ? 'caller' : 'callee-join');
       if (kDebugMode) {
         debugPrint(
           '[StreamCallEngine] joined cid=$streamCallCid '
@@ -870,6 +984,8 @@ class StreamCallEngine {
       _pendingIncomingCall = null;
       _attachEndListener(call);
       unawaited(_ensureMicPublishing(call));
+      unawaited(_reassertIosAudioRoute());
+      _startAudioDiagnostics(call, 'callee-accept');
       // ignore: avoid_print
       print('[StreamCallEngine] $attemptLabel: accept+join OK on '
           'Stream-provided ref — media leg up');
@@ -1044,6 +1160,8 @@ class StreamCallEngine {
       // Android's working call flow is left exactly as before.
       if (Platform.isIOS) {
         unawaited(_ensureMicPublishing(call));
+        unawaited(_reassertIosAudioRoute());
+        _startAudioDiagnostics(call, 'callee-accept-pending');
       }
       // ignore: avoid_print
       print('[StreamCallEngine] accept+join OK — media leg up');
@@ -1312,6 +1430,8 @@ class StreamCallEngine {
         'activeCall=${call?.callCid.value ?? "null"} · seq=$_callSeq');
     _activeCall = null;
     callNotifier.value = null;
+    _audioDiagTimer?.cancel();
+    _audioDiagTimer = null;
     await _peerJoinedSub?.cancel();
     _peerJoinedSub = null;
     // CRITICAL: cancel the end-listener too. Without this, when we

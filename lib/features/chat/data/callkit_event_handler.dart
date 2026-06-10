@@ -463,14 +463,23 @@ class CallkitEventHandler {
     if (uuid.isNotEmpty) _suppressedIncoming.add(uuid);
     // ignore: avoid_print
     print('[CallkitEventHandler] foreground incoming — dismissing native '
-        'CallKit header (in-app overlay handles the ring) · callCid=$callCid');
+        'CallKit header (in-app overlay handles the ring) · callCid=$callCid '
+        'uuid=$uuid');
     try {
-      if (uuid.isNotEmpty) {
-        await FlutterCallkitIncoming.endCall(uuid);
-      } else {
-        await FlutterCallkitIncoming.endAllCalls();
-      }
+      // End by the specific uuid AND sweep all — Stream's native push may
+      // have reported the call under a uuid we don't see here, so endAll is
+      // the reliable hammer.
+      if (uuid.isNotEmpty) await FlutterCallkitIncoming.endCall(uuid);
+      await FlutterCallkitIncoming.endAllCalls();
     } catch (_) {/* best-effort */}
+    // Start the persistent dismiss loop keyed on the backend call id. This
+    // is the ONE place we KNOW the CallKit screen actually appeared, so it
+    // covers the case where the STOMP/WS invite path never kicked the loop
+    // off (or kicked it off before the late VoIP push raised the screen).
+    final backendId = _parseBackendCallId(callCid);
+    if (backendId.isNotEmpty) {
+      signaling?.suppressForegroundCallkitFor(backendId);
+    }
   }
 
   /// True (and consumes the entry) if [callCid] is an end/decline event
