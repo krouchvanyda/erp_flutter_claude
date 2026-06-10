@@ -1158,8 +1158,8 @@ class CallSignalingService {
     //     forever.
     // `endAllCalls()` inside `_clearNativeIncoming` only touches native
     // CallKit, never the Flutter in-app overlay, so this is safe to repeat.
-    const tick = Duration(milliseconds: 300);
-    const maxTicks = 120; // ~36 s
+    const tick = Duration(milliseconds: 120);
+    const maxTicks = 300; // ~36 s
     var n = 0;
     void sweep() {
       final lc = WidgetsBinding.instance.lifecycleState;
@@ -1168,16 +1168,7 @@ class CallSignalingService {
           lc == AppLifecycleState.detached;
       final stillRinging = _active?.callId == callId &&
           _active?.state == CallSignalState.incomingRinging;
-      if (backgrounded || !stillRinging || n >= maxTicks) {
-        // ignore: avoid_print
-        print('[CallSignaling] suppressCallkit STOP · callId=$callId '
-            'lc=$lc backgrounded=$backgrounded stillRinging=$stillRinging '
-            'ticks=$n');
-        return;
-      }
-      // ignore: avoid_print
-      print('[CallSignaling] suppressCallkit dismiss#$n · callId=$callId '
-          'lc=$lc → endAllCalls()');
+      if (backgrounded || !stillRinging || n >= maxTicks) return;
       _clearNativeIncoming(callId);
       n++;
       Future.delayed(tick, sweep);
