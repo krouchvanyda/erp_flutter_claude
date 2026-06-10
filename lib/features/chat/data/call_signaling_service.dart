@@ -582,24 +582,19 @@ class CallSignalingService {
           print('[CallSignaling] Stream members (iOS) → $streamMemberIds '
               '(targetIds was $targetIds)');
         }
-        // shouldRing controls whether the caller's `getOrCreate` runs
-        // with `ringing: true` — which puts the SDK call into the
-        // OUTGOING ring state machine (`setOutgoingCall`). On iOS that
-        // state machine cancels our in-flight `call.join()` the moment
-        // the callee accepts → A's join dies with "connect cancelled",
-        // A never enters the media call, and BOTH sides hear silence
-        // (confirmed in device logs: A status Outgoing → CallAccepted →
-        // join cancelled). In THIS app the ring is redundant anyway: the
-        // CHAT backend delivers the invite + accept (CallInviteEvent /
-        // CallAcceptEvent), not Stream's VoIP push. So on iOS the caller
-        // joins the media leg as a plain participant (ringing:false),
-        // exactly like the callee's working path. Android keeps its
-        // working `ringing: true` ringer untouched.
+        // `ringing:true` fires Stream's VoIP push so a BACKGROUNDED /
+        // KILLED callee wakes and shows the native CallKit ring (the
+        // chat-backend STOMP invite can't reach a callee whose socket was
+        // dropped on background). The iOS side effect — the SDK's
+        // outgoing-call state machine cancelling our join on accept
+        // ("connect cancelled", no audio) — is neutralised inside
+        // `StreamCallEngine.join`, which detaches the call from the
+        // outgoing-call slot right after the ring fires (iOS-only).
         unawaited(streamEngine.join(
           streamCallCid: streamCallCid,
           isVideo: callType == ChatCallType.video,
           calleeUserIds: streamMemberIds,
-          shouldRing: !Platform.isIOS,
+          shouldRing: true,
         ));
       }
     }());

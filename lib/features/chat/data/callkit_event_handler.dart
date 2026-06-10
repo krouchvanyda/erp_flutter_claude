@@ -61,6 +61,16 @@ class CallkitEventHandler {
   /// spurious post-accept handoff rather than a real hang-up.
   static const Duration _acceptHandoffWindow = Duration(seconds: 6);
 
+  /// iOS foreground-suppression (callCid + CallKit UUID). When a native
+  /// CallKit incoming screen appears while the app is in the FOREGROUND,
+  /// we dismiss it (the in-app IncomingCallOverlay shows the ring instead
+  /// — the user does not want a native header when the app is open).
+  /// That dismiss makes CallKit emit a spurious `actionCallEnded` /
+  /// `actionCallDecline`; the ids parked here let the end/decline
+  /// handlers ignore that one event so it isn't turned into a real
+  /// reject/hangup of the call the overlay is showing. iOS-only.
+  final Set<String> _suppressedIncoming = <String>{};
+
   /// (Removed: was a pushed-call-id dedupe set. Replaced with
   /// `VoiceCallPage.isMounted` / `VideoCallPage.isMounted` checks in
   /// IncomingCallOverlay — those reflect actual route state on the
@@ -361,6 +371,11 @@ class CallkitEventHandler {
     // ignore: avoid_print
     print('[CallkitEventHandler] event=${event.event} body=${event.body}');
     switch (event.event) {
+      case Event.actionCallIncoming:
+        // A native CallKit incoming screen just appeared (iOS VoIP push).
+        // If the app is in the FOREGROUND, suppress it — the in-app
+        // overlay shows the ring there. Backgrounded/killed: left alone.
+        await _maybeSuppressForegroundCallkit(event.body);
       case Event.actionCallAccept:
         await _handleAccept(event.body);
       case Event.actionCallDecline:
@@ -385,6 +400,60 @@ class CallkitEventHandler {
     }
   }
 
+  /// iOS only: dismiss the native CallKit incoming screen when it shows
+  /// while the app is in the FOREGROUND, so only the in-app overlay
+  /// rings. When the app is minimized or killed the lifecycle state is
+  /// NOT `resumed`, so we leave CallKit up — that's the whole point of
+  /// the background ring. The dismiss makes CallKit fire a spurious
+  /// `actionCallEnded`; we park the ids in [_suppressedIncoming] so the
+  /// end handler ignores that one event instead of rejecting the call.
+  Future<void> _maybeSuppressForegroundCallkit(dynamic body) async {
+    if (!Platform.isIOS) return;
+    // When CallKit presents over a FOREGROUND app, iOS flips us to
+    // `inactive` (NOT `resumed`), so a `== resumed` check misses the very
+    // case we want. Treat resumed/inactive as foreground; only a TRULY
+    // backgrounded app (paused/hidden/detached) should keep the native
+    // ring. Belt-and-suspenders: also suppress when our in-app ring is
+    // already showing (the STOMP invite arrived → we're online/foreground)
+    // to cover the race where the lifecycle hasn't settled yet.
+    final lc = WidgetsBinding.instance.lifecycleState;
+    final backgrounded = lc == AppLifecycleState.paused ||
+        lc == AppLifecycleState.hidden ||
+        lc == AppLifecycleState.detached;
+    final signaling = _safelyGet<CallSignalingService>();
+    final hasInAppRing =
+        signaling?.current?.state == CallSignalState.incomingRinging;
+    if (backgrounded && !hasInAppRing) {
+      // ignore: avoid_print
+      print('[CallkitEventHandler] keeping native CallKit ring · '
+          'lifecycle=$lc (app backgrounded/killed)');
+      return; // backgrounded / killed → keep the native ring
+    }
+    final params = _params(body);
+    final callCid = (params['call_cid'] ?? params['callCid'])?.toString() ?? '';
+    final uuid = params['id']?.toString() ?? '';
+    if (callCid.isNotEmpty) _suppressedIncoming.add(callCid);
+    if (uuid.isNotEmpty) _suppressedIncoming.add(uuid);
+    // ignore: avoid_print
+    print('[CallkitEventHandler] foreground incoming — dismissing native '
+        'CallKit header (in-app overlay handles the ring) · callCid=$callCid');
+    try {
+      if (uuid.isNotEmpty) {
+        await FlutterCallkitIncoming.endCall(uuid);
+      } else {
+        await FlutterCallkitIncoming.endAllCalls();
+      }
+    } catch (_) {/* best-effort */}
+  }
+
+  /// True (and consumes the entry) if [callCid] is an end/decline event
+  /// produced by our own foreground CallKit suppression — meaning it must
+  /// be ignored rather than treated as a real reject/hangup.
+  bool _isSuppressedEnd(String callCid) {
+    if (callCid.isEmpty) return false;
+    return _suppressedIncoming.remove(callCid);
+  }
+
   /// Hang-up tap on the ongoing-call notification (or a CallKit
   /// timeout while we were already connected). Routes through
   /// `signaling.hangup()` if the call is connected, or
@@ -399,6 +468,16 @@ class CallkitEventHandler {
         '';
     // ignore: avoid_print
     print('[CallkitEventHandler] _handleHangup · callCid=$callCid');
+
+    // Ignore the spurious end that our own foreground suppression caused
+    // (we dismissed the native CallKit header; the in-app overlay is the
+    // live ring — must NOT reject/hangup it).
+    if (_isSuppressedEnd(callCid)) {
+      // ignore: avoid_print
+      print('[CallkitEventHandler] _handleHangup IGNORED · end is from our '
+          'foreground CallKit suppression · callCid=$callCid');
+      return;
+    }
 
     // iOS only: CallKit fires a spurious `actionCallEnded` right after Accept
     // (we can't call setCallConnected — it crashes the PushKit path). Ignore
@@ -638,6 +717,13 @@ class CallkitEventHandler {
     if (callCid == null || callCid.isEmpty) {
       // ignore: avoid_print
       print('[CallkitEventHandler] _handleDecline BAIL · missing call_cid');
+      return;
+    }
+    // Ignore a decline produced by our own foreground CallKit suppression.
+    if (_isSuppressedEnd(callCid)) {
+      // ignore: avoid_print
+      print('[CallkitEventHandler] _handleDecline IGNORED · from foreground '
+          'CallKit suppression · callCid=$callCid');
       return;
     }
     // VoIP-push CallKit entries use CallKit's native keys (`handle` /

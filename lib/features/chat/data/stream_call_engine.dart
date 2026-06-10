@@ -575,6 +575,26 @@ class StreamCallEngine {
           try { await call.leave(); } catch (_) {}
           return;
         }
+        // iOS-ONLY: `getOrCreate(ringing:true)` fired the VoIP push AND
+        // registered this call as the SDK's "outgoing call". On iOS that
+        // outgoing-call state machine cancels our in-flight `call.join()`
+        // the instant the callee accepts → "connect cancelled", no audio.
+        // The push is already sent (server-side), so detach the call from
+        // the outgoing-call slot here: the callee still rings, but accept
+        // can no longer cancel our join. Our CallSignalingService drives
+        // the caller's ringing→connected UI, so Stream's outgoing-call
+        // state is unused. Android is NOT touched.
+        if (Platform.isIOS && shouldRing) {
+          try {
+            await client.state.setOutgoingCall(null);
+            // ignore: avoid_print
+            print('[StreamCallEngine] cleared SDK outgoing-call slot after '
+                'ring (iOS) so accept cannot cancel the join');
+          } catch (e) {
+            // ignore: avoid_print
+            print('[StreamCallEngine] setOutgoingCall(null) failed: $e');
+          }
+        }
       }
       if (mySeq != _callSeq) {
         try { await call.leave(); } catch (_) {}
