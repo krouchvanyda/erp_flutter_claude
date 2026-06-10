@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 
 import 'package:erp_callkit/erp_callkit.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show WidgetsBinding, AppLifecycleState;
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart' show Call;
 
@@ -902,6 +903,9 @@ class CallSignalingService {
     if (Platform.isIOS) {
       unawaited(streamEngine.warmUp());
       unawaited(_prepareIncomingStream(callId, callType));
+      // If we're foreground, kill the native CallKit screen Stream's VoIP
+      // push raises (the in-app overlay is the ring here). No-op if bg.
+      _suppressForegroundCallkit(callId);
     }
   }
 
@@ -1083,6 +1087,36 @@ class CallSignalingService {
   /// native heads-up notification for the same call so the user doesn't
   /// see BOTH the notification header AND the full-screen sheet at once.
   void clearNativeIncoming(String callId) => _clearNativeIncoming(callId);
+
+  /// iOS foreground-only: aggressively dismiss any native CallKit incoming
+  /// screen for [callId]. On iOS the CallKit screen for a foreground call
+  /// is shown by Stream's VoIP-push manager via `reportNewIncomingCall`
+  /// — which does NOT emit `flutter_callkit_incoming`'s `actionCallIncoming`
+  /// event, so the handler-side suppression never sees it — AND it arrives
+  /// asynchronously, a beat after we set up the in-app overlay (worst on
+  /// the FIRST call). A single dismiss races and misses it. So we sweep a
+  /// handful of times over ~3 s to catch the late screen. No-op when the
+  /// app is backgrounded/killed (there the native ring is exactly what we
+  /// want). The resulting CallKit end events are ignored by
+  /// `CallkitEventHandler` while foreground, so this can't reject the call.
+  void _suppressForegroundCallkit(String callId) {
+    if (!Platform.isIOS) return;
+    final lc = WidgetsBinding.instance.lifecycleState;
+    final backgrounded = lc == AppLifecycleState.paused ||
+        lc == AppLifecycleState.hidden ||
+        lc == AppLifecycleState.detached;
+    if (backgrounded) return; // keep the native ring when backgrounded
+    var n = 0;
+    void sweep() {
+      _clearNativeIncoming(callId);
+      n++;
+      if (n < 8) {
+        Future.delayed(const Duration(milliseconds: 400), sweep);
+      }
+    }
+
+    sweep();
+  }
 
   /// TERMINAL-only notification sweep: the call is genuinely over, so wipe
   /// EVERY call notification off the screen — our own `erp_incoming_calls`
@@ -1544,6 +1578,9 @@ class CallSignalingService {
         if (Platform.isIOS) {
           unawaited(streamEngine.warmUp());
           unawaited(_prepareIncomingStream(callId, callType));
+          // Foreground: dismiss the native CallKit screen Stream's VoIP
+          // push raises so only the in-app overlay rings. No-op if bg.
+          _suppressForegroundCallkit(callId);
         }
       case CallAcceptEvent(:final callId, :final accepterId):
         // Peer accepted our outgoing invite — transition to connected.

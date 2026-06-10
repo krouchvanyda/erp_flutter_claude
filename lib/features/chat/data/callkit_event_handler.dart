@@ -370,6 +370,30 @@ class CallkitEventHandler {
     if (event == null) return;
     // ignore: avoid_print
     print('[CallkitEventHandler] event=${event.event} body=${event.body}');
+    // iOS: a CallKit accept/decline/end that arrives while the app is
+    // foreground AND an in-app call is already active is an artifact of the
+    // native screen we suppress in foreground (the user actually used the
+    // in-app overlay, which calls signaling directly). Acting on it would
+    // wrongly reject/hangup the live call. Ignore those.
+    //
+    // CRITICAL: this is gated on `signaling.current != null`. When a
+    // MINIMIZED call is accepted from CallKit, iOS resumes the app FIRST,
+    // so `actionCallAccept` also arrives "foreground" — but there's no
+    // in-app call yet (no STOMP invite reached the backgrounded app), so
+    // `signaling.current` is null and we MUST process it. Without this
+    // gate, minimized-accept would be swallowed → no audio.
+    if (Platform.isIOS &&
+        _isForeground() &&
+        _safelyGet<CallSignalingService>()?.current != null &&
+        (event.event == Event.actionCallAccept ||
+            event.event == Event.actionCallDecline ||
+            event.event == Event.actionCallEnded ||
+            event.event == Event.actionCallTimeout)) {
+      // ignore: avoid_print
+      print('[CallkitEventHandler] ignoring CallKit ${event.event} · app '
+          'foreground with active in-app call — overlay owns it');
+      return;
+    }
     switch (event.event) {
       case Event.actionCallIncoming:
         // A native CallKit incoming screen just appeared (iOS VoIP push).
@@ -407,26 +431,29 @@ class CallkitEventHandler {
   /// the background ring. The dismiss makes CallKit fire a spurious
   /// `actionCallEnded`; we park the ids in [_suppressedIncoming] so the
   /// end handler ignores that one event instead of rejecting the call.
+  /// True when the app is on-screen. NOTE: when CallKit presents over a
+  /// foreground app, iOS flips the state to `inactive` (NOT `resumed`), so
+  /// we must treat `inactive` as foreground too — otherwise we'd miss the
+  /// exact moment we care about. Only paused/hidden/detached = backgrounded.
+  bool _isForeground() {
+    final lc = WidgetsBinding.instance.lifecycleState;
+    return lc == AppLifecycleState.resumed ||
+        lc == AppLifecycleState.inactive ||
+        lc == null;
+  }
+
   Future<void> _maybeSuppressForegroundCallkit(dynamic body) async {
     if (!Platform.isIOS) return;
-    // When CallKit presents over a FOREGROUND app, iOS flips us to
-    // `inactive` (NOT `resumed`), so a `== resumed` check misses the very
-    // case we want. Treat resumed/inactive as foreground; only a TRULY
-    // backgrounded app (paused/hidden/detached) should keep the native
-    // ring. Belt-and-suspenders: also suppress when our in-app ring is
-    // already showing (the STOMP invite arrived → we're online/foreground)
-    // to cover the race where the lifecycle hasn't settled yet.
-    final lc = WidgetsBinding.instance.lifecycleState;
-    final backgrounded = lc == AppLifecycleState.paused ||
-        lc == AppLifecycleState.hidden ||
-        lc == AppLifecycleState.detached;
+    // Belt-and-suspenders: also suppress when our in-app ring is already
+    // showing (the STOMP invite arrived → we're online/foreground) to
+    // cover the race where the lifecycle hasn't settled yet.
     final signaling = _safelyGet<CallSignalingService>();
     final hasInAppRing =
         signaling?.current?.state == CallSignalState.incomingRinging;
-    if (backgrounded && !hasInAppRing) {
+    if (!_isForeground() && !hasInAppRing) {
       // ignore: avoid_print
       print('[CallkitEventHandler] keeping native CallKit ring · '
-          'lifecycle=$lc (app backgrounded/killed)');
+          'app backgrounded/killed');
       return; // backgrounded / killed → keep the native ring
     }
     final params = _params(body);
