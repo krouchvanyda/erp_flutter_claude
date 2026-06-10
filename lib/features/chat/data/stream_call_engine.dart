@@ -101,6 +101,15 @@ class StreamCallEngine {
   /// `_activeCall` was still null when teardown ran.
   Call? _inFlightCall;
 
+  /// True while an outgoing [join] or an in-app [acceptPendingIncoming]
+  /// is bringing the media leg up but BEFORE it has been promoted to
+  /// [_activeCall]. iOS-only: [disconnectForBackground] reads this to
+  /// avoid dropping the Stream WebSocket mid-`call.join()` — doing so
+  /// kills the connect with "connect cancelled", so the caller never
+  /// enters the call and BOTH sides hear silence (the reported bug).
+  /// Android never reads it, so its call flow is unchanged.
+  bool _callSetupInProgress = false;
+
   /// Monotonic counter incremented on every join / accept entry.
   /// Each invocation captures its value, then re-checks at every
   /// await checkpoint — if `_callSeq` has moved on since, a newer
@@ -276,6 +285,90 @@ class StreamCallEngine {
     }
   }
 
+  /// Diagnostic: poll the active call's participants and log, per side,
+  /// whether each is PUBLISHING audio (its `publishedTracks` contains an
+  /// audio track) plus the live `audioLevel`. Answers "is A's mic
+  /// working / is B's mic working" directly from the SFU's view. Runs
+  /// immediately then every 2 s for ~16 s (long enough to see the remote
+  /// join), and stops once both a local and a remote audio publisher are
+  /// seen. Best-effort; never throws.
+  Timer? _audioDiagTimer;
+
+  /// Explicitly publish the local microphone after a join. The
+  /// `CallConnectOptions(microphone: enabled)` passed to `join()` sets
+  /// the intent, but in practice the local audio track sometimes isn't
+  /// published (the SFU shows `publishesAudio=false, tracks=[]`) — so we
+  /// force it on here. Gated on mic permission on iOS (enabling without
+  /// permission trips the privacy guard); best-effort. iOS-only.
+  Future<void> _ensureMicPublishing(Call call) async {
+    try {
+      if (Platform.isIOS && !await Permission.microphone.isGranted) {
+        // ignore: avoid_print
+        print('[StreamCallEngine] _ensureMicPublishing skipped — mic denied');
+        return;
+      }
+      final r = await call.setMicrophoneEnabled(enabled: true);
+      // ignore: avoid_print
+      print('[StreamCallEngine] setMicrophoneEnabled(true) → '
+          '${r.isSuccess ? "OK (mic now publishing)" : r}');
+    } catch (e) {
+      // ignore: avoid_print
+      print('[StreamCallEngine] setMicrophoneEnabled threw: $e');
+    }
+  }
+
+  void _startAudioDiagnostics(Call call, String tag) {
+    _audioDiagTimer?.cancel();
+    var ticks = 0;
+    void dump() {
+      ticks++;
+      final s = call.state.valueOrNull;
+      if (s == null) {
+        // ignore: avoid_print
+        print('[StreamAudio/$tag #$ticks] no call state yet');
+        return;
+      }
+      final parts = s.callParticipants;
+      // ignore: avoid_print
+      print('[StreamAudio/$tag #$ticks] cid=${call.callCid.value} '
+          'status=${s.status} participants=${parts.length}');
+      var sawLocalAudio = false;
+      var sawRemoteAudio = false;
+      for (final p in parts) {
+        final tracks = p.publishedTracks.keys
+            .map((t) => t.toString())
+            .toList(growable: false);
+        final publishesAudio =
+            tracks.any((t) => t.toLowerCase().contains('audio'));
+        if (publishesAudio && p.isLocal) sawLocalAudio = true;
+        if (publishesAudio && !p.isLocal) sawRemoteAudio = true;
+        // ignore: avoid_print
+        print('[StreamAudio/$tag #$ticks]   '
+            '${p.isLocal ? "LOCAL " : "remote"} userId=${p.userId} '
+            'name="${p.name}" publishesAudio=$publishesAudio '
+            'audioLevel=${p.audioLevel.toStringAsFixed(3)} tracks=$tracks');
+      }
+      if (sawLocalAudio && sawRemoteAudio) {
+        // ignore: avoid_print
+        print('[StreamAudio/$tag #$ticks] ✅ both LOCAL and REMOTE are '
+            'publishing audio — media path is healthy');
+        _audioDiagTimer?.cancel();
+        _audioDiagTimer = null;
+      } else if (ticks >= 8) {
+        // ignore: avoid_print
+        print('[StreamAudio/$tag #$ticks] ⚠ stopping diagnostics · '
+            'localAudio=$sawLocalAudio remoteAudio=$sawRemoteAudio '
+            '(if remoteAudio=false the other side never joined/published)');
+        _audioDiagTimer?.cancel();
+        _audioDiagTimer = null;
+      }
+    }
+
+    dump();
+    _audioDiagTimer =
+        Timer.periodic(const Duration(seconds: 2), (_) => dump());
+  }
+
   Future<void> join({
     required String streamCallCid,
     required bool isVideo,
@@ -303,6 +396,7 @@ class StreamCallEngine {
     // Drop any stale in-flight ref from a prior attempt — this attempt
     // sets its own below once the Call is created.
     _inFlightCall = null;
+    _callSetupInProgress = true;
     try {
       // CRITICAL: tear down any prior Stream call before starting a
       // new one. Stream's internal state can only host one active call
@@ -420,6 +514,8 @@ class StreamCallEngine {
         _attachPeerJoinedListener(call);
       }
       _attachEndListener(call);
+      unawaited(_ensureMicPublishing(call));
+      _startAudioDiagnostics(call, shouldRing ? 'caller' : 'callee-join');
       if (kDebugMode) {
         debugPrint(
           '[StreamCallEngine] joined cid=$streamCallCid '
@@ -430,6 +526,8 @@ class StreamCallEngine {
       if (kDebugMode) {
         debugPrint('StreamCallEngine.join failed: $e\n$st');
       }
+    } finally {
+      _callSetupInProgress = false;
     }
   }
 
@@ -704,6 +802,8 @@ class StreamCallEngine {
       callNotifier.value = call;
       _pendingIncomingCall = null;
       _attachEndListener(call);
+      unawaited(_ensureMicPublishing(call));
+      _startAudioDiagnostics(call, 'callee-accept');
       // ignore: avoid_print
       print('[StreamCallEngine] $attemptLabel: accept+join OK on '
           'Stream-provided ref — media leg up');
@@ -807,6 +907,7 @@ class StreamCallEngine {
       return false;
     }
     final mySeq = ++_callSeq;
+    _callSetupInProgress = true;
     try {
       if (_activeCall != null) {
         await leave();
@@ -866,6 +967,19 @@ class StreamCallEngine {
       callNotifier.value = call;
       _pendingIncomingCall = null;
       _attachEndListener(call);
+      // iOS-ONLY: force the local mic to publish on this FOREGROUND
+      // in-app accept path (B was on-screen when A called, so Stream's
+      // WS delivered the ring and `hasPendingIncoming` was true).
+      // Without this the connect-options "microphone: enabled" intent
+      // sometimes doesn't actually publish a track (SFU shows
+      // publishesAudio=false) → the caller hears silence from B. The
+      // other two accept/join paths (`join`, `_acceptOnCallRef`) already
+      // do this; this was the one that missed it. Guarded to iOS so
+      // Android's working call flow is left exactly as before.
+      if (Platform.isIOS) {
+        unawaited(_ensureMicPublishing(call));
+        _startAudioDiagnostics(call, 'callee-accept-pending');
+      }
       // ignore: avoid_print
       print('[StreamCallEngine] accept+join OK — media leg up');
       return true;
@@ -874,6 +988,8 @@ class StreamCallEngine {
         debugPrint('[StreamCallEngine] acceptPendingIncoming failed: $e\n$st');
       }
       return false;
+    } finally {
+      _callSetupInProgress = false;
     }
   }
 
@@ -1032,6 +1148,19 @@ class StreamCallEngine {
         callNotifier.value = null;
       }
     }
+    // iOS: a call is mid-setup (outgoing join / in-app accept) but not
+    // yet promoted to _activeCall. Dropping the Stream WS now cancels
+    // the in-flight `call.join()` ("connect cancelled"), so the caller
+    // never enters the call and BOTH sides hear silence — the reported
+    // bug. Treat setup-in-progress like an active call and keep the
+    // socket up. Android is untouched: it never sets the flag here.
+    if (Platform.isIOS &&
+        (_callSetupInProgress || _inFlightCall != null)) {
+      // ignore: avoid_print
+      print('[StreamCallEngine] disconnectForBackground: skipped '
+          '(call setup in flight — keeping Stream WS alive)');
+      return;
+    }
     if (_activeCall != null) {
       // ignore: avoid_print
       print('[StreamCallEngine] disconnectForBackground: skipped '
@@ -1075,6 +1204,17 @@ class StreamCallEngine {
   /// one") — those captured their own `mySeq` just before and a bump
   /// here would make them self-abort. They call [leave] (no bump).
   Future<void> endActiveCall() async {
+    // DIAGNOSTIC: a terminal teardown landing while a call is still
+    // being set up is what cancels the in-flight `call.join()`
+    // ("connect cancelled" → no audio). Print who triggered it so we
+    // can see the exact caller in the logs.
+    if (_callSetupInProgress || _inFlightCall != null) {
+      // ignore: avoid_print
+      print('[StreamCallEngine] ⚠ endActiveCall() DURING SETUP '
+          '(setupInProgress=$_callSetupInProgress '
+          'inFlight=${_inFlightCall?.callCid.value}) — this will cancel '
+          'the in-flight join. Caller:\n${StackTrace.current}');
+    }
     ++_callSeq;
     await leave();
   }
@@ -1091,7 +1231,8 @@ class StreamCallEngine {
     if (inflight != null && !identical(inflight, call)) {
       // ignore: avoid_print
       print('[StreamCallEngine] leave() · also leaving in-flight call '
-          '${inflight.callCid.value} (connecting when teardown hit)');
+          '${inflight.callCid.value} (connecting when teardown hit) — '
+          'THIS cancels the in-flight join. Caller:\n${StackTrace.current}');
       try {
         await inflight.leave();
       } catch (_) {/* already gone / never fully created */}
@@ -1107,6 +1248,8 @@ class StreamCallEngine {
         'activeCall=${call?.callCid.value ?? "null"} · seq=$_callSeq');
     _activeCall = null;
     callNotifier.value = null;
+    _audioDiagTimer?.cancel();
+    _audioDiagTimer = null;
     await _peerJoinedSub?.cancel();
     _peerJoinedSub = null;
     // CRITICAL: cancel the end-listener too. Without this, when we
@@ -1164,10 +1307,34 @@ class StreamCallEngine {
     }
   }
 
+  /// Coalesces concurrent `_ensureClient` calls into one rebuild.
+  ///
+  /// Without this, two near-simultaneous callers (e.g. the lifecycle
+  /// `resumed → warmUp()` fired when the mic-permission dialog closes,
+  /// AND `startOutgoing → join()` running right after) both pass the
+  /// "client is null" check and both run `StreamVideo.reset(disconnect:
+  /// true)` + `connect()`. The second reset CANCELS the first's
+  /// in-flight connect, and the `call.join()` riding on it dies with
+  /// `VideoError{message: connect cancelled}` — the caller never enters
+  /// the call, so the callee sits alone and nobody hears anything.
+  /// Sharing one Future means the second caller awaits the first's
+  /// rebuild instead of starting a competing one.
+  Future<void>? _ensureClientInFlight;
+
+  Future<void> _ensureClient() {
+    final existing = _ensureClientInFlight;
+    if (existing != null) return existing;
+    final fut = _ensureClientImpl();
+    _ensureClientInFlight = fut;
+    return fut.whenComplete(() {
+      if (identical(_ensureClientInFlight, fut)) _ensureClientInFlight = null;
+    });
+  }
+
   /// Build (or rebuild) the `StreamVideo` client using a fresh token
   /// from `GET /chats/calls/stream-token`. Cached by `userId` so a
   /// sign-out / sign-in rotation rebuilds; otherwise re-used.
-  Future<void> _ensureClient() async {
+  Future<void> _ensureClientImpl() async {
     Map<String, dynamic> tokenJson;
     try {
       tokenJson = await remote.getStreamToken();

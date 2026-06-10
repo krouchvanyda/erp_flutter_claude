@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:erp_callkit/erp_callkit.dart';
 import 'package:flutter/foundation.dart';
@@ -549,16 +550,50 @@ class CallSignalingService {
         streamCallCid: streamCallCid,
       ));
       if (streamCallCid != null && streamCallCid.isNotEmpty) {
-        // Pass `calleeUserIds` + `shouldRing: true` so Stream's
-        // backend pushes the VoIP notification to every callee — that
-        // is what triggers the native full-screen ringer on B's phone
-        // when A presses Call. Without these args Stream creates the
-        // call silently and nobody else's phone ever wakes up.
+        // The Stream call members MUST include the callee(s) — otherwise
+        // Stream rejects their `call.accept()` with "Only members can
+        // reject or accept a call" (HTTP 400) and the media leg never
+        // comes up (symptom: call connects in the UI but there's no
+        // audio). The local `targetIds` (from the conversation's
+        // `participantPreviews`) is empty for backend conversations whose
+        // previews weren't hydrated, so on iOS we prefer the BACKEND's
+        // authoritative participant list from the invite response
+        // (`[{userId: 9}, {userId: 10}]`), excluding ourselves. Falls
+        // back to `targetIds` when the response carries no participants.
+        // iOS-only — Android's working member list is left as-is.
+        var streamMemberIds = targetIds;
+        if (Platform.isIOS) {
+          final parts = response['participants'];
+          if (parts is List) {
+            final ids = parts
+                .whereType<Map>()
+                .map((p) => p['userId']?.toString() ?? '')
+                .where((id) => id.isNotEmpty && id != me)
+                .toList(growable: false);
+            if (ids.isNotEmpty) streamMemberIds = ids;
+          }
+          // ignore: avoid_print
+          print('[CallSignaling] Stream members (iOS) → $streamMemberIds '
+              '(targetIds was $targetIds)');
+        }
+        // shouldRing controls whether the caller's `getOrCreate` runs
+        // with `ringing: true` — which puts the SDK call into the
+        // OUTGOING ring state machine (`setOutgoingCall`). On iOS that
+        // state machine cancels our in-flight `call.join()` the moment
+        // the callee accepts → A's join dies with "connect cancelled",
+        // A never enters the media call, and BOTH sides hear silence
+        // (confirmed in device logs: A status Outgoing → CallAccepted →
+        // join cancelled). In THIS app the ring is redundant anyway: the
+        // CHAT backend delivers the invite + accept (CallInviteEvent /
+        // CallAcceptEvent), not Stream's VoIP push. So on iOS the caller
+        // joins the media leg as a plain participant (ringing:false),
+        // exactly like the callee's working path. Android keeps its
+        // working `ringing: true` ringer untouched.
         unawaited(streamEngine.join(
           streamCallCid: streamCallCid,
           isVideo: callType == ChatCallType.video,
-          calleeUserIds: targetIds,
-          shouldRing: true,
+          calleeUserIds: streamMemberIds,
+          shouldRing: !Platform.isIOS,
         ));
       }
     }());
@@ -1322,9 +1357,27 @@ class CallSignalingService {
               isVideo: active.callType == ChatCallType.video,
             );
           }
+        } else if (Platform.isIOS) {
+          // iOS: no Stream ring ref arrived (the APN call-push isn't
+          // delivered in this setup), so `acceptByCid` falls back to
+          // `consumeIncomingCall` + `call.accept()` — which Stream
+          // rejects with "Only members can reject or accept a call"
+          // because the backend created the Stream call without adding
+          // the callee to its member list. accept()/reject() are
+          // member-only RING operations; `join()` is governed by the
+          // broader join-call permission. Since the backend already
+          // recorded our accept (POST /accept → 200), we don't need
+          // Stream's ring-accept ceremony at all — just JOIN the call
+          // as a media participant so audio flows. shouldRing:false and
+          // no callee ids (we're not ringing anyone, we're answering).
+          await streamEngine.join(
+            streamCallCid: streamCallCid,
+            isVideo: active.callType == ChatCallType.video,
+            calleeUserIds: const <String>[],
+            shouldRing: false,
+          );
         } else {
-          // No WS-pending ref (FCM/CallKit path on cold-start) — go
-          // straight to acceptByCid which makes a fresh Call ref.
+          // Android keeps the existing accept-by-cid path unchanged.
           await streamEngine.acceptByCid(
             callCid: streamCallCid,
             isVideo: active.callType == ChatCallType.video,
