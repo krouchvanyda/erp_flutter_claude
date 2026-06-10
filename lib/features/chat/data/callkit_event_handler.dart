@@ -468,10 +468,23 @@ class CallkitEventHandler {
     final signaling = _safelyGet<CallSignalingService>();
     final hasInAppRing =
         signaling?.current?.state == CallSignalState.incomingRinging;
-    if (!_isForeground() && !hasInAppRing) {
+    // CRITICAL (killed-app fix): suppress ONLY when a genuine in-app ring is
+    // already up (`hasInAppRing`). We must NOT key off `_isForeground()` here:
+    // a KILLED app cold-launched BY this very VoIP push boots all the way to
+    // foreground (full splash/auth), so `_isForeground()` reads true at the
+    // moment we process `actionCallIncoming` — and we'd dismiss our OWN
+    // legitimate incoming ring ("killed app: ring shows a beat then closes").
+    // `signaling.current` is null on a cold-launch-from-push (no STOMP invite
+    // ever reached the dead app), but non-null (incomingRinging) for a real
+    // foreground call. Pure-foreground suppression where the STOMP invite
+    // hasn't landed yet is handled by (a) the native `CXCallObserver` in
+    // AppDelegate (its `isAppForeground` is correctly false at push time on a
+    // cold launch) and (b) the `_suppressForegroundCallkit` loop that
+    // `handleIncomingFromPush` starts once the in-app ring appears.
+    if (!hasInAppRing) {
       // ignore: avoid_print
       print('[CallkitEventHandler] keeping native CallKit ring · '
-          'app backgrounded/killed');
+          'no in-app ring (backgrounded / killed cold-launch)');
       return; // backgrounded / killed → keep the native ring
     }
     final params = _params(body);
