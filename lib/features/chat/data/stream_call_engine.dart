@@ -296,15 +296,6 @@ class StreamCallEngine {
     }
   }
 
-  /// Diagnostic: poll the active call's participants and log, per side,
-  /// whether each is PUBLISHING audio (its `publishedTracks` contains an
-  /// audio track) plus the live `audioLevel`. Answers "is A's mic
-  /// working / is B's mic working" directly from the SFU's view. Runs
-  /// immediately then every 2 s for ~16 s (long enough to see the remote
-  /// join), and stops once both a local and a remote audio publisher are
-  /// seen. Best-effort; never throws.
-  Timer? _audioDiagTimer;
-
   /// Explicitly publish the local microphone after a join. The
   /// `CallConnectOptions(microphone: enabled)` passed to `join()` sets
   /// the intent, but in practice the local audio track sometimes isn't
@@ -326,58 +317,6 @@ class StreamCallEngine {
       // ignore: avoid_print
       print('[StreamCallEngine] setMicrophoneEnabled threw: $e');
     }
-  }
-
-  void _startAudioDiagnostics(Call call, String tag) {
-    _audioDiagTimer?.cancel();
-    var ticks = 0;
-    void dump() {
-      ticks++;
-      final s = call.state.valueOrNull;
-      if (s == null) {
-        // ignore: avoid_print
-        print('[StreamAudio/$tag #$ticks] no call state yet');
-        return;
-      }
-      final parts = s.callParticipants;
-      // ignore: avoid_print
-      print('[StreamAudio/$tag #$ticks] cid=${call.callCid.value} '
-          'status=${s.status} participants=${parts.length}');
-      var sawLocalAudio = false;
-      var sawRemoteAudio = false;
-      for (final p in parts) {
-        final tracks = p.publishedTracks.keys
-            .map((t) => t.toString())
-            .toList(growable: false);
-        final publishesAudio =
-            tracks.any((t) => t.toLowerCase().contains('audio'));
-        if (publishesAudio && p.isLocal) sawLocalAudio = true;
-        if (publishesAudio && !p.isLocal) sawRemoteAudio = true;
-        // ignore: avoid_print
-        print('[StreamAudio/$tag #$ticks]   '
-            '${p.isLocal ? "LOCAL " : "remote"} userId=${p.userId} '
-            'name="${p.name}" publishesAudio=$publishesAudio '
-            'audioLevel=${p.audioLevel.toStringAsFixed(3)} tracks=$tracks');
-      }
-      if (sawLocalAudio && sawRemoteAudio) {
-        // ignore: avoid_print
-        print('[StreamAudio/$tag #$ticks] ✅ both LOCAL and REMOTE are '
-            'publishing audio — media path is healthy');
-        _audioDiagTimer?.cancel();
-        _audioDiagTimer = null;
-      } else if (ticks >= 8) {
-        // ignore: avoid_print
-        print('[StreamAudio/$tag #$ticks] ⚠ stopping diagnostics · '
-            'localAudio=$sawLocalAudio remoteAudio=$sawRemoteAudio '
-            '(if remoteAudio=false the other side never joined/published)');
-        _audioDiagTimer?.cancel();
-        _audioDiagTimer = null;
-      }
-    }
-
-    dump();
-    _audioDiagTimer =
-        Timer.periodic(const Duration(seconds: 2), (_) => dump());
   }
 
   /// iOS-only: warm up an INCOMING call's media leg WHILE it's ringing.
@@ -644,7 +583,6 @@ class StreamCallEngine {
       }
       _attachEndListener(call);
       unawaited(_ensureMicPublishing(call));
-      _startAudioDiagnostics(call, shouldRing ? 'caller' : 'callee-join');
       if (kDebugMode) {
         debugPrint(
           '[StreamCallEngine] joined cid=$streamCallCid '
@@ -932,7 +870,6 @@ class StreamCallEngine {
       _pendingIncomingCall = null;
       _attachEndListener(call);
       unawaited(_ensureMicPublishing(call));
-      _startAudioDiagnostics(call, 'callee-accept');
       // ignore: avoid_print
       print('[StreamCallEngine] $attemptLabel: accept+join OK on '
           'Stream-provided ref — media leg up');
@@ -1107,7 +1044,6 @@ class StreamCallEngine {
       // Android's working call flow is left exactly as before.
       if (Platform.isIOS) {
         unawaited(_ensureMicPublishing(call));
-        _startAudioDiagnostics(call, 'callee-accept-pending');
       }
       // ignore: avoid_print
       print('[StreamCallEngine] accept+join OK — media leg up');
@@ -1376,8 +1312,6 @@ class StreamCallEngine {
         'activeCall=${call?.callCid.value ?? "null"} · seq=$_callSeq');
     _activeCall = null;
     callNotifier.value = null;
-    _audioDiagTimer?.cancel();
-    _audioDiagTimer = null;
     await _peerJoinedSub?.cancel();
     _peerJoinedSub = null;
     // CRITICAL: cancel the end-listener too. Without this, when we
