@@ -353,6 +353,12 @@ class CallSignalingService {
     required String conversationId,
     required ChatCallType callType,
   }) async {
+    // iOS: kick off the Stream client connect immediately so it runs in
+    // parallel with the POST /calls round-trip below, instead of cold-
+    // starting inside `join()` after the POST returns. Shaves the
+    // token-fetch + WS-connect time off the tap→audio latency.
+    // iOS-only; Android keeps its existing timing.
+    if (Platform.isIOS) unawaited(streamEngine.warmUp());
     final conv = await conversations.findById(conversationId);
     final me = settings.userId;
     final myName = settings.userName;
@@ -893,6 +899,46 @@ class CallSignalingService {
     // that arrive AFTER reconnect land on this service instead of
     // disappearing into the void.
     transport.subscribeConversation(conversationId);
+    // iOS: pre-connect the Stream client AND pre-`getOrCreate` the call
+    // WHILE the phone is ringing, so neither the WS connect nor the
+    // coordinator round-trip sits on the accept→audio critical path —
+    // only the final SFU media connect happens on accept. Idempotent &
+    // best-effort; Android keeps its existing timing.
+    if (Platform.isIOS) {
+      unawaited(streamEngine.warmUp());
+      unawaited(_prepareIncomingStream(callId, callType));
+    }
+  }
+
+  /// iOS-only: while an incoming call is ringing, pre-establish its
+  /// Stream media leg so the accept→audio path only has to do the final
+  /// SFU connect. The `call.invite` arrives with `streamCallCid == null`,
+  /// so we fetch the canonical call (`GET /chats/calls/{id}`) to learn
+  /// the cid, stamp it onto `_active` (so accept can use it directly),
+  /// then ask the engine to `getOrCreate` it without joining. Entirely
+  /// best-effort — any failure just falls back to the normal accept path.
+  Future<void> _prepareIncomingStream(String callId, ChatCallType type) async {
+    if (!Platform.isIOS) return;
+    final n = int.tryParse(callId);
+    if (n == null) return;
+    String? cid;
+    try {
+      final dto = await remote.getCall(n);
+      cid = dto['streamCallCid'] as String?;
+    } catch (_) {
+      return;
+    }
+    if (cid == null || cid.isEmpty) return;
+    // Stamp the cid onto the active call so [acceptIncoming] uses it
+    // straight away (it was null on the invite).
+    final cur = _active;
+    if (cur != null && cur.callId == callId && cur.streamCallCid == null) {
+      _setActive(cur.copyWith(streamCallCid: cid));
+    }
+    await streamEngine.prepareIncoming(
+      streamCallCid: cid,
+      isVideo: type == ChatCallType.video,
+    );
   }
 
   /// Best-effort cleanup of stale `RINGING` / `ANSWERED` call rows on
@@ -1410,6 +1456,9 @@ class CallSignalingService {
     // lingers on the lock screen.
     _clearNativeIncoming(active.callId);
     _clearAllCallNotifications();
+    // Drop the iOS warm-up call we may have pre-established during ringing
+    // (it was getOrCreate'd but never joined).
+    if (Platform.isIOS) unawaited(streamEngine.discardPrepared());
     _setActive(null);
   }
 
@@ -1494,6 +1543,13 @@ class CallSignalingService {
         // happen before the call wraps up. Idempotent: no-op if
         // already subscribed.
         transport.subscribeConversation(conversationId);
+        // iOS: pre-connect the client AND pre-`getOrCreate` the call
+        // while ringing so only the SFU media connect is left for accept
+        // (see handleIncomingFromPush). iOS-only; Android unchanged.
+        if (Platform.isIOS) {
+          unawaited(streamEngine.warmUp());
+          unawaited(_prepareIncomingStream(callId, callType));
+        }
       case CallAcceptEvent(:final callId, :final accepterId):
         // Peer accepted our outgoing invite — transition to connected.
         final active = _active;

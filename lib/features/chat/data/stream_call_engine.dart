@@ -110,6 +110,17 @@ class StreamCallEngine {
   /// Android never reads it, so its call flow is unchanged.
   bool _callSetupInProgress = false;
 
+  /// iOS-only: a Stream [Call] that's already been `getOrCreate`d (the
+  /// coordinator handshake that fetches SFU credentials) WHILE the phone
+  /// was still ringing, but NOT yet joined. When the callee accepts,
+  /// [join] reuses this ref and skips its own `getOrCreate`, so only the
+  /// SFU media connect happens on the accept→audio critical path —
+  /// shaving the variable coordinator round-trip off call setup. Null
+  /// when nothing is prepared. Android never sets it (prepareIncoming is
+  /// a no-op there), so its join path is byte-for-byte unchanged.
+  Call? _preparedCall;
+  String? _preparedCid;
+
   /// Monotonic counter incremented on every join / accept entry.
   /// Each invocation captures its value, then re-checks at every
   /// await checkpoint — if `_callSeq` has moved on since, a newer
@@ -369,6 +380,82 @@ class StreamCallEngine {
         Timer.periodic(const Duration(seconds: 2), (_) => dump());
   }
 
+  /// iOS-only: warm up an INCOMING call's media leg WHILE it's ringing.
+  /// Runs the Stream `getOrCreate` (coordinator handshake → SFU
+  /// credentials) on the call identified by [streamCallCid] but does NOT
+  /// join — so the callee isn't a participant yet (the caller doesn't see
+  /// them as "answered") and no mic/foreground-service starts. When the
+  /// user later accepts, [join] reuses this ref and skips its own
+  /// `getOrCreate`, removing the variable coordinator round-trip from the
+  /// accept→audio path.
+  ///
+  /// No-op off iOS, when a call is already active/in-flight, or when the
+  /// same cid is already prepared. Best-effort: failures are swallowed so
+  /// a warm-up miss just falls back to the normal accept path.
+  Future<void> prepareIncoming({
+    required String streamCallCid,
+    required bool isVideo,
+  }) async {
+    if (!Platform.isIOS) return;
+    if (streamCallCid.isEmpty) return;
+    if (_activeCall != null || _inFlightCall != null) return;
+    if (_preparedCid == streamCallCid && _preparedCall != null) return;
+    // A different cid was prepared (stale from a prior ring) — drop it.
+    if (_preparedCall != null && _preparedCid != streamCallCid) {
+      final old = _preparedCall;
+      _preparedCall = null;
+      _preparedCid = null;
+      try { await old?.leave(); } catch (_) {}
+    }
+    // Capture the seq WITHOUT bumping it — prepare is not a join/accept.
+    // If a real accept's join() (or a teardown) bumps _callSeq while our
+    // getOrCreate is in flight, abandon so we don't fight the real call.
+    final mySeq = _callSeq;
+    try {
+      await _ensureClient();
+      if (mySeq != _callSeq) return;
+      final client = _client;
+      if (client == null) return;
+      final parts = streamCallCid.split(':');
+      final callType = parts.length > 1 ? parts[0] : 'default';
+      final callId = parts.length > 1 ? parts[1] : streamCallCid;
+      final call = client.makeCall(
+        callType: StreamCallType.fromString(callType),
+        id: callId,
+      );
+      final res = await call.getOrCreate(ringing: false, video: isVideo);
+      if (mySeq != _callSeq) {
+        try { await call.leave(); } catch (_) {}
+        return;
+      }
+      if (res.isFailure) {
+        // ignore: avoid_print
+        print('[StreamCallEngine] prepareIncoming getOrCreate failed: $res');
+        return;
+      }
+      _preparedCall = call;
+      _preparedCid = streamCallCid;
+      // ignore: avoid_print
+      print('[StreamCallEngine] prepared incoming call $streamCallCid '
+          '(getOrCreate done during ring, not joined)');
+    } catch (e) {
+      // ignore: avoid_print
+      print('[StreamCallEngine] prepareIncoming threw: $e');
+    }
+  }
+
+  /// Drop a prepared-but-unjoined incoming call (callee rejected or the
+  /// ring was withdrawn). Best-effort; iOS-only state, harmless no-op
+  /// when nothing is prepared.
+  Future<void> discardPrepared() async {
+    final p = _preparedCall;
+    _preparedCall = null;
+    _preparedCid = null;
+    if (p != null) {
+      try { await p.leave(); } catch (_) {}
+    }
+  }
+
   Future<void> join({
     required String streamCallCid,
     required bool isVideo,
@@ -426,46 +513,68 @@ class StreamCallEngine {
       final callType = parts.length > 1 ? parts[0] : 'default';
       final callId = parts.length > 1 ? parts[1] : streamCallCid;
 
-      final call = client.makeCall(
-        callType: StreamCallType.fromString(callType),
-        id: callId,
-      );
+      // iOS fast-path: if this exact call was already `getOrCreate`d
+      // during ringing ([prepareIncoming]), reuse that ref and skip the
+      // coordinator round-trip here — only the SFU media connect remains
+      // on the accept→audio path. Only for the non-ringing (callee) join;
+      // the ringing caller path always creates fresh. Android never has a
+      // prepared call, so it always takes the original makeCall path.
+      final Call call;
+      var skipGetOrCreate = false;
+      if (!shouldRing &&
+          _preparedCall != null &&
+          _preparedCid == streamCallCid) {
+        call = _preparedCall!;
+        _preparedCall = null;
+        _preparedCid = null;
+        skipGetOrCreate = true;
+        // ignore: avoid_print
+        print('[StreamCallEngine] reusing prepared call $streamCallCid '
+            '— skipping getOrCreate (warmed during ringing)');
+      } else {
+        call = client.makeCall(
+          callType: StreamCallType.fromString(callType),
+          id: callId,
+        );
+      }
       // Track as in-flight from the moment it exists: getOrCreate below
       // starts Stream's outgoing foreground-service notification, and a
       // reject can land before we promote this to _activeCall.
       _inFlightCall = call;
-      // `ringing: true` tells Stream to push the VoIP notification to
-      // every `memberId` — that's what lights up the full-screen
-      // ringer on the callees' phones via the SDK's native
-      // PushNotificationManager. Without this, Stream creates the
-      // call silently and nobody else's phone ever rings.
-      //
-      // `ring` extends Stream's server-side ring timeouts from the
-      // 30 s default to 60 s. Without this extension the call is
-      // auto-cancelled on the coordinator before the callee has had
-      // time to: (1) notice the CallKit notification, (2) tap it,
-      // (3) the app wakes up, and (4) the accept POST round-trips.
-      // On a backgrounded device that whole chain easily eats 20–30 s.
-      // 60 s matches what most VoIP apps (WhatsApp, Telegram) use.
-      // ignore: avoid_print
-      print('[StreamCallEngine] getOrCreate(callId=$callId, '
-          'members=$calleeUserIds, ringing=$shouldRing, ringTimeout=60s)');
-      final getOrCreateResult = await call.getOrCreate(
-        memberIds: calleeUserIds,
-        ringing: shouldRing,
-        video: isVideo,
-        ring: const StreamRingSettings(
-          autoCancelTimeout: Duration(seconds: 60),
-          autoRejectTimeout: Duration(seconds: 60),
-          missedCallTimeout: Duration(seconds: 60),
-        ),
-      );
-      if (getOrCreateResult.isFailure) {
+      if (!skipGetOrCreate) {
+        // `ringing: true` tells Stream to push the VoIP notification to
+        // every `memberId` — that's what lights up the full-screen
+        // ringer on the callees' phones via the SDK's native
+        // PushNotificationManager. Without this, Stream creates the
+        // call silently and nobody else's phone ever rings.
+        //
+        // `ring` extends Stream's server-side ring timeouts from the
+        // 30 s default to 60 s. Without this extension the call is
+        // auto-cancelled on the coordinator before the callee has had
+        // time to: (1) notice the CallKit notification, (2) tap it,
+        // (3) the app wakes up, and (4) the accept POST round-trips.
+        // On a backgrounded device that whole chain easily eats 20–30 s.
+        // 60 s matches what most VoIP apps (WhatsApp, Telegram) use.
         // ignore: avoid_print
-        print('[StreamCallEngine] getOrCreate FAILED: '
-            '$getOrCreateResult — aborting join');
-        try { await call.leave(); } catch (_) {}
-        return;
+        print('[StreamCallEngine] getOrCreate(callId=$callId, '
+            'members=$calleeUserIds, ringing=$shouldRing, ringTimeout=60s)');
+        final getOrCreateResult = await call.getOrCreate(
+          memberIds: calleeUserIds,
+          ringing: shouldRing,
+          video: isVideo,
+          ring: const StreamRingSettings(
+            autoCancelTimeout: Duration(seconds: 60),
+            autoRejectTimeout: Duration(seconds: 60),
+            missedCallTimeout: Duration(seconds: 60),
+          ),
+        );
+        if (getOrCreateResult.isFailure) {
+          // ignore: avoid_print
+          print('[StreamCallEngine] getOrCreate FAILED: '
+              '$getOrCreateResult — aborting join');
+          try { await call.leave(); } catch (_) {}
+          return;
+        }
       }
       if (mySeq != _callSeq) {
         try { await call.leave(); } catch (_) {}
@@ -1204,17 +1313,6 @@ class StreamCallEngine {
   /// one") — those captured their own `mySeq` just before and a bump
   /// here would make them self-abort. They call [leave] (no bump).
   Future<void> endActiveCall() async {
-    // DIAGNOSTIC: a terminal teardown landing while a call is still
-    // being set up is what cancels the in-flight `call.join()`
-    // ("connect cancelled" → no audio). Print who triggered it so we
-    // can see the exact caller in the logs.
-    if (_callSetupInProgress || _inFlightCall != null) {
-      // ignore: avoid_print
-      print('[StreamCallEngine] ⚠ endActiveCall() DURING SETUP '
-          '(setupInProgress=$_callSetupInProgress '
-          'inFlight=${_inFlightCall?.callCid.value}) — this will cancel '
-          'the in-flight join. Caller:\n${StackTrace.current}');
-    }
     ++_callSeq;
     await leave();
   }
@@ -1228,11 +1326,21 @@ class StreamCallEngine {
     // that point.
     final inflight = _inFlightCall;
     _inFlightCall = null;
+    // Drop any prepared-but-unjoined incoming call (iOS warm-up) that
+    // wasn't consumed by a join — unless join already promoted it to the
+    // active/in-flight ref (in which case it's handled below).
+    final prepared = _preparedCall;
+    _preparedCall = null;
+    _preparedCid = null;
+    if (prepared != null &&
+        !identical(prepared, call) &&
+        !identical(prepared, inflight)) {
+      try { await prepared.leave(); } catch (_) {/* never joined */}
+    }
     if (inflight != null && !identical(inflight, call)) {
       // ignore: avoid_print
       print('[StreamCallEngine] leave() · also leaving in-flight call '
-          '${inflight.callCid.value} (connecting when teardown hit) — '
-          'THIS cancels the in-flight join. Caller:\n${StackTrace.current}');
+          '${inflight.callCid.value} (connecting when teardown hit)');
       try {
         await inflight.leave();
       } catch (_) {/* already gone / never fully created */}
