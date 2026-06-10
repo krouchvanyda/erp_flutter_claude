@@ -354,6 +354,64 @@ class StreamCallEngine {
     }
   }
 
+  /// iOS-only: re-run the audio route + mic publish the instant CallKit
+  /// hands us the ACTIVATED `AVAudioSession`.
+  ///
+  /// The fix for "minimized/killed accept connects but is SILENT". On a
+  /// CallKit-accepted call the engine `join()`s and asserts the route
+  /// immediately — but CallKit activates ITS own session a beat LATER
+  /// (`CXProvider.provider(_:didActivate:)`, surfaced to Flutter as
+  /// `Event.actionCallToggleAudioSession { isActivate: true }`). That
+  /// activation resets WebRTC's audio unit, which had started on a
+  /// not-yet-active session → both sides hear nothing. Re-asserting the
+  /// route AND re-publishing the mic at THIS moment (not just after join)
+  /// restarts the unit on the now-live CallKit session. The foreground /
+  /// in-app-overlay accept never triggers this because CallKit never takes
+  /// over the session there. No-op off iOS / when no call is active.
+  Future<void> onCallKitAudioSessionActivated() async {
+    if (!Platform.isIOS) return;
+    // The activation event races the accept→join flow: CallKit can call
+    // didActivate a beat BEFORE join() has promoted the call to _activeCall.
+    // Wait briefly (up to ~3 s) for the live call to appear so we don't
+    // no-op on a real activation. 12 × 250 ms.
+    Call? call;
+    for (var i = 0; i < 12; i++) {
+      call = _activeCall ?? callNotifier.value;
+      if (call != null) break;
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+    }
+    if (call == null) {
+      // ignore: avoid_print
+      print('[StreamCallEngine] CallKit audio activated · no active call after '
+          'wait — skipping re-assert');
+      return;
+    }
+    // ignore: avoid_print
+    print('[StreamCallEngine] CallKit audio session ACTIVATED · '
+        're-asserting route + bouncing mic on the live session');
+    await _reassertIosAudioRoute();
+    // Bounce the mic OFF→ON. A plain setMicrophoneEnabled(true) is a no-op
+    // when the track already "enabled", so it won't restart WebRTC's capture
+    // unit that died on the not-yet-active session. Toggling forces the ADM
+    // to tear down and re-create the audio unit on the now-live CallKit
+    // session — the actual fix for the silent minimized/killed accept.
+    try {
+      if (!Platform.isIOS || await Permission.microphone.isGranted) {
+        await call.setMicrophoneEnabled(enabled: false);
+        await Future<void>.delayed(const Duration(milliseconds: 120));
+        await call.setMicrophoneEnabled(enabled: true);
+        // ignore: avoid_print
+        print('[StreamCallEngine] CallKit-activated mic bounce done '
+            '(off→on) — capture unit restarted on live session');
+      }
+    } catch (e) {
+      // ignore: avoid_print
+      print('[StreamCallEngine] CallKit-activated mic bounce failed: $e');
+      // Fall back to the plain publish so we at least try.
+      await _ensureMicPublishing(call);
+    }
+  }
+
 
   /// iOS-only: warm up an INCOMING call's media leg WHILE it's ringing.
   /// Runs the Stream `getOrCreate` (coordinator handshake → SFU

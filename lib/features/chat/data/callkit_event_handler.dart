@@ -402,6 +402,24 @@ class CallkitEventHandler {
         await _maybeSuppressForegroundCallkit(event.body);
       case Event.actionCallAccept:
         await _handleAccept(event.body);
+      case Event.actionCallToggleAudioSession:
+        // iOS-only: CallKit activated (or deactivated) ITS AVAudioSession.
+        // On activation we must restart WebRTC's audio unit on the now-live
+        // session — the engine join() asserted the route a beat too early
+        // (before CallKit took over), which is why a minimized/killed accept
+        // connected but was SILENT. No-op on deactivate. Android never emits
+        // this event.
+        if (Platform.isIOS) {
+          final activated = event.body is Map &&
+              (event.body as Map)['isActivate'] == true;
+          if (activated) {
+            // ignore: avoid_print
+            print('[CallkitEventHandler] CallKit audio session activated → '
+                'engine.onCallKitAudioSessionActivated()');
+            await _safelyGet<StreamCallEngine>()
+                ?.onCallKitAudioSessionActivated();
+          }
+        }
       case Event.actionCallDecline:
         // User tapped Decline on the INCOMING ringer (the call is
         // still in incomingRinging state, no media leg up yet).
