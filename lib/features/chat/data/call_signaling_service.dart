@@ -863,6 +863,8 @@ class CallSignalingService {
     final callerName = data['callerName']?.toString() ?? 'Unknown';
     if (callId == null || conversationId == null || callerId == null) return;
 
+    _diagCallkitRegistry('push-invite-$callId');
+
     // Race-window dedupe — WS may have already delivered the same
     // invite by the time the user taps the notification.
     if (_active?.callId == callId) return;
@@ -1073,6 +1075,11 @@ class CallSignalingService {
     _clearNativeIncoming(active.callId);
     _clearAllCallNotifications();
     _setActive(active.copyWith(state: CallSignalState.ended));
+    // DIAGNOSTIC: confirm the registry is empty after the clears so a
+    // following call #2 can ring. If call #1's entry lingers here it's the
+    // "second call shows no ring (minimized)" suspect.
+    Future.delayed(const Duration(milliseconds: 400),
+        () => _diagCallkitRegistry('after-hangup-${active.callId}'));
     // Drop the active reference after a brief delay so the call page
     // can render the "ended" state before it pops itself.
     Future.delayed(const Duration(milliseconds: 600), () {
@@ -1205,6 +1212,36 @@ class CallSignalingService {
       try {
         await FlutterCallkitIncoming.endAllCalls();
       } catch (_) {/* swallow */}
+    }));
+  }
+
+  /// DIAGNOSTIC (iOS only): dump the live CallKit registry. The leading
+  /// suspect for "second call shows no ring (app minimized)" is a leftover
+  /// CallKit entry from call #1 that was never released — iOS then refuses
+  /// (or silently drops) the ring for call #2. Log this when an invite
+  /// arrives (to see if call #1 is still present) and right after every end
+  /// path (to see if our clears actually emptied the registry). Pure
+  /// logging — no behaviour change. Remove once the cause is confirmed.
+  void _diagCallkitRegistry(String tag) {
+    if (!Platform.isIOS) return;
+    unawaited(Future(() async {
+      try {
+        final calls = await FlutterCallkitIncoming.activeCalls();
+        final list = calls is List ? calls : const <dynamic>[];
+        final ids = list.map((c) {
+          if (c is Map) {
+            final extra = c['extra'];
+            final cid = extra is Map ? extra['call_cid'] : '?';
+            return '${c['id']}·cid=$cid·acc=${c['isAccepted']}';
+          }
+          return c.toString();
+        }).toList();
+        // ignore: avoid_print
+        print('[CallkitRegistry/$tag] activeCalls=${list.length} · $ids');
+      } catch (e) {
+        // ignore: avoid_print
+        print('[CallkitRegistry/$tag] activeCalls() threw: $e');
+      }
     }));
   }
 
@@ -1556,6 +1593,11 @@ class CallSignalingService {
     // (it was getOrCreate'd but never joined).
     if (Platform.isIOS) unawaited(streamEngine.discardPrepared());
     _setActive(null);
+    // DIAGNOSTIC: give the fire-and-forget clears a beat, then dump the
+    // registry — if call #1's entry survives here, it's the "no ring on
+    // call #2" suspect.
+    Future.delayed(const Duration(milliseconds: 400),
+        () => _diagCallkitRegistry('after-reject-${active.callId}'));
   }
 
   // ── Inbound transport events ─────────────────────────────────
@@ -1578,6 +1620,7 @@ class CallSignalingService {
       case CallInviteEvent(:final callId, :final conversationId, :final callerId, :final callerName, :final callType, :final startedAt, :final targetIds):
         // Ignore self-echo if it ever happens.
         if (callerId == settings.userId) return;
+        _diagCallkitRegistry('ws-invite-$callId');
         // Routing note: with the real backend, invites land on
         // `/user/queue/calls` — a per-user channel. If a frame
         // arrives here it's already addressed to us, so we must NOT

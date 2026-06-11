@@ -25,5 +25,12 @@ String callkitIdForCid(String cid) {
   if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) {
     return cid;
   }
-  return const Uuid().v5(Namespace.url.value, cid);
+  final uuid = const Uuid().v5(Namespace.url.value, cid);
+  // DIAGNOSTIC (iOS): surface the deterministic mapping so a 2-call repro
+  // shows whether call #2 reused call #1's CID (⇒ same UUID ⇒ iOS refuses a
+  // second reportNewIncomingCall) or got a distinct id. Remove once the
+  // "second call shows no ring (minimized)" cause is confirmed.
+  // ignore: avoid_print
+  print('[CallkitId] cid=$cid → uuid=$uuid');
+  return uuid;
 }
