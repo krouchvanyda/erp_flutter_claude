@@ -74,6 +74,26 @@ class PresenceRepository {
     revision.value++;
   }
 
+  /// Fire-and-forget lifecycle beacon: tell the backend we minimized so it
+  /// flips us OFFLINE the instant we background — instead of waiting
+  /// ~20-30s for the STOMP heartbeat to notice the OS-suspended socket.
+  /// That instant-OFFLINE is what lets a just-minimized callee receive the
+  /// VoIP/CallKit ring (the backend rings only OFFLINE callees). Swallows
+  /// errors; the heartbeat timeout is the fallback.
+  Future<void> reportBackground() async {
+    try {
+      await remote.reportBackground();
+    } catch (_) {/* swallow — heartbeat is the fallback */}
+  }
+
+  /// Fire-and-forget lifecycle beacon: we're back in the foreground, so
+  /// incoming calls should use the in-app overlay (no CallKit).
+  Future<void> reportForeground() async {
+    try {
+      await remote.reportForeground();
+    } catch (_) {/* swallow */}
+  }
+
   void _putAll(Iterable<dynamic> raws) {
     var changed = false;
     for (final raw in raws) {

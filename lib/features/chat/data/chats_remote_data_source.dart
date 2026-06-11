@@ -126,6 +126,18 @@ abstract class ChatsRemoteDataSource {
   /// `GET /chats/presence?ids=1,4,7` — batch hydrate just the users
   /// on screen (group members, chat-info participants, etc.).
   Future<List<dynamic>> listPresenceForIds(Iterable<int> userIds);
+
+  /// `POST /chats/presence/background` — lifecycle beacon telling the
+  /// server we minimized, so it flips us OFFLINE immediately (instead of
+  /// waiting ~20-30s for the STOMP heartbeat to notice the suspended
+  /// socket). That instant-OFFLINE is what makes a just-minimized callee
+  /// receive the VoIP/CallKit ring (the backend rings only OFFLINE callees).
+  Future<void> reportBackground();
+
+  /// `POST /chats/presence/foreground` — lifecycle beacon telling the
+  /// server we're back in the foreground (so calls use the in-app overlay,
+  /// not CallKit).
+  Future<void> reportForeground();
 }
 
 /// `dio`-backed implementation. Resolves paths against
@@ -446,5 +458,15 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
       return ApiEnvelope.parseList<dynamic>(body, (d) => d);
     }
     return const <dynamic>[];
+  }
+
+  @override
+  Future<void> reportBackground() async {
+    await _dio.post<dynamic>('$_presencePath/background');
+  }
+
+  @override
+  Future<void> reportForeground() async {
+    await _dio.post<dynamic>('$_presencePath/foreground');
   }
 }

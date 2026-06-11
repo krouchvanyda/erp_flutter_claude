@@ -85,6 +85,9 @@ class ChatLifecycleBridge with WidgetsBindingObserver {
         }
         transport.pause();
         streamEngine.disconnectForBackground();
+        // Beacon: mark us OFFLINE on the server now (process dying) so a
+        // follow-up call rings this device via VoIP/CallKit.
+        unawaited(presence.reportBackground());
       case AppLifecycleState.paused:
       case AppLifecycleState.hidden:
         // Explicitly drop the STOMP socket so the backend's
@@ -110,11 +113,22 @@ class ChatLifecycleBridge with WidgetsBindingObserver {
         // standard calling-app behaviour: minimize keeps the call
         // alive so the user can multitask while talking.
         streamEngine.disconnectForBackground();
+        // Beacon: tell the server we minimized so it flips us OFFLINE
+        // INSTANTLY — without this, the OS-suspended socket keeps our STOMP
+        // session "ONLINE" for ~20-30s (heartbeat timeout), so a call placed
+        // in that window is wrongly treated as foreground and the VoIP/CallKit
+        // ring is skipped (the "minimized: no ring" bug). Fire-and-forget;
+        // the heartbeat timeout is the fallback if the POST doesn't flush.
+        unawaited(presence.reportBackground());
       case AppLifecycleState.resumed:
         // Re-open the socket so we're Online again. Once connected
         // our presence flips back to ONLINE server-side and peers'
         // dots turn green.
         transport.resume();
+        // Beacon: tell the server we're foreground again so the next
+        // incoming call uses the in-app overlay (no CallKit). The STOMP
+        // reconnect also clears the backgrounded flag, but this is instant.
+        unawaited(presence.reportForeground());
         // Re-hydrate presence: the broker may have advanced while we
         // were backgrounded, and `/topic/presence` only delivers
         // deltas (not the current snapshot) once we reconnect.
