@@ -2115,7 +2115,46 @@ class CallSignalingService {
     final wasLive = isLive(prev?.state);
     final stillLive = isLive(next?.state);
     if (wasLive && !stillLive) {
-      unawaited(streamEngine.endActiveCall());
+      if (Platform.isIOS) {
+        // iOS "second call shows no ring (callee minimized)" fix.
+        //
+        // A minimized iOS callee only gets a native CallKit header when
+        // Stream's coordinator delivers the incoming-call event via an
+        // APNs VoIP push — which it does ONLY when the callee's Stream
+        // WebSocket is disconnected. `ChatLifecycleBridge` drops that WS
+        // on minimize, but ONLY on the `paused` transition.
+        //
+        // Across a call the Stream WS is necessarily up (it's the media
+        // leg; the accept/resume warm-up reconnects it, and
+        // `disconnectForBackground` no-ops while a call is active). When
+        // THIS call ends while the app is STILL backgrounded (peer
+        // hangup / missed / declined-from-CallKit / remote-end mid-call),
+        // there's no fresh `paused` event to drop the WS again — so the
+        // NEXT incoming call rings over the still-warm WS, which a
+        // backgrounded app can't render → no header (the reported bug).
+        //
+        // So after the terminal teardown, if we're backgrounded, re-drop
+        // the Stream WS so Stream falls back to APNs for call #2. When the
+        // call ended in the FOREGROUND (user tapped End on the in-call
+        // page) we skip — the eventual minimize fires `paused` and the
+        // bridge handles it normally. iOS-only; Android keeps its exact
+        // prior behaviour (the `else` branch below).
+        unawaited(streamEngine.endActiveCall().then((_) {
+          final lc = WidgetsBinding.instance.lifecycleState;
+          final backgrounded = lc == AppLifecycleState.paused ||
+              lc == AppLifecycleState.hidden ||
+              lc == AppLifecycleState.detached;
+          if (backgrounded) {
+            // ignore: avoid_print
+            print('[CallSignaling] call ended while backgrounded (iOS) — '
+                're-dropping Stream WS so the next call rings via APNs');
+            return streamEngine.disconnectForBackground(force: true);
+          }
+          return null;
+        }));
+      } else {
+        unawaited(streamEngine.endActiveCall());
+      }
     }
 
     // Dismiss the CallKit notification (ongoing-call heads-up + tray

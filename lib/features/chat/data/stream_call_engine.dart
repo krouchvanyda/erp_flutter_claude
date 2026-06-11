@@ -1341,7 +1341,17 @@ class StreamCallEngine {
   ///
   /// Skipped during an active call so the audio leg isn't torn down
   /// when the user briefly backgrounds the app mid-conversation.
-  Future<void> disconnectForBackground() async {
+  ///
+  /// [force] (iOS-only) is set by callers that KNOW the call is over
+  /// (signaling has no active call). It bypasses the in-flight-setup /
+  /// active-call guards below so a STALE `_callSetupInProgress` /
+  /// `_inFlightCall` / `_activeCall` left over from a just-ended call
+  /// can't keep the WS warm — which is what made the 2nd call to a
+  /// minimized callee ring over WS (no native CallKit header) instead of
+  /// via an APNs VoIP push. Honoured on iOS only; Android's background
+  /// path (which never sets the iOS flag) is unchanged regardless.
+  Future<void> disconnectForBackground({bool force = false}) async {
+    final forced = force && Platform.isIOS;
     // Detect a STALE _activeCall: if the underlying Stream call is
     // already in a disconnected state, the reference is leftover from
     // a previous ended call. Clear it eagerly so the next minimize
@@ -1370,18 +1380,35 @@ class StreamCallEngine {
     // never enters the call and BOTH sides hear silence — the reported
     // bug. Treat setup-in-progress like an active call and keep the
     // socket up. Android is untouched: it never sets the flag here.
-    if (Platform.isIOS &&
+    if (!forced &&
+        Platform.isIOS &&
         (_callSetupInProgress || _inFlightCall != null)) {
       // ignore: avoid_print
       print('[StreamCallEngine] disconnectForBackground: skipped '
           '(call setup in flight — keeping Stream WS alive)');
       return;
     }
-    if (_activeCall != null) {
+    if (!forced && _activeCall != null) {
       // ignore: avoid_print
       print('[StreamCallEngine] disconnectForBackground: skipped '
           '(active call in flight, audio must stay alive)');
       return;
+    }
+    // Forced path: the caller guarantees the signaling call is over, so
+    // any leftover setup flags / call refs are stale. Clear them and drop
+    // the leftover Stream leg (if one lingered) so the socket can close —
+    // otherwise the guards above would have kept the WS warm and the next
+    // incoming call would ring over WS (invisible while minimized).
+    if (forced) {
+      _callSetupInProgress = false;
+      if (_activeCall != null || _inFlightCall != null) {
+        // ignore: avoid_print
+        print('[StreamCallEngine] disconnectForBackground: forced — '
+            'leaving a lingering call ref before dropping WS');
+        try {
+          await leave();
+        } catch (_) {}
+      }
     }
     final client = _client;
     if (client == null) return;

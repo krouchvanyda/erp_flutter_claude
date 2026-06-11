@@ -48,6 +48,16 @@ class ChatLifecycleBridge with WidgetsBindingObserver {
   final StreamCallEngine streamEngine;
   final CallSignalingService signaling;
 
+  /// True when there is no live call right now — i.e. it's safe to force
+  /// the Stream WS down on background. A call that's merely `ended` (or
+  /// absent) counts as "no active call"; anything still ringing /
+  /// connected must keep the socket so the audio leg survives a mid-call
+  /// minimize.
+  bool _noActiveCall() {
+    final active = signaling.current;
+    return active == null || active.state == CallSignalState.ended;
+  }
+
   void attach() {
     WidgetsBinding.instance.addObserver(this);
   }
@@ -84,7 +94,7 @@ class ChatLifecycleBridge with WidgetsBindingObserver {
           ));
         }
         transport.pause();
-        streamEngine.disconnectForBackground();
+        streamEngine.disconnectForBackground(force: _noActiveCall());
         // Beacon: mark us OFFLINE on the server now (process dying) so a
         // follow-up call rings this device via VoIP/CallKit.
         unawaited(presence.reportBackground());
@@ -112,7 +122,16 @@ class ChatLifecycleBridge with WidgetsBindingObserver {
         // conversation; the engine itself enforces that guard) —
         // standard calling-app behaviour: minimize keeps the call
         // alive so the user can multitask while talking.
-        streamEngine.disconnectForBackground();
+        //
+        // `force` (iOS-only) when there's NO active signaling call: a
+        // just-ended call can leave a stale setup flag / call ref in the
+        // engine that makes the plain `disconnectForBackground` skip the
+        // WS drop — and then the NEXT call to this minimized device rings
+        // over the still-warm WS (no native CallKit header). Forcing past
+        // the guard once the call is provably over fixes the "2nd call no
+        // ring" report. Mid-call minimize is untouched (`_noActiveCall`
+        // is false then, so `force` is false → audio stays alive).
+        streamEngine.disconnectForBackground(force: _noActiveCall());
         // Beacon: tell the server we minimized so it flips us OFFLINE
         // INSTANTLY — without this, the OS-suspended socket keeps our STOMP
         // session "ONLINE" for ~20-30s (heartbeat timeout), so a call placed
