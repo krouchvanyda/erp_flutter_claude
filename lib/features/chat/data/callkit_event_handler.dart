@@ -418,6 +418,35 @@ class CallkitEventHandler {
                 'engine.onCallKitAudioSessionActivated()');
             await _safelyGet<StreamCallEngine>()
                 ?.onCallKitAudioSessionActivated();
+          } else {
+            // {isActivate: false} — CallKit DEACTIVATED the shared
+            // AVAudioSession. Normally that's the current call ENDING
+            // (harmless). But in a back-to-back A→B→B scenario it's call
+            // #1's LATE didDeactivate arriving AFTER call #2 already
+            // connected — and because the session was still active from
+            // call #1, CallKit never fires a fresh didActivate for call
+            // #2, so the engine never restarts WebRTC's audio unit and B
+            // hears nothing ("second call, accept, no audio"). Detect that
+            // case: if a call is STILL connected, the deactivate pulled the
+            // session out from under it → re-assert + bounce the mic on
+            // whatever session is now live, exactly as we do on activate.
+            // When the current call is genuinely ending, signaling state is
+            // already `ended`/null here, so this stays a no-op. iOS-only.
+            final signaling = _safelyGet<CallSignalingService>();
+            final liveConnected =
+                signaling?.current?.state == CallSignalState.connected;
+            if (liveConnected) {
+              // ignore: avoid_print
+              print('[CallkitEventHandler] CallKit audio session DEACTIVATED '
+                  'while a call is still connected → re-asserting '
+                  '(back-to-back call audio race)');
+              await _safelyGet<StreamCallEngine>()
+                  ?.onCallKitAudioSessionActivated();
+            } else {
+              // ignore: avoid_print
+              print('[CallkitEventHandler] CallKit audio session deactivated '
+                  '· no live connected call → no-op');
+            }
           }
         }
       case Event.actionCallDecline:

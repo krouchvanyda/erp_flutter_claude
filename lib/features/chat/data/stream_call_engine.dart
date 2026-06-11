@@ -186,6 +186,16 @@ class StreamCallEngine {
   /// flows) and a fresh `join()` (FCM-push fallback path).
   bool get hasPendingIncoming => _pendingIncomingCall != null;
 
+  /// iOS back-to-back race: CallKit's audio-session toggle
+  /// (`onCallKitAudioSessionActivated`) can arrive BEFORE `join()` has
+  /// promoted the call to `_activeCall` — so the re-assert finds no live
+  /// call and bails. We latch the intent here; `join()`'s post-join hook
+  /// applies it the instant `_activeCall` is set. Fixes "second
+  /// back-to-back call, accept, no audio" where CallKit fired only a
+  /// `didDeactivate` (no `didActivate`) and the re-assert lost the race
+  /// with a slow coordinator handshake.
+  bool _pendingCallkitAudioReassert = false;
+
   /// Fires when Stream signals the active call has ended (caller hung
   /// up before callee answered, peer left, etc.). The signaling layer
   /// subscribes so it can pop the local UI even when the end event
@@ -381,14 +391,29 @@ class StreamCallEngine {
       await Future<void>.delayed(const Duration(milliseconds: 250));
     }
     if (call == null) {
+      // join() hasn't promoted the call yet — on a back-to-back accept the
+      // coordinator handshake (token + getOrCreate) can outlast this 3 s
+      // wait, so giving up here leaves the call SILENT. Latch the intent
+      // instead; join()'s post-join hook applies the re-assert the instant
+      // `_activeCall` is set.
+      _pendingCallkitAudioReassert = true;
       // ignore: avoid_print
       print('[StreamCallEngine] CallKit audio activated · no active call after '
-          'wait — skipping re-assert');
+          'wait — DEFERRING re-assert until join() promotes the call');
       return;
     }
     // ignore: avoid_print
     print('[StreamCallEngine] CallKit audio session ACTIVATED · '
         're-asserting route + bouncing mic on the live session');
+    await _applyCallkitAudioReassert(call);
+  }
+
+  /// Re-assert the iOS audio route + bounce the mic (off→on) on [call] so
+  /// WebRTC's capture/playback unit restarts on the now-live CallKit
+  /// session. Shared by the immediate activation handler and the deferred
+  /// post-join path (see [_pendingCallkitAudioReassert]). iOS-only.
+  Future<void> _applyCallkitAudioReassert(Call call) async {
+    if (!Platform.isIOS) return;
     await _reassertIosAudioRoute();
     // Bounce the mic OFF→ON. A plain setMicrophoneEnabled(true) is a no-op
     // when the track already "enabled", so it won't restart WebRTC's capture
@@ -396,7 +421,7 @@ class StreamCallEngine {
     // to tear down and re-create the audio unit on the now-live CallKit
     // session — the actual fix for the silent minimized/killed accept.
     try {
-      if (!Platform.isIOS || await Permission.microphone.isGranted) {
+      if (await Permission.microphone.isGranted) {
         await call.setMicrophoneEnabled(enabled: false);
         await Future<void>.delayed(const Duration(milliseconds: 120));
         await call.setMicrophoneEnabled(enabled: true);
@@ -410,6 +435,20 @@ class StreamCallEngine {
       // Fall back to the plain publish so we at least try.
       await _ensureMicPublishing(call);
     }
+  }
+
+  /// Post-join hook: if a CallKit audio toggle fired BEFORE this join
+  /// promoted the call (so [onCallKitAudioSessionActivated] latched
+  /// [_pendingCallkitAudioReassert] instead of acting), apply the
+  /// re-assert now on the freshly-live [call]. No-op off iOS / when
+  /// nothing is pending.
+  void _consumePendingCallkitReassert(Call call) {
+    if (!Platform.isIOS || !_pendingCallkitAudioReassert) return;
+    _pendingCallkitAudioReassert = false;
+    // ignore: avoid_print
+    print('[StreamCallEngine] applying DEFERRED CallKit audio re-assert — '
+        'join() has now promoted the call');
+    unawaited(_applyCallkitAudioReassert(call));
   }
 
 
@@ -690,6 +729,7 @@ class StreamCallEngine {
       // iOS: re-apply the speaker route now that the ADM is up (the page
       // set it before this join finished — see [_reassertIosAudioRoute]).
       unawaited(_reassertIosAudioRoute());
+      _consumePendingCallkitReassert(call);
       if (kDebugMode) {
         debugPrint(
           '[StreamCallEngine] joined cid=$streamCallCid '
@@ -978,6 +1018,7 @@ class StreamCallEngine {
       _attachEndListener(call);
       unawaited(_ensureMicPublishing(call));
       unawaited(_reassertIosAudioRoute());
+      _consumePendingCallkitReassert(call);
       // ignore: avoid_print
       print('[StreamCallEngine] $attemptLabel: accept+join OK on '
           'Stream-provided ref — media leg up');
@@ -1153,6 +1194,7 @@ class StreamCallEngine {
       if (Platform.isIOS) {
         unawaited(_ensureMicPublishing(call));
         unawaited(_reassertIosAudioRoute());
+        _consumePendingCallkitReassert(call);
       }
       // ignore: avoid_print
       print('[StreamCallEngine] accept+join OK — media leg up');
@@ -1637,6 +1679,11 @@ class StreamCallEngine {
       // backend round-trip. Guarded to iOS so Android runtime is untouched.
       if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
         await _logPushDiagnostics();
+        // Close the "first minimized call has no ring" race: the SDK
+        // registers push devices once on connect, but the PushKit VoIP
+        // token often isn't ready yet, so the `apn` device (the iOS ring
+        // route) is missing. Re-run registerDevice() until it appears.
+        unawaited(_ensureApnDeviceRegistered());
       }
     } catch (e) {
       // ignore: avoid_print
@@ -1720,6 +1767,74 @@ class StreamCallEngine {
     } catch (e) {
       // ignore: avoid_print
       print('[PushDiag/$when] getDevices() threw: $e');
+    }
+  }
+
+  /// Returns true if Stream has an `apn` push device for this user, false
+  /// if not, null if the lookup failed. Pure read — the retry loop owns
+  /// the logging.
+  Future<bool?> _streamHasApnDevice() async {
+    try {
+      final devices = (await _client?.getDevices())?.getDataOrNull();
+      if (devices == null) return null;
+      return devices.any((d) =>
+          d.pushProviderName == 'apn' ||
+          d.pushProvider.toString().toLowerCase().contains('apn'));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// iOS-only: the SDK registers push devices ONCE on connect, but the
+  /// PushKit VoIP token arrives async — on a cold start / client rebuild
+  /// it's often not ready yet, so only the FCM device registers and the
+  /// `apn` provider (the route that lights the native CallKit ring when
+  /// the app is minimized/killed) never appears. The SDK has no retry, so
+  /// the FIRST call after launch reaches a phone Stream can't push to →
+  /// "no header ring". This closes that race: poll `getDevices()`; while
+  /// no `apn` device is present, re-run `registerDevice()` (by now the
+  /// VoIP token is more likely available) and wait, up to ~15 s.
+  ///
+  /// Doubles as a diagnostic: if the `apn` device STILL never appears
+  /// after the retries, the cause is NOT timing — it's the cert/infra
+  /// layer (Stream dashboard APN VoIP provider env mismatch: sandbox vs
+  /// production). The final log says so explicitly. Additive, iOS-only —
+  /// never runs on Android / web.
+  Future<void> _ensureApnDeviceRegistered() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) return;
+    const maxAttempts = 6; // 6 × 2.5 s ≈ 15 s
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      if (await _streamHasApnDevice() == true) {
+        // ignore: avoid_print
+        print('[PushDiag/apn-retry] apn provider registered after '
+            '$attempt check(s) — minimized-call ring route is ready');
+        return;
+      }
+      // Re-run the SDK's device registration. The PushKit VoIP token is
+      // more likely available now than at connect, so this attempt can
+      // register the apn device the first pass missed.
+      try {
+        _client?.pushNotificationManager?.registerDevice();
+        // ignore: avoid_print
+        print('[PushDiag/apn-retry] attempt $attempt/$maxAttempts — no apn '
+            'device yet, re-ran registerDevice()');
+      } catch (e) {
+        // ignore: avoid_print
+        print('[PushDiag/apn-retry] registerDevice() threw: $e');
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 2500));
+    }
+    if (await _streamHasApnDevice() == true) {
+      // ignore: avoid_print
+      print('[PushDiag/apn-retry] apn provider registered on final check '
+          '— ring route ready');
+    } else {
+      // ignore: avoid_print
+      print('[PushDiag/apn-retry] ⚠ apn provider STILL missing after '
+          '$maxAttempts retries — this is NOT a timing race. Check the '
+          'Stream dashboard APN VoIP provider + cert environment (sandbox '
+          'vs production) against this build. Code cannot fix a cert '
+          'mismatch.');
     }
   }
 
