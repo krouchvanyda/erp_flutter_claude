@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/widgets.dart';
 
@@ -82,16 +83,37 @@ class ChatLifecycleBridge with WidgetsBindingObserver {
         final active = signaling.current;
         if (active != null &&
             active.state == CallSignalState.connected) {
-          // ignore: avoid_print
-          print('[ChatLifecycle] detached during active call '
-              '${active.callId} — hanging up before process death');
-          // Fire-and-forget: the await won't complete because the
-          // isolate is shutting down, but the wire call is queued
-          // and Dio will flush it before the OS reclaims the
-          // process in most cases. Same for streamEngine.leave().
-          unawaited(signaling.hangup(
-            finalStatus: ChatCallStatus.answered,
-          ));
+          if (Platform.isIOS) {
+            // iOS carve-out — DO NOT hang up here. A lock-screen / killed-
+            // app accept runs with NO foreground Flutter UI, so iOS fires
+            // `detached` on the cold-started process a few seconds AFTER the
+            // call connects, even though the user wants to keep talking.
+            // Hanging up here self-terminates a perfectly live call — the
+            // reported "D accepts, C and D connect, then the app closes the
+            // call". On iOS `detached` is NOT a reliable "process dying"
+            // signal during a call: the audio background mode + the live
+            // CallKit audio session keep the process alive. A GENUINE kill
+            // is still handled from the other side — the peer's connected-
+            // heartbeat + Stream's remote-left detection end the call when
+            // our media actually drops. So we leave the call running here.
+            // Android keeps the eager hangup below (its `detached` IS a real
+            // task-removal signal).
+            // ignore: avoid_print
+            print('[ChatLifecycle] iOS detached during active call '
+                '${active.callId} — NOT hanging up (lock-screen accept has '
+                'no foreground UI; CallKit audio session keeps us alive)');
+          } else {
+            // ignore: avoid_print
+            print('[ChatLifecycle] detached during active call '
+                '${active.callId} — hanging up before process death');
+            // Fire-and-forget: the await won't complete because the
+            // isolate is shutting down, but the wire call is queued
+            // and Dio will flush it before the OS reclaims the
+            // process in most cases. Same for streamEngine.leave().
+            unawaited(signaling.hangup(
+              finalStatus: ChatCallStatus.answered,
+            ));
+          }
         }
         transport.pause();
         streamEngine.disconnectForBackground(force: _noActiveCall());

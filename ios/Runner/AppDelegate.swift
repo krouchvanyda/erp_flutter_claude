@@ -21,6 +21,15 @@ import CallKit
   // screen that appears while the app is foreground.
   private let callObserver = CXCallObserver()
 
+  // The Dart-side method channel (`erp/ios_callkit`). Kept as a property so
+  // the CXCallObserver can push a native→Dart `incomingCallAnswered` event
+  // (see callObserver below). nil until the FlutterViewController is ready.
+  private var callkitChannel: FlutterMethodChannel?
+
+  // UUIDs we've already reported as answered, so the CXCallObserver (which
+  // fires repeatedly for one call) drives the Dart accept flow only once.
+  private var answeredCallUUIDs = Set<String>()
+
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -74,8 +83,18 @@ import CallKit
       let channel = FlutterMethodChannel(
         name: "erp/ios_callkit",
         binaryMessenger: controller.binaryMessenger)
+      callkitChannel = channel
       channel.setMethodCallHandler { (call, result) in
         switch call.method {
+        case "isDeviceUnlocked":
+          // Lock-state probe used by the Dart CallKit-suppression sweep.
+          // `isProtectedDataAvailable` is true when the device is unlocked
+          // and false once it locks (passcode devices). The sweep dismisses
+          // the native CallKit ONLY when unlocked — on a locked accept the
+          // native CallKit is the only call UI iOS permits on the lock
+          // screen, so we must NOT dismiss it there. Defaults handled on the
+          // Dart side. Public API; read-only; nothing else changes.
+          result(UIApplication.shared.isProtectedDataAvailable)
         case "dismissIncoming":
           if let plugin = SwiftFlutterCallkitIncomingPlugin.sharedInstance {
             let calls = plugin.activeCalls()
@@ -103,6 +122,29 @@ import CallKit
 
   // ── CXCallObserverDelegate ───────────────────────────────────────────────
   func callObserver(_ callObserver: CXCallObserver, callChanged call: CXCall) {
+    // INCOMING call just became CONNECTED = the user tapped Accept on the
+    // native CallKit screen (lock screen / minimized / killed cold-start).
+    // This is the ONLY reliable, timing-independent signal for that accept:
+    // on a killed/locked cold-start the flutter_callkit_incoming
+    // `actionCallAccept` event is missed (the Dart isolate/subscription
+    // isn't ready when it fires) and Stream's native push handler consumes
+    // the call before Dart's resync runs — so nothing tells OUR backend the
+    // callee answered, and the CALLER stays stuck on "Calling…". Bridge it
+    // to Dart, which runs the normal accept flow (POST /accept → the backend
+    // re-broadcasts call.accept so the caller connects, + joins the Stream
+    // media leg). Only when NOT genuinely foreground — a foreground accept
+    // goes through the in-app overlay/signaling directly, and the native
+    // ring is suppressed below so it never reaches `hasConnected` there.
+    if !call.isOutgoing, call.hasConnected, !call.hasEnded {
+      if !isAppForeground {
+        let uuid = call.uuid.uuidString
+        if !answeredCallUUIDs.contains(uuid), callkitChannel != nil {
+          answeredCallUUIDs.insert(uuid)
+          notifyIncomingCallAnswered(uuid: uuid)
+        }
+      }
+      return
+    }
     // Act only on a freshly-appeared INCOMING call (ringing — not outgoing,
     // not answered, not already ended). After we end it, hasEnded becomes true
     // and this guard skips the follow-up event (no loop).
@@ -114,5 +156,25 @@ import CallKit
     // reason 6 → remoteEnded → CXProvider.reportCall(endedAt:) dismisses the
     // incoming UI (CXEndCallAction does not).
     plugin.saveEndCall(call.uuid.uuidString, 6)
+  }
+
+  /// Push a native→Dart `incomingCallAnswered` event for a CallKit call the
+  /// user just answered. Looks up the matching flutter_callkit_incoming
+  /// entry (which carries the Stream cid under `extra.callCid`) so the Dart
+  /// side has everything `_handleAccept` needs; falls back to the bare UUID
+  /// if the entry isn't found. Runs on the observer's main queue.
+  private func notifyIncomingCallAnswered(uuid: String) {
+    var payload: [String: Any] = ["uuid": uuid]
+    if let plugin = SwiftFlutterCallkitIncomingPlugin.sharedInstance {
+      let calls = plugin.activeCalls()
+      for c in calls {
+        let entryId = (c["id"] as? String) ?? (c["uuid"] as? String) ?? ""
+        if entryId == uuid {
+          payload["call"] = c
+          break
+        }
+      }
+    }
+    callkitChannel?.invokeMethod("incomingCallAnswered", arguments: payload)
   }
 }

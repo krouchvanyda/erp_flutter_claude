@@ -87,6 +87,29 @@ class StreamCallEngine {
     } catch (_) {/* best-effort priming — never block engine creation */}
   }
 
+  /// EARLY static prime — call this as the very FIRST thing in `main()`
+  /// (before the awaited Firebase/DI bootstrap), iOS-only.
+  ///
+  /// The constructor-time [_primeWebRtcAudioEventSink] runs during DI setup,
+  /// which on a VoIP COLD-START happens after a chunk of awaited init — and
+  /// a background-launched (killed-app) process can be SUSPENDED before the
+  /// async native `onListen` for `FlutterWebRTC.Event` registers its sink.
+  /// Then CallKit activates the audio session on the first Accept, the
+  /// plugin's unguarded `postEvent` fires for the AVAudioSession
+  /// interruption, the sink is still nil → `EXC_BAD_ACCESS` at
+  /// `__postEvent_block_invoke` (confirmed in the device .ips). Establishing
+  /// the subscription FIRST gives the native onListen the entire launch
+  /// window to register before any call can arrive. Idempotent (the
+  /// underlying `MediaDeviceNative`/`FlutterWebRTCEventChannel` are
+  /// singletons), so the constructor call later is a harmless no-op.
+  static void primeWebRtcAudioEventSinkEarly() {
+    if (!Platform.isIOS) return;
+    try {
+      // ignore: unnecessary_statements
+      rtc.navigator.mediaDevices;
+    } catch (_) {/* best-effort — never block launch */}
+  }
+
   final ChatsRemoteDataSource remote;
 
   StreamVideo? _client;

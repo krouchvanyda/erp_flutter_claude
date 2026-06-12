@@ -47,6 +47,17 @@ Future <void> main() async {
     body: () async {
       WidgetsFlutterBinding.ensureInitialized();
 
+      // FIRST — establish the stream_webrtc_flutter `FlutterWebRTC.Event`
+      // subscription (sets the native event sink) before ANY other init.
+      // On a VoIP cold-start the killed-app process can be suspended during
+      // the awaited Firebase/DI bootstrap below, before the constructor-time
+      // prime's async native onListen registers — and then CallKit's audio
+      // activation on the first Accept hits the plugin's nil event sink →
+      // EXC_BAD_ACCESS at __postEvent_block_invoke (confirmed in the device
+      // crash report). Doing it here, before the awaits, gives the native
+      // onListen the whole launch window to register. iOS-only, idempotent.
+      StreamCallEngine.primeWebRtcAudioEventSinkEarly();
+
       // ── Firebase + push stack ──────────────────────────────────
       // Order matters here:
       //   1. Firebase.initializeApp before ANY firebase_* SDK call.

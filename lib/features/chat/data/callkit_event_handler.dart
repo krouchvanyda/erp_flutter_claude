@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show MethodCall, MethodChannel;
 import 'package:erp_callkit/erp_callkit.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_callkit_incoming/entities/entities.dart';
@@ -71,6 +72,18 @@ class CallkitEventHandler {
   /// reject/hangup of the call the overlay is showing. iOS-only.
   final Set<String> _suppressedIncoming = <String>{};
 
+  /// iOS-only native→Dart bridge. The native `CXCallObserver`
+  /// (AppDelegate.swift) invokes `incomingCallAnswered` on this channel the
+  /// instant an incoming CallKit call transitions to `hasConnected` — i.e.
+  /// the user tapped Accept on the native CallKit screen (lock screen /
+  /// killed cold-start). It's the ONLY signal for that accept that survives
+  /// when the `flutter_callkit_incoming` `actionCallAccept` event is missed
+  /// (isolate/subscription not ready) and Stream's native push handler has
+  /// already consumed the call. We route it into the same `_handleAccept`
+  /// flow so the backend POST + Stream join run exactly as elsewhere.
+  static const MethodChannel _iosCallkitChannel =
+      MethodChannel('erp/ios_callkit');
+
   /// (Removed: was a pushed-call-id dedupe set. Replaced with
   /// `VoiceCallPage.isMounted` / `VideoCallPage.isMounted` checks in
   /// IncomingCallOverlay — those reflect actual route state on the
@@ -82,6 +95,14 @@ class CallkitEventHandler {
     if (_attached) return;
     _attached = true;
     _resubscribe();
+    // iOS: listen for the native CXCallObserver's `incomingCallAnswered`
+    // push (AppDelegate.swift). This is the reliable accept signal for a
+    // killed/locked cold-start where `actionCallAccept` never reaches the
+    // onEvent subscription. No-op on Android (the channel is never invoked
+    // there).
+    if (Platform.isIOS) {
+      _iosCallkitChannel.setMethodCallHandler(_onIosNativeCallkit);
+    }
     // Request the two Android-runtime permissions flutter_callkit_incoming
     // needs to render the proper full-screen ringer with Accept/Decline
     // buttons. Without these the plugin silently falls back to a plain
@@ -646,6 +667,32 @@ class CallkitEventHandler {
         'callCid=$callCid · finalState=${signaling.current?.state}');
   }
 
+  /// iOS-only. Handles `incomingCallAnswered` pushed by the native
+  /// CXCallObserver (AppDelegate.swift) when the user accepts on the native
+  /// CallKit screen. The argument carries the matching
+  /// `flutter_callkit_incoming` entry under `call` (with the Stream cid in
+  /// `extra.callCid`); route it through the normal [_handleAccept] so the
+  /// early backend accept POST + Stream join run exactly as on a
+  /// foreground/minimized accept. The `_handledCallCids` dedupe inside
+  /// [_handleAccept] makes this a no-op if the live `actionCallAccept`
+  /// event also lands.
+  Future<dynamic> _onIosNativeCallkit(MethodCall call) async {
+    if (call.method != 'incomingCallAnswered') return null;
+    final args = call.arguments;
+    // ignore: avoid_print
+    print('[CallkitEventHandler] native CXCallObserver → '
+        'incomingCallAnswered · args=$args');
+    if (args is Map && args['call'] is Map) {
+      await _handleAccept(args['call']);
+    } else if (args is Map) {
+      // No matching CallKit entry found natively — pass the bare payload
+      // (uuid only). _handleAccept will bail on missing call_cid rather
+      // than crash; the +2s activeCalls() recovery is the backstop.
+      await _handleAccept(args);
+    }
+    return null;
+  }
+
   Future<void> _handleAccept(dynamic body) async {
     // ignore: avoid_print
     print('[CallkitEventHandler] _handleAccept ENTER · body=$body');
@@ -698,6 +745,29 @@ class CallkitEventHandler {
     if (Platform.isIOS) _acceptedAt[callCid] = DateTime.now();
     final isVideo = (params['type']?.toString() == '1');
     final signaling = _safelyGet<CallSignalingService>();
+
+    // iOS killed/locked cold-start safety net — fire the BACKEND accept
+    // POST FIRST, decoupled from everything below. The reported bug: the
+    // callee accepts (native CallKit shows the in-call timer) but the
+    // CALLER stays stuck on "Calling…" because nothing tells the backend
+    // we answered. The normal signal lives at the END of the flow
+    // (acceptIncoming → POST), behind a seed-`_active` + page-push chain
+    // that a LOCKED cold-start can suspend before it reaches the POST.
+    // Posting here — using the numeric id parsed straight from the
+    // CallKit cid — guarantees the backend records the answer and
+    // re-broadcasts `call.accept` to the caller at the earliest possible
+    // moment, so the caller's ring stops regardless of what happens to
+    // the media/UI legs afterwards. Fire-and-forget + idempotent; the
+    // acceptIncoming POST below is harmless after it. iOS-only +
+    // additive: Android keeps its single accept inside acceptIncoming.
+    if (Platform.isIOS && signaling != null) {
+      final earlyId = _parseBackendCallId(callCid);
+      // ignore: avoid_print
+      print('[CallkitEventHandler] iOS early accept → '
+          'notifyBackendAcceptEarly($earlyId) so the caller stops ringing '
+          'even if the rest of the accept flow is suspended/slow');
+      unawaited(signaling.notifyBackendAcceptEarly(earlyId));
+    }
     // VoIP-push CallKit entries carry the caller under CallKit's native keys
     // (`handle` / `nameCaller`); our FCM path uses `caller_id` / `caller_name`.
     // Accept both so the iOS background-accept flow has the caller context it
@@ -744,6 +814,46 @@ class CallkitEventHandler {
       };
       // ignore: avoid_print
       print('[CallkitEventHandler] step 1 → handleIncomingFromPush');
+      await signaling.handleIncomingFromPush(payload);
+    } else if (signaling != null &&
+        signaling.current == null &&
+        Platform.isIOS) {
+      // iOS killed/locked cold-start: Stream's native VoIP-push CallKit
+      // entry frequently carries NO caller id (`handle`/`caller_id`
+      // empty), so the branch above is skipped and `_active` is never
+      // seeded. Then step 3's `acceptIncoming()` bails ("no active call")
+      // and — the reported bug — never POSTs `/accept`, so the CALLER is
+      // never told we answered and stays stuck on "Calling…" (D's log
+      // shows no action taken to update the call state).
+      //
+      // Seed from the CallKit cid alone: `_parseBackendCallId` yields the
+      // numeric backend id, which is all `sendCallAccept` (an HTTP POST,
+      // so it works even before the STOMP socket reconnects on cold
+      // start) needs to record the answer — the backend then broadcasts
+      // `call.accept` to the caller and the ring stops. The peer name is
+      // backfilled from the conversation/STOMP once it resolves.
+      //
+      // Additive + iOS-guarded: Android's FCM path always carries
+      // `caller_id`, so `callerId.isNotEmpty` is already true there and
+      // this branch never runs — no Android behaviour change. The
+      // `signaling.current == null` guard keeps it from disturbing a
+      // foreground/minimized accept whose STOMP invite already seeded
+      // `_active`.
+      final payload = <String, dynamic>{
+        'type': 'call.invite',
+        'callId': _parseBackendCallId(callCid),
+        'conversationId': resolvedConvId,
+        'callerId': callerId,
+        if (callerName.isNotEmpty) 'callerName': callerName,
+        'callType': isVideo ? 'video' : 'voice',
+        'startedAt': DateTime.now().toUtc().toIso8601String(),
+        'streamCallCid': callCid,
+      };
+      // ignore: avoid_print
+      print('[CallkitEventHandler] step 1 (iOS no-caller-id) → '
+          'handleIncomingFromPush · seeding _active from cid '
+          '${_parseBackendCallId(callCid)} so acceptIncoming can POST '
+          '/accept and stop the caller ringing');
       await signaling.handleIncomingFromPush(payload);
     }
 

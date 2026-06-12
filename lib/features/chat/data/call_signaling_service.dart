@@ -236,6 +236,21 @@ class CallSignalingService {
   /// Connected forever" bug.
   Timer? _connectedHeartbeat;
 
+  /// iOS-only caller-side heartbeat that polls the backend while we are
+  /// `outgoingRinging`. Maps a backend `ANSWERED` onto a local
+  /// `connected` so the CALLER stops ringing within one interval of the
+  /// backend recording the callee's accept — even when the STOMP
+  /// `call.accept` broadcast is lost (e.g. the callee accepted from a
+  /// killed/locked cold-start whose POST raced the broadcast, or the
+  /// caller momentarily missed the frame). See [_startRingingHeartbeat].
+  Timer? _ringingHeartbeat;
+
+  /// The call id the ring heartbeat is currently polling. The caller's
+  /// id swaps mid-ring from a placeholder (`call-<me>-<ts>`) to the
+  /// backend numeric id, and only the numeric id is pollable — so we
+  /// restart the heartbeat whenever this changes.
+  String? _ringingHeartbeatCallId;
+
   Future<void> dispose() async {
     await _sub?.cancel();
     await _streamIncomingSub?.cancel();
@@ -244,7 +259,28 @@ class CallSignalingService {
     _ringTimeout?.cancel();
     _deferredHangupTimer?.cancel();
     _connectedHeartbeat?.cancel();
+    _ringingHeartbeat?.cancel();
     activeCallListenable.dispose();
+  }
+
+  /// iOS cold-start safety net used by [CallkitEventHandler] when the
+  /// callee accepts from a killed/locked app. Tells the BACKEND we
+  /// accepted as early as possible — independent of the full
+  /// [acceptIncoming] flow (which needs `_active` seeded, joins the
+  /// Stream media leg, and pushes the call page, ANY of which can be
+  /// slow or get suspended on a locked cold-start). The backend
+  /// re-broadcasts `call.accept` over STOMP so the CALLER stops ringing
+  /// immediately. Fire-and-forget + idempotent (a second `/accept` is a
+  /// no-op / harmless 400 on the server). iOS-only by caller; Android
+  /// keeps the existing single accept inside [acceptIncoming].
+  Future<void> notifyBackendAcceptEarly(String numericCallId) async {
+    if (int.tryParse(numericCallId) == null) return;
+    // ignore: avoid_print
+    print('[CallSignaling] notifyBackendAcceptEarly → '
+        'POST /chats/calls/$numericCallId/accept (early, decoupled)');
+    try {
+      await transport.sendCallAccept(numericCallId, accepterId: settings.userId);
+    } catch (_) {/* best-effort — acceptIncoming retries the real POST */}
   }
 
   /// Slice 10.2.10 — Telegram-style call summary written to the conv's
@@ -1168,20 +1204,52 @@ class CallSignalingService {
     const tick = Duration(milliseconds: 120);
     const maxTicks = 300; // ~36 s
     var n = 0;
-    void sweep() {
+    Future<void> sweep() async {
       final lc = WidgetsBinding.instance.lifecycleState;
       final backgrounded = lc == AppLifecycleState.paused ||
           lc == AppLifecycleState.hidden ||
           lc == AppLifecycleState.detached;
       final stillRinging = _active?.callId == callId &&
           _active?.state == CallSignalState.incomingRinging;
+      // Unchanged baseline stop conditions — minimized (paused/hidden/
+      // detached) keeps the native ring, and we stop once the ring resolves
+      // or the cap is hit.
       if (backgrounded || !stillRinging || n >= maxTicks) return;
-      _clearNativeIncoming(callId);
       n++;
+      // SURGICAL ADDITION (locked-screen fix): the Flutter lifecycle above
+      // does NOT read `paused` on a LOCKED VoIP cold-launch (it reads
+      // inactive/resumed/null), so without this the sweep dismissed the
+      // native CallKit on a lock-screen accept → bare lock screen (no in-app
+      // UI can render over the lock). Dismiss ONLY when the device is
+      // actually UNLOCKED. This is provably safe for the working killed-but-
+      // UNLOCKED case: there the device is unlocked → `unlocked == true` →
+      // we dismiss exactly as the prior baseline did. It changes behaviour
+      // ONLY on a genuinely locked device, where we now KEEP the native
+      // CallKit (the only call UI iOS allows on the lock screen).
+      final unlocked = await _deviceUnlocked();
+      if (unlocked) {
+        _clearNativeIncoming(callId);
+      }
       Future.delayed(tick, sweep);
     }
 
-    sweep();
+    unawaited(sweep());
+  }
+
+  /// iOS lock-state probe (`UIApplication.isProtectedDataAvailable` via the
+  /// native channel): true when the device is unlocked, false once locked.
+  /// Defaults to `true` on non-iOS or any error so the sweep keeps its
+  /// original dismiss behaviour everywhere except a confirmed-locked iOS
+  /// device — i.e. it can only ever ADD "keep CallKit while locked", never
+  /// remove a dismiss that used to happen on an unlocked device.
+  Future<bool> _deviceUnlocked() async {
+    if (!Platform.isIOS) return true;
+    try {
+      final v = await _iosCallkit.invokeMethod<bool>('isDeviceUnlocked');
+      return v ?? true;
+    } catch (_) {
+      return true;
+    }
   }
 
   /// Public trigger for the foreground CallKit-dismiss loop, callable from
@@ -1988,6 +2056,65 @@ class CallSignalingService {
     _connectedHeartbeat = null;
   }
 
+  /// iOS-only caller-side ring heartbeat. While we sit in
+  /// `outgoingRinging`, the ONLY signals that flip us to `connected` are
+  /// the STOMP `call.accept` broadcast and Stream's peer-joined fallback
+  /// — and BOTH can miss when the callee accepts from a killed/locked
+  /// cold-start (the broadcast can be gone before we subscribe, and the
+  /// callee may not have joined the Stream SFU yet). The result is the
+  /// reported bug: the callee is in the call but the caller is stuck on
+  /// "Calling…".
+  ///
+  /// This poll closes that gap from the caller side: every 3 s it calls
+  /// [reconcileActive], which maps a backend `ANSWERED` onto a local
+  /// `connected`. So the moment the backend has RECORDED the callee's
+  /// accept — regardless of whether any push reached us — we connect
+  /// within one interval. [reconcileActive] only acts on a numeric id
+  /// (`int.tryParse` guard) and self-guards the just-connected window,
+  /// so this is safe to call repeatedly.
+  ///
+  /// iOS-only (honours the no-Android-impact rule); the caller's id swaps
+  /// mid-ring (placeholder → backend numeric), and `_setActive` re-fires
+  /// on that swap, so we restart on a changed id.
+  void _startRingingHeartbeat(String callId) {
+    if (!Platform.isIOS) return;
+    // Only a backend-numeric id is pollable. The placeholder
+    // (`call-<me>-<ts>`) isn't — wait for the swap (which re-enters
+    // _setActive → here again with the numeric id).
+    if (int.tryParse(callId) == null) {
+      _stopRingingHeartbeat();
+      return;
+    }
+    // Already polling THIS id → leave it running.
+    if ((_ringingHeartbeat?.isActive ?? false) &&
+        _ringingHeartbeatCallId == callId) {
+      return;
+    }
+    _stopRingingHeartbeat();
+    _ringingHeartbeatCallId = callId;
+    const interval = Duration(seconds: 3);
+    _ringingHeartbeat = Timer.periodic(interval, (timer) {
+      final cur = _active;
+      if (cur == null ||
+          cur.callId != callId ||
+          cur.state != CallSignalState.outgoingRinging) {
+        // Left outgoingRinging (connected / ended / new call) → stop.
+        timer.cancel();
+        if (_ringingHeartbeatCallId == callId) _ringingHeartbeatCallId = null;
+        return;
+      }
+      // Maps backend ANSWERED → connected; once that lands the state
+      // leaves outgoingRinging and the guard above cancels us.
+      unawaited(reconcileActive());
+    });
+  }
+
+  void _stopRingingHeartbeat() {
+    _ringingHeartbeat?.cancel();
+    _ringingHeartbeat = null;
+    _ringingHeartbeatCallId = null;
+  }
+
   void _setActive(ActiveCall? next) {
     final prev = _active;
     _active = next;
@@ -2010,6 +2137,16 @@ class CallSignalingService {
       _startConnectedHeartbeat(next.callId);
     } else {
       _stopConnectedHeartbeat();
+    }
+    // Caller-side ring heartbeat (iOS): run ONLY while outgoingRinging.
+    // Polls the backend so the caller connects the moment the callee's
+    // accept is recorded server-side, even if the STOMP `call.accept`
+    // broadcast is lost (killed/locked callee cold-start). Self-restarts
+    // on the placeholder→numeric id swap; no-op until the id is numeric.
+    if (next != null && next.state == CallSignalState.outgoingRinging) {
+      _startRingingHeartbeat(next.callId);
+    } else {
+      _stopRingingHeartbeat();
     }
     // (Re)start the 30s safety timeout whenever we enter
     // incomingRinging, so a stuck invite (sheet never shown, peer
