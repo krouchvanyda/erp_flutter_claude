@@ -721,6 +721,10 @@ class CallkitEventHandler {
     if (signaling == null) {
       // ignore: avoid_print
       print('[CallkitEventHandler] _handleHangup BAIL · no signaling');
+      // Killed-app cold-start: DI isn't ready. If this is a still-ringing call
+      // (the user declined the native screen), POST the reject directly so the
+      // CALLER stops ringing — DI-less, same as the decline path.
+      await _directRejectNoDi(_parseBackendCallId(callCid));
       // Best-effort: tell Stream so its foreground service notification
       // dismisses even without our local state.
       final engine = _safelyGet<StreamCallEngine>();
@@ -736,6 +740,19 @@ class CallkitEventHandler {
         '— calling engine.leave() so Stream releases the foreground '
         'service notification',
       );
+      // Killed/minimized decline that never seeded an in-app call: relay the
+      // reject to the backend so the CALLER stops ringing. Skip when this end
+      // is our OWN programmatic dismiss (caller-cancel already handled by the
+      // bg-ring poll). Backend reject is idempotent for an already-ended call.
+      final ownDismiss = signaling.recentlyDismissedNativeCallkit();
+      final relayId = _parseBackendCallId(callCid);
+      final bgId = relayId.isNotEmpty ? relayId : (_lastIncomingBgCallId ?? '');
+      if (!ownDismiss && bgId.isNotEmpty) {
+        // ignore: avoid_print
+        print('[CallkitEventHandler] _handleHangup · no active call → direct '
+            'reject POST for callId=$bgId (killed/bg decline)');
+        await _directRejectNoDi(bgId);
+      }
       final engine = _safelyGet<StreamCallEngine>();
       if (engine != null) await engine.leave();
       return;

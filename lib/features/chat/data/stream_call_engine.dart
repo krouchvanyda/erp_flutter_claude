@@ -1826,11 +1826,22 @@ class StreamCallEngine {
   /// Logs whether this user has any push devices registered with Stream,
   /// and whether an `apn` provider entry exists (the iOS call-push route).
   Future<void> _checkStreamDevices(String when) async {
+    // No live client = nothing to query. This is the common `+10s` case: the
+    // call ended and `disconnectForBackground` nulled the client before the
+    // delayed check ran. It does NOT mean the devices were lost — they stay
+    // registered with Stream. Log it as a skip, not a failure.
+    if (_client == null) {
+      // ignore: avoid_print
+      print('[PushDiag/$when] ⓘ skipped — Stream client not connected '
+          '(call ended / backgrounded); registered devices unchanged.');
+      return;
+    }
     try {
       final devices = (await _client?.getDevices())?.getDataOrNull();
       if (devices == null) {
         // ignore: avoid_print
-        print('[PushDiag/$when] ❌ getDevices() failed.');
+        print('[PushDiag/$when] ❌ getDevices() returned no data '
+            '(API error while connected).');
         return;
       }
       if (devices.isEmpty) {
