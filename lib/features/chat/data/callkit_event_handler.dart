@@ -578,6 +578,42 @@ class CallkitEventHandler {
         '[CallkitEventHandler] keeping native CallKit ring · '
         'no in-app ring (backgrounded / killed cold-launch)',
       );
+      // CRITICAL (caller-cancel-while-minimized fix): connect the StreamVideo
+      // client so this device can OBSERVE the ringing call's lifecycle. The
+      // ring is showing via Stream's VoIP push, but while we're backgrounded
+      // `disconnectForBackground` left the Stream client DISCONNECTED — so
+      // when the caller hangs up (the backend `mark_ended`s the Stream call),
+      // neither the `stream_video_push_notification` package's
+      // `CoordinatorCallEndedEvent`/`CallRejectedEvent` subscription NOR our
+      // engine's `incomingCall → null` listener ever fires, and the native
+      // CallKit screen lingers until the OS ring timeout (the reported bug).
+      // Connecting here wires BOTH dismiss paths: Stream's own `endCallByCid`
+      // and our `_handleStreamCallEnded → _clearNativeIncoming` (which on iOS
+      // uses the reliable `reportCall(endedAt:)` bridge). Best-effort and
+      // idempotent — `warmUp()` no-ops if the client is already connected.
+      // iOS-only (we returned early for non-iOS at the top of this method).
+      final engine = _safelyGet<StreamCallEngine>();
+      if (engine != null) {
+        // ignore: avoid_print
+        print('[CallkitEventHandler] backgrounded incoming ring → '
+            'warmUp() Stream client so a caller-cancel dismisses it');
+        unawaited(engine.warmUp());
+      }
+      // Deterministic fallback: while minimized, neither STOMP, the Stream WS,
+      // nor (often) the apn/FCM push route can deliver the caller-cancel — but
+      // the app is still alive and can hit REST. Poll the backend for the
+      // call's terminal status and dismiss the ring when the caller ends it.
+      // Derive the backend call id from the CallKit entry's cid
+      // ("default:erp-call-1662" → "1662").
+      final signaling = _safelyGet<CallSignalingService>();
+      if (signaling != null) {
+        final p = _params(body);
+        final cid = (p['call_cid'] ?? p['callCid'])?.toString() ?? '';
+        final callId = cid.isEmpty ? '' : _parseBackendCallId(cid);
+        if (callId.isNotEmpty) {
+          signaling.watchBackgroundRingForCancel(callId);
+        }
+      }
       return; // backgrounded / killed → keep the native ring
     }
     final params = _params(body);

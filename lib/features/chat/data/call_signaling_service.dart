@@ -1078,6 +1078,21 @@ class CallSignalingService {
     final active = _active;
     if (active == null) return;
     final endedAt = DateTime.now();
+    // iOS: when WE abandon an UNANSWERED outgoing call, cancel the Stream
+    // ring for EVERYONE so the callee's device is actually told the call is
+    // over. A plain leave() only drops our own leg — a callee that is
+    // minimized / killed and ringing via native CallKit has its STOMP +
+    // Stream WS down, so it never sees our `call.hangup` and the ring
+    // lingers until Stream's ~30 s timeout (the reported "D's ring won't
+    // end" bug). reject(cancel) makes Stream's coordinator broadcast the
+    // cancellation, which dismisses the callee's CallKit with no extra
+    // push. Only for a still-ringing outgoing call; answered / connected
+    // calls keep the normal teardown (the peer is genuinely in the media
+    // leg). iOS-only, additive — Android's path is unchanged.
+    if (Platform.isIOS &&
+        active.state == CallSignalState.outgoingRinging) {
+      unawaited(streamEngine.cancelOutgoingRing());
+    }
     // Slice 10.2.10 — tag the hangup with our own id so group-call
     // peers can tell whether to end the call for everyone (caller
     // bowed out) or just ignore (one of N callees left, group call
@@ -1325,6 +1340,75 @@ class CallSignalingService {
   /// kicked the loop off.
   void suppressForegroundCallkitFor(String callId) =>
       _suppressForegroundCallkit(callId);
+
+  /// iOS-only: deterministic fallback that dismisses the native CallKit ring
+  /// when the CALLER cancels while THIS device is minimized.
+  ///
+  /// While minimized the device has NO live push channel to learn the call
+  /// ended: STOMP and the Stream WebSocket are both disconnected, the `apn`
+  /// VoIP route may be unregistered, and FCM may be off. But the app is still
+  /// ALIVE (iOS background execution), so it can still hit the REST API. So we
+  /// poll `GET /chats/calls/{id}` and, the moment the backend reports a
+  /// terminal status (the caller's `/end` flips it to ENDED), dismiss the ring
+  /// via the reliable native `reportCall(endedAt:)` path inside
+  /// [_clearNativeIncoming]. Self-stopping: terminal status, the call resolving
+  /// locally (accepted/ended), foregrounding, or a ~36 s cap (just past the
+  /// ring timeout). Called by `CallkitEventHandler` when a native ring appears
+  /// while backgrounded. iOS-only; never runs on Android.
+  void watchBackgroundRingForCancel(String callId) {
+    if (!Platform.isIOS) return;
+    final n = int.tryParse(callId);
+    if (n == null) return;
+    const tick = Duration(seconds: 3);
+    const maxTicks = 12; // ~36 s, just past the ring timeout
+    var i = 0;
+    Future<void> poll() async {
+      if (i >= maxTicks) return;
+      i++;
+      // Stop once a foreground in-app call owns this (the overlay/STOMP path
+      // took over) or the call already left ringing locally.
+      final cur = _active;
+      if (cur != null &&
+          cur.callId == callId &&
+          cur.state != CallSignalState.incomingRinging) {
+        return;
+      }
+      String status = '';
+      try {
+        final dto = await remote.getCall(n);
+        status = (dto['status'] ?? '').toString().toUpperCase();
+      } catch (e) {
+        // ignore: avoid_print
+        print('[CallSignaling] bg-ring poll error for $callId: $e');
+      }
+      if (status == 'ENDED' ||
+          status == 'MISSED' ||
+          status == 'REJECTED' ||
+          status == 'CANCELLED') {
+        // ignore: avoid_print
+        print('[CallSignaling] bg-ring poll: call $callId is $status — '
+            'dismissing native CallKit ring');
+        _clearNativeIncoming(callId);
+        _clearAllCallNotifications();
+        if (_active?.callId == callId) {
+          _setActive(_active!.copyWith(state: CallSignalState.ended));
+          Future.delayed(const Duration(milliseconds: 600), () {
+            if (_active?.callId == callId &&
+                _active?.state == CallSignalState.ended) {
+              _setActive(null);
+            }
+          });
+        }
+        return;
+      }
+      Future.delayed(tick, poll);
+    }
+
+    // ignore: avoid_print
+    print('[CallSignaling] watchBackgroundRingForCancel($callId) — polling '
+        'backend for caller-cancel while minimized');
+    unawaited(poll());
+  }
 
   /// TERMINAL-only notification sweep: the call is genuinely over, so wipe
   /// EVERY call notification off the screen — our own `erp_incoming_calls`

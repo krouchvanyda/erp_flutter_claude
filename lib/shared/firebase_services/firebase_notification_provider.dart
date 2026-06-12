@@ -182,6 +182,26 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       debugPrint('[FCM-BG] call.cancel → ErpCallKit.dismiss callId=$cancelCallId');
       await ErpCallKit.dismiss(cancelCallId);
     }
+    // iOS: the ring is a flutter_callkit_incoming / Stream-PushKit CallKit
+    // entry, NOT an `erp_callkit` Android notification — so the dismiss above
+    // is a no-op here. Mirror the `stream.video` branch and end the CallKit
+    // call so a caller hang-up before answer clears D's native ring while
+    // minimized/killed. Best-effort: end by the CID-derived id first, then
+    // sweep any remaining entry (the ring's UUID may differ from ours).
+    // iOS-only; Android is untouched (it uses ErpCallKit above).
+    if (Platform.isIOS) {
+      final callCid = message.data['streamCallCid']?.toString() ??
+          message.data['call_cid']?.toString() ??
+          '';
+      try {
+        if (callCid.isNotEmpty) {
+          await FlutterCallkitIncoming.endCall(callkitIdForCid(callCid));
+        }
+      } catch (_) {/* swallow — entry may already be gone */}
+      try {
+        await FlutterCallkitIncoming.endAllCalls();
+      } catch (_) {/* swallow */}
+    }
     return;
   }
 

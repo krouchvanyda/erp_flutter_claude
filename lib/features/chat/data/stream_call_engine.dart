@@ -1474,6 +1474,45 @@ class StreamCallEngine {
     await leave();
   }
 
+  /// Cancel an UNANSWERED outgoing call for EVERYONE on Stream's side.
+  ///
+  /// A plain [leave] / [endActiveCall] only drops OUR media leg — it does
+  /// NOT tell Stream's coordinator that the ring is cancelled. So a callee
+  /// that received the ring via push (minimized / killed iOS → native
+  /// CallKit screen) keeps ringing until Stream's ~30 s ring timeout. That
+  /// is the "D's native ring won't end when C hangs up" bug: while D is
+  /// backgrounded its STOMP + Stream WS are both down, so the only thing
+  /// that can dismiss the ring is Stream itself broadcasting the cancel.
+  ///
+  /// `reject(reason: cancel)` is the SDK's own cancel-outgoing path (see
+  /// `Call.accept` → `outgoingCall.reject(CallRejectReason.cancel())`): the
+  /// coordinator emits `call.rejected` to every member, which cancels the
+  /// ring and makes the callee's CallKit auto-dismiss — no extra cancel
+  /// push needed. Unlike [Call.end] it has no `CallStatusActive`
+  /// requirement, so it works for a still-ringing call.
+  ///
+  /// Best-effort: always falls through to the normal [leave] teardown so
+  /// our own leg / foreground service is freed even if the reject fails.
+  Future<void> cancelOutgoingRing() async {
+    ++_callSeq;
+    // Grab the ref synchronously (before any await) so a concurrent
+    // teardown can't null out `_activeCall` before we reject on it.
+    final call = _activeCall ?? _inFlightCall ?? _preparedCall;
+    if (call != null) {
+      try {
+        final res = await call.reject(reason: CallRejectReason.cancel());
+        // ignore: avoid_print
+        print('[StreamCallEngine] cancelOutgoingRing() · reject(cancel) → '
+            '$res for ${call.callCid.value} — ring cancelled for all members');
+      } catch (e) {
+        // ignore: avoid_print
+        print('[StreamCallEngine] cancelOutgoingRing() · reject(cancel) '
+            'FAILED (${call.callCid.value}): $e — falling back to leave()');
+      }
+    }
+    await leave();
+  }
+
   Future<void> leave() async {
     final call = _activeCall;
     // Capture + clear the in-flight ref up front so a call that's still
