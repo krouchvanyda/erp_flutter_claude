@@ -802,19 +802,23 @@ class CallkitEventHandler {
           'own native-CallKit dismiss (foreground takeover), not a user End');
       return;
     }
-    // Spurious-end guard: iOS can fire a connect→end blip moments after
-    // Accept. Ignore an end within the handoff window of accepting THIS call
-    // so it can't tear down a just-connected call. A real End tap lands well
-    // past it. (Keyed on the same streamCallCid `_acceptedAt` was written
-    // with in `_handleAccept`.)
+    // Spurious-end guard: iOS can fire a connect→end blip in the first instant
+    // after Accept. Ignore an end within a SHORT window of accepting THIS call
+    // so it can't tear down a just-connected call. Kept deliberately small (1 s,
+    // NOT the 6 s `_handleHangup` uses) because on this native CXCallObserver
+    // path the only "spurious" end is an immediate sub-second blip, and a real
+    // user End can land just 2–3 s in — a wide window would swallow it and
+    // leave the caller ringing. (Keyed on the same streamCallCid `_acceptedAt`
+    // was written with in `_handleAccept`.)
+    const nativeEndHandoff = Duration(seconds: 1);
     final cid = active.streamCallCid;
     if (cid != null && cid.isNotEmpty) {
       final acceptedAt = _acceptedAt[cid];
       if (acceptedAt != null &&
-          DateTime.now().difference(acceptedAt) < _acceptHandoffWindow) {
+          DateTime.now().difference(acceptedAt) < nativeEndHandoff) {
         // ignore: avoid_print
         print('[CallkitEventHandler] native End IGNORED · within '
-            '${_acceptHandoffWindow.inSeconds}s accept handoff window');
+            '${nativeEndHandoff.inMilliseconds}ms accept handoff window');
         return;
       }
     }

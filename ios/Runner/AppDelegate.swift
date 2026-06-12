@@ -146,13 +146,17 @@ import CallKit
     // CallKit only; Android is unaffected.
     if call.hasEnded {
       let uuid = call.uuid.uuidString
-      // Keep the uuid in `answeredCallUUIDs` (don't remove it here): iOS can
-      // fire a spurious connect→end blip moments after accept, and removing
-      // on that blip would stop the REAL End from bridging later. The Dart
-      // side ignores the blip via its accept-handoff window, and a stale,
-      // per-call-unique uuid never matches a future call — so leaving it is
-      // safe (mirrors the accept branch, which also only ever inserts).
-      if answeredCallUUIDs.contains(uuid), !isAppForeground, callkitChannel != nil {
+      // Bridge ANY end that happens while the app is NOT foreground. We must
+      // NOT gate on `answeredCallUUIDs` here: the accept can arrive via the
+      // plugin's `actionCallAccept` onEvent (handled entirely in Dart) instead
+      // of our `notifyIncomingCallAnswered` bridge, so `answeredCallUUIDs` is
+      // often empty even for a call we DID answer — which made the End on the
+      // native screen never reach the backend and left the CALLER ringing.
+      // Dart's `_handleNativeCallEnded` is the real decision-maker: it hangs up
+      // only a live CONNECTED call, ignores the spurious connect→end blip via
+      // its accept-handoff window, and ignores our own native-CallKit dismiss.
+      // A foreground end goes through the in-app End / onEvent path instead.
+      if !isAppForeground, callkitChannel != nil {
         notifyIncomingCallEnded(uuid: uuid)
       }
       return
