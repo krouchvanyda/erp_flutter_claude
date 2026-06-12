@@ -789,6 +789,19 @@ class CallkitEventHandler {
           'nothing to hang up');
       return;
     }
+    // CRITICAL: ignore a `hasEnded` that WE caused by dismissing the native
+    // CallKit screen ourselves (the foreground/unlocked case-1 takeover ends
+    // the CXCall via reportCall(endedAt:) so the in-app UI can show). That is
+    // NOT a user End tap — treating it as one hangs up the live, just-
+    // connected call (the reported case-1 crash). A genuine native End (case
+    // 3, locked) never runs `_clearNativeIncoming` during the call, so this
+    // window is clear there and the hang-up proceeds normally.
+    if (signaling.recentlyDismissedNativeCallkit()) {
+      // ignore: avoid_print
+      print('[CallkitEventHandler] native End IGNORED · this hasEnded is our '
+          'own native-CallKit dismiss (foreground takeover), not a user End');
+      return;
+    }
     // Spurious-end guard: iOS can fire a connect→end blip moments after
     // Accept. Ignore an end within the handoff window of accepting THIS call
     // so it can't tear down a just-connected call. A real End tap lands well

@@ -1142,7 +1142,26 @@ class CallSignalingService {
   /// `ios/Runner/AppDelegate.swift`.
   static const MethodChannel _iosCallkit = MethodChannel('erp/ios_callkit');
 
+  /// When WE last programmatically dismissed the native CallKit screen
+  /// (`_clearNativeIncoming` → `reportCall(endedAt:)`). That dismiss makes the
+  /// iOS `CXCall` transition to `hasEnded` — the SAME signal the native End
+  /// bridge (AppDelegate → `incomingCallEnded`) uses to detect a user tapping
+  /// End. Without distinguishing them, dismissing the native screen in the
+  /// foreground/unlocked case (to reveal the in-app UI) would be mistaken for
+  /// a hang-up and tear the live call down. `_handleNativeCallEnded` consults
+  /// [recentlyDismissedNativeCallkit] to ignore that self-induced end. iOS-only.
+  DateTime? _lastNativeDismissAt;
+
+  /// True if we dismissed the native CallKit ourselves within the last few
+  /// seconds (so a resulting `hasEnded` is OUR dismiss, not a user End tap).
+  bool recentlyDismissedNativeCallkit() {
+    final t = _lastNativeDismissAt;
+    return t != null &&
+        DateTime.now().difference(t) < const Duration(seconds: 4);
+  }
+
   void _clearNativeIncoming(String callId) {
+    _lastNativeDismissAt = DateTime.now();
     if (callId.isNotEmpty) {
       unawaited(ErpCallKit.dismiss(callId).catchError((Object _) {}));
     }
@@ -1180,13 +1199,38 @@ class CallSignalingService {
   /// [_suppressForegroundCallkit]. On Android / unlocked iOS this behaves
   /// exactly like [clearNativeIncoming] (`_deviceUnlocked` returns true).
   Future<void> clearNativeIncomingIfUnlocked(String callId) async {
-    if (await _deviceUnlocked()) {
+    // Android (and any non-iOS): no lock-screen CallKit concept here — the
+    // in-app sheet always replaces the native ring, exactly as the old
+    // unconditional `clearNativeIncoming` did. Dismiss immediately.
+    if (!Platform.isIOS) {
       _clearNativeIncoming(callId);
-    } else {
-      // ignore: avoid_print
-      print('[CallSignaling] clearNativeIncomingIfUnlocked · device LOCKED — '
-          'keeping native CallKit (lock-screen call UI) · callId=$callId');
+      return;
     }
+    // iOS: dismiss ONLY when the app is genuinely FOREGROUND — i.e. the in-app
+    // sheet is actually visible and should replace the native ring. Every
+    // not-foreground accept keeps the native CallKit screen, which is the
+    // call UI the user sees there:
+    //   • killed + not locked (case 1) → keep native screen,
+    //   • killed + locked (case 2)     → keep native screen,
+    //   • minimized (alive, bg)        → keep native; the app resumes and the
+    //     in-app screen shows over it (native becomes the green pill).
+    // Foreground is the reliable signal (native `isAppForeground`, set only on
+    // a real didBecomeActive) — lock state was only ever a proxy for it and
+    // misread during the cold-start launch transient. Poll briefly: if iOS
+    // does bring the app forward, the flag flips true and we dismiss then;
+    // otherwise we never dismiss and the native screen stays. Unknown/channel-
+    // not-ready ⇒ NOT foreground ⇒ keep native (safe). 20 × 150 ms ≈ 3 s.
+    for (var i = 0; i < 20; i++) {
+      if (await _appForeground()) {
+        _clearNativeIncoming(callId);
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+    }
+    // ignore: avoid_print
+    print('[CallSignaling] clearNativeIncomingIfUnlocked · app never came to '
+        'foreground in the poll window — keeping native CallKit screen · '
+        'callId=$callId');
   }
 
   /// iOS foreground-only: aggressively dismiss any native CallKit incoming
@@ -1237,18 +1281,17 @@ class CallSignalingService {
       // or the cap is hit.
       if (backgrounded || !stillRinging || n >= maxTicks) return;
       n++;
-      // SURGICAL ADDITION (locked-screen fix): the Flutter lifecycle above
-      // does NOT read `paused` on a LOCKED VoIP cold-launch (it reads
-      // inactive/resumed/null), so without this the sweep dismissed the
-      // native CallKit on a lock-screen accept → bare lock screen (no in-app
-      // UI can render over the lock). Dismiss ONLY when the device is
-      // actually UNLOCKED. This is provably safe for the working killed-but-
-      // UNLOCKED case: there the device is unlocked → `unlocked == true` →
-      // we dismiss exactly as the prior baseline did. It changes behaviour
-      // ONLY on a genuinely locked device, where we now KEEP the native
-      // CallKit (the only call UI iOS allows on the lock screen).
-      final unlocked = await _deviceUnlocked();
-      if (unlocked) {
+      // Dismiss the native CallKit ONLY when the app is genuinely FOREGROUND
+      // (native `isAppForeground`). The Flutter lifecycle above does NOT read
+      // `paused` on a killed/locked VoIP cold-launch (it reads
+      // inactive/resumed/null), so it can't be trusted to detect "not on
+      // screen" — and dismissing there drops the user to a bare lock/home
+      // screen with no in-app UI. The native foreground flag is the truth:
+      // killed/locked/minimized all read false → we KEEP the native screen
+      // (the only call UI the user sees there); a real foreground call reads
+      // true → we dismiss so the in-app sheet replaces the native ring.
+      final foreground = await _appForeground();
+      if (foreground) {
         _clearNativeIncoming(callId);
       }
       Future.delayed(tick, sweep);
@@ -1257,19 +1300,21 @@ class CallSignalingService {
     unawaited(sweep());
   }
 
-  /// iOS lock-state probe (`UIApplication.isProtectedDataAvailable` via the
-  /// native channel): true when the device is unlocked, false once locked.
-  /// Defaults to `true` on non-iOS or any error so the sweep keeps its
-  /// original dismiss behaviour everywhere except a confirmed-locked iOS
-  /// device — i.e. it can only ever ADD "keep CallKit while locked", never
-  /// remove a dismiss that used to happen on an unlocked device.
-  Future<bool> _deviceUnlocked() async {
+  /// iOS genuine-foreground probe (native `isAppForeground` flag in
+  /// AppDelegate). True ONLY when the app is really on screen (a real
+  /// `didBecomeActive`), false for a killed/minimized/locked accept. We
+  /// dismiss the native CallKit ONLY when this is true — i.e. when the in-app
+  /// sheet is actually visible and should replace the native ring. Defaults to
+  /// FALSE on non-iOS-error/channel-not-ready (the safe "keep native" answer:
+  /// when we can't confirm we're on screen, leave the native call UI alone so
+  /// a killed/locked accept never loses its only visible call screen).
+  Future<bool> _appForeground() async {
     if (!Platform.isIOS) return true;
     try {
-      final v = await _iosCallkit.invokeMethod<bool>('isDeviceUnlocked');
-      return v ?? true;
+      final v = await _iosCallkit.invokeMethod<bool>('isAppForeground');
+      return v ?? false;
     } catch (_) {
-      return true;
+      return false;
     }
   }
 

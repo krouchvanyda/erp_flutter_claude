@@ -95,6 +95,15 @@ import CallKit
           // screen, so we must NOT dismiss it there. Defaults handled on the
           // Dart side. Public API; read-only; nothing else changes.
           result(UIApplication.shared.isProtectedDataAvailable)
+        case "isAppForeground":
+          // Genuine on-screen state — true ONLY after a real `didBecomeActive`
+          // (set above), false for a killed/minimized accept and during a
+          // CallKit-over-foreground `.inactive` blip is kept true. The Dart
+          // side dismisses the native CallKit ONLY when this is true (the
+          // in-app sheet is actually visible to replace it); a killed/locked/
+          // minimized accept reads false → the native screen is kept, which is
+          // the only call UI the user can see there. Read-only.
+          result(self.isAppForeground)
         case "dismissIncoming":
           if let plugin = SwiftFlutterCallkitIncomingPlugin.sharedInstance {
             let calls = plugin.activeCalls()
