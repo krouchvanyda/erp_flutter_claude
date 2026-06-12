@@ -1,14 +1,18 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io' show Platform;
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show MethodCall, MethodChannel;
 import 'package:erp_callkit/erp_callkit.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_callkit_incoming/entities/entities.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../../core/config/environments.dart';
 import '../../../core/router/app_router.dart';
 import '../entities/call_log.dart';
 import '../presentation/pages/video_call_page.dart';
@@ -71,6 +75,13 @@ class CallkitEventHandler {
   /// handlers ignore that one event so it isn't turned into a real
   /// reject/hangup of the call the overlay is showing. iOS-only.
   final Set<String> _suppressedIncoming = <String>{};
+
+  /// Backend call id of the most recent native CallKit ring shown while the
+  /// app was backgrounded/killed (captured from `actionCallIncoming`). Lets a
+  /// killed-app DECLINE that arrives via the native `incomingCallEnded` bridge
+  /// — when no in-app call was ever seeded (`signaling.current == null`) —
+  /// still POST the reject so the CALLER stops ringing. iOS-only.
+  String? _lastIncomingBgCallId;
 
   /// iOS-only native→Dart bridge. The native `CXCallObserver`
   /// (AppDelegate.swift) invokes `incomingCallAnswered` on this channel the
@@ -605,14 +616,16 @@ class CallkitEventHandler {
       // call's terminal status and dismiss the ring when the caller ends it.
       // Derive the backend call id from the CallKit entry's cid
       // ("default:erp-call-1662" → "1662").
+      final p = _params(body);
+      final cid = (p['call_cid'] ?? p['callCid'])?.toString() ?? '';
+      final callId = cid.isEmpty ? '' : _parseBackendCallId(cid);
+      // Remember it so a killed-app DECLINE (which arrives via the native
+      // incomingCallEnded bridge with no seeded in-app call) can still POST
+      // the reject and stop the caller ringing.
+      if (callId.isNotEmpty) _lastIncomingBgCallId = callId;
       final signaling = _safelyGet<CallSignalingService>();
-      if (signaling != null) {
-        final p = _params(body);
-        final cid = (p['call_cid'] ?? p['callCid'])?.toString() ?? '';
-        final callId = cid.isEmpty ? '' : _parseBackendCallId(cid);
-        if (callId.isNotEmpty) {
-          signaling.watchBackgroundRingForCancel(callId);
-        }
+      if (signaling != null && callId.isNotEmpty) {
+        signaling.watchBackgroundRingForCancel(callId);
       }
       return; // backgrounded / killed → keep the native ring
     }
@@ -820,9 +833,29 @@ class CallkitEventHandler {
     final signaling = _safelyGet<CallSignalingService>();
     final active = signaling?.current;
     if (signaling == null || active == null) {
-      // ignore: avoid_print
-      print('[CallkitEventHandler] native End · no active call — '
-          'nothing to hang up');
+      // Killed-app cold-start: the dead app never processed a STOMP invite, so
+      // no in-app call was ever seeded — there's nothing to hang up LOCALLY.
+      // But a genuine user DECLINE on the native CallKit screen must still
+      // reach the backend or the CALLER keeps ringing (the reported bug). POST
+      // the reject directly using the id captured when the ring appeared.
+      //
+      // Skip when this `hasEnded` is our OWN programmatic dismiss — e.g. the
+      // bg-ring poll already cleared the ring because the CALLER cancelled, in
+      // which case the call is already over and there's no decline to relay.
+      // The backend `reject()` is idempotent for an already-answered/ended
+      // participant, so a late/duplicate POST is harmless either way.
+      final ownDismiss = signaling?.recentlyDismissedNativeCallkit() ?? false;
+      final bgId = _lastIncomingBgCallId;
+      if (!ownDismiss && bgId != null && bgId.isNotEmpty) {
+        // ignore: avoid_print
+        print('[CallkitEventHandler] native End · no active call → direct '
+            'reject POST for callId=$bgId (killed-app decline)');
+        await _directRejectNoDi(bgId);
+      } else {
+        // ignore: avoid_print
+        print('[CallkitEventHandler] native End · no active call — nothing to '
+            'hang up (ownDismiss=$ownDismiss bgId=$bgId)');
+      }
       return;
     }
     // CRITICAL: ignore a `hasEnded` that WE caused by dismissing the native
@@ -1177,12 +1210,29 @@ class CallkitEventHandler {
     //    no prior path populated _active). Lookup the local conv id
     //    too so the call-log entry attaches to the right conversation.
     final signaling = _safelyGet<CallSignalingService>();
-    if (signaling == null || callerId.isEmpty) {
+    if (signaling == null) {
+      // Killed-app cold-start: the VoIP push woke the process but DI hasn't
+      // finished wiring up, so the normal reject path (rejectIncoming → REST)
+      // can't run — and unlike Android (native erp_callkit reject receiver),
+      // iOS has no native fallback, so the CALLER keeps ringing. POST the
+      // reject directly with the stored access token so the backend broadcasts
+      // `call.reject` to the caller. iOS-only; idempotent on the backend.
+      // ignore: avoid_print
+      print('[CallkitEventHandler] _handleDecline step 2 · no DI yet '
+          '(killed cold-start) → direct reject POST');
+      await _directRejectNoDi(_parseBackendCallId(callCid));
+      // ignore: avoid_print
+      print('[CallkitEventHandler] _handleDecline EXIT (direct reject)');
+      return;
+    }
+    if (callerId.isEmpty) {
       // ignore: avoid_print
       print(
         '[CallkitEventHandler] _handleDecline step 2 SKIPPED · '
-        'signaling=${signaling != null} callerId="$callerId"',
+        'callerId empty — falling back to direct reject POST',
       );
+      // Still tell the backend so the caller stops ringing.
+      await _directRejectNoDi(_parseBackendCallId(callCid));
       // ignore: avoid_print
       print('[CallkitEventHandler] _handleDecline EXIT (partial)');
       return;
@@ -1297,6 +1347,69 @@ class CallkitEventHandler {
       return body;
     }
     return const <String, dynamic>{};
+  }
+
+  /// Self-contained `POST /chats/calls/{id}/reject` that does NOT depend on
+  /// `get_it` / DI being wired up. Used on a KILLED-app decline: the VoIP push
+  /// woke the process and showed the CallKit ring, but the cold-started engine
+  /// may not have finished `configureDependencies()` when the user taps
+  /// Decline, so `CallSignalingService` (and its authed Dio) aren't available.
+  /// Without this the backend never learns D declined and the CALLER keeps
+  /// ringing (Android has a native reject receiver; iOS did not). Reads the
+  /// access token straight from secure storage (same key/options as
+  /// `SecureTokenStorage`) and hits the REST endpoint with a throwaway Dio.
+  /// iOS-only, best-effort; the backend reject is idempotent.
+  Future<void> _directRejectNoDi(String callId) async {
+    if (!Platform.isIOS) return;
+    final n = int.tryParse(callId);
+    if (n == null) {
+      // ignore: avoid_print
+      print('[CallkitEventHandler] _directRejectNoDi BAIL · bad callId=$callId');
+      return;
+    }
+    try {
+      const storage = FlutterSecureStorage(
+        aOptions: AndroidOptions(encryptedSharedPreferences: true),
+        iOptions: IOSOptions(
+          accessibility: KeychainAccessibility.first_unlock_this_device,
+          synchronizable: false,
+        ),
+      );
+      // SecureTokenStorage persists all tokens as one JSON blob under this key.
+      final raw = await storage.read(key: 'auth.tokens.v1');
+      if (raw == null || raw.isEmpty) {
+        // ignore: avoid_print
+        print('[CallkitEventHandler] _directRejectNoDi BAIL · no stored tokens');
+        return;
+      }
+      final decoded = jsonDecode(raw);
+      final token =
+          decoded is Map ? decoded['accessToken'] as String? : null;
+      if (token == null || token.isEmpty) {
+        // ignore: avoid_print
+        print('[CallkitEventHandler] _directRejectNoDi BAIL · no accessToken');
+        return;
+      }
+      final dio = Dio(BaseOptions(
+        baseUrl: Environments.prodApiBaseUrl,
+        headers: <String, dynamic>{
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+      ));
+      await dio.post<dynamic>(
+        '/chats/calls/$n/reject',
+        queryParameters: <String, dynamic>{'reason': 'declined'},
+      );
+      // ignore: avoid_print
+      print('[CallkitEventHandler] _directRejectNoDi · POST /reject OK '
+          'callId=$n — caller should stop ringing');
+    } catch (e) {
+      // ignore: avoid_print
+      print('[CallkitEventHandler] _directRejectNoDi · POST /reject failed: $e');
+    }
   }
 
   /// Extract backend numeric id from Stream's CID format
