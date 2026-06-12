@@ -81,8 +81,9 @@ class CallkitEventHandler {
   /// (isolate/subscription not ready) and Stream's native push handler has
   /// already consumed the call. We route it into the same `_handleAccept`
   /// flow so the backend POST + Stream join run exactly as elsewhere.
-  static const MethodChannel _iosCallkitChannel =
-      MethodChannel('erp/ios_callkit');
+  static const MethodChannel _iosCallkitChannel = MethodChannel(
+    'erp/ios_callkit',
+  );
 
   /// (Removed: was a pushed-call-id dedupe set. Replaced with
   /// `VoiceCallPage.isMounted` / `VideoCallPage.isMounted` checks in
@@ -131,8 +132,7 @@ class CallkitEventHandler {
     // since Stream's WS handshake takes a couple of seconds after a
     // cold start.
     Future.delayed(const Duration(seconds: 2), _maybeAcceptStaleCallkit);
-    Future.delayed(
-        const Duration(seconds: 5), _maybeAutoAcceptOnStreamResync);
+    Future.delayed(const Duration(seconds: 5), _maybeAutoAcceptOnStreamResync);
   }
 
   Future<void> _requestCallkitPermissions() async {
@@ -148,13 +148,17 @@ class CallkitEventHandler {
     try {
       final status = await Permission.notification.status;
       // ignore: avoid_print
-      print('[CallkitEventHandler] Notification permission '
-          'status (before request)=$status');
+      print(
+        '[CallkitEventHandler] Notification permission '
+        'status (before request)=$status',
+      );
       if (!status.isGranted) {
         final result = await Permission.notification.request();
         // ignore: avoid_print
-        print('[CallkitEventHandler] Notification permission '
-            'request result=$result');
+        print(
+          '[CallkitEventHandler] Notification permission '
+          'request result=$result',
+        );
       }
     } catch (e) {
       // ignore: avoid_print
@@ -178,13 +182,17 @@ class CallkitEventHandler {
       try {
         final micStatus = await Permission.microphone.status;
         // ignore: avoid_print
-        print('[CallkitEventHandler] Microphone permission '
-            'status (before request)=$micStatus');
+        print(
+          '[CallkitEventHandler] Microphone permission '
+          'status (before request)=$micStatus',
+        );
         if (!micStatus.isGranted) {
           final result = await Permission.microphone.request();
           // ignore: avoid_print
-          print('[CallkitEventHandler] Microphone permission '
-              'request result=$result');
+          print(
+            '[CallkitEventHandler] Microphone permission '
+            'request result=$result',
+          );
         }
       } catch (e) {
         // ignore: avoid_print
@@ -203,8 +211,10 @@ class CallkitEventHandler {
       print('[CallkitEventHandler] canUseFullScreenIntent=$canUse');
       if (canUse == false) {
         // ignore: avoid_print
-        print('[CallkitEventHandler] opening Settings page for '
-            'full-screen intent grant — user must toggle it on');
+        print(
+          '[CallkitEventHandler] opening Settings page for '
+          'full-screen intent grant — user must toggle it on',
+        );
         await FlutterCallkitIncoming.requestFullIntentPermission();
       }
     } catch (e) {
@@ -219,15 +229,19 @@ class CallkitEventHandler {
   void _resubscribe() {
     _sub?.cancel();
     // ignore: avoid_print
-    print('[CallkitEventHandler] (re)subscribing to FlutterCallkitIncoming.onEvent');
+    print(
+      '[CallkitEventHandler] (re)subscribing to FlutterCallkitIncoming.onEvent',
+    );
     _sub = FlutterCallkitIncoming.onEvent.listen(
       (event) {
         // Trace EVERY event hitting the subscription so we can confirm
         // delivery. Print is unconditional so it fires in release too
         // while we triangulate the ring-not-accepted bug.
         // ignore: avoid_print
-        print('[CallkitEventHandler] RAW event received: '
-            'type=${event?.event} body=${event?.body}');
+        print(
+          '[CallkitEventHandler] RAW event received: '
+          'type=${event?.event} body=${event?.body}',
+        );
         _onEvent(event);
       },
       onError: (Object e, StackTrace s) {
@@ -265,13 +279,16 @@ class CallkitEventHandler {
     // Guarded so we never clear the notification of a genuinely-live call.
     final signaling = _safelyGet<CallSignalingService>();
     final engine = _safelyGet<StreamCallEngine>();
-    final hasLiveCall = (signaling?.current != null &&
+    final hasLiveCall =
+        (signaling?.current != null &&
             signaling!.current!.state != CallSignalState.ended) ||
         (engine?.hasPendingIncoming ?? false);
     if (!hasLiveCall) {
       // ignore: avoid_print
-      print('[CallkitEventHandler] resume orphan sweep — no live call, '
-          'clearing any stranded call notifications');
+      print(
+        '[CallkitEventHandler] resume orphan sweep — no live call, '
+        'clearing any stranded call notifications',
+      );
       unawaited(ErpCallKit.dismissAllCalls().catchError((Object _) {}));
     }
     await _maybeAcceptStaleCallkit();
@@ -305,13 +322,17 @@ class CallkitEventHandler {
     final active = signaling.current;
     if (active != null && active.state != CallSignalState.incomingRinging) {
       // ignore: avoid_print
-      print('[CallkitEventHandler] resync check: active call already in '
-          'state=${active.state}, skipping');
+      print(
+        '[CallkitEventHandler] resync check: active call already in '
+        'state=${active.state}, skipping',
+      );
       return;
     }
     // ignore: avoid_print
-    print('[CallkitEventHandler] resync check: pending Stream call found — '
-        'auto-accepting (user must have tapped Accept on CallKit)');
+    print(
+      '[CallkitEventHandler] resync check: pending Stream call found — '
+      'auto-accepting (user must have tapped Accept on CallKit)',
+    );
     await signaling.acceptIncoming();
   }
 
@@ -327,8 +348,10 @@ class CallkitEventHandler {
     try {
       final calls = await FlutterCallkitIncoming.activeCalls();
       // ignore: avoid_print
-      print('[CallkitEventHandler] activeCalls() returned: '
-          'type=${calls.runtimeType} value=$calls');
+      print(
+        '[CallkitEventHandler] activeCalls() returned: '
+        'type=${calls.runtimeType} value=$calls',
+      );
       if (calls is! List || calls.isEmpty) {
         // Empty has two meanings (we can't tell them apart from this
         // signal alone):
@@ -340,16 +363,20 @@ class CallkitEventHandler {
         // at +5 s — if Stream still has the call ringing, that path
         // can decide what to do.
         // ignore: avoid_print
-        print('[CallkitEventHandler] no active CallKit call — '
-            'either user declined, call ended, or app opened outside '
-            'a call. Stream resync will follow at +5 s.');
+        print(
+          '[CallkitEventHandler] no active CallKit call — '
+          'either user declined, call ended, or app opened outside '
+          'a call. Stream resync will follow at +5 s.',
+        );
         return;
       }
       final first = calls.first;
       if (first is! Map) {
         // ignore: avoid_print
-        print('[CallkitEventHandler] active call entry is not a Map: '
-            '${first.runtimeType}');
+        print(
+          '[CallkitEventHandler] active call entry is not a Map: '
+          '${first.runtimeType}',
+        );
         return;
       }
       // The plugin sets `isAccepted: true` when the user taps Accept
@@ -361,18 +388,24 @@ class CallkitEventHandler {
       // IncomingCallOverlay handle it; don't auto-accept.
       final isAccepted = first['isAccepted'] == true;
       // ignore: avoid_print
-      print('[CallkitEventHandler] stale CallKit call detected · '
-          'isAccepted=$isAccepted · entry=$first');
+      print(
+        '[CallkitEventHandler] stale CallKit call detected · '
+        'isAccepted=$isAccepted · entry=$first',
+      );
       if (!isAccepted) {
         // ignore: avoid_print
-        print('[CallkitEventHandler] call still ringing (user opened '
-            'the app body without tapping Accept) — leaving the in-app '
-            'IncomingCallOverlay to handle it');
+        print(
+          '[CallkitEventHandler] call still ringing (user opened '
+          'the app body without tapping Accept) — leaving the in-app '
+          'IncomingCallOverlay to handle it',
+        );
         return;
       }
       // ignore: avoid_print
-      print('[CallkitEventHandler] user already tapped Accept on '
-          'CallKit — synthesising the missed actionCallAccept event');
+      print(
+        '[CallkitEventHandler] user already tapped Accept on '
+        'CallKit — synthesising the missed actionCallAccept event',
+      );
       await _handleAccept(first);
     } catch (e) {
       // PlatformException("content is null") = no active calls.
@@ -411,8 +444,10 @@ class CallkitEventHandler {
             event.event == Event.actionCallEnded ||
             event.event == Event.actionCallTimeout)) {
       // ignore: avoid_print
-      print('[CallkitEventHandler] ignoring CallKit ${event.event} · app '
-          'foreground with active in-app call — overlay owns it');
+      print(
+        '[CallkitEventHandler] ignoring CallKit ${event.event} · app '
+        'foreground with active in-app call — overlay owns it',
+      );
       return;
     }
     switch (event.event) {
@@ -431,12 +466,14 @@ class CallkitEventHandler {
         // connected but was SILENT. No-op on deactivate. Android never emits
         // this event.
         if (Platform.isIOS) {
-          final activated = event.body is Map &&
-              (event.body as Map)['isActivate'] == true;
+          final activated =
+              event.body is Map && (event.body as Map)['isActivate'] == true;
           if (activated) {
             // ignore: avoid_print
-            print('[CallkitEventHandler] CallKit audio session activated → '
-                'engine.onCallKitAudioSessionActivated()');
+            print(
+              '[CallkitEventHandler] CallKit audio session activated → '
+              'engine.onCallKitAudioSessionActivated()',
+            );
             await _safelyGet<StreamCallEngine>()
                 ?.onCallKitAudioSessionActivated();
           } else {
@@ -458,15 +495,19 @@ class CallkitEventHandler {
                 signaling?.current?.state == CallSignalState.connected;
             if (liveConnected) {
               // ignore: avoid_print
-              print('[CallkitEventHandler] CallKit audio session DEACTIVATED '
-                  'while a call is still connected → re-asserting '
-                  '(back-to-back call audio race)');
+              print(
+                '[CallkitEventHandler] CallKit audio session DEACTIVATED '
+                'while a call is still connected → re-asserting '
+                '(back-to-back call audio race)',
+              );
               await _safelyGet<StreamCallEngine>()
                   ?.onCallKitAudioSessionActivated();
             } else {
               // ignore: avoid_print
-              print('[CallkitEventHandler] CallKit audio session deactivated '
-                  '· no live connected call → no-op');
+              print(
+                '[CallkitEventHandler] CallKit audio session deactivated '
+                '· no live connected call → no-op',
+              );
             }
           }
         }
@@ -533,8 +574,10 @@ class CallkitEventHandler {
     // `handleIncomingFromPush` starts once the in-app ring appears.
     if (!hasInAppRing) {
       // ignore: avoid_print
-      print('[CallkitEventHandler] keeping native CallKit ring · '
-          'no in-app ring (backgrounded / killed cold-launch)');
+      print(
+        '[CallkitEventHandler] keeping native CallKit ring · '
+        'no in-app ring (backgrounded / killed cold-launch)',
+      );
       return; // backgrounded / killed → keep the native ring
     }
     final params = _params(body);
@@ -543,16 +586,20 @@ class CallkitEventHandler {
     if (callCid.isNotEmpty) _suppressedIncoming.add(callCid);
     if (uuid.isNotEmpty) _suppressedIncoming.add(uuid);
     // ignore: avoid_print
-    print('[CallkitEventHandler] foreground incoming — dismissing native '
-        'CallKit header (in-app overlay handles the ring) · callCid=$callCid '
-        'uuid=$uuid');
+    print(
+      '[CallkitEventHandler] foreground incoming — dismissing native '
+      'CallKit header (in-app overlay handles the ring) · callCid=$callCid '
+      'uuid=$uuid',
+    );
     try {
       // End by the specific uuid AND sweep all — Stream's native push may
       // have reported the call under a uuid we don't see here, so endAll is
       // the reliable hammer.
       if (uuid.isNotEmpty) await FlutterCallkitIncoming.endCall(uuid);
       await FlutterCallkitIncoming.endAllCalls();
-    } catch (_) {/* best-effort */}
+    } catch (_) {
+      /* best-effort */
+    }
     // Start the persistent dismiss loop keyed on the backend call id. This
     // is the ONE place we KNOW the CallKit screen actually appeared, so it
     // covers the case where the STOMP/WS invite path never kicked the loop
@@ -580,7 +627,8 @@ class CallkitEventHandler {
     // iOS VoIP-push entries use `callCid` (camelCase); FCM uses `call_cid`.
     // Check both before the CallKit-UUID `id` fallback. (Additive — Android
     // unaffected.)
-    final callCid = (params['call_cid'] ?? params['callCid'])?.toString() ??
+    final callCid =
+        (params['call_cid'] ?? params['callCid'])?.toString() ??
         params['id']?.toString() ??
         '';
     // ignore: avoid_print
@@ -591,8 +639,10 @@ class CallkitEventHandler {
     // live ring — must NOT reject/hangup it).
     if (_isSuppressedEnd(callCid)) {
       // ignore: avoid_print
-      print('[CallkitEventHandler] _handleHangup IGNORED · end is from our '
-          'foreground CallKit suppression · callCid=$callCid');
+      print(
+        '[CallkitEventHandler] _handleHangup IGNORED · end is from our '
+        'foreground CallKit suppression · callCid=$callCid',
+      );
       return;
     }
 
@@ -607,9 +657,11 @@ class CallkitEventHandler {
       if (acceptedAt != null &&
           DateTime.now().difference(acceptedAt) < _acceptHandoffWindow) {
         // ignore: avoid_print
-        print('[CallkitEventHandler] _handleHangup IGNORED · spurious '
-            'actionCallEnded within ${_acceptHandoffWindow.inSeconds}s of '
-            'accept (CallKit handoff, not a real hang-up) · callCid=$callCid');
+        print(
+          '[CallkitEventHandler] _handleHangup IGNORED · spurious '
+          'actionCallEnded within ${_acceptHandoffWindow.inSeconds}s of '
+          'accept (CallKit handoff, not a real hang-up) · callCid=$callCid',
+        );
         return;
       }
       // Past the window (or a genuine end) — let it proceed and stop tracking.
@@ -630,9 +682,11 @@ class CallkitEventHandler {
     final active = signaling.current;
     if (active == null) {
       // ignore: avoid_print
-      print('[CallkitEventHandler] _handleHangup: no active local call '
-          '— calling engine.leave() so Stream releases the foreground '
-          'service notification');
+      print(
+        '[CallkitEventHandler] _handleHangup: no active local call '
+        '— calling engine.leave() so Stream releases the foreground '
+        'service notification',
+      );
       final engine = _safelyGet<StreamCallEngine>();
       if (engine != null) await engine.leave();
       return;
@@ -640,31 +694,41 @@ class CallkitEventHandler {
 
     if (active.state == CallSignalState.connected) {
       // ignore: avoid_print
-      print('[CallkitEventHandler] _handleHangup: active call is '
-          'connected — calling signaling.hangup()');
+      print(
+        '[CallkitEventHandler] _handleHangup: active call is '
+        'connected — calling signaling.hangup()',
+      );
       await signaling.hangup(finalStatus: ChatCallStatus.answered);
     } else if (active.state == CallSignalState.incomingRinging) {
       // ignore: avoid_print
-      print('[CallkitEventHandler] _handleHangup: state still '
-          'incomingRinging — treating as decline');
+      print(
+        '[CallkitEventHandler] _handleHangup: state still '
+        'incomingRinging — treating as decline',
+      );
       await signaling.rejectIncoming();
     } else if (active.state == CallSignalState.outgoingRinging) {
       // ignore: avoid_print
-      print('[CallkitEventHandler] _handleHangup: outgoing call '
-          'cancelled before answer — hangup');
+      print(
+        '[CallkitEventHandler] _handleHangup: outgoing call '
+        'cancelled before answer — hangup',
+      );
       await signaling.hangup(finalStatus: ChatCallStatus.noAnswer);
     } else {
       // ignore: avoid_print
-      print('[CallkitEventHandler] _handleHangup: state=${active.state} '
-          '— nothing actionable');
+      print(
+        '[CallkitEventHandler] _handleHangup: state=${active.state} '
+        '— nothing actionable',
+      );
     }
     // Clear dedupe entry so a future call with this CID can run
     // (in practice CIDs are unique per call, but defensive cleanup
     // keeps the set from growing unbounded across a long session).
     _handledCallCids.remove(callCid);
     // ignore: avoid_print
-    print('[CallkitEventHandler] ✅ CALL ENDED via Hang Up · '
-        'callCid=$callCid · finalState=${signaling.current?.state}');
+    print(
+      '[CallkitEventHandler] ✅ CALL ENDED via Hang Up · '
+      'callCid=$callCid · finalState=${signaling.current?.state}',
+    );
   }
 
   /// iOS-only. Handles `incomingCallAnswered` pushed by the native
@@ -677,20 +741,81 @@ class CallkitEventHandler {
   /// [_handleAccept] makes this a no-op if the live `actionCallAccept`
   /// event also lands.
   Future<dynamic> _onIosNativeCallkit(MethodCall call) async {
-    if (call.method != 'incomingCallAnswered') return null;
     final args = call.arguments;
     // ignore: avoid_print
-    print('[CallkitEventHandler] native CXCallObserver → '
-        'incomingCallAnswered · args=$args');
-    if (args is Map && args['call'] is Map) {
-      await _handleAccept(args['call']);
-    } else if (args is Map) {
-      // No matching CallKit entry found natively — pass the bare payload
-      // (uuid only). _handleAccept will bail on missing call_cid rather
-      // than crash; the +2s activeCalls() recovery is the backstop.
-      await _handleAccept(args);
+    print(
+      '[CallkitEventHandler] native CXCallObserver → '
+      '${call.method} · args=$args',
+    );
+    // Normalise the payload: native sends `{uuid, call: {…extra.callCid…}}`
+    // when the flutter_callkit_incoming entry is still listed, or just
+    // `{uuid}` once it's gone. Both `_handleAccept` and `_handleHangup`
+    // tolerate the bare-uuid shape (hangup falls back to `_active.callId`).
+    final dynamic body =
+        (args is Map && args['call'] is Map) ? args['call'] : args;
+    if (body is! Map) return null;
+    switch (call.method) {
+      case 'incomingCallAnswered':
+        // User accepted on the native CallKit screen (lock screen / killed
+        // cold-start). `_handledCallCids` dedupe makes this a no-op if the
+        // live `actionCallAccept` event also lands.
+        await _handleAccept(body);
+      case 'incomingCallEnded':
+        // User tapped End on the native CallKit screen while backgrounded/
+        // locked. `actionCallEnded` doesn't reach the Dart onEvent
+        // subscription there, so this bridge is the only signal that lets us
+        // POST the hang-up and stop the CALLER being stuck "in call".
+        await _handleNativeCallEnded();
     }
     return null;
+  }
+
+  /// iOS-only. Handles `incomingCallEnded` from the native CXCallObserver
+  /// (AppDelegate.swift) when the user tapped End on the native CallKit
+  /// screen while the app was backgrounded/locked.
+  ///
+  /// Drives the hang-up straight off the live signaling state rather than the
+  /// bridged CallKit payload — by the time the call ends, the
+  /// flutter_callkit_incoming entry may already be gone, so its `callCid`
+  /// can be absent. `_active` always carries the backend call id, so
+  /// `signaling.hangup()` POSTs `/end` reliably → the backend broadcasts
+  /// `call.hangup` and the CALLER's call ends.
+  Future<void> _handleNativeCallEnded() async {
+    final signaling = _safelyGet<CallSignalingService>();
+    final active = signaling?.current;
+    if (signaling == null || active == null) {
+      // ignore: avoid_print
+      print('[CallkitEventHandler] native End · no active call — '
+          'nothing to hang up');
+      return;
+    }
+    // Spurious-end guard: iOS can fire a connect→end blip moments after
+    // Accept. Ignore an end within the handoff window of accepting THIS call
+    // so it can't tear down a just-connected call. A real End tap lands well
+    // past it. (Keyed on the same streamCallCid `_acceptedAt` was written
+    // with in `_handleAccept`.)
+    final cid = active.streamCallCid;
+    if (cid != null && cid.isNotEmpty) {
+      final acceptedAt = _acceptedAt[cid];
+      if (acceptedAt != null &&
+          DateTime.now().difference(acceptedAt) < _acceptHandoffWindow) {
+        // ignore: avoid_print
+        print('[CallkitEventHandler] native End IGNORED · within '
+            '${_acceptHandoffWindow.inSeconds}s accept handoff window');
+        return;
+      }
+    }
+    // ignore: avoid_print
+    print('[CallkitEventHandler] native End → hanging up active call '
+        '${active.callId} (state=${active.state})');
+    if (active.state == CallSignalState.connected) {
+      await signaling.hangup(finalStatus: ChatCallStatus.answered);
+    } else if (active.state == CallSignalState.incomingRinging) {
+      await signaling.rejectIncoming();
+    } else if (active.state == CallSignalState.outgoingRinging) {
+      await signaling.hangup(finalStatus: ChatCallStatus.noAnswer);
+    }
+    if (cid != null) _handledCallCids.remove(cid);
   }
 
   Future<void> _handleAccept(dynamic body) async {
@@ -702,7 +827,8 @@ class CallkitEventHandler {
     // FCM path (Android) uses `call_cid` (snake_case). Check both before the
     // `id` fallback — `id` is the CallKit UUID, never a Stream cid, so it's a
     // last resort only. (Additive: Android's `call_cid` still wins first.)
-    final callCid = (params['call_cid'] ?? params['callCid'])?.toString() ??
+    final callCid =
+        (params['call_cid'] ?? params['callCid'])?.toString() ??
         params['id']?.toString();
     if (callCid == null || callCid.isEmpty) {
       // ignore: avoid_print
@@ -718,9 +844,11 @@ class CallkitEventHandler {
     // OR if signaling already shows the call as connected.
     if (_handledCallCids.contains(callCid)) {
       // ignore: avoid_print
-      print('[CallkitEventHandler] _handleAccept SKIPPED (duplicate) · '
-          'callCid=$callCid is already being handled in another '
-          'invocation');
+      print(
+        '[CallkitEventHandler] _handleAccept SKIPPED (duplicate) · '
+        'callCid=$callCid is already being handled in another '
+        'invocation',
+      );
       return;
     }
     final priorSignaling = _safelyGet<CallSignalingService>();
@@ -729,9 +857,11 @@ class CallkitEventHandler {
         prior.streamCallCid == callCid &&
         prior.state == CallSignalState.connected) {
       // ignore: avoid_print
-      print('[CallkitEventHandler] _handleAccept SKIPPED (already connected) · '
-          'callCid=$callCid is already in connected state — '
-          'second pass would tear down the working call');
+      print(
+        '[CallkitEventHandler] _handleAccept SKIPPED (already connected) · '
+        'callCid=$callCid is already in connected state — '
+        'second pass would tear down the working call',
+      );
       _handledCallCids.add(callCid);
       return;
     }
@@ -763,9 +893,11 @@ class CallkitEventHandler {
     if (Platform.isIOS && signaling != null) {
       final earlyId = _parseBackendCallId(callCid);
       // ignore: avoid_print
-      print('[CallkitEventHandler] iOS early accept → '
-          'notifyBackendAcceptEarly($earlyId) so the caller stops ringing '
-          'even if the rest of the accept flow is suspended/slow');
+      print(
+        '[CallkitEventHandler] iOS early accept → '
+        'notifyBackendAcceptEarly($earlyId) so the caller stops ringing '
+        'even if the rest of the accept flow is suspended/slow',
+      );
       unawaited(signaling.notifyBackendAcceptEarly(earlyId));
     }
     // VoIP-push CallKit entries carry the caller under CallKit's native keys
@@ -778,9 +910,11 @@ class CallkitEventHandler {
     final callerName =
         (params['caller_name'] ?? params['nameCaller'])?.toString() ?? callerId;
     // ignore: avoid_print
-    print('[CallkitEventHandler] _handleAccept · '
-        'callCid=$callCid · callerId=$callerId · callerName=$callerName · '
-        'isVideo=$isVideo · signaling=${signaling != null}');
+    print(
+      '[CallkitEventHandler] _handleAccept · '
+      'callCid=$callCid · callerId=$callerId · callerName=$callerName · '
+      'isVideo=$isVideo · signaling=${signaling != null}',
+    );
 
     // Resolve the LOCAL conversation id (not Stream's call CID) so
     // the call page's `ConversationsRepository.watchById(...)` finds
@@ -792,10 +926,14 @@ class CallkitEventHandler {
       try {
         final direct = await conversations.findDirectWith(callerId);
         if (direct != null) resolvedConvId = direct.id;
-      } catch (_) {/* fall through to CID */}
+      } catch (_) {
+        /* fall through to CID */
+      }
     }
     // ignore: avoid_print
-    print('[CallkitEventHandler] _handleAccept · resolvedConvId=$resolvedConvId');
+    print(
+      '[CallkitEventHandler] _handleAccept · resolvedConvId=$resolvedConvId',
+    );
 
     // 1) Seed signaling state FIRST so the call page mounts with an
     //    ActiveCall already in place — no overlay flash. State is
@@ -850,10 +988,12 @@ class CallkitEventHandler {
         'streamCallCid': callCid,
       };
       // ignore: avoid_print
-      print('[CallkitEventHandler] step 1 (iOS no-caller-id) → '
-          'handleIncomingFromPush · seeding _active from cid '
-          '${_parseBackendCallId(callCid)} so acceptIncoming can POST '
-          '/accept and stop the caller ringing');
+      print(
+        '[CallkitEventHandler] step 1 (iOS no-caller-id) → '
+        'handleIncomingFromPush · seeding _active from cid '
+        '${_parseBackendCallId(callCid)} so acceptIncoming can POST '
+        '/accept and stop the caller ringing',
+      );
       await signaling.handleIncomingFromPush(payload);
     }
 
@@ -887,8 +1027,10 @@ class CallkitEventHandler {
       print('[CallkitEventHandler] step 3 → signaling.acceptIncoming()');
       await signaling.acceptIncoming();
       // ignore: avoid_print
-      print('[CallkitEventHandler] step 3 done · '
-          'active.state=${signaling.current?.state}');
+      print(
+        '[CallkitEventHandler] step 3 done · '
+        'active.state=${signaling.current?.state}',
+      );
     } else {
       final engine = _safelyGet<StreamCallEngine>();
       if (engine != null) {
@@ -902,12 +1044,16 @@ class CallkitEventHandler {
     final finalState = signaling?.current?.state;
     if (finalState == CallSignalState.connected) {
       // ignore: avoid_print
-      print('[CallkitEventHandler] ✅ CALL CONNECTED · callCid=$callCid '
-          '· _handleAccept EXIT');
+      print(
+        '[CallkitEventHandler] ✅ CALL CONNECTED · callCid=$callCid '
+        '· _handleAccept EXIT',
+      );
     } else {
       // ignore: avoid_print
-      print('[CallkitEventHandler] ⚠ ACCEPT DID NOT REACH CONNECTED · '
-          'finalState=$finalState callCid=$callCid · _handleAccept EXIT');
+      print(
+        '[CallkitEventHandler] ⚠ ACCEPT DID NOT REACH CONNECTED · '
+        'finalState=$finalState callCid=$callCid · _handleAccept EXIT',
+      );
     }
   }
 
@@ -918,7 +1064,8 @@ class CallkitEventHandler {
     // iOS VoIP-push entries use `callCid` (camelCase); FCM uses `call_cid`.
     // Check both before the CallKit-UUID `id` fallback. (Additive — Android
     // unaffected.)
-    final callCid = (params['call_cid'] ?? params['callCid'])?.toString() ??
+    final callCid =
+        (params['call_cid'] ?? params['callCid'])?.toString() ??
         params['id']?.toString();
     if (callCid == null || callCid.isEmpty) {
       // ignore: avoid_print
@@ -928,8 +1075,10 @@ class CallkitEventHandler {
     // Ignore a decline produced by our own foreground CallKit suppression.
     if (_isSuppressedEnd(callCid)) {
       // ignore: avoid_print
-      print('[CallkitEventHandler] _handleDecline IGNORED · from foreground '
-          'CallKit suppression · callCid=$callCid');
+      print(
+        '[CallkitEventHandler] _handleDecline IGNORED · from foreground '
+        'CallKit suppression · callCid=$callCid',
+      );
       return;
     }
     // VoIP-push CallKit entries use CallKit's native keys (`handle` /
@@ -943,8 +1092,10 @@ class CallkitEventHandler {
         (params['caller_name'] ?? params['nameCaller'])?.toString() ?? callerId;
     final isVideo = (params['type']?.toString() == '1');
     // ignore: avoid_print
-    print('[CallkitEventHandler] _handleDecline · callCid=$callCid '
-        'callerId=$callerId callerName=$callerName isVideo=$isVideo');
+    print(
+      '[CallkitEventHandler] _handleDecline · callCid=$callCid '
+      'callerId=$callerId callerName=$callerName isVideo=$isVideo',
+    );
 
     // 1) Tell Stream we're declining the ringing call. Uses a fresh
     //    Call reference + `.reject()` so the caller sees a "declined"
@@ -952,15 +1103,19 @@ class CallkitEventHandler {
     final engine = _safelyGet<StreamCallEngine>();
     if (engine != null) {
       // ignore: avoid_print
-      print('[CallkitEventHandler] _handleDecline step 1 → '
-          'streamEngine.rejectByCid(cid=$callCid)');
+      print(
+        '[CallkitEventHandler] _handleDecline step 1 → '
+        'streamEngine.rejectByCid(cid=$callCid)',
+      );
       await engine.rejectByCid(callCid: callCid);
       // ignore: avoid_print
       print('[CallkitEventHandler] _handleDecline step 1 done');
     } else {
       // ignore: avoid_print
-      print('[CallkitEventHandler] _handleDecline step 1 SKIPPED · '
-          'no StreamCallEngine in GetIt yet (cold-start race)');
+      print(
+        '[CallkitEventHandler] _handleDecline step 1 SKIPPED · '
+        'no StreamCallEngine in GetIt yet (cold-start race)',
+      );
     }
 
     // 2) Tell our backend via /chats/calls/{id}/reject. This requires
@@ -971,23 +1126,29 @@ class CallkitEventHandler {
     final signaling = _safelyGet<CallSignalingService>();
     if (signaling == null || callerId.isEmpty) {
       // ignore: avoid_print
-      print('[CallkitEventHandler] _handleDecline step 2 SKIPPED · '
-          'signaling=${signaling != null} callerId="$callerId"');
+      print(
+        '[CallkitEventHandler] _handleDecline step 2 SKIPPED · '
+        'signaling=${signaling != null} callerId="$callerId"',
+      );
       // ignore: avoid_print
       print('[CallkitEventHandler] _handleDecline EXIT (partial)');
       return;
     }
     if (signaling.current == null) {
       // ignore: avoid_print
-      print('[CallkitEventHandler] _handleDecline step 2 · '
-          'seeding signaling state via handleIncomingFromPush');
+      print(
+        '[CallkitEventHandler] _handleDecline step 2 · '
+        'seeding signaling state via handleIncomingFromPush',
+      );
       String resolvedConvId = callCid;
       final conversations = _safelyGet<ConversationsRepository>();
       if (conversations != null) {
         try {
           final direct = await conversations.findDirectWith(callerId);
           if (direct != null) resolvedConvId = direct.id;
-        } catch (_) {/* ignore */}
+        } catch (_) {
+          /* ignore */
+        }
       }
       final payload = <String, dynamic>{
         'type': 'call.invite',
@@ -1002,14 +1163,18 @@ class CallkitEventHandler {
       await signaling.handleIncomingFromPush(payload);
     }
     // ignore: avoid_print
-    print('[CallkitEventHandler] _handleDecline step 2 → '
-        'signaling.rejectIncoming()');
+    print(
+      '[CallkitEventHandler] _handleDecline step 2 → '
+      'signaling.rejectIncoming()',
+    );
     await signaling.rejectIncoming();
     // Clear dedupe entry — declines also count as a terminal action.
     _handledCallCids.remove(callCid);
     // ignore: avoid_print
-    print('[CallkitEventHandler] _handleDecline EXIT · '
-        'active.state=${signaling.current?.state}');
+    print(
+      '[CallkitEventHandler] _handleDecline EXIT · '
+      'active.state=${signaling.current?.state}',
+    );
   }
 
   /// Push the in-call page onto the root navigator, retrying briefly
@@ -1031,17 +1196,21 @@ class CallkitEventHandler {
         : VoiceCallPage.isMounted;
     if (alreadyMounted) {
       // ignore: avoid_print
-      print('[CallkitEventHandler] step 2 SKIPPED · '
-          '${isVideo ? "Video" : "Voice"}CallPage already mounted');
+      print(
+        '[CallkitEventHandler] step 2 SKIPPED · '
+        '${isVideo ? "Video" : "Voice"}CallPage already mounted',
+      );
       return;
     }
     for (var attempt = 0; attempt < 25; attempt++) {
       final navigator = AppRouter.rootNavigatorKey.currentState;
       if (navigator != null) {
         // ignore: avoid_print
-        print('[CallkitEventHandler] step 2 → pushing '
-            '${isVideo ? "VideoCallPage" : "VoiceCallPage"}'
-            '(conversationId=$conversationId) on attempt ${attempt + 1}');
+        print(
+          '[CallkitEventHandler] step 2 → pushing '
+          '${isVideo ? "VideoCallPage" : "VoiceCallPage"}'
+          '(conversationId=$conversationId) on attempt ${attempt + 1}',
+        );
         navigator.push(
           MaterialPageRoute<void>(
             builder: (_) => isVideo
@@ -1055,9 +1224,11 @@ class CallkitEventHandler {
       await Future.delayed(const Duration(milliseconds: 40));
     }
     // ignore: avoid_print
-    print('[CallkitEventHandler] step 2 GAVE UP → root navigator '
-        'never came up after 1 s — call audio may flow but user is '
-        'stuck on whatever screen was visible at cold start');
+    print(
+      '[CallkitEventHandler] step 2 GAVE UP → root navigator '
+      'never came up after 1 s — call audio may flow but user is '
+      'stuck on whatever screen was visible at cold start',
+    );
   }
 
   /// CallKit event body is `Map` on Android / iOS — wraps params we

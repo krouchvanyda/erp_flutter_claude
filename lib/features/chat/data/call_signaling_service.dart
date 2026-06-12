@@ -1168,6 +1168,27 @@ class CallSignalingService {
   /// see BOTH the notification header AND the full-screen sheet at once.
   void clearNativeIncoming(String callId) => _clearNativeIncoming(callId);
 
+  /// Lock-aware variant of [clearNativeIncoming] for the in-app
+  /// `IncomingCallOverlay`. The overlay's "sheet takes over → hide the
+  /// native ring" only makes sense when the in-app sheet is actually
+  /// VISIBLE — i.e. the device is UNLOCKED. On a LOCKED screen the in-app
+  /// sheet is hidden behind the keyguard and the native CallKit screen is
+  /// the ONLY call UI iOS permits there; dismissing it drops the user to the
+  /// bare lock wallpaper while the call connects (the reported
+  /// "killed+locked accept → lock wallpaper" bug). So when locked we KEEP
+  /// the native CallKit. Mirrors the lock gate already used by
+  /// [_suppressForegroundCallkit]. On Android / unlocked iOS this behaves
+  /// exactly like [clearNativeIncoming] (`_deviceUnlocked` returns true).
+  Future<void> clearNativeIncomingIfUnlocked(String callId) async {
+    if (await _deviceUnlocked()) {
+      _clearNativeIncoming(callId);
+    } else {
+      // ignore: avoid_print
+      print('[CallSignaling] clearNativeIncomingIfUnlocked · device LOCKED — '
+          'keeping native CallKit (lock-screen call UI) · callId=$callId');
+    }
+  }
+
   /// iOS foreground-only: aggressively dismiss any native CallKit incoming
   /// screen for [callId]. On iOS the CallKit screen for a foreground call
   /// is shown by Stream's VoIP-push manager via `reportNewIncomingCall`

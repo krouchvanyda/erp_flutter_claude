@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:erp_callkit/erp_callkit.dart';
 import 'package:erp_mobile/shared/firebase_services/firebase_notification_provider.dart';
 import 'package:flutter/material.dart';
@@ -105,6 +107,14 @@ class _ErpMobileAppState extends State<ErpMobileApp>
   /// it into the existing signalling so the in-app sheet / call page
   /// behaves exactly like the WS / FCM path. No-op when nothing pending.
   Future<void> _consumeNativeCallLaunch() async {
+    // iOS has no `erp_callkit` native implementation (it's Android-only —
+    // the launch-action / native-Reject mechanism is a Kotlin
+    // BroadcastReceiver). Calling it on iOS only throws a
+    // `MissingPluginException` that we'd swallow below — and prints
+    // confusing noise. The iOS killed/locked accept is driven entirely by
+    // the native `CXCallObserver` bridge (AppDelegate.swift →
+    // CallkitEventHandler), so short-circuit here.
+    if (Platform.isIOS) return;
     try {
       final data = await ErpCallKit.consumeLaunchAction();
       if (data == null) return;

@@ -122,6 +122,32 @@ import CallKit
 
   // ── CXCallObserverDelegate ───────────────────────────────────────────────
   func callObserver(_ callObserver: CXCallObserver, callChanged call: CXCall) {
+    // INCOMING call we ANSWERED has now ENDED while the app is in the
+    // BACKGROUND (lock screen / minimized) = the user tapped End on the
+    // native CallKit screen. Exactly like the accept case below, the
+    // `flutter_callkit_incoming` `actionCallEnded` event does NOT reach the
+    // Dart `onEvent` subscription while the isolate is backgrounded — so
+    // without this bridge the hang-up HTTP POST never fires and the CALLER
+    // stays stuck "in call" (the reported bug after we kept the native
+    // CallKit screen on a locked accept). Bridge it to Dart, which runs the
+    // normal hangup → POST /end → the backend broadcasts `call.hangup` so
+    // the caller's call ends. Only for calls we actually bridged an answer
+    // for (`answeredCallUUIDs`), and only when NOT genuinely foreground — a
+    // foreground End goes through the in-app End button / onEvent path. iOS
+    // CallKit only; Android is unaffected.
+    if call.hasEnded {
+      let uuid = call.uuid.uuidString
+      // Keep the uuid in `answeredCallUUIDs` (don't remove it here): iOS can
+      // fire a spurious connect→end blip moments after accept, and removing
+      // on that blip would stop the REAL End from bridging later. The Dart
+      // side ignores the blip via its accept-handoff window, and a stale,
+      // per-call-unique uuid never matches a future call — so leaving it is
+      // safe (mirrors the accept branch, which also only ever inserts).
+      if answeredCallUUIDs.contains(uuid), !isAppForeground, callkitChannel != nil {
+        notifyIncomingCallEnded(uuid: uuid)
+      }
+      return
+    }
     // INCOMING call just became CONNECTED = the user tapped Accept on the
     // native CallKit screen (lock screen / minimized / killed cold-start).
     // This is the ONLY reliable, timing-independent signal for that accept:
@@ -176,5 +202,27 @@ import CallKit
       }
     }
     callkitChannel?.invokeMethod("incomingCallAnswered", arguments: payload)
+  }
+
+  /// Push a native→Dart `incomingCallEnded` event for a CallKit call the
+  /// user just ended on the native screen while backgrounded/locked. Mirror
+  /// of `notifyIncomingCallAnswered` — looks up the matching
+  /// flutter_callkit_incoming entry (carrying the Stream cid under
+  /// `extra.callCid`) if it's still listed, falling back to the bare UUID.
+  /// The Dart side routes it to `_handleHangup`, which POSTs the hang-up so
+  /// the caller stops being "in call".
+  private func notifyIncomingCallEnded(uuid: String) {
+    var payload: [String: Any] = ["uuid": uuid]
+    if let plugin = SwiftFlutterCallkitIncomingPlugin.sharedInstance {
+      let calls = plugin.activeCalls()
+      for c in calls {
+        let entryId = (c["id"] as? String) ?? (c["uuid"] as? String) ?? ""
+        if entryId == uuid {
+          payload["call"] = c
+          break
+        }
+      }
+    }
+    callkitChannel?.invokeMethod("incomingCallEnded", arguments: payload)
   }
 }

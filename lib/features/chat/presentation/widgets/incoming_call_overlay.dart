@@ -229,7 +229,18 @@ class _IncomingCallOverlayState extends State<IncomingCallOverlay> {
               // for it (the `erp_callkit` CallStyle ring / CallKit ringer)
               // so the user doesn't see BOTH the notification header AND
               // this sheet stacked for the same call.
-              _signaling?.clearNativeIncoming(call.callId);
+              //
+              // Lock-aware: only dismiss the native CallKit when the device
+              // is UNLOCKED (where this sheet is actually visible and should
+              // replace it). On a LOCKED screen this sheet is hidden behind
+              // the keyguard, and the native CallKit screen is the only call
+              // UI iOS allows there — dismissing it would drop the user to
+              // the bare lock wallpaper on a killed+locked accept. So keep
+              // it. (Android / unlocked iOS: same as before.)
+              unawaited(
+                _signaling?.clearNativeIncomingIfUnlocked(call.callId) ??
+                    Future<void>.value(),
+              );
             } else if (!shouldShow) {
               _displayedCallId = null;
             }
