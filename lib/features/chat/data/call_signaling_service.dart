@@ -1390,6 +1390,10 @@ class CallSignalingService {
             'dismissing native CallKit ring');
         _clearNativeIncoming(callId);
         _clearAllCallNotifications();
+        // Caller cancelled while we're backgrounded → re-arm the apn ring path
+        // for the next call (esp. the killed-app cold-start case where STOMP +
+        // the Stream WS came up). No-op when foreground.
+        unawaited(goOfflineForPushIfBackground());
         if (_active?.callId == callId) {
           _setActive(_active!.copyWith(state: CallSignalState.ended));
           Future.delayed(const Duration(milliseconds: 600), () {
@@ -1785,6 +1789,49 @@ class CallSignalingService {
   }
 
   /// Callee tapped Reject — tell the caller, log as rejected, drop.
+  /// iOS-only. After a backgrounded/killed incoming call resolves (declined,
+  /// cancelled, missed) WITHOUT the user foregrounding the app, force this
+  /// device fully "offline for push" so the NEXT call rings via the apn/VoIP
+  /// push (native CallKit) again.
+  ///
+  /// Why this is needed (the "2nd call: no ring" bug on killed apps): a killed
+  /// app woken by a call push cold-starts the full session — it reconnects
+  /// STOMP (→ backend presence ONLINE) and the Stream WebSocket. With presence
+  /// ONLINE the backend SKIPS the apn ring (the presence gate only rings
+  /// OFFLINE callees), and with the Stream WS up Stream would deliver the ring
+  /// over the WS — so a 2nd call to the still-backgrounded device shows no
+  /// native ring. Dropping STOMP + the Stream WS and reporting OFFLINE restores
+  /// the apn ring path for the next call.
+  ///
+  /// Gated so it can't hurt other cases:
+  ///   • genuinely FOREGROUND (native `isAppForeground`) → skip; the in-app
+  ///     overlay owns the next ring there.
+  ///   • a call is still CONNECTED → skip; never tear down a live call.
+  /// iOS-only; Android keeps its own lifecycle background path.
+  Future<void> goOfflineForPushIfBackground() async {
+    if (!Platform.isIOS) return;
+    if (_active?.state == CallSignalState.connected) return;
+    // Genuinely foreground right now → the in-app overlay owns the next ring,
+    // skip; presence is owned by `ChatLifecycleBridge` (resume→foreground,
+    // pause→background). When backgrounded/killed we go offline IMMEDIATELY so
+    // the very next call (even an instant redial) rings via apn, not a warm WS
+    // in-app invite — the reported "C calls D again, no native ring, only shows
+    // when the app is opened" bug. Do NOT delay/poll here: keeping the WS warm
+    // even briefly lets a quick 2nd call route over STOMP as an (invisible-
+    // while-backgrounded) in-app overlay instead of the native CallKit ring.
+    final fg = await _appForeground();
+    // ignore: avoid_print
+    print('[CallSignaling] goOfflineForPushIfBackground: isAppForeground=$fg');
+    if (fg) return;
+    // ignore: avoid_print
+    print('[CallSignaling] backgrounded ring resolved → going offline for push '
+        '(drop STOMP + Stream WS + report OFFLINE) so the next call rings via '
+        'apn, not the warm WS');
+    unawaited(transport.pause());
+    unawaited(streamEngine.disconnectForBackground(force: true));
+    unawaited(remote.reportBackground().catchError((Object _) {}));
+  }
+
   Future<void> rejectIncoming() async {
     final active = _active;
     if (active == null) return;
@@ -1811,6 +1858,10 @@ class CallSignalingService {
     // (it was getOrCreate'd but never joined).
     if (Platform.isIOS) unawaited(streamEngine.discardPrepared());
     _setActive(null);
+    // If we declined while backgrounded/killed, make sure the NEXT call still
+    // rings via apn (drop STOMP + Stream WS + report OFFLINE). No-op when
+    // foreground. See goOfflineForPushIfBackground for the why.
+    unawaited(goOfflineForPushIfBackground());
     // DIAGNOSTIC: give the fire-and-forget clears a beat, then dump the
     // registry — if call #1's entry survives here, it's the "no ring on
     // call #2" suspect.
@@ -2113,6 +2164,9 @@ class CallSignalingService {
         _setActive(null);
       }
     });
+    // Peer hung up while we were backgrounded → re-arm the apn ring path for
+    // the next call. No-op when foreground / still connected.
+    unawaited(goOfflineForPushIfBackground());
   }
 
   /// Resolve a `call.hangup` that arrived inside the just-connected grace

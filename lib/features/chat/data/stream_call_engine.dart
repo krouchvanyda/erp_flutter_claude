@@ -1924,39 +1924,84 @@ class StreamCallEngine {
   /// never runs on Android / web.
   Future<void> _ensureApnDeviceRegistered() async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) return;
-    const maxAttempts = 6; // 6 × 2.5 s ≈ 15 s
+    const maxAttempts = 5; // 5 × 2 s ≈ 10 s — covers the async VoIP token delivery
+    String lastVoip = '';
     for (var attempt = 1; attempt <= maxAttempts; attempt++) {
       if (await _streamHasApnDevice() == true) {
         // ignore: avoid_print
         print('[PushDiag/apn-retry] apn provider registered after '
-            '$attempt check(s) — minimized-call ring route is ready');
+            '$attempt check(s) — minimized/killed-call ring route is ready');
         return;
       }
-      // Re-run the SDK's device registration. The PushKit VoIP token is
-      // more likely available now than at connect, so this attempt can
-      // register the apn device the first pass missed.
+      // Read the PushKit VoIP token so we can tell WHY apn isn't registering:
+      //   • token EMPTY   → iOS hasn't delivered it yet (timing/provisioning/
+      //                     Simulator). registerDevice has nothing to register.
+      //   • token PRESENT → the token exists but Stream has no apn device →
+      //                     re-run registerDevice; if it still never appears it
+      //                     is the Stream-dashboard side (provider/cert), not us.
       try {
-        _client?.pushNotificationManager?.registerDevice();
-        // ignore: avoid_print
-        print('[PushDiag/apn-retry] attempt $attempt/$maxAttempts — no apn '
-            'device yet, re-ran registerDevice()');
-      } catch (e) {
-        // ignore: avoid_print
-        print('[PushDiag/apn-retry] registerDevice() threw: $e');
+        lastVoip =
+            (await FlutterCallkitIncoming.getDevicePushTokenVoIP())?.toString() ??
+                '';
+      } catch (_) {
+        lastVoip = '';
       }
-      await Future<void>.delayed(const Duration(milliseconds: 2500));
+      if (lastVoip.isEmpty) {
+        // ignore: avoid_print
+        print('[PushDiag/apn-retry] attempt $attempt/$maxAttempts — VoIP '
+            '(PushKit) token still EMPTY; cannot register apn yet (waiting on '
+            'iOS to deliver the token)');
+      } else {
+        // Register the apn device DIRECTLY via `addDevice`, NOT the package's
+        // `registerDevice()`. The package short-circuits when this VoIP token
+        // was registered before (cached in SharedPreferences) — so if the
+        // device was later removed from Stream (logout / token refresh /
+        // StreamVideo.reset), `registerDevice()` silently NEVER re-creates it,
+        // and `apn` stays missing forever. `addDevice` bypasses that cache AND
+        // returns a real Result, so we both fix the cache-skip AND see the
+        // actual Stream error if the registration is genuinely rejected
+        // (dashboard provider/cert).
+        try {
+          final res = await _client?.addDevice(
+            pushToken: lastVoip,
+            pushProvider: PushProvider.apn,
+            pushProviderName: 'apn',
+            voipToken: true,
+          );
+          // ignore: avoid_print
+          print('[PushDiag/apn-retry] attempt $attempt/$maxAttempts — VoIP '
+              'token present (len=${lastVoip.length}); addDevice(apn) → '
+              '${res is Success ? "OK" : res}');
+        } catch (e) {
+          // ignore: avoid_print
+          print('[PushDiag/apn-retry] addDevice(apn) threw: $e');
+        }
+      }
+      await Future<void>.delayed(const Duration(seconds: 2));
     }
     if (await _streamHasApnDevice() == true) {
       // ignore: avoid_print
       print('[PushDiag/apn-retry] apn provider registered on final check '
           '— ring route ready');
+      return;
+    }
+    // Definitive diagnosis — the token tells us which layer is at fault.
+    if (lastVoip.isEmpty) {
+      // ignore: avoid_print
+      print('[PushDiag/apn-retry] ❌ apn NEVER registered AND the VoIP (PushKit) '
+          'token is EMPTY after ~10 s. iOS never gave us a VoIP token → this is '
+          'the DEVICE/provisioning layer, NOT Stream: check (1) a REAL device '
+          '(the Simulator never issues a VoIP token), (2) Push Notifications '
+          'capability + "Voice over IP" background mode, (3) the provisioning '
+          'profile includes push. Once the token appears, apn registers '
+          'automatically and persists on Stream for all future calls.');
     } else {
       // ignore: avoid_print
-      print('[PushDiag/apn-retry] ⚠ apn provider STILL missing after '
-          '$maxAttempts retries — this is NOT a timing race. Check the '
-          'Stream dashboard APN VoIP provider + cert environment (sandbox '
-          'vs production) against this build. Code cannot fix a cert '
-          'mismatch.');
+      print('[PushDiag/apn-retry] ❌ apn NEVER registered but the VoIP token IS '
+          'present (len=${lastVoip.length}). The token exists, so this is the '
+          'STREAM side: the dashboard APN provider must be named exactly "apn" '
+          'and its cert environment must match aps-environment '
+          '(development = sandbox). Code cannot fix a dashboard/cert mismatch.');
     }
   }
 

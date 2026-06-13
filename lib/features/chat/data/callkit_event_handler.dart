@@ -589,27 +589,16 @@ class CallkitEventHandler {
         '[CallkitEventHandler] keeping native CallKit ring · '
         'no in-app ring (backgrounded / killed cold-launch)',
       );
-      // CRITICAL (caller-cancel-while-minimized fix): connect the StreamVideo
-      // client so this device can OBSERVE the ringing call's lifecycle. The
-      // ring is showing via Stream's VoIP push, but while we're backgrounded
-      // `disconnectForBackground` left the Stream client DISCONNECTED — so
-      // when the caller hangs up (the backend `mark_ended`s the Stream call),
-      // neither the `stream_video_push_notification` package's
-      // `CoordinatorCallEndedEvent`/`CallRejectedEvent` subscription NOR our
-      // engine's `incomingCall → null` listener ever fires, and the native
-      // CallKit screen lingers until the OS ring timeout (the reported bug).
-      // Connecting here wires BOTH dismiss paths: Stream's own `endCallByCid`
-      // and our `_handleStreamCallEnded → _clearNativeIncoming` (which on iOS
-      // uses the reliable `reportCall(endedAt:)` bridge). Best-effort and
-      // idempotent — `warmUp()` no-ops if the client is already connected.
-      // iOS-only (we returned early for non-iOS at the top of this method).
-      final engine = _safelyGet<StreamCallEngine>();
-      if (engine != null) {
-        // ignore: avoid_print
-        print('[CallkitEventHandler] backgrounded incoming ring → '
-            'warmUp() Stream client so a caller-cancel dismisses it');
-        unawaited(engine.warmUp());
-      }
+      // NOTE: do NOT `warmUp()` / connect the Stream client here. Connecting
+      // the Stream WebSocket while a ring is showing in the background makes
+      // Stream consider this device "online", so the NEXT call is delivered
+      // over the WS (which a backgrounded app can't render) instead of the
+      // apn/VoIP push that raises the native CallKit screen — the "2nd call:
+      // no ring" regression. The WS must stay DOWN while backgrounded so every
+      // incoming call rings via apn. The caller-cancel dismiss is handled
+      // WITHOUT the WS by the deterministic backend poll below
+      // (`watchBackgroundRingForCancel` → `reportCall(endedAt:)`).
+      //
       // Deterministic fallback: while minimized, neither STOMP, the Stream WS,
       // nor (often) the apn/FCM push route can deliver the caller-cancel — but
       // the app is still alive and can hit REST. Poll the backend for the
@@ -1435,10 +1424,31 @@ class CallkitEventHandler {
       // ignore: avoid_print
       print('[CallkitEventHandler] _directRejectNoDi · POST /reject OK '
           'callId=$n — caller should stop ringing');
+      // CRITICAL (killed-app "2nd call no ring" fix): the cold-start that woke
+      // this killed app connected STOMP, which marks us ONLINE on the backend
+      // AND clears any prior `backgrounded` flag. With presence ONLINE the
+      // backend's ring gate SKIPS the apn/VoIP push for the NEXT call — so a
+      // follow-up call shows no ring. Re-assert OFFLINE with the SAME DI-less
+      // Dio: the backend's `backgrounded` flag overrides the live STOMP session
+      // in `statusOf()`, so the next call rings via apn again. Best-effort.
+      try {
+        await dio.post<dynamic>('/chats/presence/background');
+        // ignore: avoid_print
+        print('[CallkitEventHandler] _directRejectNoDi · POST '
+            '/presence/background OK — next call will ring via apn');
+      } catch (e) {
+        // ignore: avoid_print
+        print('[CallkitEventHandler] _directRejectNoDi · presence/background '
+            'failed: $e');
+      }
     } catch (e) {
       // ignore: avoid_print
       print('[CallkitEventHandler] _directRejectNoDi · POST /reject failed: $e');
     }
+    // DI-available path (engine alive): also drop STOMP + Stream WS locally so
+    // they don't reconnect and clear the `backgrounded` flag we just set.
+    // No-op when foreground / DI not ready.
+    await _safelyGet<CallSignalingService>()?.goOfflineForPushIfBackground();
   }
 
   /// Extract backend numeric id from Stream's CID format
