@@ -831,7 +831,7 @@ class CallkitEventHandler {
         // locked. `actionCallEnded` doesn't reach the Dart onEvent
         // subscription there, so this bridge is the only signal that lets us
         // POST the hang-up and stop the CALLER being stuck "in call".
-        await _handleNativeCallEnded();
+        await _handleNativeCallEnded(body);
     }
     return null;
   }
@@ -846,7 +846,7 @@ class CallkitEventHandler {
   /// can be absent. `_active` always carries the backend call id, so
   /// `signaling.hangup()` POSTs `/end` reliably → the backend broadcasts
   /// `call.hangup` and the CALLER's call ends.
-  Future<void> _handleNativeCallEnded() async {
+  Future<void> _handleNativeCallEnded(dynamic body) async {
     final signaling = _safelyGet<CallSignalingService>();
     final active = signaling?.current;
     if (signaling == null || active == null) {
@@ -862,8 +862,20 @@ class CallkitEventHandler {
       // The backend `reject()` is idempotent for an already-answered/ended
       // participant, so a late/duplicate POST is harmless either way.
       final ownDismiss = signaling?.recentlyDismissedNativeCallkit() ?? false;
-      final bgId = _lastIncomingBgCallId;
-      if (!ownDismiss && bgId != null && bgId.isNotEmpty) {
+      var bgId = _lastIncomingBgCallId ?? '';
+      if (bgId.isEmpty) {
+        // Killed-app FAST reject: the Dart `actionCallIncoming` that sets
+        // `_lastIncomingBgCallId` may not have run before the user tapped
+        // Decline, leaving bgId empty (the reported bug — caller kept
+        // ringing). Recover the backend id straight from the native payload's
+        // call entry (extra.callCid), which AppDelegate stashes when the ring
+        // first appears so it survives the decline removing the entry from
+        // activeCalls().
+        final p = _params(body);
+        final cid = (p['call_cid'] ?? p['callCid'])?.toString() ?? '';
+        if (cid.isNotEmpty) bgId = _parseBackendCallId(cid);
+      }
+      if (!ownDismiss && bgId.isNotEmpty) {
         // ignore: avoid_print
         print('[CallkitEventHandler] native End · no active call → direct '
             'reject POST for callId=$bgId (killed-app decline)');

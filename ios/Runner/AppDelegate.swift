@@ -30,6 +30,13 @@ import CallKit
   // fires repeatedly for one call) drives the Dart accept flow only once.
   private var answeredCallUUIDs = Set<String>()
 
+  // Ringing incoming entries (each carries extra.callCid) stashed by uuid the
+  // moment the call appears, ONLY while backgrounded/killed. A fast DECLINE
+  // removes the call from `activeCalls()` before our `notifyIncomingCallEnded`
+  // runs, so without this stash Dart receives a bare uuid and can't POST the
+  // reject → the CALLER stays stuck "Calling…". iOS-only; additive.
+  private var lastIncomingCallByUuid: [String: [String: Any]] = [:]
+
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -188,6 +195,23 @@ import CallKit
     // not answered, not already ended). After we end it, hasEnded becomes true
     // and this guard skips the follow-up event (no loop).
     guard !call.isOutgoing, !call.hasConnected, !call.hasEnded else { return }
+    // Stash the ringing entry (carries extra.callCid) keyed by uuid while it's
+    // still listed — ONLY for backgrounded/killed, where the native ring is
+    // kept and a later decline is the case that needs it. A fast Decline
+    // removes the activeCalls() entry before `notifyIncomingCallEnded` runs, so
+    // this is the only way Dart can still learn the backend call id to POST the
+    // reject and stop the caller ringing.
+    if !isAppForeground,
+       let plugin = SwiftFlutterCallkitIncomingPlugin.sharedInstance {
+      let ringingUuid = call.uuid.uuidString
+      for c in plugin.activeCalls() {
+        let entryId = (c["id"] as? String) ?? (c["uuid"] as? String) ?? ""
+        if entryId == ringingUuid {
+          lastIncomingCallByUuid[ringingUuid] = c
+          break
+        }
+      }
+    }
     // Suppress ONLY when the app is genuinely on screen. Background/killed must
     // keep the native ring — that's the entire point of CallKit there.
     guard isAppForeground else { return }
@@ -214,6 +238,7 @@ import CallKit
         }
       }
     }
+    lastIncomingCallByUuid.removeValue(forKey: uuid)
     callkitChannel?.invokeMethod("incomingCallAnswered", arguments: payload)
   }
 
@@ -236,6 +261,14 @@ import CallKit
         }
       }
     }
+    // Fallback: the decline usually removes the entry from activeCalls() before
+    // this runs, so attach the entry we stashed when the call first rang — it's
+    // what carries extra.callCid to Dart on a killed-app fast reject so Dart can
+    // POST /reject and the caller stops ringing.
+    if payload["call"] == nil, let stashed = lastIncomingCallByUuid[uuid] {
+      payload["call"] = stashed
+    }
+    lastIncomingCallByUuid.removeValue(forKey: uuid)
     callkitChannel?.invokeMethod("incomingCallEnded", arguments: payload)
   }
 }

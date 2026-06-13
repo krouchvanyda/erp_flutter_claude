@@ -1819,17 +1819,17 @@ class StreamCallEngine {
     // (3) Stream device list — check now AND again after registration has
     // had time to settle (the VoIP token stream registers async).
     await _checkStreamDevices('at-connect');
-    Future.delayed(const Duration(seconds: 10),
-        () => _checkStreamDevices('+10s'));
+    Future.delayed(const Duration(seconds: 3),
+        () => _checkStreamDevices('+3s'));
   }
 
   /// Logs whether this user has any push devices registered with Stream,
   /// and whether an `apn` provider entry exists (the iOS call-push route).
   Future<void> _checkStreamDevices(String when) async {
-    // No live client = nothing to query. This is the common `+10s` case: the
-    // call ended and `disconnectForBackground` nulled the client before the
-    // delayed check ran. It does NOT mean the devices were lost — they stay
-    // registered with Stream. Log it as a skip, not a failure.
+    // No live client = nothing to query. This is the common delayed case:
+    // the call ended and `disconnectForBackground` nulled the client before
+    // the delayed check ran. It does NOT mean the devices were lost — they
+    // stay registered with Stream. Log it as a skip, not a failure.
     if (_client == null) {
       // ignore: avoid_print
       print('[PushDiag/$when] ⓘ skipped — Stream client not connected '
@@ -1837,11 +1837,15 @@ class StreamCallEngine {
       return;
     }
     try {
-      final devices = (await _client?.getDevices())?.getDataOrNull();
+      // Retry a few times — a lone null is a transient backend/WS blip,
+      // NOT a registration loss. The device stays registered with Stream
+      // from login until logout regardless of this read.
+      final devices = await _getDevicesWithRetry();
       if (devices == null) {
         // ignore: avoid_print
-        print('[PushDiag/$when] ❌ getDevices() returned no data '
-            '(API error while connected).');
+        print('[PushDiag/$when] ⓘ device list unavailable after retries '
+            '(transient API/WS blip) — registration is unchanged; the '
+            'device stays registered until logout.');
         return;
       }
       if (devices.isEmpty) {
@@ -1870,19 +1874,37 @@ class StreamCallEngine {
     }
   }
 
+  /// Reads the Stream device list with a few quiet retries.
+  ///
+  /// `getDevices()` occasionally returns null for a transient backend / WS
+  /// blip even while the client is connected — that is NOT a registration
+  /// loss. The device stays registered with Stream server-side from login
+  /// until logout (the SDK writes it on connect; nothing here unregisters
+  /// it). Retrying a handful of times lets the blip self-heal so callers
+  /// don't surface a false error. Returns the device list, or null only if
+  /// every attempt failed.
+  Future<List<dynamic>?> _getDevicesWithRetry({int attempts = 4}) async {
+    for (var i = 1; i <= attempts; i++) {
+      try {
+        final devices = (await _client?.getDevices())?.getDataOrNull();
+        if (devices != null) return devices;
+      } catch (_) {/* transient — fall through and retry */}
+      if (i < attempts) {
+        await Future<void>.delayed(const Duration(milliseconds: 800));
+      }
+    }
+    return null;
+  }
+
   /// Returns true if Stream has an `apn` push device for this user, false
   /// if not, null if the lookup failed. Pure read — the retry loop owns
   /// the logging.
   Future<bool?> _streamHasApnDevice() async {
-    try {
-      final devices = (await _client?.getDevices())?.getDataOrNull();
-      if (devices == null) return null;
-      return devices.any((d) =>
-          d.pushProviderName == 'apn' ||
-          d.pushProvider.toString().toLowerCase().contains('apn'));
-    } catch (_) {
-      return null;
-    }
+    final devices = await _getDevicesWithRetry();
+    if (devices == null) return null;
+    return devices.any((d) =>
+        d.pushProviderName == 'apn' ||
+        d.pushProvider.toString().toLowerCase().contains('apn'));
   }
 
   /// iOS-only: the SDK registers push devices ONCE on connect, but the
