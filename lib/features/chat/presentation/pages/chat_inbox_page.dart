@@ -14,7 +14,6 @@ import '../../../../core/widgets/dynamic_app_bar.dart';
 import '../../../../core/widgets/dynamic_status_bar.dart';
 import '../../../../shared/widgets/app_background_gradient.dart';
 import '../../data/chat_settings.dart';
-import '../../data/chat_transport.dart';
 import '../../data/users_cache.dart';
 import '../../data/repositories/call_log_repository.dart';
 import '../../data/repositories/conversations_repository.dart';
@@ -69,17 +68,6 @@ class _ChatInboxPageState extends State<ChatInboxPage>
     );
   }
 
-  Future<void> _showRelayUrlSheet(BuildContext context) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => const _RelayUrlSheet(),
-    );
-  }
-
   List<ChatConversation> _filter(List<ChatConversation> all, int tabIndex) {
     final q = _query.trim().toLowerCase();
     Iterable<ChatConversation> result = all;
@@ -129,8 +117,6 @@ class _ChatInboxPageState extends State<ChatInboxPage>
               switch (v) {
                 case 'identity':
                   _showIdentitySheet(context);
-                case 'relay':
-                  _showRelayUrlSheet(context);
               }
             },
             itemBuilder: (_) => const [
@@ -140,15 +126,6 @@ class _ChatInboxPageState extends State<ChatInboxPage>
                   leading: Icon(Icons.switch_account_rounded),
                   title: Text('Sign in as…'),
                   subtitle: Text('Switch demo identity'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              PopupMenuItem(
-                value: 'relay',
-                child: ListTile(
-                  leading: Icon(Icons.cable_rounded),
-                  title: Text('Relay URL…'),
-                  subtitle: Text('Connect 2 devices'),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -170,7 +147,6 @@ class _ChatInboxPageState extends State<ChatInboxPage>
                 return Column(
                   children: [
                     SizedBox(height: context.dynamicAppBarPadding),
-                    const _TransportStatusPill(),
                     _SearchField(
                       controller: _searchCtrl,
                       onChanged: (v) => setState(() => _query = v),
@@ -794,123 +770,6 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-// ── Transport status pill ───────────────────────────────────────
-//
-// Sits just below the AppBar. Streams from [ChatTransport.status] so
-// the user can tell at a glance whether peer messages will flow.
-// Tappable: opens the Relay URL sheet directly so a misconfigured URL
-// is one tap from being fixed.
-
-class _TransportStatusPill extends StatelessWidget {
-  const _TransportStatusPill();
-
-  @override
-  Widget build(BuildContext context) {
-    final transport = GetIt.I<ChatTransport>();
-    final settings = GetIt.I<ChatSettings>();
-    return StreamBuilder<ChatTransportStatus>(
-      stream: transport.status,
-      initialData: transport.currentStatus,
-      builder: (context, snap) {
-        final status = snap.data ?? ChatTransportStatus.disconnected;
-        // Hide entirely when no relay is configured AND we're idle —
-        // there's nothing useful to show and the row would just
-        // waste vertical space on the single-device demo.
-        if (status == ChatTransportStatus.disconnected &&
-            settings.relayUrl.isEmpty) {
-          return const SizedBox.shrink();
-        }
-        final theme = Theme.of(context);
-        final (label, accent, icon) = switch (status) {
-          ChatTransportStatus.connected => (
-              'Live · ${_shortHost(settings.relayUrl)}',
-              Colors.green.shade600,
-              Icons.bolt_rounded,
-            ),
-          ChatTransportStatus.connecting => (
-              'Connecting…',
-              Colors.amber.shade700,
-              Icons.sync_rounded,
-            ),
-          ChatTransportStatus.error => (
-              'Connection error — tap to fix',
-              theme.colorScheme.error,
-              Icons.error_outline_rounded,
-            ),
-          ChatTransportStatus.disconnected => (
-              'Offline — tap to set a relay',
-              theme.colorScheme.onSurfaceVariant,
-              Icons.cloud_off_rounded,
-            ),
-        };
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: Material(
-            color: accent.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(AppRadii.pill),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(AppRadii.pill),
-              onTap: () => showModalBottomSheet<void>(
-                context: context,
-                isScrollControlled: true,
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                ),
-                builder: (_) => const _RelayUrlSheet(),
-              ),
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(icon, size: 14, color: accent),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: AppLabel(
-                        text: label,
-                        fontSize: AppFontSize.value11,
-                        color: accent,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.2,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (settings.userName.isNotEmpty) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        width: 3,
-                        height: 3,
-                        decoration: BoxDecoration(
-                          color: accent.withValues(alpha: 0.55),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      AppLabel(
-                        text: settings.userName,
-                        fontSize: AppFontSize.value11,
-                        color: accent.withValues(alpha: 0.9),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  static String _shortHost(String url) {
-    final uri = Uri.tryParse(url);
-    if (uri == null) return url;
-    return '${uri.host}:${uri.port}';
-  }
-}
 
 // ── Identity picker ─────────────────────────────────────────────
 //
@@ -984,8 +843,8 @@ class _IdentitySheetState extends State<_IdentitySheet> {
             ),
             const SizedBox(height: 4),
             AppLabel(
-              text: 'Switch identity to test two-way chat. The relay routes '
-                  'each message to every other connected client.',
+              text: 'Switch identity to test two-way chat as different '
+                  'signed-in users.',
               fontSize: AppFontSize.value12,
               color: theme.colorScheme.onSurfaceVariant,
               maxLines: 3,
@@ -1057,151 +916,6 @@ class _IdentitySheetState extends State<_IdentitySheet> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ── Relay URL sheet ─────────────────────────────────────────────
-
-class _RelayUrlSheet extends StatefulWidget {
-  const _RelayUrlSheet();
-
-  @override
-  State<_RelayUrlSheet> createState() => _RelayUrlSheetState();
-}
-
-class _RelayUrlSheetState extends State<_RelayUrlSheet> {
-  late final TextEditingController _ctrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = TextEditingController(text: GetIt.I<ChatSettings>().relayUrl);
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.outlineVariant,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          AppLabel(
-            text: 'Chat relay URL',
-            fontSize: AppFontSize.value16,
-            fontWeight: FontWeight.w800,
-          ),
-          const SizedBox(height: 4),
-          AppLabel(
-            text: 'Point both devices at the WebSocket relay running on your PC. '
-                'Leave blank to stay offline.',
-            fontSize: AppFontSize.value12,
-            color: theme.colorScheme.onSurfaceVariant,
-            maxLines: 3,
-          ),
-          const SizedBox(height: 14),
-          TextField(
-            controller: _ctrl,
-            autofocus: true,
-            keyboardType: TextInputType.url,
-            textInputAction: TextInputAction.done,
-            decoration: InputDecoration(
-              labelText: 'ws:// URL',
-              hintText: 'ws://192.168.1.42:7777',
-              prefixIcon: const Icon(Icons.cable_rounded, size: 20),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppRadii.md),
-              ),
-              isDense: true,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              for (final preset in const [
-                ('Emulator', 'ws://10.0.2.2:7777'),
-                ('Simulator', 'ws://127.0.0.1:7777'),
-              ])
-                ActionChip(
-                  label: AppLabel(
-                    text: preset.$1,
-                    fontSize: AppFontSize.value12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  onPressed: () => _ctrl.text = preset.$2,
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadii.md),
-                    ),
-                  ),
-                  child: AppLabel(
-                    text: 'Cancel',
-                    fontSize: AppFontSize.value14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 2,
-                child: FilledButton(
-                  onPressed: () async {
-                    await GetIt.I<ChatSettings>().setRelayUrl(_ctrl.text);
-                    if (context.mounted) Navigator.pop(context);
-                  },
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadii.md),
-                    ),
-                  ),
-                  child: AppLabel(
-                    text: 'Save',
-                    fontSize: AppFontSize.value14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }

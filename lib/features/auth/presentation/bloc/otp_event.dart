@@ -1,18 +1,30 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
-
-part 'otp_event.freezed.dart';
-
 /// Inputs to [OtpBloc].
-@freezed
-sealed class OtpEvent with _$OtpEvent {
+///
+/// Plain Dart 3 `sealed class` (was `freezed`). Construction via
+/// `OtpEvent.codeChanged(...)` etc. is preserved through factory redirects;
+/// the bloc's `on<OtpCodeChanged>` handlers match the subtypes.
+sealed class OtpEvent {
+  const OtpEvent();
+
   /// User edited the digits. Empty string is valid (clears the field).
   const factory OtpEvent.codeChanged(String code) = OtpCodeChanged;
 
-  /// User tapped "Verify". The bloc validates length, then calls the
-  /// use case.
+  /// User tapped "Verify".
   const factory OtpEvent.submitted() = OtpSubmitted;
 
-  /// Reset the page back to its initial state (e.g. after popping back
-  /// from a "resend" flow — placeholder for future slice).
+  /// Reset the page back to its initial state.
   const factory OtpEvent.cleared() = OtpCleared;
+}
+
+class OtpCodeChanged extends OtpEvent {
+  const OtpCodeChanged(this.code);
+  final String code;
+}
+
+class OtpSubmitted extends OtpEvent {
+  const OtpSubmitted();
+}
+
+class OtpCleared extends OtpEvent {
+  const OtpCleared();
 }

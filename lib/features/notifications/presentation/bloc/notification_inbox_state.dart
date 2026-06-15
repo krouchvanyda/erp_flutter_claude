@@ -1,34 +1,76 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:collection/collection.dart';
 
 import '../../domain/entities/notification.dart';
 
-part 'notification_inbox_state.freezed.dart';
-
 /// State machine for [NotificationInboxBloc] (Slice 2.3.1).
 ///
-/// **Why one `Loaded` state with a derived unread count, not separate
-/// states for empty / non-empty**: the inbox view rebuilds the same
-/// scaffold either way; an `if (notifications.isEmpty)` in the widget
-/// is cheaper than a state-shape branch.
-@freezed
-sealed class NotificationInboxState with _$NotificationInboxState {
-  /// Pre-subscribe — the bloc hasn't loaded the first snapshot yet.
+/// Plain Dart 3 `sealed class` (was `freezed`). Factory redirects preserve
+/// `NotificationInboxState.loaded(...)` etc.; the view switches on the
+/// subtypes. Value `==`/`hashCode` are kept so `BlocBuilder` dedupes
+/// rebuilds correctly.
+sealed class NotificationInboxState {
+  const NotificationInboxState();
+
   const factory NotificationInboxState.initial() = NotificationInboxInitial;
-
-  /// First snapshot in flight.
   const factory NotificationInboxState.loading() = NotificationInboxLoading;
-
-  /// Latest inbox snapshot. [notifications] is newest-first, dismissed
-  /// rows already filtered. [unreadCount] is derived once at emit time
-  /// rather than re-counted per UI rebuild.
   const factory NotificationInboxState.loaded({
     required List<AppNotification> notifications,
     required int unreadCount,
   }) = NotificationInboxLoaded;
-
-  /// Watch stream errored. Rare in practice — drift errors are usually
-  /// fatal — but a typed state lets the UI render a retry hint instead
-  /// of an indefinite spinner.
   const factory NotificationInboxState.failure(String message) =
       NotificationInboxFailure;
+}
+
+class NotificationInboxInitial extends NotificationInboxState {
+  const NotificationInboxInitial();
+
+  @override
+  bool operator ==(Object other) => other is NotificationInboxInitial;
+  @override
+  int get hashCode => (NotificationInboxInitial).hashCode;
+}
+
+class NotificationInboxLoading extends NotificationInboxState {
+  const NotificationInboxLoading();
+
+  @override
+  bool operator ==(Object other) => other is NotificationInboxLoading;
+  @override
+  int get hashCode => (NotificationInboxLoading).hashCode;
+}
+
+class NotificationInboxLoaded extends NotificationInboxState {
+  const NotificationInboxLoaded({
+    required this.notifications,
+    required this.unreadCount,
+  });
+
+  final List<AppNotification> notifications;
+  final int unreadCount;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is NotificationInboxLoaded &&
+          other.unreadCount == unreadCount &&
+          const ListEquality<AppNotification>()
+              .equals(other.notifications, notifications));
+
+  @override
+  int get hashCode => Object.hash(
+        unreadCount,
+        const ListEquality<AppNotification>().hash(notifications),
+      );
+}
+
+class NotificationInboxFailure extends NotificationInboxState {
+  const NotificationInboxFailure(this.message);
+  final String message;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is NotificationInboxFailure && other.message == message);
+  @override
+  int get hashCode => message.hashCode;
 }

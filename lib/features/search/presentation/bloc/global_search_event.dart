@@ -1,16 +1,24 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
+/// Inputs to [GlobalSearchBloc].
+///
+/// Plain Dart 3 `sealed class` (was `freezed`). Factory redirects preserve
+/// `GlobalSearchEvent.queryChanged(...)`; the bloc's `on<...>` handlers
+/// match the subtypes.
+sealed class GlobalSearchEvent {
+  const GlobalSearchEvent();
 
-part 'global_search_event.freezed.dart';
-
-/// Inputs to [GlobalSearchBloc] — kept tiny: the search bar emits one
-/// event on every keystroke; the bloc handles debouncing internally
-/// via an event transformer.
-@freezed
-sealed class GlobalSearchEvent with _$GlobalSearchEvent {
   /// User typed (or programmatic seed).
   const factory GlobalSearchEvent.queryChanged(String query) =
       GlobalSearchQueryChanged;
 
   /// Hard reset — bar closed, cleared, etc.
   const factory GlobalSearchEvent.cleared() = GlobalSearchCleared;
+}
+
+class GlobalSearchQueryChanged extends GlobalSearchEvent {
+  const GlobalSearchQueryChanged(this.query);
+  final String query;
+}
+
+class GlobalSearchCleared extends GlobalSearchEvent {
+  const GlobalSearchCleared();
 }

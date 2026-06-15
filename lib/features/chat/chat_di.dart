@@ -362,11 +362,10 @@ Future<void> bootChatTransport(GetIt getIt) async {
   //   2. `Dio.options.baseUrl` minus `/api/v1` — same backend the REST
   //      calls already hit, so STOMP follows REST automatically. This
   //      is the line that fixes "A sends, B doesn't see anything":
-  //      previously we passed `settings.relayUrl` (the legacy LAN demo
-  //      URL, defaults to empty), so the STOMP socket never connected
-  //      and inbound `/user/queue/inbox` + `/topic/conversations/{id}`
-  //      frames had nowhere to land.
-  //   3. `settings.relayUrl` — legacy demo fallback
+  //      previously we passed the legacy LAN relay URL, so the STOMP
+  //      socket never connected and inbound `/user/queue/inbox` +
+  //      `/topic/conversations/{id}` frames had nowhere to land. The
+  //      LAN relay was removed; the backend Dio base is authoritative.
   String resolveStompBase() {
     if (settings.apiBaseUrl.isNotEmpty) return settings.apiBaseUrl;
     if (GetIt.I.isRegistered<Dio>()) {
@@ -382,7 +381,8 @@ Future<void> bootChatTransport(GetIt getIt) async {
         }
       }
     }
-    return settings.relayUrl;
+    // No backend URL resolvable → stay offline (empty = transport idle).
+    return '';
   }
 
   Future<void> apply() async {

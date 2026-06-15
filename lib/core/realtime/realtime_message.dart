@@ -1,26 +1,16 @@
 import 'dart:convert';
 
-import 'package:freezed_annotation/freezed_annotation.dart';
-
-part 'realtime_message.freezed.dart';
-part 'realtime_message.g.dart';
+import 'package:collection/collection.dart';
 
 /// Server-pushed message envelope for the dashboard real-time stream
 /// (Slice 2.2.4).
 ///
-/// Sealed union — adding a new push kind is a one-line freezed factory
-/// + a matching JSON discriminator. Intentionally NOT json_serializable:
-/// the discriminator-keyed `fromJson` is hand-rolled because freezed's
-/// auto-generated union deserialiser doesn't fit our wire format
-/// (`{"kind": "kpi.update", "id": ..., ...}`) without ceremony.
-///
-/// **Pure data**: no Flutter, no dio, no fl_chart. Feature blocs fan
-/// out incoming messages into their own state without depending on the
-/// realtime infrastructure.
-@freezed
-sealed class RealtimeMessage with _$RealtimeMessage {
-  /// Updated KPI tile values. The widget layer maps `(id, value, ...)`
-  /// onto the dashboard layout via the slot's `id`.
+/// Plain Dart 3 `sealed class` (was `freezed`; the codegen was removed).
+/// The discriminator-keyed [fromWire] is hand-rolled; factory redirects
+/// preserve `RealtimeMessage.kpiUpdate(...)` etc.
+sealed class RealtimeMessage {
+  const RealtimeMessage();
+
   const factory RealtimeMessage.kpiUpdate({
     required String id,
     required String value,
@@ -28,21 +18,13 @@ sealed class RealtimeMessage with _$RealtimeMessage {
     String? trendDelta,
   }) = RealtimeKpiUpdate;
 
-  /// Replacement series payload for a chart slot — the entire newest
-  /// snapshot (no incremental deltas yet; that's a later slice).
   const factory RealtimeMessage.chartUpdate({
     required String id,
     required List<RealtimeChartSeriesPayload> series,
   }) = RealtimeChartUpdate;
 
-  /// Heartbeat ack. The service swallows these — they only exist so
-  /// the connection can prove it's alive without producing user-visible
-  /// state churn.
   const factory RealtimeMessage.pong() = RealtimePong;
 
-  /// Anything we couldn't decode — surfaced (not silently dropped) so
-  /// the service can log / count it. Carries the raw payload for
-  /// post-mortem.
   const factory RealtimeMessage.unknown({
     required String raw,
     String? reason,
@@ -50,8 +32,7 @@ sealed class RealtimeMessage with _$RealtimeMessage {
 
   // ── JSON ────────────────────────────────────────────────────────
   /// Decode a server frame. Never throws — unrecognised / malformed
-  /// payloads come back as [RealtimeMessage.unknown] so the caller can
-  /// log without a crash loop on a bad server build.
+  /// payloads come back as [RealtimeMessage.unknown].
   static RealtimeMessage fromWire(String raw) {
     Object? decoded;
     try {
@@ -95,19 +76,102 @@ sealed class RealtimeMessage with _$RealtimeMessage {
   }
 }
 
-/// One series in a [RealtimeChartUpdate] payload — kept structural
-/// (parallel arrays for x / y) so 100-point updates stay compact on
-/// the wire. JSON (de)serialization is delegated to json_serializable
-/// via the standard freezed convention.
-@freezed
-class RealtimeChartSeriesPayload with _$RealtimeChartSeriesPayload {
-  const factory RealtimeChartSeriesPayload({
-    required String id,
-    required String label,
-    required List<double> x,
-    required List<double> y,
-  }) = _RealtimeChartSeriesPayload;
+class RealtimeKpiUpdate extends RealtimeMessage {
+  const RealtimeKpiUpdate({
+    required this.id,
+    required this.value,
+    required this.trend,
+    this.trendDelta,
+  });
+  final String id;
+  final String value;
+  final String trend;
+  final String? trendDelta;
+
+  @override
+  bool operator ==(Object other) =>
+      other is RealtimeKpiUpdate &&
+      other.id == id &&
+      other.value == value &&
+      other.trend == trend &&
+      other.trendDelta == trendDelta;
+  @override
+  int get hashCode => Object.hash(id, value, trend, trendDelta);
+}
+
+class RealtimeChartUpdate extends RealtimeMessage {
+  const RealtimeChartUpdate({required this.id, required this.series});
+  final String id;
+  final List<RealtimeChartSeriesPayload> series;
+
+  @override
+  bool operator ==(Object other) =>
+      other is RealtimeChartUpdate &&
+      other.id == id &&
+      const ListEquality<RealtimeChartSeriesPayload>()
+          .equals(other.series, series);
+  @override
+  int get hashCode => Object.hash(
+        id,
+        const ListEquality<RealtimeChartSeriesPayload>().hash(series),
+      );
+}
+
+class RealtimePong extends RealtimeMessage {
+  const RealtimePong();
+  @override
+  bool operator ==(Object other) => other is RealtimePong;
+  @override
+  int get hashCode => (RealtimePong).hashCode;
+}
+
+class RealtimeUnknown extends RealtimeMessage {
+  const RealtimeUnknown({required this.raw, this.reason});
+  final String raw;
+  final String? reason;
+  @override
+  bool operator ==(Object other) =>
+      other is RealtimeUnknown && other.raw == raw && other.reason == reason;
+  @override
+  int get hashCode => Object.hash(raw, reason);
+}
+
+/// One series in a [RealtimeChartUpdate] payload — parallel x / y arrays
+/// so large updates stay compact on the wire. Plain class with a
+/// hand-written `fromJson` (was freezed + json_serializable).
+class RealtimeChartSeriesPayload {
+  const RealtimeChartSeriesPayload({
+    required this.id,
+    required this.label,
+    required this.x,
+    required this.y,
+  });
 
   factory RealtimeChartSeriesPayload.fromJson(Map<String, dynamic> json) =>
-      _$RealtimeChartSeriesPayloadFromJson(json);
+      RealtimeChartSeriesPayload(
+        id: json['id'] as String,
+        label: json['label'] as String,
+        x: (json['x'] as List<dynamic>).map((e) => (e as num).toDouble()).toList(),
+        y: (json['y'] as List<dynamic>).map((e) => (e as num).toDouble()).toList(),
+      );
+
+  final String id;
+  final String label;
+  final List<double> x;
+  final List<double> y;
+
+  @override
+  bool operator ==(Object other) =>
+      other is RealtimeChartSeriesPayload &&
+      other.id == id &&
+      other.label == label &&
+      const ListEquality<double>().equals(other.x, x) &&
+      const ListEquality<double>().equals(other.y, y);
+  @override
+  int get hashCode => Object.hash(
+        id,
+        label,
+        const ListEquality<double>().hash(x),
+        const ListEquality<double>().hash(y),
+      );
 }

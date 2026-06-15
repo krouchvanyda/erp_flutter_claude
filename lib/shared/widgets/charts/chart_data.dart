@@ -1,42 +1,76 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
-
-part 'chart_data.freezed.dart';
+import 'package:collection/collection.dart';
 
 /// One data point in a [ChartSeries] (Slice 2.2.3).
 ///
-/// **Pure data**: no Flutter imports, no `Color`, no fl_chart types.
-/// The widget layer maps `ChartSeries` → fl_chart's `LineChartBarData` /
-/// `BarChartGroupData` at the boundary so feature blocs can construct
-/// chart data without depending on the chart library.
-@freezed
-class ChartPoint with _$ChartPoint {
-  const factory ChartPoint({
-    /// X-axis position. For time-series this is typically a Unix-epoch
-    /// millisecond or a day index; the widget layer formats the label.
-    required double x,
+/// **Pure data**: no Flutter imports, no fl_chart types. Plain immutable
+/// class (was `freezed`; the codegen was removed).
+class ChartPoint {
+  const ChartPoint({
+    required this.x,
+    required this.y,
+    this.label,
+  });
 
-    /// Y-axis value.
-    required double y,
+  /// X-axis position.
+  final double x;
 
-    /// Optional category / X-axis label override (e.g. "Q1", "Mon").
-    /// `null` falls back to the widget's default formatter.
-    String? label,
-  }) = _ChartPoint;
+  /// Y-axis value.
+  final double y;
+
+  /// Optional category / X-axis label override.
+  final String? label;
+
+  ChartPoint copyWith({double? x, double? y, String? label}) => ChartPoint(
+        x: x ?? this.x,
+        y: y ?? this.y,
+        label: label ?? this.label,
+      );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ChartPoint &&
+          other.x == x &&
+          other.y == y &&
+          other.label == label);
+
+  @override
+  int get hashCode => Object.hash(x, y, label);
 }
 
-/// One named series — a labelled set of points with metadata used by
-/// the widget layer to drive colour assignment, legend display, and
-/// emphasis ("primary" series might render thicker, etc.).
-@freezed
-class ChartSeries with _$ChartSeries {
-  const factory ChartSeries({
-    /// Stable id — used for keying widgets, not user-facing.
-    required String id,
+/// One named series — a labelled set of points with metadata.
+class ChartSeries {
+  const ChartSeries({
+    required this.id,
+    required this.label,
+    this.points = const <ChartPoint>[],
+  });
 
-    /// Translated display label (used in legends / tooltips).
-    required String label,
+  /// Stable id — used for keying widgets, not user-facing.
+  final String id;
 
-    /// Newest-last data points. Empty list = no series rendered.
-    @Default(<ChartPoint>[]) List<ChartPoint> points,
-  }) = _ChartSeries;
+  /// Translated display label (used in legends / tooltips).
+  final String label;
+
+  /// Newest-last data points.
+  final List<ChartPoint> points;
+
+  ChartSeries copyWith({String? id, String? label, List<ChartPoint>? points}) =>
+      ChartSeries(
+        id: id ?? this.id,
+        label: label ?? this.label,
+        points: points ?? this.points,
+      );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ChartSeries &&
+          other.id == id &&
+          other.label == label &&
+          const ListEquality<ChartPoint>().equals(other.points, points));
+
+  @override
+  int get hashCode =>
+      Object.hash(id, label, const ListEquality<ChartPoint>().hash(points));
 }

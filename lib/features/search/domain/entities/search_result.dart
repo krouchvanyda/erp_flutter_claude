@@ -1,45 +1,75 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:collection/collection.dart';
 
-part 'search_result.freezed.dart';
-
-/// One row returned by a [SearchProvider]'s response (Slice 2.1.3).
+/// One row returned by a `SearchProvider`'s response (Slice 2.1.3).
 ///
-/// Pure value type — no Flutter imports — so the entity is unit-testable
-/// in pure-Dart tests. Icons and result-rendering live in the widget
-/// layer (the UI looks `iconOf` up by [providerId]).
-///
-/// **Navigation**: the result carries no page reference. Consumers
-/// dispatch on `(providerId, id)`: for `providerId == 'modules'`, the
-/// UI looks up the matching [ModuleShortcut] in [ModuleShortcutCatalog]
-/// by `id` and calls its `builder()` via `ConfigRouter`.
-@freezed
-class SearchResult with _$SearchResult {
-  const factory SearchResult({
-    /// Stable identity within [providerId] — used for keying widgets,
-    /// deduping within a provider's own response, AND for the consumer
-    /// to look up the destination page (e.g. by matching against
-    /// [ModuleShortcutCatalog]).
-    required String id,
+/// Pure value type — no Flutter imports. Plain immutable class (was
+/// `freezed`; the codegen was removed).
+class SearchResult {
+  const SearchResult({
+    required this.id,
+    required this.title,
+    this.subtitle,
+    required this.providerId,
+  });
 
-    /// Primary line shown in the result tile.
-    required String title,
+  /// Stable identity within [providerId].
+  final String id;
 
-    /// Optional secondary line (record code, customer name, etc.).
+  /// Primary line shown in the result tile.
+  final String title;
+
+  /// Optional secondary line.
+  final String? subtitle;
+
+  /// Which provider produced this row.
+  final String providerId;
+
+  SearchResult copyWith({
+    String? id,
+    String? title,
     String? subtitle,
+    String? providerId,
+  }) =>
+      SearchResult(
+        id: id ?? this.id,
+        title: title ?? this.title,
+        subtitle: subtitle ?? this.subtitle,
+        providerId: providerId ?? this.providerId,
+      );
 
-    /// Which provider produced this row — drives grouping in the UI
-    /// AND the navigation dispatch.
-    required String providerId,
-  }) = _SearchResult;
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SearchResult &&
+          other.id == id &&
+          other.title == title &&
+          other.subtitle == subtitle &&
+          other.providerId == providerId);
+
+  @override
+  int get hashCode => Object.hash(id, title, subtitle, providerId);
 }
 
 /// Aggregated response from one provider: the provider id + its rows.
-/// `FederatedSearchUseCase` returns a list of these so the UI can
-/// render section headers per module.
-@freezed
-class SearchResultGroup with _$SearchResultGroup {
-  const factory SearchResultGroup({
-    required String providerId,
-    required List<SearchResult> results,
-  }) = _SearchResultGroup;
+class SearchResultGroup {
+  const SearchResultGroup({
+    required this.providerId,
+    required this.results,
+  });
+
+  final String providerId;
+  final List<SearchResult> results;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SearchResultGroup &&
+          other.providerId == providerId &&
+          const ListEquality<SearchResult>().equals(other.results, results));
+
+  @override
+  int get hashCode => Object.hash(
+        providerId,
+        const ListEquality<SearchResult>().hash(results),
+      );
 }

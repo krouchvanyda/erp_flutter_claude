@@ -5,19 +5,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'chat_transport.dart';
 
-/// Persistent demo settings for the chat module — current user identity
-/// and the WebSocket relay URL the [ChatTransport] connects to.
+/// Persistent settings for the chat module — current user identity and
+/// the backend API base URL the [ChatTransport] connects to.
 ///
-/// Backed by `shared_preferences` so the user's identity choice and
-/// relay URL survive app restarts. The defaults match a single-device
-/// demo (the seeded `user-demo` identity, no relay URL).
+/// Backed by `shared_preferences` so the user's identity and backend URL
+/// survive app restarts. Identity defaults to empty — `bootChatTransport`
+/// fills it from `/users/me` at app start.
 class ChatSettings {
   ChatSettings._();
   static final ChatSettings instance = ChatSettings._();
 
   static const _kUserId = 'chat.currentUserId';
   static const _kUserName = 'chat.currentUserName';
-  static const _kRelayUrl = 'chat.relayUrl';
   static const _kApiBaseUrl = 'chat.apiBaseUrl';
 
   // Default to empty — `bootChatTransport` calls `/users/me` at app
@@ -26,7 +25,6 @@ class ChatSettings {
   // the single source of truth for identity.
   String _userId = '';
   String _userName = '';
-  String _relayUrl = '';
   String _apiBaseUrl = '';
 
   final StreamController<ChatSettings> _changes =
@@ -34,17 +32,6 @@ class ChatSettings {
 
   String get userId => _userId;
   String get userName => _userName;
-
-  /// Empty string = transport stays offline. Examples:
-  ///   real phone, same Wi-Fi:  ws://192.168.1.42:7777
-  ///   Android emulator:        ws://10.0.2.2:7777
-  ///
-  /// **Deprecated path** — points at the LAN-local
-  /// `tools/chat_relay/bin/server.dart` used by the demo. The
-  /// real-backend transport (Prompt 1+ of
-  /// CHAT_MODULE_BACKEND_INTEGRATIONGUIDE.md) reads [apiBaseUrl]
-  /// instead. Kept here until Prompt 9 deletes the relay.
-  String get relayUrl => _relayUrl;
 
   /// REST + STOMP base URL for the real ERP backend. Set via the
   /// **Settings → API Config** screen or the chat ⋮ menu. Empty
@@ -73,7 +60,6 @@ class ChatSettings {
     final prefs = await SharedPreferences.getInstance();
     _userId = prefs.getString(_kUserId) ?? '';
     _userName = prefs.getString(_kUserName) ?? '';
-    _relayUrl = prefs.getString(_kRelayUrl) ?? '';
     _apiBaseUrl = prefs.getString(_kApiBaseUrl) ?? '';
     _emit();
   }
@@ -108,15 +94,6 @@ class ChatSettings {
         newName: userName,
       );
     }
-  }
-
-  Future<void> setRelayUrl(String url) async {
-    final trimmed = url.trim();
-    if (trimmed == _relayUrl) return;
-    _relayUrl = trimmed;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kRelayUrl, trimmed);
-    _emit();
   }
 
   void _emit() {
