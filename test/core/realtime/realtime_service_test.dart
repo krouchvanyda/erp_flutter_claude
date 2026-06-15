@@ -4,7 +4,7 @@ import 'package:erp_mobile/core/realtime/realtime_channel.dart';
 import 'package:erp_mobile/core/realtime/realtime_connection_state.dart';
 import 'package:erp_mobile/core/realtime/realtime_message.dart';
 import 'package:erp_mobile/core/realtime/realtime_service.dart';
-import 'package:erp_mobile/core/sync/backoff_strategy.dart';
+import 'package:erp_mobile/core/utils/backoff_strategy.dart';
 import 'package:erp_mobile/core/utils/logger/app_logger.dart';
 import 'package:erp_mobile/core/utils/logger/log_level.dart';
 import 'package:test/test.dart';

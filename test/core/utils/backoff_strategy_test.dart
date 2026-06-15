@@ -1,4 +1,4 @@
-import 'package:erp_mobile/core/sync/backoff_strategy.dart';
+import 'package:erp_mobile/core/utils/backoff_strategy.dart';
 import 'package:test/test.dart';
 
 void main() {

@@ -1,12 +1,8 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:injectable/injectable.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import '../database/app_database.dart';
-import '../database/app_metadata_dao.dart';
-import '../database/cache_freshness_dao.dart';
-import '../database/connection.dart';
-import '../database/sync_queue_dao.dart';
 import '../network/auth_interceptor.dart';
 import '../network/connectivity_checker.dart';
 import '../network/connectivity_plus_checker.dart';
@@ -25,11 +21,6 @@ import '../push/push_token_storage.dart';
 import '../realtime/realtime_service.dart';
 import '../realtime/web_socket_realtime_channel.dart';
 import '../router/auth_session.dart';
-import '../sync/conflict_policy.dart';
-import '../sync/conflict_policy_registry.dart';
-import '../sync/sync_bloc.dart';
-import '../sync/sync_engine.dart';
-import '../sync/sync_op_executor.dart';
 import '../analytics/analytics_service.dart';
 import '../analytics/noop_analytics_service.dart';
 import '../error/crash_reporter.dart';
@@ -61,8 +52,8 @@ import 'app_env.dart';
 /// secure storage, etc.).
 ///
 /// Each getter / annotated method becomes a registration in the generated
-/// `injection.config.dart`. Add new providers here as later slices come
-/// online (0.3.1 will add the drift `AppDatabase`, etc.).
+/// `injection.config.dart`. Local persistence is backed by
+/// `SharedPreferences` (the SQLite/drift database was removed).
 @module
 abstract class AppModule {
   // ── Configuration ────────────────────────────────────────────
@@ -95,65 +86,22 @@ abstract class AppModule {
   @lazySingleton
   LocaleService get localeService => InMemoryLocaleService();
 
-  // ── Local database ───────────────────────────────────────────
+  // ── Local persistence (shared_preferences) ──────────────────
+  // The drift/SQLite database was removed; structural data that used to
+  // live in local tables (cached user, RBAC permissions, biometric flag,
+  // notification inbox) now persists in SharedPreferences. The instance is
+  // registered manually in `main()` before `configureDependencies()` so
+  // it's available synchronously here.
   @lazySingleton
-  AppDatabase appDatabase() => AppDatabase(openAppDatabase());
+  CachedUserDao cachedUserDao(SharedPreferences prefs) => CachedUserDao(prefs);
 
   @lazySingleton
-  AppMetadataDao appMetadataDao(AppDatabase db) => db.appMetadataDao;
+  BiometricSettingsDao biometricSettingsDao(SharedPreferences prefs) =>
+      BiometricSettingsDao(prefs);
 
   @lazySingleton
-  CacheFreshnessDao cacheFreshnessDao(AppDatabase db) => db.cacheFreshnessDao;
-
-  @lazySingleton
-  SyncQueueDao syncQueueDao(AppDatabase db) => db.syncQueueDao;
-
-  @lazySingleton
-  CachedUserDao cachedUserDao(AppDatabase db) => db.cachedUserDao;
-
-  @lazySingleton
-  BiometricSettingsDao biometricSettingsDao(AppDatabase db) =>
-      db.biometricSettingsDao;
-
-  @lazySingleton
-  NotificationsDao notificationsDao(AppDatabase db) => db.notificationsDao;
-
-  // ── Sync conflict resolution ────────────────────────────────
-  /// The framework-wide default. Feature modules can swap this out by
-  /// providing a richer [ConflictPolicyRegistry] (with per-entity overrides)
-  /// once their sync flow needs more than server-wins.
-  @lazySingleton
-  ConflictPolicy get defaultConflictPolicy => const ServerWinsPolicy();
-
-  @lazySingleton
-  ConflictPolicyRegistry conflictPolicyRegistry(ConflictPolicy defaultPolicy) =>
-      ConflictPolicyRegistry(defaultPolicy: defaultPolicy);
-
-  // ── Sync engine ─────────────────────────────────────────────
-  @lazySingleton
-  SyncOpExecutor syncOpExecutor(Dio dio) => DioSyncOpExecutor(dio);
-
-  @lazySingleton
-  SyncEngine syncEngine(
-    SyncQueueDao queue,
-    SyncOpExecutor executor,
-    ConnectivityChecker connectivity,
-  ) =>
-      SyncEngine(
-        queue: queue,
-        executor: executor,
-        connectivity: connectivity,
-      );
-
-  /// UI-facing sync state holder. The bloc takes plain streams + a thunk so
-  /// it stays Flutter-free; the wiring here narrows the engine and queue
-  /// down to just the surfaces it actually uses.
-  @lazySingleton
-  SyncBloc syncBloc(SyncEngine engine, SyncQueueDao queue) => SyncBloc(
-        triggerSync: engine.triggerSync,
-        engineEvents: engine.events,
-        pendingCounts: queue.watchPendingCount(),
-      );
+  NotificationsDao notificationsDao(SharedPreferences prefs) =>
+      NotificationsDao(prefs);
 
   // ── Connectivity ─────────────────────────────────────────────
   @lazySingleton

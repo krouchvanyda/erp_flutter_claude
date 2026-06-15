@@ -1,63 +1,55 @@
-import 'package:drift/drift.dart';
+import 'dart:async';
 
-import '../../../../core/database/app_database.dart';
-import 'tables/biometric_settings.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-part 'biometric_settings_dao.g.dart';
-
-/// Drift-backed reader/writer for the per-user `biometric_on` preference.
+/// `SharedPreferences`-backed reader/writer for the per-user `biometric_on`
+/// preference (the local SQLite database was removed).
 ///
-/// This is the **only** auth-feature surface that touches the
-/// `biometric_settings` table. The route guard (Slice 9.3.3-ish — App
-/// PIN lock / biometric re-auth on resume) and the Settings page
-/// (Module 9 Phase 9.1) both go through this DAO; nothing else needs
-/// to know.
-///
-/// **Storage rule reminder**: the bool flag lives here in drift; the
-/// crypto material stays in the OS-managed keychain via `local_auth`.
-/// We never see or store actual keys.
-@DriftAccessor(tables: [BiometricSettings])
-class BiometricSettingsDao extends DatabaseAccessor<AppDatabase>
-    with _$BiometricSettingsDaoMixin {
-  BiometricSettingsDao(super.db);
+/// Public API is unchanged. The bool flag lives here; the crypto material
+/// stays in the OS keychain via `local_auth` — we never see actual keys.
+class BiometricSettingsDao {
+  BiometricSettingsDao(this._prefs);
 
-  /// Returns `true` only when the user has explicitly opted in. Missing
-  /// row (never enrolled) is treated as `false`.
-  Future<bool> isEnabledFor(String userId) async {
-    final row = await (select(biometricSettings)
-          ..where((r) => r.userId.equals(userId)))
-        .getSingleOrNull();
-    return row?.enabled ?? false;
-  }
+  final SharedPreferences _prefs;
+  final StreamController<void> _changes = StreamController<void>.broadcast();
+
+  static const String _kEnabledPrefix = 'auth.biometric_on.';
+  static const String _kEnrolledPrefix = 'auth.biometric_enrolled_at.';
+
+  /// `true` only when the user explicitly opted in. Missing = `false`.
+  Future<bool> isEnabledFor(String userId) async =>
+      _prefs.getBool('$_kEnabledPrefix$userId') ?? false;
 
   /// Reactive variant for the Settings switch.
-  Stream<bool> watchEnabledFor(String userId) {
-    return (select(biometricSettings)
-          ..where((r) => r.userId.equals(userId)))
-        .watchSingleOrNull()
-        .map((r) => r?.enabled ?? false);
+  Stream<bool> watchEnabledFor(String userId) async* {
+    yield await isEnabledFor(userId);
+    yield* _changes.stream.asyncMap((_) => isEnabledFor(userId));
   }
 
-  /// Toggles the preference, capturing the moment of opt-in for audit
-  /// purposes. Setting `enabled: false` clears `enrolledAt`.
+  /// Toggles the preference, capturing the opt-in moment for audit.
   Future<void> setEnabledFor(
     String userId, {
     required bool enabled,
     DateTime? enrolledAt,
   }) async {
-    await into(biometricSettings).insert(
-      BiometricSettingsCompanion.insert(
-        userId: userId,
-        enabled: Value(enabled),
-        enrolledAt: Value(enabled ? (enrolledAt ?? DateTime.now()) : null),
-      ),
-      mode: InsertMode.insertOrReplace,
-    );
+    await _prefs.setBool('$_kEnabledPrefix$userId', enabled);
+    if (enabled) {
+      await _prefs.setString(
+        '$_kEnrolledPrefix$userId',
+        (enrolledAt ?? DateTime.now()).toIso8601String(),
+      );
+    } else {
+      await _prefs.remove('$_kEnrolledPrefix$userId');
+    }
+    if (!_changes.isClosed) _changes.add(null);
   }
 
-  /// Removes the preference row for [userId]. The FK CASCADE in
-  /// `cached_user` already covers full sign-out; this method exists
-  /// for explicit "forget my biometric pref" flows.
-  Future<int> deleteFor(String userId) =>
-      (delete(biometricSettings)..where((r) => r.userId.equals(userId))).go();
+  /// Removes the preference for [userId].
+  Future<int> deleteFor(String userId) async {
+    final existed = _prefs.containsKey('$_kEnabledPrefix$userId');
+    await _prefs.remove('$_kEnabledPrefix$userId');
+    await _prefs.remove('$_kEnrolledPrefix$userId');
+    if (!_changes.isClosed) _changes.add(null);
+    return existed ? 1 : 0;
+  }
 }

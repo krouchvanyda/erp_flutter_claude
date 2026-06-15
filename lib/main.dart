@@ -24,7 +24,7 @@ import 'features/chat/data/stream_call_engine.dart';
 import 'features/chat/data/users_cache.dart';
 import 'features/settings/data/datasources/users_remote_data_source.dart';
 import 'package:get_it/get_it.dart';
-import 'core/sync/sync_engine.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'core/utils/logger/console_logger.dart';
 import 'features/auth/auth_di.dart';
 import 'features/chat/chat_di.dart';
@@ -89,6 +89,13 @@ Future <void> main() async {
           statusBarBrightness: Brightness.light,
         ),
       );
+      // Local persistence is now SharedPreferences (the drift/SQLite DB was
+      // removed). Register it synchronously BEFORE configureDependencies so
+      // the @module DAO bindings (cached user, biometric, notifications) can
+      // resolve it.
+      getIt.registerSingleton<SharedPreferences>(
+        await SharedPreferences.getInstance(),
+      );
       configureDependencies(environment: Environment.prod);
       // Hand-rolled DI for the device-registration stack. Must run
       // BEFORE registerAuthModule because AuthRepository consumes
@@ -138,9 +145,6 @@ Future <void> main() async {
       // it catches accept events from a cold-start triggered by the
       // tap itself.
       CallkitEventHandler.instance.attach();
-      // Start listening to connectivity transitions so the queue drains
-      // automatically when the device comes back online.
-      getIt<SyncEngine>().start();
       runApp(const ErpMobileApp());
     },
   );

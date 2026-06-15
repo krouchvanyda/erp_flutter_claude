@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import '../sync/backoff_strategy.dart';
+import '../utils/backoff_strategy.dart';
 import '../utils/logger/app_logger.dart';
 import 'realtime_channel.dart';
 import 'realtime_connection_state.dart';
