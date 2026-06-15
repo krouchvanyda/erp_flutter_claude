@@ -37,25 +37,14 @@ abstract final class RoutePaths {
   // a `StatefulShellRoute` branch — the bottom nav / rail / drawer
   // switches between them while preserving each branch's own
   // navigation stack.
-  static const modules = '/modules';
-  static const modulesName = 'modules';
 
   // Chat (Module 10) — root of the middle shell branch (replaced the
-  // Modules tile grid on the bottom nav). `/modules` stays reachable as
-  // a sibling route in the same branch for dashboard shortcuts.
+  // deleted Modules tile grid on the bottom nav).
   static const chat = '/chat';
   static const chatName = 'chat';
 
   static const settings = '/settings';
   static const settingsName = 'settings';
-
-  // Generic "coming soon" landing for Slice 2.1.2 module shortcut tiles
-  // whose real feature module hasn't shipped yet. The `:label` param is
-  // the human-readable module name (already localised by the catalog),
-  // so the page itself has no per-module copy.
-  static const comingSoon = '/coming-soon/:label';
-  static const comingSoonName = 'comingSoon';
-  static const comingSoonLabelParam = 'label';
 
   // Notification inbox (Slice 2.3.3) — full-screen list reached from
   // the AppBar bell badge. Lives in the Home shell branch so the

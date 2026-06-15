@@ -8,9 +8,7 @@ import '../../features/auth/views/login_page.dart';
 import '../../features/auth/views/otp_entry_page.dart';
 import '../../features/auth/views/splash_page.dart';
 import '../../features/dashboard/views/admin_demo_page.dart';
-import '../../features/dashboard/views/coming_soon_page.dart';
 import '../../features/dashboard/views/dashboard_page.dart';
-import '../../features/dashboard/views/modules_page.dart';
 import '../../features/chat/views/chat_inbox_page.dart';
 import '../../features/auth/repositories/demo_sign_in.dart';
 import '../../features/auth/repositories/auth_repository.dart';
@@ -187,20 +185,6 @@ class AppRouter {
                     path: RoutePaths.chat,
                     name: RoutePaths.chatName,
                     builder: (_, __) => const ChatInboxPage(),
-                  ),
-                  GoRoute(
-                    path: RoutePaths.modules,
-                    name: RoutePaths.modulesName,
-                    builder: (_, __) => const ModulesPage(),
-                  ),
-                  GoRoute(
-                    path: RoutePaths.comingSoon,
-                    name: RoutePaths.comingSoonName,
-                    builder: (_, state) => ComingSoonPage(
-                      moduleLabel: state.pathParameters[
-                              RoutePaths.comingSoonLabelParam] ??
-                          '',
-                    ),
                   ),
                 ],
               ),

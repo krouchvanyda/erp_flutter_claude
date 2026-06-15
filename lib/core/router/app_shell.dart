@@ -68,7 +68,6 @@ class AppShell extends StatelessWidget {
     final isRootPage = [
       RoutePaths.dashboard,
       RoutePaths.chat,
-      RoutePaths.modules,
       RoutePaths.settings,
     ].contains(location);
     
