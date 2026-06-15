@@ -28,12 +28,6 @@ import 'core/sync/sync_engine.dart';
 import 'core/utils/logger/console_logger.dart';
 import 'features/auth/auth_di.dart';
 import 'features/chat/chat_di.dart';
-import 'features/finance/finance_di.dart';
-import 'features/hr/hr_di.dart';
-import 'features/inventory/inventory_di.dart';
-import 'features/procurement/procurement_di.dart';
-import 'features/projects/projects_di.dart';
-import 'features/sales/sales_di.dart';
 import 'features/settings/settings_di.dart';
 import 'package:firebase_core/firebase_core.dart';
 
@@ -102,12 +96,6 @@ Future <void> main() async {
       // codegen-skip rationale).
       registerPushModule(getIt);
       registerAuthModule(getIt);
-      registerFinanceModule(getIt);
-      registerProcurementModule(getIt);
-      registerInventoryModule(getIt);
-      registerSalesModule(getIt);
-      registerHrModule(getIt);
-      registerProjectsModule(getIt);
       registerSettingsModule(getIt);
       registerChatModule(getIt);
 

@@ -5,15 +5,6 @@ import '../../features/auth/data/datasources/cached_user_dao.dart';
 import '../../features/auth/data/datasources/tables/biometric_settings.dart';
 import '../../features/auth/data/datasources/tables/cached_user.dart';
 import '../../features/auth/data/datasources/tables/user_permissions.dart';
-import '../../features/finance/data/datasources/accounts_dao.dart';
-import '../../features/finance/data/datasources/invoices_dao.dart';
-import '../../features/finance/data/datasources/tables/cached_accounts.dart';
-import '../../features/finance/data/datasources/tables/cached_invoice_lines.dart';
-import '../../features/finance/data/datasources/tables/cached_invoices.dart';
-import '../../features/finance/data/datasources/tables/cached_transactions.dart';
-import '../../features/inventory/data/datasources/items_dao.dart';
-import '../../features/inventory/data/datasources/tables/cached_inventory_items.dart';
-import '../../features/inventory/data/datasources/tables/cached_stock_movements.dart';
 import '../../features/notifications/data/datasources/notifications_dao.dart';
 import '../../features/notifications/data/datasources/tables/cached_notifications.dart';
 import '../sync/sync_op_status.dart';
@@ -53,12 +44,6 @@ part 'app_database.g.dart';
     UserPermissions,
     BiometricSettings,
     CachedNotifications,
-    CachedAccounts,
-    CachedTransactions,
-    CachedInvoices,
-    CachedInvoiceLines,
-    CachedInventoryItems,
-    CachedStockMovements,
   ],
   daos: [
     AppMetadataDao,
@@ -67,9 +52,6 @@ part 'app_database.g.dart';
     CachedUserDao,
     BiometricSettingsDao,
     NotificationsDao,
-    AccountsDao,
-    InvoicesDao,
-    ItemsDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -112,20 +94,14 @@ class AppDatabase extends _$AppDatabase {
         // Slice 2.3.1 — notification inbox cache.
         await m.createTable(cachedNotifications);
       case 7:
-        // Slice 3.1.3 — finance offline cache.
-        await m.createTable(cachedAccounts);
-        await m.createTable(cachedTransactions);
       case 8:
-        // Slice 3.2.4 — invoice header + line items cache with audit
-        // columns (status, approvedBy, rejectedBy, rejectedReason,
-        // actionedAt). Lines cascade-delete with the header.
-        await m.createTable(cachedInvoices);
-        await m.createTable(cachedInvoiceLines);
       case 9:
-        // Slice 5.3.1 — inventory item master + stock movement
-        // ledger. Movements cascade-delete with the parent item.
-        await m.createTable(cachedInventoryItems);
-        await m.createTable(cachedStockMovements);
+        // Schema bumps 7–9 originally created the finance + inventory
+        // caches (Slices 3.1.3 / 3.2.4 / 5.3.1). Those modules were
+        // removed, so these are now no-ops: fresh installs never create
+        // the tables, and existing installs upgrade past these versions
+        // without recreating them (any leftover tables are harmless).
+        break;
       default:
         throw StateError(
           'No migration registered to reach schema version $targetVersion. '

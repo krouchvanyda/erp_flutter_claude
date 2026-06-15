@@ -28,9 +28,6 @@ import '../../features/auth/data/datasources/secret_store.dart' as _i145;
 import '../../features/auth/data/demo_sign_in.dart' as _i391;
 import '../../features/auth/data/repositories/permissions_repository.dart'
     as _i605;
-import '../../features/finance/data/datasources/accounts_dao.dart' as _i1029;
-import '../../features/finance/data/datasources/invoices_dao.dart' as _i1019;
-import '../../features/inventory/data/datasources/items_dao.dart' as _i341;
 import '../../features/notifications/data/datasources/notifications_dao.dart'
     as _i617;
 import '../../features/notifications/domain/repositories/notifications_repository.dart'
@@ -50,6 +47,9 @@ import '../network/error_interceptor.dart' as _i1004;
 import '../network/session_signal.dart' as _i940;
 import '../network/token_refresher.dart' as _i1058;
 import '../network/token_storage.dart' as _i964;
+import '../push/device_id_storage.dart' as _i1005;
+import '../push/device_registrar.dart' as _i374;
+import '../push/devices_remote_data_source.dart' as _i875;
 import '../push/push_message_router.dart' as _i170;
 import '../push/push_notification_service.dart' as _i992;
 import '../push/push_token_storage.dart' as _i599;
@@ -106,15 +106,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i617.NotificationsDao>(
       () => appModule.notificationsDao(gh<_i982.AppDatabase>()),
     );
-    gh.lazySingleton<_i1019.InvoicesDao>(
-      () => appModule.invoicesDao(gh<_i982.AppDatabase>()),
-    );
-    gh.lazySingleton<_i341.ItemsDao>(
-      () => appModule.itemsDao(gh<_i982.AppDatabase>()),
-    );
-    gh.lazySingleton<_i1029.AccountsDao>(
-      () => appModule.accountsDao(gh<_i982.AppDatabase>()),
-    );
     gh.lazySingleton<_i778.AuthSession>(() => _i778.StubAuthSession());
     gh.lazySingleton<_i391.DemoSignInService>(
       () => _i391.DemoSignInService(gh<_i1072.CachedUserDao>()),
@@ -151,6 +142,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i599.PushTokenStorage>(
       () => appModule.pushTokenStorage(gh<_i145.SecretStore>()),
+    );
+    gh.lazySingleton<_i1005.DeviceIdStorage>(
+      () => appModule.deviceIdStorage(gh<_i145.SecretStore>()),
     );
     gh.lazySingleton<_i563.NotificationsRepository>(
       () => appModule.notificationsRepository(gh<_i617.NotificationsDao>()),
@@ -201,11 +195,23 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i687.SyncOpExecutor>(
       () => appModule.syncOpExecutor(gh<_i361.Dio>()),
     );
+    gh.lazySingleton<_i875.DevicesRemoteDataSource>(
+      () => appModule.devicesRemoteDataSource(gh<_i361.Dio>()),
+    );
     gh.lazySingleton<_i846.SyncEngine>(
       () => appModule.syncEngine(
         gh<_i733.SyncQueueDao>(),
         gh<_i687.SyncOpExecutor>(),
         gh<_i402.ConnectivityChecker>(),
+      ),
+    );
+    gh.lazySingleton<_i374.DeviceRegistrar>(
+      () => appModule.deviceRegistrar(
+        gh<_i875.DevicesRemoteDataSource>(),
+        gh<_i992.PushNotificationService>(),
+        gh<_i599.PushTokenStorage>(),
+        gh<_i1005.DeviceIdStorage>(),
+        gh<_i712.AppLogger>(),
       ),
     );
     gh.lazySingleton<_i454.SyncBloc>(

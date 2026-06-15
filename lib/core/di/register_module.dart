@@ -50,9 +50,6 @@ import '../../features/auth/data/datasources/oauth_flow_session.dart';
 import '../../features/auth/data/datasources/oauth_token_data_source.dart';
 import '../../features/auth/data/datasources/pkce_generator.dart';
 import '../../features/auth/data/datasources/secure_token_storage.dart';
-import '../../features/finance/data/datasources/accounts_dao.dart';
-import '../../features/finance/data/datasources/invoices_dao.dart';
-import '../../features/inventory/data/datasources/items_dao.dart';
 import '../../features/notifications/data/datasources/notifications_dao.dart';
 import '../../features/notifications/data/repositories/notifications_repository_impl.dart';
 import '../../features/notifications/domain/repositories/notifications_repository.dart';
@@ -120,12 +117,6 @@ abstract class AppModule {
 
   @lazySingleton
   NotificationsDao notificationsDao(AppDatabase db) => db.notificationsDao;
-
-  @lazySingleton
-  InvoicesDao invoicesDao(AppDatabase db) => db.invoicesDao;
-
-  @lazySingleton
-  ItemsDao itemsDao(AppDatabase db) => db.itemsDao;
 
   // ── Sync conflict resolution ────────────────────────────────
   /// The framework-wide default. Feature modules can swap this out by
@@ -243,13 +234,6 @@ abstract class AppModule {
   /// tests can fake it without dragging Flutter in.
   @lazySingleton
   BiometricService get biometricService => LocalAuthBiometricService();
-
-  // ── Finance DAOs (Slice 3.1.3 / 3.2.4) ───────────────────────
-  /// Drift DAOs for the offline finance cache. The higher-level repo +
-  /// bloc bindings live in `features/finance/finance_di.dart` so the
-  /// module stays self-contained (same pattern as Modules 1–2 and 4–9).
-  @lazySingleton
-  AccountsDao accountsDao(AppDatabase db) => db.accountsDao;
 
   // ── Notifications (Slice 2.3.1) ──────────────────────────────
   @lazySingleton
