@@ -1,7 +1,7 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:erp_mobile/shared/widgets/app_background_gradient.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:erp_mobile/core/di/service_locator.dart';
 
 import '../../../core/error/failure.dart';
 import '../../../core/theme/app_font_size.dart';
@@ -19,7 +19,7 @@ class SessionsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final repo = GetIt.I<DeviceSessionsRepository>();
+    final repo = context.read<DeviceSessionsRepository>();
     final l10n = AppLocalizations.of(context);
 
     return Scaffold(
@@ -227,7 +227,7 @@ class _SessionCard extends StatelessWidget {
     final messenger = ScaffoldMessenger.of(context);
     final l10n = AppLocalizations.of(context);
     try {
-      await GetIt.I<DeviceSessionsRepository>().revokeGuarded(session);
+      await context.read<DeviceSessionsRepository>().revokeGuarded(session);
       messenger.showSnackBar(
         SnackBar(
           content: Text(l10n.sessionsRevokedSnack(session.deviceLabel)),

@@ -1,7 +1,7 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:erp_mobile/shared/widgets/app_background_gradient.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:erp_mobile/core/di/service_locator.dart';
 
 import '../../../core/error/failure.dart';
 import '../../../core/theme/app_font_size.dart';
@@ -27,7 +27,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
 
   @override
   Widget build(BuildContext context) {
-    final usersRepo = GetIt.I<ManagedUsersRepository>();
+    final usersRepo = context.read<ManagedUsersRepository>();
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
 
@@ -163,7 +163,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
     final nameCtrl = TextEditingController();
     Set<String> selectedRoles = {};
     String? errorMsg;
-    final rolesRepo = GetIt.I<RolesRepository>();
+    final rolesRepo = context.read<RolesRepository>();
     final allRoles = await rolesRepo.getAll();
     if (!mounted) return;
     final theme = Theme.of(context);
@@ -283,7 +283,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
                 child: FilledButton(
                   onPressed: () async {
                     try {
-                      await GetIt.I<ManagedUsersRepository>().invite(
+                      await context.read<ManagedUsersRepository>().invite(
                         email: emailCtrl.text,
                         name: nameCtrl.text,
                         roleIds: selectedRoles.toList(),
@@ -461,7 +461,7 @@ class _UserRow extends StatelessWidget {
   Future<void> _runAction(BuildContext context, String action) async {
     final messenger = ScaffoldMessenger.of(context);
     final l10n = AppLocalizations.of(context);
-    final repo = GetIt.I<ManagedUsersRepository>();
+    final repo = context.read<ManagedUsersRepository>();
     try {
       final next = await repo.changeStatus(
         user: user,

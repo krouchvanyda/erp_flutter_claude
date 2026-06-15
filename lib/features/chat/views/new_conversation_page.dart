@@ -1,9 +1,9 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:erp_mobile/core/di/service_locator.dart';
 
 import '../../../core/router/config_router.dart';
 import '../../../core/theme/app_font_size.dart';
@@ -63,8 +63,8 @@ class _NewConversationPageState extends State<NewConversationPage> {
   }
 
   Future<void> _loadDirectory() async {
-    final users = GetIt.I<UsersRemoteDataSource>();
-    final settings = GetIt.I<ChatSettings>();
+    final users = context.read<UsersRemoteDataSource>();
+    final settings = context.read<ChatSettings>();
     // Resolve the real backend user id BEFORE filtering — `ChatSettings`
     // boots with the demo-seed default (e.g. "u-001") so a bare
     // `settings.userId` check would let the signed-in user show up in
@@ -236,9 +236,9 @@ class _NewConversationPageState extends State<NewConversationPage> {
         memberIds.add(n);
       }
 
-      final remote = GetIt.I<ChatsRemoteDataSource>();
-      final repo = GetIt.I<ConversationsRepository>();
-      final settings = GetIt.I<ChatSettings>();
+      final remote = context.read<ChatsRemoteDataSource>();
+      final repo = context.read<ConversationsRepository>();
+      final settings = context.read<ChatSettings>();
 
       // POST /chats/conversations — backend validates membership,
       // assigns a real numeric id, and (typically) publishes

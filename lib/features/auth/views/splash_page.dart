@@ -1,8 +1,8 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:erp_mobile/core/di/service_locator.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/network/token_storage.dart';
@@ -44,7 +44,7 @@ class _SplashPageState extends State<SplashPage> {
   /// don't gate the redirect on expiry here.
   Future<void> _decide() async {
     if (!mounted) return;
-    final tokens = await GetIt.I<TokenStorage>().read();
+    final tokens = await context.read<TokenStorage>().read();
     if (!mounted) return;
     final hasTokens = tokens != null && tokens.accessToken.isNotEmpty;
     // ignore: avoid_print
@@ -56,7 +56,7 @@ class _SplashPageState extends State<SplashPage> {
       // don't tell the router the user is signed in).
       // ignore: avoid_print
       print('🎬 SPLASH: calling markAuthenticated()');
-      GetIt.I<AuthSession>().markAuthenticated();
+      context.read<AuthSession>().markAuthenticated();
       context.goNamed(RoutePaths.dashboardName);
     } else {
       // ignore: avoid_print

@@ -1,8 +1,8 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:erp_mobile/core/di/service_locator.dart';
 
 import '../../../core/error/failure.dart';
 import '../../../core/router/config_router.dart';
@@ -49,7 +49,7 @@ class _LoginPageState extends State<LoginPage> {
     final l10n = AppLocalizations.of(context);
 
     setState(() => _submitting = true);
-    final result = await GetIt.I<AuthRepository>().login(
+    final result = await context.read<AuthRepository>().login(
       email: _emailController.text.trim(),
       password: _passwordController.text,
     );

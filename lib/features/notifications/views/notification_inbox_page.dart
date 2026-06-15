@@ -3,13 +3,13 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/di/injection.dart';
 import '../../../core/theme/app_font_size.dart';
 import '../../../core/theme/app_label.dart';
 import '../../../core/widgets/dynamic_app_bar.dart';
 import '../../../core/widgets/dynamic_status_bar.dart';
 import '../../../l10n/app_localizations.dart';
 import '../models/notification.dart';
+import '../repositories/notifications_repository.dart';
 import '../bloc/notification_inbox_bloc.dart';
 import '../bloc/notification_inbox_event.dart';
 import '../bloc/notification_inbox_state.dart';
@@ -21,8 +21,9 @@ class NotificationInboxPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider<NotificationInboxBloc>(
-      create: (_) => getIt<NotificationInboxBloc>()
-        ..add(const NotificationInboxEvent.started()),
+      create: (context) => NotificationInboxBloc(
+        repository: context.read<NotificationsRepository>(),
+      )..add(const NotificationInboxEvent.started()),
       child: const _InboxView(),
     );
   }

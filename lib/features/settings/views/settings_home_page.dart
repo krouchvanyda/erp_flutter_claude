@@ -1,7 +1,7 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:erp_mobile/shared/widgets/app_background_gradient.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:erp_mobile/core/di/service_locator.dart';
 
 import '../../../core/router/config_router.dart';
 import '../../../core/security/app_permissions.dart';
@@ -245,7 +245,7 @@ class _SettingsHomePageState extends State<SettingsHomePage> {
                 // user (populated by AuthRepository.login) — no
                 // extra network call on every Settings open.
                 StreamBuilder<User?>(
-                  stream: GetIt.I<CachedUserDao>().watchCurrentUser(),
+                  stream: context.read<CachedUserDao>().watchCurrentUser(),
                   builder: (context, snap) {
                     final user = snap.data;
                     // TEMP DEBUG — remove once the gate is confirmed

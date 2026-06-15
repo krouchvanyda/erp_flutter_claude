@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../core/di/injection.dart';
 import '../../../core/router/config_router.dart';
 import '../../../core/router/permissions_snapshot.dart';
 import '../../../core/theme/app_font_size.dart';
@@ -48,7 +47,7 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final permissions = getIt<PermissionsSnapshot>();
+    final permissions = context.read<PermissionsSnapshot>();
     final theme = Theme.of(context);
 
     return BlocProvider<GlobalSearchBloc>(

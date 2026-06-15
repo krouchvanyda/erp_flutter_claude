@@ -5,7 +5,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/di/injection.dart';
 import '../../../core/router/auth_session.dart';
 import '../../../core/router/route_paths.dart';
 import '../../../core/theme/app_font_size.dart';
@@ -26,7 +25,8 @@ class OtpEntryPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider<OtpBloc>(
-      create: (_) => getIt<OtpBloc>(),
+      create: (context) =>
+          OtpBloc(otpRepository: context.read<OtpRepository>()),
       child: const _OtpEntryView(),
     );
   }
@@ -44,9 +44,11 @@ class _OtpEntryView extends StatelessWidget {
       listenWhen: (prev, next) =>
           prev.hasSucceeded == false && next.hasSucceeded,
       listener: (context, state) async {
+        // Capture deps before the async gap (no getIt — read from the tree).
+        final demoSignIn = context.read<DemoSignInService>();
+        final session = context.read<AuthSession>();
         // Perform demo sign-in simulation to trigger global auth state
-        await getIt<DemoSignInService>().seed();
-        final session = getIt<AuthSession>();
+        await demoSignIn.seed();
         if (session is StubAuthSession) {
           session.simulateSignIn();
         }

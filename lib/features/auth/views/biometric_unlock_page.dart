@@ -2,9 +2,9 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/di/injection.dart';
 import '../../../core/router/auth_session.dart';
 import '../../../core/router/route_paths.dart';
 import '../../../core/theme/app_font_size.dart';
@@ -25,14 +25,17 @@ class _BiometricUnlockPageState extends State<BiometricUnlockPage> {
 
   void _simulateAuth() async {
     setState(() => _isAuthenticating = true);
-    
+
+    // Capture deps before the async gap (no getIt — read from the tree).
+    final demoSignIn = context.read<DemoSignInService>();
+    final session = context.read<AuthSession>();
+
     // Simulate a delay for biometric check
     await Future.delayed(const Duration(milliseconds: 1500));
-    
+
     if (mounted) {
       // Perform demo sign-in simulation to trigger global auth state
-      await getIt<DemoSignInService>().seed();
-      final session = getIt<AuthSession>();
+      await demoSignIn.seed();
       if (session is StubAuthSession) {
         session.simulateSignIn();
       }

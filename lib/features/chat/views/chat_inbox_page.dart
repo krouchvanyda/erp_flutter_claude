@@ -1,3 +1,4 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:async';
 
 import 'package:dio/dio.dart';
@@ -86,7 +87,7 @@ class _ChatInboxPageState extends State<ChatInboxPage>
 
   @override
   Widget build(BuildContext context) {
-    final repo = GetIt.I<ConversationsRepository>();
+    final repo = context.read<ConversationsRepository>();
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -331,7 +332,7 @@ class _Tile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final repo = GetIt.I<ConversationsRepository>();
+    final repo = context.read<ConversationsRepository>();
     final hasUnread = conversation.unreadCount > 0;
     return Dismissible(
       key: ValueKey(conversation.id),
@@ -452,7 +453,7 @@ class _Tile extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(AppRadii.lg),
           onTap: () async {
-            await GetIt.I<ConversationsRepository>().markRead(conversation.id);
+            await context.read<ConversationsRepository>().markRead(conversation.id);
             if (!context.mounted) return;
             await ConfigRouter.pushPageAnimation(
               context,
@@ -666,7 +667,7 @@ class _PresenceInline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final repo = GetIt.I<PresenceRepository>();
+    final repo = context.read<PresenceRepository>();
     return AnimatedBuilder(
       animation: repo.revision,
       builder: (_, __) {
@@ -794,13 +795,13 @@ class _IdentitySheetState extends State<_IdentitySheet> {
   @override
   void initState() {
     super.initState();
-    _selectedId = GetIt.I<ChatSettings>().userId;
+    _selectedId = context.read<ChatSettings>().userId;
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final settings = GetIt.I<ChatSettings>();
+    final settings = context.read<ChatSettings>();
     // Build the picker list from whatever the UsersCache has — which
     // gets seeded at boot (`/users/me`) and after the new-message
     // picker fetches `/users`. For non-admin users whose cache only
@@ -871,7 +872,7 @@ class _IdentitySheetState extends State<_IdentitySheet> {
                     child: InkWell(
                       onTap: () async {
                         setState(() => _selectedId = p.employeeId);
-                        await GetIt.I<ChatSettings>().setIdentity(
+                        await context.read<ChatSettings>().setIdentity(
                           userId: p.employeeId,
                           userName: p.name,
                         );
@@ -933,7 +934,7 @@ class _RecentCallsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<ChatCallLog>>(
-      stream: GetIt.I<CallLogRepository>().watchAll(),
+      stream: context.read<CallLogRepository>().watchAll(),
       builder: (context, snap) {
         final logs = snap.data ?? const <ChatCallLog>[];
         if (logs.isEmpty) {
@@ -991,7 +992,7 @@ class _RecentCallTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final me = GetIt.I<ChatSettings>().userId;
+    final me = context.read<ChatSettings>().userId;
     final isOutgoing = log.callerId == me;
     final isMissed = log.status == ChatCallStatus.missed ||
         log.status == ChatCallStatus.noAnswer ||

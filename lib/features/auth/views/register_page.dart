@@ -1,8 +1,8 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:erp_mobile/core/di/service_locator.dart';
 
 import '../../../core/error/failure.dart';
 import '../../../core/theme/app_font_size.dart';
@@ -59,7 +59,7 @@ class _RegisterPageState extends State<RegisterPage> {
     final l10n = AppLocalizations.of(context);
 
     setState(() => _submitting = true);
-    final result = await GetIt.I<AuthRepository>().register(
+    final result = await context.read<AuthRepository>().register(
       email: _emailController.text.trim(),
       password: _passwordController.text,
       fullName: _fullNameController.text.trim(),

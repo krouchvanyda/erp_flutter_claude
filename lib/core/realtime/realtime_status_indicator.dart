@@ -1,7 +1,7 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
-import '../di/injection.dart';
 import '../theme/app_font_size.dart';
 import '../theme/app_label.dart';
 import 'realtime_connection_state.dart';
@@ -24,7 +24,7 @@ class RealtimeStatusIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final svc = _serviceOverride ?? getIt<RealtimeService>();
+    final svc = _serviceOverride ?? context.read<RealtimeService>();
     return StreamBuilder<RealtimeConnectionState>(
       stream: svc.connectionState,
       initialData: svc.state,

@@ -1,3 +1,4 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -45,7 +46,7 @@ class ChatInfoPage extends StatelessWidget {
           children: [
             const AppBackgroundGradient(),
             StreamBuilder<ChatConversation?>(
-              stream: GetIt.I<ConversationsRepository>()
+              stream: context.read<ConversationsRepository>()
                   .watchById(conversationId),
               builder: (context, snap) {
                 final conv = snap.data;
@@ -239,7 +240,7 @@ class _Hero extends StatelessWidget {
         // going Online → Busy → Offline update without us re-opening
         // the page.
         AnimatedBuilder(
-          animation: GetIt.I<PresenceRepository>().revision,
+          animation: context.read<PresenceRepository>().revision,
           builder: (_, __) => AppLabel(
             text: _subtitleFor(conversation),
             fontSize: AppFontSize.value12,
@@ -362,7 +363,7 @@ class _SharedMedia extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return FutureBuilder<List<ChatMessage>>(
-      future: GetIt.I<MessagesRepository>().getForConversation(conversationId),
+      future: context.read<MessagesRepository>().getForConversation(conversationId),
       builder: (context, snap) {
         final media = (snap.data ?? const <ChatMessage>[])
             .where((m) =>
@@ -535,7 +536,7 @@ class _CallHistorySection extends StatelessWidget {
     final theme = Theme.of(context);
     return FutureBuilder<List<ChatCallLog>>(
       future:
-          GetIt.I<CallLogRepository>().getForConversation(conversationId),
+          context.read<CallLogRepository>().getForConversation(conversationId),
       builder: (context, snap) {
         final entries = (snap.data ?? const <ChatCallLog>[]).take(6).toList();
         if (entries.isEmpty) {
@@ -582,7 +583,7 @@ class _CallHistoryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final me = GetIt.I<ChatSettings>().userId;
+    final me = context.read<ChatSettings>().userId;
     final isOutgoing = log.callerId == me;
     final isMissed = log.status == ChatCallStatus.missed ||
         log.status == ChatCallStatus.noAnswer ||
@@ -698,7 +699,7 @@ class _Settings extends StatelessWidget {
             iconColor: Colors.amber.shade700,
             label: 'Mute notifications',
             value: conversation.isMuted,
-            onChanged: (v) => GetIt.I<ConversationsRepository>()
+            onChanged: (v) => context.read<ConversationsRepository>()
                 .setMuted(conversation.id, v),
           ),
           if (conversation.pinnedMessageId != null) ...[
@@ -742,11 +743,11 @@ class _Members extends StatelessWidget {
           child: Column(
             children: [
               _MemberRow(
-                name: GetIt.I<ChatSettings>().userName,
+                name: context.read<ChatSettings>().userName,
                 role: 'You',
                 presence: PresenceStatus.online,
                 isAdmin: true,
-                userId: GetIt.I<ChatSettings>().userId,
+                userId: context.read<ChatSettings>().userId,
               ),
               for (final p in shown) ...[
                 const _Hairline(),
@@ -922,7 +923,7 @@ class _DangerZone extends StatelessWidget {
     // Backend removes us, fans `conversation.remove` to our other
     // sessions, and `conversation.update` to remaining members.
     try {
-      await GetIt.I<ConversationsRepository>()
+      await context.read<ConversationsRepository>()
           .leaveGroupRemote(conversation.id);
     } catch (e) {
       if (!context.mounted) return;
@@ -1160,7 +1161,7 @@ Future<void> _showAddMembersSheet(
     return;
   }
   try {
-    await GetIt.I<ConversationsRepository>()
+    await context.read<ConversationsRepository>()
         .addMembersRemote(conversation.id, memberIds);
   } catch (e) {
     if (!context.mounted) return;
@@ -1220,7 +1221,7 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
 
   Future<void> _loadDirectory() async {
     try {
-      final page = await GetIt.I<UsersRemoteDataSource>().listUsers(
+      final page = await context.read<UsersRemoteDataSource>().listUsers(
         // 200 covers small/mid orgs in one shot; `_candidates` filters
         // out current group members + self locally.
         pageSize: 200,
@@ -1251,7 +1252,7 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
   }
 
   List<ChatParticipantPreview> get _candidates {
-    final me = GetIt.I<ChatSettings>().userId;
+    final me = context.read<ChatSettings>().userId;
     final inGroup = {
       me,
       ...widget.conversation.participantPreviews.map((p) => p.employeeId),
@@ -1525,7 +1526,7 @@ Future<void> _showRenameSheet(
   // client-side broadcast needed (the previous relay-era
   // `sendConversationUpdate` call is gone).
   try {
-    await GetIt.I<ConversationsRepository>()
+    await context.read<ConversationsRepository>()
         .renameRemote(conversation.id, trimmed);
   } catch (e) {
     if (!context.mounted) return;
@@ -1689,7 +1690,7 @@ Future<void> _showChangePhotoSheet(
     case AvatarPickChoice.gallery:
       await _pickGroupPhoto(context, conversation, ImageSource.gallery);
     case AvatarPickChoice.remove:
-      await GetIt.I<ConversationsRepository>()
+      await context.read<ConversationsRepository>()
           .setAvatarPath(conversation.id, null);
       // Group avatar URL on the backend (op #5) is `null` here too —
       // PATCH `avatarUrl: ''` would clear it. Skipped while there's
@@ -1723,7 +1724,7 @@ Future<void> _pickGroupPhoto(
       );
       return;
     }
-    await GetIt.I<ConversationsRepository>()
+    await context.read<ConversationsRepository>()
         .setAvatarPath(conversation.id, picked.path);
     // Per-device avatar only — the previous relay-era base64 broadcast
     // is gone with the relay. Cross-device group avatar needs a binary

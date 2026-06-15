@@ -1,6 +1,6 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/widgets.dart';
 
-import '../../core/di/injection.dart';
 import '../../core/router/permissions_snapshot.dart';
 import '../../features/auth/models/permission.dart';
 
@@ -78,7 +78,7 @@ class PermissionGuard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final perms = snapshot ?? getIt<PermissionsSnapshot>();
+    final perms = snapshot ?? context.read<PermissionsSnapshot>();
     return ListenableBuilder(
       listenable: perms,
       builder: (context, _) {

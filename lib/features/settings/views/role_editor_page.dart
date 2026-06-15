@@ -1,7 +1,7 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:erp_mobile/shared/widgets/app_background_gradient.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:erp_mobile/core/di/service_locator.dart';
 
 import '../../../core/error/failure.dart';
 import '../../../core/theme/app_font_size.dart';
@@ -33,7 +33,7 @@ class RoleEditorPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final repo = GetIt.I<RolesRepository>();
+    final repo = context.read<RolesRepository>();
     final l10n = AppLocalizations.of(context);
 
     return Scaffold(
@@ -218,7 +218,7 @@ class RoleEditorPage extends StatelessWidget {
                   child: FilledButton(
                     onPressed: () async {
                       try {
-                        await GetIt.I<RolesRepository>().createFromInput(
+                        await context.read<RolesRepository>().createFromInput(
                           name: nameCtrl.text,
                           description: descCtrl.text,
                           permissionTokens: selectedScopes.toList(),
@@ -431,7 +431,7 @@ class _RoleCardState extends State<_RoleCard> {
       next.remove(scope);
     }
     try {
-      await GetIt.I<RolesRepository>().updatePermissions(
+      await context.read<RolesRepository>().updatePermissions(
         role: widget.role,
         permissionTokens: next.toList(),
       );
@@ -448,8 +448,8 @@ class _RoleCardState extends State<_RoleCard> {
   Future<void> _confirmDelete(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
     final l10n = AppLocalizations.of(context);
-    final rolesRepo = GetIt.I<RolesRepository>();
-    final users = await GetIt.I<ManagedUsersRepository>().getAll();
+    final rolesRepo = context.read<RolesRepository>();
+    final users = await context.read<ManagedUsersRepository>().getAll();
     // Pre-check: refuse early so we don't even show the confirm dialog
     // for a guaranteed-fail delete.
     if (widget.role.isSystem ||

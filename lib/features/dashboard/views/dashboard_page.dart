@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/dashboard/dashboard_grid.dart';
@@ -10,7 +11,6 @@ import '../../../core/dashboard/dashboard_widget.dart';
 import '../../../core/dashboard/widgets/chart_dashboard_widgets.dart';
 import '../../../core/dashboard/widgets/kpi_dashboard_widget.dart';
 import '../../../core/di/app_env.dart';
-import '../../../core/di/injection.dart';
 import '../../../core/push/local_push_simulator.dart';
 import '../../../core/push/push_message_router.dart';
 import '../../../core/push/push_notification_service.dart';
@@ -47,11 +47,11 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void initState() {
     super.initState();
-    _realtime = getIt<RealtimeService>();
-    _pushRouter = getIt<PushMessageRouter>();
-    _pushService = getIt<PushNotificationService>();
-    
-    if (getIt<AppEnv>().realtimeEnabled) {
+    _realtime = context.read<RealtimeService>();
+    _pushRouter = context.read<PushMessageRouter>();
+    _pushService = context.read<PushNotificationService>();
+
+    if (context.read<AppEnv>().realtimeEnabled) {
       unawaited(_realtime.connect());
       _realtime.subscribe('dashboard.default');
     }

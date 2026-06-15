@@ -1,9 +1,9 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:async';
 
 import '../widgets/call_permission_gate.dart';
 
 import 'package:flutter/material.dart';
-import 'package:erp_mobile/core/di/service_locator.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart';
 
 import '../../../core/theme/app_font_size.dart';
@@ -60,8 +60,8 @@ class _VideoCallPageState extends State<VideoCallPage>
   void initState() {
     super.initState();
     VideoCallPage.isMounted = true;
-    _signaling = GetIt.I<CallSignalingService>();
-    _engine = GetIt.I<StreamCallEngine>();
+    _signaling = context.read<CallSignalingService>();
+    _engine = context.read<StreamCallEngine>();
     _signaling.activeCallListenable.addListener(_onActiveCallChanged);
     WidgetsBinding.instance.addObserver(this);
     final existing = _signaling.current;
@@ -269,7 +269,7 @@ class _VideoCallPageState extends State<VideoCallPage>
       body: GestureDetector(
         onTap: _toggleControls,
         child: StreamBuilder<ChatConversation?>(
-          stream: GetIt.I<ConversationsRepository>()
+          stream: context.read<ConversationsRepository>()
               .watchById(widget.conversationId),
           builder: (context, snap) {
             final conv = snap.data;

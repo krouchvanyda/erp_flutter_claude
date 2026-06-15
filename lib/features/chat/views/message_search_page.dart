@@ -1,6 +1,6 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:erp_mobile/core/di/service_locator.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/router/config_router.dart';
@@ -86,11 +86,11 @@ class _MessageSearchPageState extends State<MessageSearchPage> {
             const AppBackgroundGradient(),
             FutureBuilder<List<ChatMessage>>(
               future: widget.conversationId != null
-                  ? GetIt.I<MessagesRepository>().searchInConversation(
+                  ? context.read<MessagesRepository>().searchInConversation(
                       widget.conversationId!,
                       _query,
                     )
-                  : GetIt.I<MessagesRepository>().search(_query),
+                  : context.read<MessagesRepository>().search(_query),
               builder: (context, snap) {
                 if (_query.trim().isEmpty) {
                   return _Hint(
@@ -189,7 +189,7 @@ class _ResultTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     FutureBuilder<ChatConversation?>(
-                      future: GetIt.I<ConversationsRepository>()
+                      future: context.read<ConversationsRepository>()
                           .findById(message.conversationId),
                       builder: (context, snap) {
                         final conv = snap.data;

@@ -1,10 +1,10 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:erp_mobile/core/di/service_locator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
@@ -77,16 +77,16 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   @override
   void initState() {
     super.initState();
-    _convRepo = GetIt.I<ConversationsRepository>();
-    _msgRepo = GetIt.I<MessagesRepository>();
-    _settings = GetIt.I<ChatSettings>();
+    _convRepo = context.read<ConversationsRepository>();
+    _msgRepo = context.read<MessagesRepository>();
+    _settings = context.read<ChatSettings>();
     // Slice 10.1.6 — register as the currently-open conversation so
     // inbound peer messages skip the unread bump (the user is
     // reading them in real time). Also clear any stale unread
     // count on entry, covering the paths that don't go through the
     // inbox tile (search results, call-page back, deep links).
     ActiveConversationTracker.instance.enter(widget.conversationId);
-    unawaited(GetIt.I<ConversationsRepository>()
+    unawaited(context.read<ConversationsRepository>()
         .markRead(widget.conversationId)
         .catchError((_) async => throw StateError('conv missing')));
     // Prompt 3 — pull real history from `GET /chats/conversations/{id}/messages`
@@ -128,7 +128,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     // Prompt 3 — drop the per-conv STOMP subscriptions
     // (`/topic/conversations/{id}` + `…/call`) so we don't keep them
     // alive for every chat the user has ever opened this session.
-    GetIt.I<ChatTransport>().unsubscribeConversation(widget.conversationId);
+    context.read<ChatTransport>().unsubscribeConversation(widget.conversationId);
     _settingsSub?.cancel();
     _messagesSub?.cancel();
     _markReadDebounce?.cancel();
@@ -281,7 +281,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                           // separate table (`chat_call_log`), so we
                           // watch them on the side and merge by time.
                           return StreamBuilder<List<ChatCallLog>>(
-                            stream: GetIt.I<CallLogRepository>()
+                            stream: context.read<CallLogRepository>()
                                 .watchAll(),
                             builder: (context, callSnap) {
                               final allCalls = callSnap.data;
@@ -437,7 +437,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                         // live without us re-opening the page.
                         AnimatedBuilder(
                           animation:
-                              GetIt.I<PresenceRepository>().revision,
+                              context.read<PresenceRepository>().revision,
                           builder: (_, __) => AppLabel(
                             text: _subtitleFor(conv),
                             fontSize: 11.5,
@@ -480,7 +480,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     if (c.isGroup) {
       // For groups, derive the online count live from the presence
       // cache rather than the (possibly stale) ConversationDto field.
-      final repo = GetIt.I<PresenceRepository>();
+      final repo = context.read<PresenceRepository>();
       final onlineNow = c.participantPreviews
           .where((p) =>
               repo.statusOf(p.employeeId).status == PresenceStatus.online)
@@ -490,7 +490,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     // Direct conv — read live status of the other person.
     if (c.participantPreviews.isEmpty) return 'Offline';
     final otherId = c.participantPreviews.first.employeeId;
-    final p = GetIt.I<PresenceRepository>().statusOf(otherId);
+    final p = context.read<PresenceRepository>().statusOf(otherId);
     // `effectiveStatus` promotes a fresh-OFFLINE (last-seen < 5 min)
     // to AWAY so peers who just minimised the app show as "Away"
     // instead of jumping straight to a last-seen timestamp.
@@ -924,7 +924,7 @@ class _PinnedBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return FutureBuilder<ChatMessage?>(
-      future: GetIt.I<MessagesRepository>().findById(messageId),
+      future: context.read<MessagesRepository>().findById(messageId),
       builder: (context, snap) {
         if (!snap.hasData || snap.data == null) return const SizedBox.shrink();
         final m = snap.data!;
@@ -1272,7 +1272,7 @@ class _ReplyPreviewBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return FutureBuilder<ChatMessage?>(
-      future: GetIt.I<MessagesRepository>().findById(messageId),
+      future: context.read<MessagesRepository>().findById(messageId),
       builder: (context, snap) {
         final m = snap.data;
         return Container(

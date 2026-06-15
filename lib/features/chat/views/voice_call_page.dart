@@ -1,10 +1,10 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 
 import '../widgets/call_permission_gate.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:erp_mobile/core/di/service_locator.dart';
 import 'package:stream_webrtc_flutter/stream_webrtc_flutter.dart' as rtc;
 
 import '../../../core/theme/app_font_size.dart';
@@ -66,8 +66,8 @@ class _VoiceCallPageState extends State<VoiceCallPage>
   void initState() {
     super.initState();
     VoiceCallPage.isMounted = true;
-    _signaling = GetIt.I<CallSignalingService>();
-    _streamEngine = GetIt.I<StreamCallEngine>();
+    _signaling = context.read<CallSignalingService>();
+    _streamEngine = context.read<StreamCallEngine>();
     _signaling.activeCallListenable.addListener(_onActiveCallChanged);
     WidgetsBinding.instance.addObserver(this);
     final existing = _signaling.current;
@@ -304,7 +304,7 @@ class _VoiceCallPageState extends State<VoiceCallPage>
     return Scaffold(
       backgroundColor: const Color(0xFF0F1117),
       body: StreamBuilder<ChatConversation?>(
-        stream: GetIt.I<ConversationsRepository>()
+        stream: context.read<ConversationsRepository>()
             .watchById(widget.conversationId),
         builder: (context, snap) {
           final conv = snap.data;

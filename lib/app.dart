@@ -3,8 +3,10 @@ import 'dart:io' show Platform;
 import 'package:erp_callkit/erp_callkit.dart';
 import 'package:erp_mobile/shared/firebase_services/firebase_notification_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'core/di/injection.dart';
+import 'core/di/ui_repository_providers.dart';
 import 'core/i18n/locale_service.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
@@ -193,7 +195,14 @@ class _ErpMobileAppState extends State<ErpMobileApp>
     final router = widget._injectedRouter ?? getIt<AppRouter>();
     final prefRepo = getIt<PreferencesRepository>();
 
-    return StreamBuilder<pref_entities.UserPreferences>(
+    // Bridge getIt → widget tree: every dependency the UI reads is exposed
+    // here as a RepositoryProvider so views/widgets use `context.read<T>()`
+    // instead of getIt. getIt stays the construction source (lazy `create`)
+    // and the only option in context-free code (background isolate). The full
+    // list lives in `buildUiRepositoryProviders()`.
+    return MultiRepositoryProvider(
+      providers: buildUiRepositoryProviders(),
+      child: StreamBuilder<pref_entities.UserPreferences>(
       stream: prefRepo.watch(),
       initialData: pref_entities.UserPreferences.initial,
       builder: (context, snapshot) {
@@ -222,6 +231,7 @@ class _ErpMobileAppState extends State<ErpMobileApp>
               IncomingCallOverlay(child: child ?? const SizedBox.shrink()),
         );
       },
+      ),
     );
   }
 
