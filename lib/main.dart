@@ -29,8 +29,19 @@ import 'features/auth/auth_di.dart';
 import 'features/chat/chat_di.dart';
 import 'features/settings/settings_di.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:provider/provider.dart';
 
 Future <void> main() async {
+  // The app-root `RepositoryProvider`s expose getIt-owned singletons, some of
+  // which are Listenable/Stream subtypes (AuthSession is a ChangeNotifier,
+  // RealtimeService/CallSignalingService expose listenables, etc.). We provide
+  // them purely as non-reactive `context.read<T>()` service references — getIt
+  // owns their lifecycle and reactivity is consumed via their own
+  // streams/listenables, NOT via Provider. So the provider package's
+  // "Listenable inside Provider" heuristic is a false positive here; disabling
+  // it stops `context.read<AuthSession>()` from throwing in debug.
+  Provider.debugCheckInvalidValueType = null;
+
   // Build the bootstrap reporter outside DI so uncaught errors during
   // `configureDependencies()` are still captured.
   final reporter = LoggingCrashReporter(ConsoleLogger());

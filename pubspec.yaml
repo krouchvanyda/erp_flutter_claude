@@ -16,6 +16,10 @@ dependencies:
   # ── State management ────────────────────────────────────────────
   flutter_bloc: ^8.1.6
   bloc: ^8.1.4
+  # Used directly for context.read<T>() service lookups + to toggle
+  # Provider.debugCheckInvalidValueType (see main.dart). Already pulled in
+  # transitively by flutter_bloc; pinned here to make the dependency explicit.
+  provider: ^6.1.5
 
   # ── Dependency injection ────────────────────────────────────────
 
