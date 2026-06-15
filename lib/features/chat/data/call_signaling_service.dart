@@ -637,11 +637,16 @@ class CallSignalingService {
         // server-side ring (ring is a one-shot at create; a later get with
         // ringing:false doesn't tear down members already in `ringing`).
         //
-        // Android keeps `ringing:true` for now (its FCM ring path predates
-        // the backend ring). NOTE: with the backend now ringing every
-        // member, Android's client-side ring is redundant and may
-        // double-notify — switching Android to `false` too is a follow-up
-        // gated on the "no Android impact" rule.
+        // Android now ALSO joins ring-free. With the backend firing the
+        // Stream ring (`getOrCreate(ring:true, members)`) for every member,
+        // the client-side `ringing:true` was redundant AND actively broke
+        // the caller's audio: device logs showed the Android caller's
+        // `call.join()` cancelling itself with `VideoError{connect
+        // cancelled}` (the same "ringing flow" race iOS already avoided) —
+        // so the caller never entered the SFU and the callee heard silence.
+        // Hardcoding `false` switches Android off too; iOS already resolved
+        // `!Platform.isIOS` to false, so this is an Android-only change with
+        // no iOS impact.
         //
         // `isOutgoing:true` keeps the caller's peer-joined fallback listener
         // attached despite shouldRing:false.
@@ -649,7 +654,7 @@ class CallSignalingService {
           streamCallCid: streamCallCid,
           isVideo: callType == ChatCallType.video,
           calleeUserIds: streamMemberIds,
-          shouldRing: !Platform.isIOS,
+          shouldRing: false,
           isOutgoing: true,
         ));
       }
