@@ -1,6 +1,6 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
-import 'package:get_it/get_it.dart';
+import 'package:erp_mobile/core/di/service_locator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../features/auth/data/demo_sign_in.dart';

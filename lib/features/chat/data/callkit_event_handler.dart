@@ -9,7 +9,7 @@ import 'package:erp_callkit/erp_callkit.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_callkit_incoming/entities/entities.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:get_it/get_it.dart';
+import 'package:erp_mobile/core/di/service_locator.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/config/environments.dart';

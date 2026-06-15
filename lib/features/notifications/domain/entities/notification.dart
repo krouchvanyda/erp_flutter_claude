@@ -1,56 +1,101 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
-
-part 'notification.freezed.dart';
+import 'package:collection/collection.dart';
 
 /// One notification in the user's inbox (Slice 2.3.1).
 ///
 /// Named `AppNotification` (not `Notification`) to avoid shadowing the
-/// Flutter framework's `Notification` widget class — feature code that
-/// imports both wins.
+/// Flutter framework's `Notification` widget class.
 ///
-/// **Pure data**: no Flutter, no drift. The DAO maps `CachedNotificationRow`
-/// ↔ `AppNotification` at the boundary; the bloc + UI work with this
-/// type alone.
-///
-/// **Categories** are free-form strings — the server can introduce new
-/// ones without a client schema bump. The UI maps unknown categories
-/// to a generic icon.
-@freezed
-class AppNotification with _$AppNotification {
-  const factory AppNotification({
-    required String id,
-    required String title,
-    required String body,
+/// **Pure data**: no Flutter, no drift. Plain immutable value type (was
+/// `freezed`; the codegen was removed).
+class AppNotification {
+  const AppNotification({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.category,
+    this.routeName,
+    this.pathParameters = const <String, String>{},
+    required this.receivedAt,
+    this.readAt,
+    this.dismissed = false,
+  });
 
-    /// Discriminator like `'invoice'`, `'leave-request'`, `'system'` —
-    /// drives icon / colour selection in the inbox UI.
-    required String category,
+  final String id;
+  final String title;
+  final String body;
 
-    /// Optional `go_router` named route for the deep-link target.
-    /// `null` means the notification is informational only.
-    String? routeName,
+  /// Discriminator like `'invoice'`, `'leave-request'`, `'system'`.
+  final String category;
 
-    /// Path parameters for the deep-link target. Empty when the route
-    /// has no params (or [routeName] is null).
-    @Default(<String, String>{}) Map<String, String> pathParameters,
+  /// Optional `go_router` named route for the deep-link target.
+  final String? routeName;
 
-    /// When the notification was first emitted (server / push timestamp).
-    required DateTime receivedAt,
+  /// Path parameters for the deep-link target.
+  final Map<String, String> pathParameters;
 
-    /// `null` when unread. Set the first time the user opens the row.
-    DateTime? readAt,
+  /// When the notification was first emitted.
+  final DateTime receivedAt;
 
-    /// Tombstone — true when the user swiped to dismiss. Kept (not
-    /// deleted) so a future "show dismissed" toggle can restore.
-    @Default(false) bool dismissed,
-  }) = _AppNotification;
+  /// `null` when unread.
+  final DateTime? readAt;
 
-  const AppNotification._();
+  /// Tombstone — true when the user swiped to dismiss.
+  final bool dismissed;
 
-  /// Convenience predicate — `true` iff the user hasn't opened it yet.
-  /// Dismissal is independent: a dismissed row can still be unread.
+  /// `true` iff the user hasn't opened it yet.
   bool get isUnread => readAt == null;
 
-  /// `true` iff a tap on this notification should trigger navigation.
+  /// `true` iff a tap should trigger navigation.
   bool get hasDeepLink => routeName != null;
+
+  AppNotification copyWith({
+    String? id,
+    String? title,
+    String? body,
+    String? category,
+    String? routeName,
+    Map<String, String>? pathParameters,
+    DateTime? receivedAt,
+    DateTime? readAt,
+    bool? dismissed,
+  }) =>
+      AppNotification(
+        id: id ?? this.id,
+        title: title ?? this.title,
+        body: body ?? this.body,
+        category: category ?? this.category,
+        routeName: routeName ?? this.routeName,
+        pathParameters: pathParameters ?? this.pathParameters,
+        receivedAt: receivedAt ?? this.receivedAt,
+        readAt: readAt ?? this.readAt,
+        dismissed: dismissed ?? this.dismissed,
+      );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AppNotification &&
+          other.id == id &&
+          other.title == title &&
+          other.body == body &&
+          other.category == category &&
+          other.routeName == routeName &&
+          const MapEquality<String, String>()
+              .equals(other.pathParameters, pathParameters) &&
+          other.receivedAt == receivedAt &&
+          other.readAt == readAt &&
+          other.dismissed == dismissed);
+
+  @override
+  int get hashCode => Object.hash(
+        id,
+        title,
+        body,
+        category,
+        routeName,
+        const MapEquality<String, String>().hash(pathParameters),
+        receivedAt,
+        readAt,
+        dismissed,
+      );
 }

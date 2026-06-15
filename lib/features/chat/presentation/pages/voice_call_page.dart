@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../widgets/call_permission_gate.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:get_it/get_it.dart';
+import 'package:erp_mobile/core/di/service_locator.dart';
 import 'package:stream_webrtc_flutter/stream_webrtc_flutter.dart' as rtc;
 
 import '../../../../core/theme/app_font_size.dart';

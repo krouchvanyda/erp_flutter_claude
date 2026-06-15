@@ -3,7 +3,7 @@ import 'dart:async';
 import '../widgets/call_permission_gate.dart';
 
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
+import 'package:erp_mobile/core/di/service_locator.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart';
 
 import '../../../../core/theme/app_font_size.dart';

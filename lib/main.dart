@@ -22,7 +22,7 @@ import 'features/chat/data/chat_settings.dart';
 import 'features/chat/data/stream_call_engine.dart';
 import 'features/chat/data/users_cache.dart';
 import 'features/settings/data/datasources/users_remote_data_source.dart';
-import 'package:get_it/get_it.dart';
+import 'package:erp_mobile/core/di/service_locator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/utils/logger/console_logger.dart';
 import 'features/auth/auth_di.dart';

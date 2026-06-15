@@ -1,7 +1,7 @@
 import 'package:erp_mobile/shared/widgets/app_background_gradient.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:get_it/get_it.dart';
+import 'package:erp_mobile/core/di/service_locator.dart';
 
 import '../../../../core/theme/app_font_size.dart';
 import '../../../../core/theme/app_label.dart';

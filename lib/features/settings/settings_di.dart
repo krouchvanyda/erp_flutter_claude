@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:get_it/get_it.dart';
+import 'package:erp_mobile/core/di/service_locator.dart';
 
 import '../../core/network/token_storage.dart';
 import '../employees/data/datasources/employees_remote_data_source.dart';

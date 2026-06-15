@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:get_it/get_it.dart';
+import 'package:erp_mobile/core/di/service_locator.dart';
 
 import '../../../../core/i18n/app_language.dart' as core_lang;
 import '../../../../core/i18n/locale_service.dart';

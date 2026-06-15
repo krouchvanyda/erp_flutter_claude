@@ -18,8 +18,6 @@ dependencies:
   bloc: ^8.1.4
 
   # ── Dependency injection ────────────────────────────────────────
-  # get_it only — registrations are hand-written (injectable codegen removed).
-  get_it: ^8.0.3
 
   # ── Navigation ──────────────────────────────────────────────────
   go_router: ^14.6.3

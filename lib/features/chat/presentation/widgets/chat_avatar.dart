@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
+import 'package:erp_mobile/core/di/service_locator.dart';
 
 import '../../../../core/theme/app_label.dart';
 import '../../data/repositories/presence_repository.dart';

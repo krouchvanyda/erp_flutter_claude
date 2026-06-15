@@ -1,4 +1,4 @@
-import 'package:get_it/get_it.dart';
+import 'package:erp_mobile/core/di/service_locator.dart';
 
 import '../../core/analytics/analytics_service.dart';
 import '../../core/di/app_env.dart';
