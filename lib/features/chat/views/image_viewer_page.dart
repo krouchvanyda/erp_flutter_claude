@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../../core/theme/app_font_size.dart';
-import '../../../../core/theme/app_label.dart';
-import '../../entities/chat_message.dart';
+import '../../../core/theme/app_font_size.dart';
+import '../../../core/theme/app_label.dart';
+import '../models/chat_message.dart';
 
 /// Slice 10.1.5 — Full-screen image viewer.
 ///

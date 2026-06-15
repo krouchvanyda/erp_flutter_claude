@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../../core/theme/app_font_size.dart';
-import '../../../../core/theme/app_label.dart';
-import '../../../../core/theme/app_radii.dart';
-import '../../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_font_size.dart';
+import '../../../core/theme/app_label.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/theme/app_spacing.dart';
 
 /// Multi-box one-time-code input.
 ///

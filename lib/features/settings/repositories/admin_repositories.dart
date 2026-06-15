@@ -1,9 +1,9 @@
 import 'dart:async';
 
-import '../../../../core/error/failure.dart';
-import '../../entities/api_environment.dart';
-import '../../entities/managed_user.dart';
-import '../settings_seed.dart';
+import '../../../core/error/failure.dart';
+import '../models/api_environment.dart';
+import '../models/managed_user.dart';
+import '../datasources/settings_seed.dart';
 
 /// Slice 9.2.1 — admin user management.
 class ManagedUsersRepository {

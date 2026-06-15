@@ -1,4 +1,4 @@
-import '../../features/auth/data/datasources/secret_store.dart';
+import '../../features/auth/datasources/secret_store.dart';
 import '../utils/uuid_generator.dart';
 
 /// Stable per-install device identifier used as the primary key for

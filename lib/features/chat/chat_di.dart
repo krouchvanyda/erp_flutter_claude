@@ -7,22 +7,22 @@ import 'package:erp_mobile/core/di/service_locator.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/network/token_storage.dart';
-import '../settings/data/datasources/users_remote_data_source.dart';
-import 'data/active_conversation_tracker.dart';
-import 'data/call_signaling_service.dart';
-import 'data/chat_lifecycle_bridge.dart';
-import 'data/chat_settings.dart';
-import 'data/chat_transport.dart';
-import 'data/chats_remote_data_source.dart';
-import 'data/repositories/call_log_repository.dart';
-import 'data/repositories/conversations_repository.dart';
-import 'data/repositories/messages_repository.dart';
-import 'data/repositories/presence_repository.dart';
-import 'data/stream_call_engine.dart';
-import 'data/users_cache.dart';
-import 'entities/chat_message.dart';
-import 'entities/conversation.dart';
-import 'entities/presence.dart';
+import '../settings/datasources/users_remote_data_source.dart';
+import 'datasources/active_conversation_tracker.dart';
+import 'datasources/call_signaling_service.dart';
+import 'datasources/chat_lifecycle_bridge.dart';
+import 'datasources/chat_settings.dart';
+import 'datasources/chat_transport.dart';
+import 'datasources/chats_remote_data_source.dart';
+import 'repositories/call_log_repository.dart';
+import 'repositories/conversations_repository.dart';
+import 'repositories/messages_repository.dart';
+import 'repositories/presence_repository.dart';
+import 'datasources/stream_call_engine.dart';
+import 'datasources/users_cache.dart';
+import 'models/chat_message.dart';
+import 'models/conversation.dart';
+import 'models/presence.dart';
 
 /// Manual DI registration for Module 10 (Chat & Voice / Video).
 ///

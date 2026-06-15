@@ -6,10 +6,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:erp_mobile/core/di/service_locator.dart';
 
-import '../../../../core/router/app_router.dart';
-import '../../data/call_signaling_service.dart';
-import '../pages/video_call_page.dart';
-import '../pages/voice_call_page.dart';
+import '../../../core/router/app_router.dart';
+import '../datasources/call_signaling_service.dart';
+import '../views/video_call_page.dart';
+import '../views/voice_call_page.dart';
 
 /// Routes a tap or action button from a `call.invite` heads-up
 /// notification into the call ceremony.

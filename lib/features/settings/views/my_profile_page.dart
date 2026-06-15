@@ -6,20 +6,20 @@ import 'package:erp_mobile/core/di/service_locator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
-import '../../../../core/error/failure.dart';
-import '../../../../core/router/config_router.dart';
-import '../../../../core/theme/app_font_size.dart';
-import '../../../../core/theme/app_label.dart';
-import '../../../../core/theme/app_radii.dart';
-import '../../../../core/widgets/dynamic_app_bar.dart';
-import '../../../../core/widgets/dynamic_status_bar.dart';
-import '../../../../l10n/app_localizations.dart';
-import '../../../../shared/widgets/app_background_gradient.dart';
-import '../../../../shared/widgets/avatar_picker_sheet.dart';
-import '../../data/repositories/my_profile_repository.dart';
-import '../../data/repositories/security_repositories.dart';
-import '../../entities/app_lock_settings.dart';
-import '../../entities/my_profile.dart';
+import '../../../core/error/failure.dart';
+import '../../../core/router/config_router.dart';
+import '../../../core/theme/app_font_size.dart';
+import '../../../core/theme/app_label.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/widgets/dynamic_app_bar.dart';
+import '../../../core/widgets/dynamic_status_bar.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/app_background_gradient.dart';
+import '../../../shared/widgets/avatar_picker_sheet.dart';
+import '../repositories/my_profile_repository.dart';
+import '../repositories/security_repositories.dart';
+import '../models/app_lock_settings.dart';
+import '../models/my_profile.dart';
 import 'app_lock_page.dart';
 
 /// Slice 9.1.4 — My Profile Info.

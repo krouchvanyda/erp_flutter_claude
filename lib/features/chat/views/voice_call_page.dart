@@ -7,14 +7,14 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:erp_mobile/core/di/service_locator.dart';
 import 'package:stream_webrtc_flutter/stream_webrtc_flutter.dart' as rtc;
 
-import '../../../../core/theme/app_font_size.dart';
-import '../../../../core/theme/app_label.dart';
-import '../../data/call_signaling_service.dart';
-import '../../data/lockscreen_return.dart';
-import '../../data/repositories/conversations_repository.dart';
-import '../../data/stream_call_engine.dart';
-import '../../entities/call_log.dart';
-import '../../entities/conversation.dart';
+import '../../../core/theme/app_font_size.dart';
+import '../../../core/theme/app_label.dart';
+import '../datasources/call_signaling_service.dart';
+import '../datasources/lockscreen_return.dart';
+import '../repositories/conversations_repository.dart';
+import '../datasources/stream_call_engine.dart';
+import '../models/call_log.dart';
+import '../models/conversation.dart';
 import '../widgets/chat_avatar.dart';
 
 /// Slice 10.2.1 (state machine) + Slice 10.2.3 (wire signalling).

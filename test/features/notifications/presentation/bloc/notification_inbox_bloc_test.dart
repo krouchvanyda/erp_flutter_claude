@@ -1,11 +1,11 @@
 import 'dart:async';
 
 import 'package:bloc_test/bloc_test.dart';
-import 'package:erp_mobile/features/notifications/domain/entities/notification.dart';
-import 'package:erp_mobile/features/notifications/domain/repositories/notifications_repository.dart';
-import 'package:erp_mobile/features/notifications/presentation/bloc/notification_inbox_bloc.dart';
-import 'package:erp_mobile/features/notifications/presentation/bloc/notification_inbox_event.dart';
-import 'package:erp_mobile/features/notifications/presentation/bloc/notification_inbox_state.dart';
+import 'package:erp_mobile/features/notifications/models/notification.dart';
+import 'package:erp_mobile/features/notifications/repositories/notifications_repository.dart';
+import 'package:erp_mobile/features/notifications/bloc/notification_inbox_bloc.dart';
+import 'package:erp_mobile/features/notifications/bloc/notification_inbox_event.dart';
+import 'package:erp_mobile/features/notifications/bloc/notification_inbox_state.dart';
 import 'package:test/test.dart';
 
 /// In-memory fake — captures writes and pumps the watch stream by hand

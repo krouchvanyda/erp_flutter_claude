@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/theme/app_font_size.dart';
-import '../../../../core/theme/app_label.dart';
-import '../../../../core/widgets/dynamic_status_bar.dart';
-import '../../../../l10n/app_localizations.dart';
-import '../../../../shared/widgets/app_text_field.dart';
+import '../../../core/theme/app_font_size.dart';
+import '../../../core/theme/app_label.dart';
+import '../../../core/widgets/dynamic_status_bar.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/app_text_field.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});

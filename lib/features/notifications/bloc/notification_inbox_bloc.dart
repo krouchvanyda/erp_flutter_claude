@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:bloc/bloc.dart';
 
-import '../../domain/entities/notification.dart';
-import '../../domain/repositories/notifications_repository.dart';
+import '../models/notification.dart';
+import '../repositories/notifications_repository.dart';
 import 'notification_inbox_event.dart';
 import 'notification_inbox_state.dart';
 

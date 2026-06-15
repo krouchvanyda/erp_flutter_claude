@@ -1,8 +1,8 @@
 import 'package:erp_mobile/core/error/failure.dart';
-import 'package:erp_mobile/features/settings/data/repositories/security_repositories.dart';
-import 'package:erp_mobile/features/settings/entities/app_lock_settings.dart';
-import 'package:erp_mobile/features/settings/entities/audit_log_entry.dart';
-import 'package:erp_mobile/features/settings/entities/device_session.dart';
+import 'package:erp_mobile/features/settings/repositories/security_repositories.dart';
+import 'package:erp_mobile/features/settings/models/app_lock_settings.dart';
+import 'package:erp_mobile/features/settings/models/audit_log_entry.dart';
+import 'package:erp_mobile/features/settings/models/device_session.dart';
 import 'package:test/test.dart';
 
 DeviceSession _s({String id = 's', bool isCurrent = false}) => DeviceSession(

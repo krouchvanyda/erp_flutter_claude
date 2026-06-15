@@ -1,5 +1,5 @@
-import '../../../../core/network/auth_tokens.dart';
-import '../../entities/user.dart';
+import '../../../core/network/auth_tokens.dart';
+import 'user.dart';
 
 /// Wire-format response body returned by `POST /auth/login`,
 /// `/auth/register`, and `/auth/refresh`.

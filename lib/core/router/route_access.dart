@@ -1,4 +1,4 @@
-import '../../features/auth/entities/permission.dart';
+import '../../features/auth/models/permission.dart';
 import 'route_paths.dart';
 
 /// Static permission requirements for permission-gated routes.

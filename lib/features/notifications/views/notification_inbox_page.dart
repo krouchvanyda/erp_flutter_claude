@@ -3,17 +3,17 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/di/injection.dart';
-import '../../../../core/theme/app_font_size.dart';
-import '../../../../core/theme/app_label.dart';
-import '../../../../core/widgets/dynamic_app_bar.dart';
-import '../../../../core/widgets/dynamic_status_bar.dart';
-import '../../../../l10n/app_localizations.dart';
-import '../../domain/entities/notification.dart';
+import '../../../core/di/injection.dart';
+import '../../../core/theme/app_font_size.dart';
+import '../../../core/theme/app_label.dart';
+import '../../../core/widgets/dynamic_app_bar.dart';
+import '../../../core/widgets/dynamic_status_bar.dart';
+import '../../../l10n/app_localizations.dart';
+import '../models/notification.dart';
 import '../bloc/notification_inbox_bloc.dart';
 import '../bloc/notification_inbox_event.dart';
 import '../bloc/notification_inbox_state.dart';
-import '../notification_category_icon.dart';
+import '../widgets/notification_category_icon.dart';
 
 class NotificationInboxPage extends StatelessWidget {
   const NotificationInboxPage({super.key});

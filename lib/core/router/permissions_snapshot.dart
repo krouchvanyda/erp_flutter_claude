@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../../features/auth/data/datasources/cached_user_dao.dart';
-import '../../features/auth/data/repositories/permissions_repository.dart';
-import '../../features/auth/entities/permission.dart';
-import '../../features/auth/entities/user.dart';
+import '../../features/auth/datasources/cached_user_dao.dart';
+import '../../features/auth/repositories/permissions_repository.dart';
+import '../../features/auth/models/permission.dart';
+import '../../features/auth/models/user.dart';
 import '../../features/auth/permission_gate.dart';
 
 /// In-memory mirror of the signed-in user's permission set, updated

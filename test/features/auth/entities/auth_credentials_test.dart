@@ -1,4 +1,4 @@
-import 'package:erp_mobile/features/auth/entities/auth_credentials.dart';
+import 'package:erp_mobile/features/auth/models/auth_credentials.dart';
 import 'package:test/test.dart';
 
 void main() {

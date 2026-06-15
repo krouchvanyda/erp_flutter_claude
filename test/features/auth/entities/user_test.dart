@@ -1,4 +1,4 @@
-import 'package:erp_mobile/features/auth/entities/user.dart';
+import 'package:erp_mobile/features/auth/models/user.dart';
 import 'package:test/test.dart';
 
 const _alice = User(

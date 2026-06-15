@@ -3,10 +3,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../../../../core/theme/app_font_size.dart';
-import '../../../../core/theme/app_label.dart';
-import '../../../../core/theme/app_radii.dart';
-import '../../entities/chat_message.dart';
+import '../../../core/theme/app_font_size.dart';
+import '../../../core/theme/app_label.dart';
+import '../../../core/theme/app_radii.dart';
+import '../models/chat_message.dart';
 import 'chat_avatar.dart';
 
 /// Slice 10.1.2 — chat bubble rendering all four content types

@@ -1,5 +1,5 @@
-import '../../../auth/entities/permission.dart';
-import '../entities/search_result.dart';
+import '../../auth/models/permission.dart';
+import '../models/search_result.dart';
 
 /// Contract every searchable feature module implements (Slice 2.1.3).
 ///

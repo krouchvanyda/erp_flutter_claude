@@ -4,14 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/di/injection.dart';
-import '../../../../core/router/auth_session.dart';
-import '../../../../core/router/route_paths.dart';
-import '../../../../core/theme/app_font_size.dart';
-import '../../../../core/theme/app_label.dart';
-import '../../../../core/widgets/dynamic_status_bar.dart';
-import '../../../../l10n/app_localizations.dart';
-import '../../data/demo_sign_in.dart';
+import '../../../core/di/injection.dart';
+import '../../../core/router/auth_session.dart';
+import '../../../core/router/route_paths.dart';
+import '../../../core/theme/app_font_size.dart';
+import '../../../core/theme/app_label.dart';
+import '../../../core/widgets/dynamic_status_bar.dart';
+import '../../../l10n/app_localizations.dart';
+import '../datasources/demo_sign_in.dart';
 
 class BiometricUnlockPage extends StatefulWidget {
   const BiometricUnlockPage({super.key});

@@ -1,7 +1,7 @@
 import 'package:bloc/bloc.dart';
 
-import '../../data/repositories/otp_repository.dart';
-import '../../entities/otp_verification_result.dart';
+import '../repositories/otp_repository.dart';
+import '../models/otp_verification_result.dart';
 import 'otp_event.dart';
 import 'otp_state.dart';
 

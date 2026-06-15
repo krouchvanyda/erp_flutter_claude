@@ -4,15 +4,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:erp_mobile/core/di/service_locator.dart';
 
-import '../../../../core/error/failure.dart';
-import '../../../../core/theme/app_font_size.dart';
-import '../../../../core/theme/app_label.dart';
-import '../../../../core/theme/app_radii.dart';
-import '../../../../core/widgets/dynamic_app_bar.dart';
-import '../../../../core/widgets/dynamic_status_bar.dart';
-import '../../../../l10n/app_localizations.dart';
-import '../../data/repositories/security_repositories.dart';
-import '../../entities/app_lock_settings.dart';
+import '../../../core/error/failure.dart';
+import '../../../core/theme/app_font_size.dart';
+import '../../../core/theme/app_label.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/widgets/dynamic_app_bar.dart';
+import '../../../core/widgets/dynamic_status_bar.dart';
+import '../../../l10n/app_localizations.dart';
+import '../repositories/security_repositories.dart';
+import '../models/app_lock_settings.dart';
 
 /// Slice 9.3.3 — PIN + biometric re-auth on resume.
 class AppLockPage extends StatelessWidget {

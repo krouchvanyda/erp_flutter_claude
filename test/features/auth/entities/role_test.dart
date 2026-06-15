@@ -1,5 +1,5 @@
-import 'package:erp_mobile/features/auth/entities/permission.dart';
-import 'package:erp_mobile/features/auth/entities/role.dart';
+import 'package:erp_mobile/features/auth/models/permission.dart';
+import 'package:erp_mobile/features/auth/models/role.dart';
 import 'package:test/test.dart';
 
 void main() {

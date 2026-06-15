@@ -7,16 +7,16 @@ import '../../core/network/session_signal.dart';
 import '../../core/network/token_storage.dart';
 import '../../core/push/device_registrar.dart';
 import '../../core/utils/logger/app_logger.dart';
-import 'data/datasources/auth_remote_data_source.dart';
-import 'data/datasources/biometric_service.dart';
-import 'data/datasources/biometric_settings_dao.dart';
-import 'data/datasources/cached_user_dao.dart';
-import 'data/datasources/oauth_flow_session.dart';
-import 'data/datasources/oauth_token_data_source.dart';
-import 'data/repositories/auth_repository.dart';
-import 'data/repositories/otp_repository.dart';
-import 'data/repositories/permissions_repository.dart';
-import 'presentation/bloc/otp_bloc.dart';
+import 'datasources/auth_remote_data_source.dart';
+import 'datasources/biometric_service.dart';
+import 'datasources/biometric_settings_dao.dart';
+import 'datasources/cached_user_dao.dart';
+import 'datasources/oauth_flow_session.dart';
+import 'datasources/oauth_token_data_source.dart';
+import 'repositories/auth_repository.dart';
+import 'repositories/otp_repository.dart';
+import 'repositories/permissions_repository.dart';
+import 'bloc/otp_bloc.dart';
 
 /// Manual DI registration for Module 1 (Authentication & Identity).
 ///

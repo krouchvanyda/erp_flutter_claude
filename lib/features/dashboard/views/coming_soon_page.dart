@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_font_size.dart';
-import '../../../../core/theme/app_label.dart';
-import '../../../../l10n/app_localizations.dart';
+import '../../../core/theme/app_font_size.dart';
+import '../../../core/theme/app_label.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Generic landing page used by Slice 2.1.2 module shortcut tiles whose
 /// real feature module hasn't shipped yet. Takes the human-readable

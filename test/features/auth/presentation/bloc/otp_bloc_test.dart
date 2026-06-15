@@ -1,9 +1,9 @@
 import 'package:bloc_test/bloc_test.dart';
-import 'package:erp_mobile/features/auth/data/repositories/otp_repository.dart';
-import 'package:erp_mobile/features/auth/entities/otp_verification_result.dart';
-import 'package:erp_mobile/features/auth/presentation/bloc/otp_bloc.dart';
-import 'package:erp_mobile/features/auth/presentation/bloc/otp_event.dart';
-import 'package:erp_mobile/features/auth/presentation/bloc/otp_state.dart';
+import 'package:erp_mobile/features/auth/repositories/otp_repository.dart';
+import 'package:erp_mobile/features/auth/models/otp_verification_result.dart';
+import 'package:erp_mobile/features/auth/bloc/otp_bloc.dart';
+import 'package:erp_mobile/features/auth/bloc/otp_event.dart';
+import 'package:erp_mobile/features/auth/bloc/otp_state.dart';
 import 'package:test/test.dart';
 
 /// Scriptable verifier — the test parameterises what the repository

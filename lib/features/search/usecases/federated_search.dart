@@ -1,5 +1,5 @@
-import '../../../auth/entities/permission.dart';
-import '../entities/search_result.dart';
+import '../../auth/models/permission.dart';
+import '../models/search_result.dart';
 import '../repositories/search_provider.dart';
 
 /// Caller-supplied predicate: "does the signed-in user hold this

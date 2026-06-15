@@ -1,7 +1,7 @@
 import 'package:erp_mobile/core/error/failure.dart';
-import 'package:erp_mobile/features/settings/data/repositories/admin_repositories.dart';
-import 'package:erp_mobile/features/settings/entities/api_environment.dart';
-import 'package:erp_mobile/features/settings/entities/managed_user.dart';
+import 'package:erp_mobile/features/settings/repositories/admin_repositories.dart';
+import 'package:erp_mobile/features/settings/models/api_environment.dart';
+import 'package:erp_mobile/features/settings/models/managed_user.dart';
 import 'package:test/test.dart';
 
 ManagedUser _u({

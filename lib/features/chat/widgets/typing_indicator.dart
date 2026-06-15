@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_font_size.dart';
-import '../../../../core/theme/app_label.dart';
+import '../../../core/theme/app_font_size.dart';
+import '../../../core/theme/app_label.dart';
 
 /// Animated 3-dot typing indicator. Each dot pulses with a staggered
 /// 150ms offset — design-guide rule for the chat conversation page.

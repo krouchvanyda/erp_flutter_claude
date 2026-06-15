@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
-import '../../../../core/di/injection.dart';
-import '../../../../core/layout/responsive_breakpoint.dart';
-import '../../../../core/router/config_router.dart';
-import '../../../../core/router/permissions_snapshot.dart';
-import '../../../../core/theme/app_font_size.dart';
-import '../../../../core/theme/app_label.dart';
-import '../../../../core/theme/app_radii.dart';
-import '../../../../core/shortcuts/module_shortcut.dart';
-import '../../../../core/shortcuts/module_shortcut_catalog.dart';
-import '../../../../core/shortcuts/permission_filter.dart';
-import '../../../../core/widgets/dynamic_app_bar.dart';
-import '../../../../core/widgets/dynamic_status_bar.dart';
-import '../../../../features/search/presentation/widgets/global_search_anchor.dart';
-import '../../../../l10n/app_localizations.dart';
+import '../../../core/di/injection.dart';
+import '../../../core/layout/responsive_breakpoint.dart';
+import '../../../core/router/config_router.dart';
+import '../../../core/router/permissions_snapshot.dart';
+import '../../../core/theme/app_font_size.dart';
+import '../../../core/theme/app_label.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/shortcuts/module_shortcut.dart';
+import '../../../core/shortcuts/module_shortcut_catalog.dart';
+import '../../../core/shortcuts/permission_filter.dart';
+import '../../../core/widgets/dynamic_app_bar.dart';
+import '../../../core/widgets/dynamic_status_bar.dart';
+import '../../search/widgets/global_search_anchor.dart';
+import '../../../l10n/app_localizations.dart';
 
 class ModulesPage extends StatelessWidget {
   const ModulesPage({super.key, PermissionsSnapshot? snapshot})

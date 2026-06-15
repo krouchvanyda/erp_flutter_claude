@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import '../../features/notifications/domain/entities/notification.dart';
-import '../../features/notifications/domain/repositories/notifications_repository.dart';
+import '../../features/notifications/models/notification.dart';
+import '../../features/notifications/repositories/notifications_repository.dart';
 import '../utils/logger/app_logger.dart';
 import '../utils/uuid_generator.dart';
 import 'push_message.dart';

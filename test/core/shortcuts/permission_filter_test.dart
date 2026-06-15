@@ -1,5 +1,5 @@
 import 'package:erp_mobile/core/shortcuts/permission_filter.dart';
-import 'package:erp_mobile/features/auth/entities/permission.dart';
+import 'package:erp_mobile/features/auth/models/permission.dart';
 import 'package:test/test.dart';
 
 /// Test fixture — a generic stand-in for `ModuleShortcut` so the filter

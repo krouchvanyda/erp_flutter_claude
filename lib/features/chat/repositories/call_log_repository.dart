@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import '../../entities/call_log.dart';
+import '../models/call_log.dart';
 
 /// Slice 10.2.x — in-memory call log. Page-level state machines
 /// (voice / video) call into this on every initiate / answer / end

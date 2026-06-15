@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:erp_mobile/core/di/service_locator.dart';
 
-import '../../../../core/theme/app_font_size.dart';
-import '../../../../core/theme/app_label.dart';
-import '../../../../core/theme/app_radii.dart';
-import '../../../../core/widgets/dynamic_app_bar.dart';
-import '../../../../core/widgets/dynamic_status_bar.dart';
-import '../../../../l10n/app_localizations.dart';
-import '../../data/repositories/security_repositories.dart';
-import '../../entities/audit_log_entry.dart';
+import '../../../core/theme/app_font_size.dart';
+import '../../../core/theme/app_label.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/widgets/dynamic_app_bar.dart';
+import '../../../core/widgets/dynamic_status_bar.dart';
+import '../../../l10n/app_localizations.dart';
+import '../repositories/security_repositories.dart';
+import '../models/audit_log_entry.dart';
 
 /// Slice 9.3.2 — read-only audit log with filter chips + search.
 class AuditLogPage extends StatefulWidget {

@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:erp_mobile/core/di/service_locator.dart';
 
-import '../../../../core/theme/app_label.dart';
-import '../../data/repositories/presence_repository.dart';
-import '../../entities/conversation.dart';
+import '../../../core/theme/app_label.dart';
+import '../repositories/presence_repository.dart';
+import '../models/conversation.dart';
 
 /// Circular avatar with initials fallback. Used for direct chats and
 /// participant rows. Group rows use [GroupAvatarCluster] instead.

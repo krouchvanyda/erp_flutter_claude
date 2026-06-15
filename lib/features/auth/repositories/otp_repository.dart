@@ -1,4 +1,4 @@
-import '../../entities/otp_verification_result.dart';
+import '../models/otp_verification_result.dart';
 
 /// Verifies a one-time / time-based code.
 ///

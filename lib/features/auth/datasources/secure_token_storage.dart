@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import '../../../../core/network/auth_tokens.dart';
-import '../../../../core/network/token_storage.dart';
+import '../../../core/network/auth_tokens.dart';
+import '../../../core/network/token_storage.dart';
 import 'secret_store.dart';
 
 /// `flutter_secure_storage`-backed [TokenStorage].

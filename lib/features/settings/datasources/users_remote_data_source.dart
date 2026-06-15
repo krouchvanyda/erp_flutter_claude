@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 
-import '../../../../core/network/api_envelope.dart';
+import '../../../core/network/api_envelope.dart';
 import '../models/assign_roles_request.dart';
 import '../models/page_response.dart';
 import '../models/user_dto.dart';

@@ -1,6 +1,6 @@
 import 'package:collection/collection.dart';
 
-import '../../domain/entities/search_result.dart';
+import '../models/search_result.dart';
 
 /// State machine for the global search bar.
 ///

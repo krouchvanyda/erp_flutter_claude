@@ -1,4 +1,4 @@
-import '../../entities/otp_verification_result.dart';
+import '../models/otp_verification_result.dart';
 
 /// Lifecycle of an OTP entry attempt.
 enum OtpStatus { idle, submitting, success, error }

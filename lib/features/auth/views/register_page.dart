@@ -4,15 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:erp_mobile/core/di/service_locator.dart';
 
-import '../../../../core/error/failure.dart';
-import '../../../../core/theme/app_font_size.dart';
-import '../../../../core/theme/app_label.dart';
-import '../../../../core/theme/app_radii.dart';
-import '../../../../core/widgets/dynamic_status_bar.dart';
-import '../../../../core/widgets/loading_screen.dart';
-import '../../../../l10n/app_localizations.dart';
-import '../../../../shared/widgets/app_text_field.dart';
-import '../../data/repositories/auth_repository.dart';
+import '../../../core/error/failure.dart';
+import '../../../core/theme/app_font_size.dart';
+import '../../../core/theme/app_label.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/widgets/dynamic_status_bar.dart';
+import '../../../core/widgets/loading_screen.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/app_text_field.dart';
+import '../repositories/auth_repository.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key, this.onSimulatedRegister});

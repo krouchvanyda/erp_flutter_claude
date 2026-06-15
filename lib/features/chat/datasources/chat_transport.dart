@@ -6,8 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:stomp_dart_client/stomp_dart_client.dart';
 
 import '../../../core/network/token_storage.dart';
-import '../entities/call_log.dart';
-import '../entities/chat_message.dart';
+import '../models/call_log.dart';
+import '../models/chat_message.dart';
 import 'chat_dto_mappers.dart';
 import 'chats_remote_data_source.dart';
 import 'users_cache.dart';

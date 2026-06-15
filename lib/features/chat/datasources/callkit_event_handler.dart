@@ -14,11 +14,11 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/config/environments.dart';
 import '../../../core/router/app_router.dart';
-import '../entities/call_log.dart';
-import '../presentation/pages/video_call_page.dart';
-import '../presentation/pages/voice_call_page.dart';
+import '../models/call_log.dart';
+import '../views/video_call_page.dart';
+import '../views/voice_call_page.dart';
 import 'call_signaling_service.dart';
-import 'repositories/conversations_repository.dart';
+import '../repositories/conversations_repository.dart';
 import 'stream_call_engine.dart';
 
 /// Bridges `flutter_callkit_incoming` user actions (Accept / Reject)

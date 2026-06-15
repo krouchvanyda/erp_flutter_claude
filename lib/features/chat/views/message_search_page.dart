@@ -3,16 +3,16 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:erp_mobile/core/di/service_locator.dart';
 import 'package:intl/intl.dart';
 
-import '../../../../core/router/config_router.dart';
-import '../../../../core/theme/app_font_size.dart';
-import '../../../../core/theme/app_label.dart';
-import '../../../../core/theme/app_radii.dart';
-import '../../../../core/widgets/dynamic_status_bar.dart';
-import '../../../../shared/widgets/app_background_gradient.dart';
-import '../../data/repositories/conversations_repository.dart';
-import '../../data/repositories/messages_repository.dart';
-import '../../entities/chat_message.dart';
-import '../../entities/conversation.dart';
+import '../../../core/router/config_router.dart';
+import '../../../core/theme/app_font_size.dart';
+import '../../../core/theme/app_label.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/widgets/dynamic_status_bar.dart';
+import '../../../shared/widgets/app_background_gradient.dart';
+import '../repositories/conversations_repository.dart';
+import '../repositories/messages_repository.dart';
+import '../models/chat_message.dart';
+import '../models/conversation.dart';
 import '../widgets/chat_avatar.dart';
 import 'chat_conversation_page.dart';
 

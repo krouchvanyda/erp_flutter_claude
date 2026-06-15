@@ -5,13 +5,13 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:erp_mobile/core/di/service_locator.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/network/token_storage.dart';
-import '../../../../core/router/auth_session.dart';
-import '../../../../core/router/route_paths.dart';
-import '../../../../core/theme/app_font_size.dart';
-import '../../../../core/theme/app_label.dart';
-import '../../../../core/widgets/dynamic_status_bar.dart';
-import '../../../../l10n/app_localizations.dart';
+import '../../../core/network/token_storage.dart';
+import '../../../core/router/auth_session.dart';
+import '../../../core/router/route_paths.dart';
+import '../../../core/theme/app_font_size.dart';
+import '../../../core/theme/app_label.dart';
+import '../../../core/widgets/dynamic_status_bar.dart';
+import '../../../l10n/app_localizations.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});

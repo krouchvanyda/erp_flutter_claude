@@ -1,6 +1,6 @@
 import 'package:collection/collection.dart';
 
-import '../../domain/entities/notification.dart';
+import '../models/notification.dart';
 
 /// State machine for [NotificationInboxBloc] (Slice 2.3.1).
 ///

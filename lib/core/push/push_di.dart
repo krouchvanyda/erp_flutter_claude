@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:erp_mobile/core/di/service_locator.dart';
 
 import '../utils/logger/app_logger.dart';
-import '../../features/auth/data/datasources/secret_store.dart';
+import '../../features/auth/datasources/secret_store.dart';
 import 'device_id_storage.dart';
 import 'device_registrar.dart';
 import 'devices_remote_data_source.dart';

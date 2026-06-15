@@ -6,8 +6,8 @@ import 'package:erp_mobile/core/push/push_message_router.dart';
 import 'package:erp_mobile/core/push/push_token_storage.dart';
 import 'package:erp_mobile/core/utils/logger/app_logger.dart';
 import 'package:erp_mobile/core/utils/logger/log_level.dart';
-import 'package:erp_mobile/features/notifications/domain/entities/notification.dart';
-import 'package:erp_mobile/features/notifications/domain/repositories/notifications_repository.dart';
+import 'package:erp_mobile/features/notifications/models/notification.dart';
+import 'package:erp_mobile/features/notifications/repositories/notifications_repository.dart';
 import 'package:test/test.dart';
 
 class _NoopLogger extends AppLogger {

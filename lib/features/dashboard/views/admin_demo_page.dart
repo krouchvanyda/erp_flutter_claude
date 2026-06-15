@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_font_size.dart';
-import '../../../../core/theme/app_label.dart';
-import '../../../../l10n/app_localizations.dart';
+import '../../../core/theme/app_font_size.dart';
+import '../../../core/theme/app_label.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Permission-gated demo destination wired up in Slice 1.3.2 so the
 /// `RouteAccess` → `/forbidden` branch can be exercised end-to-end before

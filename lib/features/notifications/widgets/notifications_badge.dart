@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/di/injection.dart';
-import '../../../../core/router/config_router.dart';
-import '../../../../l10n/app_localizations.dart';
-import '../../domain/repositories/notifications_repository.dart';
-import '../pages/notification_inbox_page.dart';
+import '../../../core/di/injection.dart';
+import '../../../core/router/config_router.dart';
+import '../../../l10n/app_localizations.dart';
+import '../repositories/notifications_repository.dart';
+import '../views/notification_inbox_page.dart';
 
 /// AppBar-mounted bell with a Material 3 [Badge] showing the unread
 /// count (Slice 2.3.3).

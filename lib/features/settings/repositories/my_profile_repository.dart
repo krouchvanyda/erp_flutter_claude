@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 
-import '../../../../core/error/failure.dart';
-import '../../../../core/network/token_storage.dart';
-import '../../../employees/data/datasources/employees_remote_data_source.dart';
-import '../../../employees/data/models/employee_dto.dart';
-import '../../../employees/data/models/employee_requests.dart';
-import '../../entities/my_profile.dart';
+import '../../../core/error/failure.dart';
+import '../../../core/network/token_storage.dart';
+import '../../employees/datasources/employees_remote_data_source.dart';
+import '../../employees/models/employee_dto.dart';
+import '../../employees/models/employee_requests.dart';
+import '../models/my_profile.dart';
 
 /// Slice 9.1.4 — signed-in user's own profile.
 ///

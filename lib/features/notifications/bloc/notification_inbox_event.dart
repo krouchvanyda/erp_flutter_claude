@@ -1,4 +1,4 @@
-import '../../domain/entities/notification.dart';
+import '../models/notification.dart';
 
 /// Inputs to [NotificationInboxBloc] (Slice 2.3.1).
 ///

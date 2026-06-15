@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../features/auth/entities/permission.dart';
-import '../../features/chat/presentation/pages/chat_inbox_page.dart';
-import '../../features/dashboard/presentation/pages/admin_demo_page.dart';
+import '../../features/auth/models/permission.dart';
+import '../../features/chat/views/chat_inbox_page.dart';
+import '../../features/dashboard/views/admin_demo_page.dart';
 import '../../l10n/app_localizations.dart';
 import 'module_shortcut.dart';
 

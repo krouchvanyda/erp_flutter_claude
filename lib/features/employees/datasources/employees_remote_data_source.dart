@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 
-import '../../../../core/network/api_envelope.dart';
+import '../../../core/network/api_envelope.dart';
 import '../models/employee_dto.dart';
 import '../models/employee_requests.dart';
 

@@ -1,4 +1,4 @@
-import '../entities/notification.dart';
+import '../models/notification.dart';
 
 /// Domain contract for the notification inbox (Slice 2.3.1).
 ///

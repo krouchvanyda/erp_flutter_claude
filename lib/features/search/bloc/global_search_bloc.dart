@@ -1,7 +1,7 @@
 import 'package:bloc/bloc.dart';
 import 'package:rxdart/rxdart.dart';
 
-import '../../domain/usecases/federated_search.dart';
+import '../usecases/federated_search.dart';
 import 'global_search_event.dart';
 import 'global_search_state.dart';
 

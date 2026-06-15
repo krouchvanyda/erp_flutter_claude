@@ -2,13 +2,13 @@ import 'package:dio/dio.dart';
 import 'package:erp_mobile/core/di/service_locator.dart';
 
 import '../../core/network/token_storage.dart';
-import '../employees/data/datasources/employees_remote_data_source.dart';
-import 'data/datasources/roles_remote_data_source.dart';
-import 'data/datasources/users_remote_data_source.dart';
-import 'data/repositories/admin_repositories.dart';
-import 'data/repositories/my_profile_repository.dart';
-import 'data/repositories/preferences_repository.dart';
-import 'data/repositories/security_repositories.dart';
+import '../employees/datasources/employees_remote_data_source.dart';
+import 'datasources/roles_remote_data_source.dart';
+import 'datasources/users_remote_data_source.dart';
+import 'repositories/admin_repositories.dart';
+import 'repositories/my_profile_repository.dart';
+import 'repositories/preferences_repository.dart';
+import 'repositories/security_repositories.dart';
 
 /// Manual DI registration for Module 9 (Settings & Administration).
 ///

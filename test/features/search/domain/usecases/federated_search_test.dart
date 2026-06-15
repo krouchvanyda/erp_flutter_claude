@@ -1,9 +1,9 @@
 import 'dart:async';
 
-import 'package:erp_mobile/features/auth/entities/permission.dart';
-import 'package:erp_mobile/features/search/domain/entities/search_result.dart';
-import 'package:erp_mobile/features/search/domain/repositories/search_provider.dart';
-import 'package:erp_mobile/features/search/domain/usecases/federated_search.dart';
+import 'package:erp_mobile/features/auth/models/permission.dart';
+import 'package:erp_mobile/features/search/models/search_result.dart';
+import 'package:erp_mobile/features/search/repositories/search_provider.dart';
+import 'package:erp_mobile/features/search/usecases/federated_search.dart';
 import 'package:test/test.dart';
 
 class _StaticProvider implements SearchProvider {

@@ -3,16 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:erp_mobile/core/di/service_locator.dart';
 
-import '../../../../core/error/failure.dart';
-import '../../../../core/theme/app_font_size.dart';
-import '../../../../core/theme/app_label.dart';
-import '../../../../core/theme/app_radii.dart';
-import '../../../../core/widgets/dynamic_app_bar.dart';
-import '../../../../core/widgets/dynamic_status_bar.dart';
-import '../../../../l10n/app_localizations.dart';
-import '../../../../shared/widgets/app_text_field.dart';
-import '../../data/repositories/admin_repositories.dart';
-import '../../entities/managed_user.dart';
+import '../../../core/error/failure.dart';
+import '../../../core/theme/app_font_size.dart';
+import '../../../core/theme/app_label.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/widgets/dynamic_app_bar.dart';
+import '../../../core/widgets/dynamic_status_bar.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/app_text_field.dart';
+import '../repositories/admin_repositories.dart';
+import '../models/managed_user.dart';
 
 /// Slice 9.2.2 — role + permission scope editor.
 const _knownScopes = <String>[

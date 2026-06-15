@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import '../../entities/chat_message.dart';
-import '../chat_dto_mappers.dart';
-import '../chat_transport.dart';
-import '../chats_remote_data_source.dart';
-import '../users_cache.dart';
+import '../models/chat_message.dart';
+import '../datasources/chat_dto_mappers.dart';
+import '../datasources/chat_transport.dart';
+import '../datasources/chats_remote_data_source.dart';
+import '../datasources/users_cache.dart';
 
 /// Slice 10.1.2 / 10.1.4 — message store per conversation.
 ///

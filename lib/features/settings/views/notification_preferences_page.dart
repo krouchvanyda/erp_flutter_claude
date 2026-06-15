@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:erp_mobile/core/di/service_locator.dart';
 
-import '../../../../core/theme/app_font_size.dart';
-import '../../../../core/theme/app_label.dart';
-import '../../../../core/theme/app_radii.dart';
-import '../../../../core/widgets/dynamic_app_bar.dart';
-import '../../../../core/widgets/dynamic_status_bar.dart';
-import '../../../../l10n/app_localizations.dart';
-import '../../../../shared/widgets/app_background_gradient.dart';
-import '../../data/repositories/preferences_repository.dart';
-import '../../entities/user_preferences.dart';
+import '../../../core/theme/app_font_size.dart';
+import '../../../core/theme/app_label.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/widgets/dynamic_app_bar.dart';
+import '../../../core/widgets/dynamic_status_bar.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/app_background_gradient.dart';
+import '../repositories/preferences_repository.dart';
+import '../models/user_preferences.dart';
 
 /// Slice 9.1.3 — push + email toggles per channel.
 class NotificationPreferencesPage extends StatelessWidget {

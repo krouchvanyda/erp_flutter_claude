@@ -1,11 +1,11 @@
 import 'package:bloc_test/bloc_test.dart';
-import 'package:erp_mobile/features/auth/entities/permission.dart';
-import 'package:erp_mobile/features/search/domain/entities/search_result.dart';
-import 'package:erp_mobile/features/search/domain/repositories/search_provider.dart';
-import 'package:erp_mobile/features/search/domain/usecases/federated_search.dart';
-import 'package:erp_mobile/features/search/presentation/bloc/global_search_bloc.dart';
-import 'package:erp_mobile/features/search/presentation/bloc/global_search_event.dart';
-import 'package:erp_mobile/features/search/presentation/bloc/global_search_state.dart';
+import 'package:erp_mobile/features/auth/models/permission.dart';
+import 'package:erp_mobile/features/search/models/search_result.dart';
+import 'package:erp_mobile/features/search/repositories/search_provider.dart';
+import 'package:erp_mobile/features/search/usecases/federated_search.dart';
+import 'package:erp_mobile/features/search/bloc/global_search_bloc.dart';
+import 'package:erp_mobile/features/search/bloc/global_search_event.dart';
+import 'package:erp_mobile/features/search/bloc/global_search_state.dart';
 import 'package:test/test.dart';
 
 class _ScriptedProvider implements SearchProvider {

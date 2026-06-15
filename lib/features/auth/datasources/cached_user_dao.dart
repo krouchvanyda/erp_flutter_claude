@@ -3,7 +3,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../entities/user.dart';
+import '../models/user.dart';
 
 /// `SharedPreferences`-backed cache for the signed-in [User] and their
 /// permission set.

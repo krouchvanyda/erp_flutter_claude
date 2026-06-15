@@ -1,4 +1,4 @@
-import 'entities/permission.dart';
+import 'models/permission.dart';
 
 /// Pure-Dart seam for runtime permission checks (Slice 3.2.4).
 ///

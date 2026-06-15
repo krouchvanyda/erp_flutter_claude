@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
-import 'package:erp_mobile/features/auth/data/datasources/pkce_generator.dart';
+import 'package:erp_mobile/features/auth/datasources/pkce_generator.dart';
 import 'package:test/test.dart';
 
 void main() {

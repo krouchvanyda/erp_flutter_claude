@@ -1,8 +1,8 @@
 import 'package:dio/dio.dart';
 
-import '../../../../core/network/api_envelope.dart';
-import '../../../../core/network/auth_interceptor.dart';
-import '../../../../core/network/dio_client.dart' show HttpHeaders;
+import '../../../core/network/api_envelope.dart';
+import '../../../core/network/auth_interceptor.dart';
+import '../../../core/network/dio_client.dart' show HttpHeaders;
 import '../models/auth_requests.dart';
 import '../models/auth_response.dart';
 

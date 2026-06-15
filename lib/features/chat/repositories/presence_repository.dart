@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../../entities/presence.dart';
-import '../chats_remote_data_source.dart';
+import '../models/presence.dart';
+import '../datasources/chats_remote_data_source.dart';
 
 /// In-memory cache of every user's [Presence] state, fed by:
 ///   * `loadAll()` — bulk REST hydrate on boot + reconnect.

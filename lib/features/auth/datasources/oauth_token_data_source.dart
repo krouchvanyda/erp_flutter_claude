@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 
-import '../../../../core/network/auth_interceptor.dart';
-import '../../../../core/network/auth_tokens.dart';
+import '../../../core/network/auth_interceptor.dart';
+import '../../../core/network/auth_tokens.dart';
 
 /// OAuth `/token` surface — exchanges an authorization code for tokens.
 ///

@@ -1,5 +1,5 @@
-import '../entities/chat_message.dart';
-import '../entities/conversation.dart';
+import '../models/chat_message.dart';
+import '../models/conversation.dart';
 import 'users_cache.dart';
 
 /// Resolve a display name + avatar for [userId] by consulting the

@@ -3,7 +3,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../domain/entities/notification.dart' as domain;
+import '../models/notification.dart' as domain;
 
 /// `SharedPreferences`-backed DAO for the notification inbox (Slice 2.3.1).
 ///

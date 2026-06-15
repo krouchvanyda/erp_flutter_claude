@@ -6,17 +6,17 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:erp_mobile/core/di/service_locator.dart';
 import 'package:intl/intl.dart';
 
-import '../../../../core/theme/app_font_size.dart';
-import '../../../../core/theme/app_label.dart';
-import '../../../../core/theme/app_radii.dart';
-import '../../../../core/widgets/dynamic_app_bar.dart';
-import '../../../../core/widgets/dynamic_status_bar.dart';
-import '../../../../core/widgets/loading_screen.dart';
-import '../../../../l10n/app_localizations.dart';
-import '../../../../shared/widgets/app_background_gradient.dart';
-import '../../data/datasources/users_remote_data_source.dart';
-import '../../data/permission_catalog.dart';
-import '../../entities/managed_user.dart';
+import '../../../core/theme/app_font_size.dart';
+import '../../../core/theme/app_label.dart';
+import '../../../core/theme/app_radii.dart';
+import '../../../core/widgets/dynamic_app_bar.dart';
+import '../../../core/widgets/dynamic_status_bar.dart';
+import '../../../core/widgets/loading_screen.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/app_background_gradient.dart';
+import '../datasources/users_remote_data_source.dart';
+import '../datasources/permission_catalog.dart';
+import '../models/managed_user.dart';
 
 /// Slice 9.1.5 — My Roles & Permissions.
 ///

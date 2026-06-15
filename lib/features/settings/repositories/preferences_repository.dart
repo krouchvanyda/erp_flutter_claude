@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:erp_mobile/core/di/service_locator.dart';
 
-import '../../../../core/i18n/app_language.dart' as core_lang;
-import '../../../../core/i18n/locale_service.dart';
-import '../../entities/user_preferences.dart';
+import '../../../core/i18n/app_language.dart' as core_lang;
+import '../../../core/i18n/locale_service.dart';
+import '../models/user_preferences.dart';
 
 /// Slice 9.1.x — single repository for the device-local preferences
 /// snapshot. Granular updates flow through the typed setters so the

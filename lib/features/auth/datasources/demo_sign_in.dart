@@ -1,6 +1,6 @@
 
-import '../entities/user.dart';
-import 'datasources/cached_user_dao.dart';
+import '../models/user.dart';
+import 'cached_user_dao.dart';
 
 /// Seeds a demo user + permission set into drift so the
 /// [`StubAuthSession.simulateSignIn`] flow has a real signed-in identity
