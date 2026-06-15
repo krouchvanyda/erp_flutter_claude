@@ -260,6 +260,12 @@ abstract class AppLocalizations {
   /// **'Modules'**
   String get shellModules;
 
+  /// Bottom-nav / rail label for the Chat shell branch (Module 10)
+  ///
+  /// In en, this message translates to:
+  /// **'Chat'**
+  String get shellChat;
+
   /// Bottom-nav / rail label for the Settings shell branch (Module 9 fills it)
   ///
   /// In en, this message translates to:

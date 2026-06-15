@@ -29,9 +29,9 @@ const List<ShellDestination> _shellDestinations = [
     label: _homeLabel,
   ),
   ShellDestination(
-    icon: Icons.apps_outlined,
-    selectedIcon: Icons.apps_rounded,
-    label: _modulesLabel,
+    icon: Icons.chat_bubble_outline_rounded,
+    selectedIcon: Icons.chat_bubble_rounded,
+    label: _chatLabel,
   ),
   ShellDestination(
     icon: Icons.settings_outlined,
@@ -41,7 +41,7 @@ const List<ShellDestination> _shellDestinations = [
 ];
 
 String _homeLabel(AppLocalizations l) => l.shellHome;
-String _modulesLabel(AppLocalizations l) => l.shellModules;
+String _chatLabel(AppLocalizations l) => l.shellChat;
 String _settingsLabel(AppLocalizations l) => l.shellSettings;
 
 class AppShell extends StatelessWidget {
@@ -67,6 +67,7 @@ class AppShell extends StatelessWidget {
     final location = GoRouterState.of(context).uri.path;
     final isRootPage = [
       RoutePaths.dashboard,
+      RoutePaths.chat,
       RoutePaths.modules,
       RoutePaths.settings,
     ].contains(location);

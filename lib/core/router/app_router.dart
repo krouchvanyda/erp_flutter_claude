@@ -11,6 +11,7 @@ import '../../features/dashboard/views/admin_demo_page.dart';
 import '../../features/dashboard/views/coming_soon_page.dart';
 import '../../features/dashboard/views/dashboard_page.dart';
 import '../../features/dashboard/views/modules_page.dart';
+import '../../features/chat/views/chat_inbox_page.dart';
 import '../../features/auth/repositories/demo_sign_in.dart';
 import '../../features/auth/repositories/auth_repository.dart';
 import '../di/injection.dart';
@@ -182,6 +183,11 @@ class AppRouter {
               // landing for tiles whose feature module hasn't shipped.
               StatefulShellBranch(
                 routes: [
+                  GoRoute(
+                    path: RoutePaths.chat,
+                    name: RoutePaths.chatName,
+                    builder: (_, __) => const ChatInboxPage(),
+                  ),
                   GoRoute(
                     path: RoutePaths.modules,
                     name: RoutePaths.modulesName,

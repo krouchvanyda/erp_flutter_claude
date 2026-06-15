@@ -103,6 +103,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shellModules => 'Modules';
 
   @override
+  String get shellChat => 'Chat';
+
+  @override
   String get shellSettings => 'Settings';
 
   @override

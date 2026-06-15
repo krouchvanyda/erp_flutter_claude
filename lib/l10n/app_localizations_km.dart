@@ -100,6 +100,9 @@ class AppLocalizationsKm extends AppLocalizations {
   String get shellModules => 'ម៉ូឌុល';
 
   @override
+  String get shellChat => 'ជជែក';
+
+  @override
   String get shellSettings => 'ការកំណត់';
 
   @override

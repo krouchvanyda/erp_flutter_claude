@@ -40,6 +40,12 @@ abstract final class RoutePaths {
   static const modules = '/modules';
   static const modulesName = 'modules';
 
+  // Chat (Module 10) — root of the middle shell branch (replaced the
+  // Modules tile grid on the bottom nav). `/modules` stays reachable as
+  // a sibling route in the same branch for dashboard shortcuts.
+  static const chat = '/chat';
+  static const chatName = 'chat';
+
   static const settings = '/settings';
   static const settingsName = 'settings';
 

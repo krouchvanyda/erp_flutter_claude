@@ -154,6 +154,11 @@
     "description": "Bottom-nav / rail label for the Modules shell branch (Slice 2.1.2 fills it)"
   },
 
+  "shellChat": "Chat",
+  "@shellChat": {
+    "description": "Bottom-nav / rail label for the Chat shell branch (Module 10)"
+  },
+
   "shellSettings": "Settings",
   "@shellSettings": {
     "description": "Bottom-nav / rail label for the Settings shell branch (Module 9 fills it)"
