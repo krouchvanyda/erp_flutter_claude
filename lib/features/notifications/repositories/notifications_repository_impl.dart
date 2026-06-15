@@ -1,6 +1,6 @@
 import '../models/notification.dart';
 import 'notifications_repository.dart';
-import '../datasources/notifications_dao.dart';
+import 'notifications_dao.dart';
 
 /// Drift-backed [NotificationsRepository] (Slice 2.3.1).
 ///

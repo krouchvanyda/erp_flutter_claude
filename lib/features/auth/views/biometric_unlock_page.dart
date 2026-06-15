@@ -11,7 +11,7 @@ import '../../../core/theme/app_font_size.dart';
 import '../../../core/theme/app_label.dart';
 import '../../../core/widgets/dynamic_status_bar.dart';
 import '../../../l10n/app_localizations.dart';
-import '../datasources/demo_sign_in.dart';
+import '../repositories/demo_sign_in.dart';
 
 class BiometricUnlockPage extends StatefulWidget {
   const BiometricUnlockPage({super.key});

@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../../features/auth/datasources/cached_user_dao.dart';
+import '../../features/auth/repositories/cached_user_dao.dart';
 import '../../features/auth/repositories/permissions_repository.dart';
 import '../../features/auth/models/permission.dart';
 import '../../features/auth/models/user.dart';

@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:erp_mobile/core/di/service_locator.dart';
 
 import '../../../core/router/app_router.dart';
-import '../datasources/call_signaling_service.dart';
+import '../repositories/call_signaling_service.dart';
 import '../views/video_call_page.dart';
 import '../views/voice_call_page.dart';
 

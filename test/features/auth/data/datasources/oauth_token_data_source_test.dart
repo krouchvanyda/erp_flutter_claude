@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:erp_mobile/core/network/auth_interceptor.dart';
-import 'package:erp_mobile/features/auth/datasources/oauth_token_data_source.dart';
+import 'package:erp_mobile/features/auth/repositories/oauth_token_data_source.dart';
 import 'package:test/test.dart';
 
 class _ScriptedAdapter implements HttpClientAdapter {

@@ -12,7 +12,7 @@ import '../../../core/shortcuts/module_shortcut_catalog.dart';
 import '../../../core/widgets/dynamic_app_bar.dart';
 import '../../../core/widgets/dynamic_status_bar.dart';
 import '../../../l10n/app_localizations.dart';
-import '../datasources/module_shortcut_search_provider.dart';
+import '../repositories/module_shortcut_search_provider.dart';
 import '../models/search_result.dart';
 import '../usecases/federated_search.dart';
 import '../bloc/global_search_bloc.dart';

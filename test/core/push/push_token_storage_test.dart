@@ -1,5 +1,5 @@
 import 'package:erp_mobile/core/push/push_token_storage.dart';
-import 'package:erp_mobile/features/auth/datasources/secret_store.dart';
+import 'package:erp_mobile/features/auth/repositories/secret_store.dart';
 import 'package:test/test.dart';
 
 class _FakeSecretStore implements SecretStore {

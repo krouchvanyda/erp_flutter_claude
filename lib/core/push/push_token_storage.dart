@@ -1,4 +1,4 @@
-import '../../features/auth/datasources/secret_store.dart';
+import '../../features/auth/repositories/secret_store.dart';
 
 /// Secure persistence for the device push token (Slice 2.3.2).
 ///

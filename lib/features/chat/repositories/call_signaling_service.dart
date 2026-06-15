@@ -15,8 +15,8 @@ import 'callkit_call_id.dart';
 import 'chat_settings.dart';
 import 'chat_transport.dart';
 import 'chats_remote_data_source.dart';
-import '../repositories/call_log_repository.dart';
-import '../repositories/conversations_repository.dart';
+import 'call_log_repository.dart';
+import 'conversations_repository.dart';
 import 'stream_call_engine.dart';
 
 /// Slice 10.2.3 — local state of an active or incoming call.

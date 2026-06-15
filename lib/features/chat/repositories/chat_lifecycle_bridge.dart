@@ -8,7 +8,7 @@ import 'call_signaling_service.dart';
 import 'callkit_event_handler.dart';
 import 'chat_settings.dart';
 import 'chat_transport.dart';
-import '../repositories/presence_repository.dart';
+import 'presence_repository.dart';
 import 'stream_call_engine.dart';
 
 /// Slice 10.2.6 — keeps [ChatTransport] in sync with the app's

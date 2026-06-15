@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:erp_mobile/core/network/auth_tokens.dart';
-import 'package:erp_mobile/features/auth/datasources/secure_token_storage.dart';
+import 'package:erp_mobile/features/auth/repositories/secure_token_storage.dart';
 import 'package:test/test.dart';
 
 import '../../../../_support/in_memory_secret_store.dart';

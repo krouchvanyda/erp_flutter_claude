@@ -2,7 +2,7 @@ import '../../../core/shortcuts/module_shortcut.dart';
 import '../../../core/shortcuts/module_shortcut_catalog.dart';
 import '../../auth/models/permission.dart';
 import '../models/search_result.dart';
-import '../repositories/search_provider.dart';
+import 'search_provider.dart';
 
 /// Seed [SearchProvider] (Slice 2.1.3) — searches the in-memory
 /// [ModuleShortcutCatalog] by tile label so the global search bar has

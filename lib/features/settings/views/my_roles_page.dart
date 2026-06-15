@@ -14,8 +14,8 @@ import '../../../core/widgets/dynamic_status_bar.dart';
 import '../../../core/widgets/loading_screen.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_background_gradient.dart';
-import '../datasources/users_remote_data_source.dart';
-import '../datasources/permission_catalog.dart';
+import '../repositories/users_remote_data_source.dart';
+import '../repositories/permission_catalog.dart';
 import '../models/managed_user.dart';
 
 /// Slice 9.1.5 — My Roles & Permissions.

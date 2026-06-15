@@ -12,7 +12,7 @@ import '../../../core/theme/app_font_size.dart';
 import '../../../core/theme/app_label.dart';
 import '../../../core/widgets/dynamic_status_bar.dart';
 import '../../../l10n/app_localizations.dart';
-import '../datasources/demo_sign_in.dart';
+import '../repositories/demo_sign_in.dart';
 import '../repositories/otp_repository.dart';
 import '../models/otp_verification_result.dart';
 import '../bloc/otp_bloc.dart';

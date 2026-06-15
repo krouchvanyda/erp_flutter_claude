@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 
 import '../models/conversation.dart';
-import '../datasources/chat_dto_mappers.dart';
-import '../datasources/chats_remote_data_source.dart';
-import '../datasources/users_cache.dart';
+import 'chat_dto_mappers.dart';
+import 'chats_remote_data_source.dart';
+import 'users_cache.dart';
 
 /// Slice 10.1.1 / 10.1.3 / 10.3.1 — conversations store.
 ///

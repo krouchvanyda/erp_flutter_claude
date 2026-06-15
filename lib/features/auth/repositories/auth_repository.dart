@@ -15,12 +15,12 @@ import '../../../core/network/token_storage.dart';
 import '../../../core/push/device_registrar.dart';
 import '../../../core/utils/logger/app_logger.dart';
 import '../models/user.dart';
-import '../datasources/auth_remote_data_source.dart';
-import '../datasources/biometric_service.dart';
-import '../datasources/biometric_settings_dao.dart';
-import '../datasources/cached_user_dao.dart';
-import '../datasources/oauth_flow_session.dart';
-import '../datasources/oauth_token_data_source.dart';
+import 'auth_remote_data_source.dart';
+import 'biometric_service.dart';
+import 'biometric_settings_dao.dart';
+import 'cached_user_dao.dart';
+import 'oauth_flow_session.dart';
+import 'oauth_token_data_source.dart';
 import '../models/auth_requests.dart';
 
 /// Concrete auth feature repository.

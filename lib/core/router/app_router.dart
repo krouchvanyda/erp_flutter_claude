@@ -11,7 +11,7 @@ import '../../features/dashboard/views/admin_demo_page.dart';
 import '../../features/dashboard/views/coming_soon_page.dart';
 import '../../features/dashboard/views/dashboard_page.dart';
 import '../../features/dashboard/views/modules_page.dart';
-import '../../features/auth/datasources/demo_sign_in.dart';
+import '../../features/auth/repositories/demo_sign_in.dart';
 import '../../features/auth/repositories/auth_repository.dart';
 import '../di/injection.dart';
 import '../../features/notifications/views/notification_inbox_page.dart';

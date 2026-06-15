@@ -1,4 +1,4 @@
-import 'package:erp_mobile/features/auth/datasources/secret_store.dart';
+import 'package:erp_mobile/features/auth/repositories/secret_store.dart';
 
 /// In-memory [SecretStore] for tests. Behaves like the production
 /// `flutter_secure_storage` adapter but keeps everything in a Dart `Map`

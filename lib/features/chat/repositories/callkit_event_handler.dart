@@ -18,7 +18,7 @@ import '../models/call_log.dart';
 import '../views/video_call_page.dart';
 import '../views/voice_call_page.dart';
 import 'call_signaling_service.dart';
-import '../repositories/conversations_repository.dart';
+import 'conversations_repository.dart';
 import 'stream_call_engine.dart';
 
 /// Bridges `flutter_callkit_incoming` user actions (Accept / Reject)

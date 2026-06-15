@@ -2,9 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:erp_mobile/core/di/service_locator.dart';
 
 import '../../core/network/token_storage.dart';
-import '../employees/datasources/employees_remote_data_source.dart';
-import 'datasources/roles_remote_data_source.dart';
-import 'datasources/users_remote_data_source.dart';
+import '../employees/repositories/employees_remote_data_source.dart';
+import 'repositories/roles_remote_data_source.dart';
+import 'repositories/users_remote_data_source.dart';
 import 'repositories/admin_repositories.dart';
 import 'repositories/my_profile_repository.dart';
 import 'repositories/preferences_repository.dart';

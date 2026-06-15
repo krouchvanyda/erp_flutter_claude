@@ -9,7 +9,7 @@ import '../../../core/shortcuts/module_shortcut_catalog.dart';
 import '../../../core/theme/app_font_size.dart';
 import '../../../core/theme/app_label.dart';
 import '../../../l10n/app_localizations.dart';
-import '../datasources/module_shortcut_search_provider.dart';
+import '../repositories/module_shortcut_search_provider.dart';
 import '../models/search_result.dart';
 import '../usecases/federated_search.dart';
 import '../bloc/global_search_bloc.dart';

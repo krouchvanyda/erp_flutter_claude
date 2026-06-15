@@ -4,7 +4,7 @@ import '../../../core/error/failure.dart';
 import '../models/app_lock_settings.dart';
 import '../models/audit_log_entry.dart';
 import '../models/device_session.dart';
-import '../datasources/settings_seed.dart';
+import 'settings_seed.dart';
 
 /// Slice 9.3.1 — active devices.
 class DeviceSessionsRepository {

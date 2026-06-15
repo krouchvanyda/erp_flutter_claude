@@ -11,7 +11,7 @@ import '../../../core/theme/app_radii.dart';
 import '../../../core/widgets/dynamic_app_bar.dart';
 import '../../../core/widgets/dynamic_status_bar.dart';
 import '../../../core/widgets/loading_screen.dart';
-import '../../auth/datasources/cached_user_dao.dart';
+import '../../auth/repositories/cached_user_dao.dart';
 import '../../auth/models/user.dart';
 import '../../../l10n/app_localizations.dart';
 import 'api_config_page.dart';

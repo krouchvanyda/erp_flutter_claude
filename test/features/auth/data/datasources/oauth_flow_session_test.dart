@@ -1,4 +1,4 @@
-import 'package:erp_mobile/features/auth/datasources/oauth_flow_session.dart';
+import 'package:erp_mobile/features/auth/repositories/oauth_flow_session.dart';
 import 'package:erp_mobile/features/auth/models/pkce_challenge.dart';
 import 'package:test/test.dart';
 

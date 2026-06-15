@@ -8,7 +8,7 @@ import 'core/di/injection.dart';
 import 'core/i18n/locale_service.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
-import 'features/chat/datasources/call_signaling_service.dart';
+import 'features/chat/repositories/call_signaling_service.dart';
 import 'features/chat/repositories/conversations_repository.dart';
 import 'features/chat/widgets/incoming_call_overlay.dart';
 import 'features/settings/repositories/preferences_repository.dart';

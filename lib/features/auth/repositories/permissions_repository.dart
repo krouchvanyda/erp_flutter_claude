@@ -1,5 +1,5 @@
 import '../models/permission.dart';
-import '../datasources/cached_user_dao.dart';
+import 'cached_user_dao.dart';
 
 /// Drift-backed per-user permission cache.
 ///

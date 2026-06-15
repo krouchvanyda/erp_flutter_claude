@@ -10,7 +10,7 @@ import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/config/environments.dart';
-import '../../features/chat/datasources/callkit_call_id.dart';
+import '../../features/chat/repositories/callkit_call_id.dart';
 import 'local_notification_provider.dart';
 
 /// Top-level background message handler. **Must be a top-level (or
