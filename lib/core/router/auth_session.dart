@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:injectable/injectable.dart';
 
 /// Read-only auth state surface that the router (and any other observer)
 /// can subscribe to without depending on the future Auth BLoC.
@@ -28,7 +27,6 @@ abstract class AuthSession implements Listenable {
 
 /// Stub implementation used until Module 1 lands. Mutable so tests can
 /// flip it and observe the router reacting.
-@LazySingleton(as: AuthSession)
 class StubAuthSession extends ChangeNotifier implements AuthSession {
   StubAuthSession();
 

@@ -1,8 +1,12 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
-import 'package:injectable/injectable.dart';
+import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../features/auth/data/demo_sign_in.dart';
+import '../../features/auth/data/repositories/permissions_repository.dart';
+import '../router/app_router.dart';
+import '../router/permissions_snapshot.dart';
 import '../network/auth_interceptor.dart';
 import '../network/connectivity_checker.dart';
 import '../network/connectivity_plus_checker.dart';
@@ -47,21 +51,18 @@ import '../../features/notifications/domain/repositories/notifications_repositor
 import '../../features/notifications/presentation/bloc/notification_inbox_bloc.dart';
 import 'app_env.dart';
 
-/// Centralizes registration of third-party / value objects that don't own
-/// their own `@injectable` annotation (env config, http client, drift db,
-/// secure storage, etc.).
+/// Factory methods for the third-party / value objects that don't own their
+/// own construction (env config, http client, secure storage, etc.).
 ///
-/// Each getter / annotated method becomes a registration in the generated
-/// `injection.config.dart`. Local persistence is backed by
-/// `SharedPreferences` (the SQLite/drift database was removed).
-@module
-abstract class AppModule {
+/// Previously an `@module` for `injectable`; the codegen DI framework was
+/// removed, so [registerCoreDependencies] now wires these into `get_it` by
+/// hand (same manual style the chat module already uses). Local persistence
+/// is backed by `SharedPreferences` (the SQLite/drift database was removed).
+class AppModule {
   // ── Configuration ────────────────────────────────────────────
-  @lazySingleton
   AppEnv get appEnv => AppEnv.defaults();
 
   // ── Logging ──────────────────────────────────────────────────
-  @lazySingleton
   AppLogger get appLogger => ConsoleLogger();
 
   // ── Crash reporting ──────────────────────────────────────────
@@ -69,7 +70,6 @@ abstract class AppModule {
   /// exception. The bootstrap (`runWithCrashHooks`) constructs its OWN
   /// reporter outside DI so uncaught errors are captured even if DI
   /// initialisation throws.
-  @lazySingleton
   CrashReporter crashReporter(AppLogger logger) =>
       LoggingCrashReporter(logger);
 
@@ -77,13 +77,11 @@ abstract class AppModule {
   /// Default is the no-op sink — feature code can call `track`/`screen`
   /// from day one without a vendor SDK. Replace this binding to plug in
   /// Firebase / Segment / Mixpanel later.
-  @lazySingleton
   AnalyticsService get analyticsService => const NoopAnalyticsService();
 
   // ── Localization ─────────────────────────────────────────────
   /// Process-lifetime locale holder. Module 9 (Settings) will swap in a
   /// `shared_preferences`-backed implementation that survives app restart.
-  @lazySingleton
   LocaleService get localeService => InMemoryLocaleService();
 
   // ── Local persistence (shared_preferences) ──────────────────
@@ -92,22 +90,17 @@ abstract class AppModule {
   // notification inbox) now persists in SharedPreferences. The instance is
   // registered manually in `main()` before `configureDependencies()` so
   // it's available synchronously here.
-  @lazySingleton
   CachedUserDao cachedUserDao(SharedPreferences prefs) => CachedUserDao(prefs);
 
-  @lazySingleton
   BiometricSettingsDao biometricSettingsDao(SharedPreferences prefs) =>
       BiometricSettingsDao(prefs);
 
-  @lazySingleton
   NotificationsDao notificationsDao(SharedPreferences prefs) =>
       NotificationsDao(prefs);
 
   // ── Connectivity ─────────────────────────────────────────────
-  @lazySingleton
   Connectivity get connectivity => Connectivity();
 
-  @lazySingleton
   ConnectivityChecker connectivityChecker(Connectivity c) =>
       ConnectivityPlusChecker(c);
 
@@ -121,7 +114,6 @@ abstract class AppModule {
   /// something injectable can reflect on (function typedefs aren't class
   /// elements), so going through DI for the factory itself adds nothing
   /// but ceremony.
-  @lazySingleton
   RealtimeService realtimeService(AppEnv env, AppLogger logger) =>
       RealtimeService(
         url: Uri.parse(env.realtimeUrl),
@@ -134,10 +126,8 @@ abstract class AppModule {
   /// auth secret (biometric crypto material, vendor API keys) live here
   /// and **only** here — never in drift, sqlite, shared_preferences, or
   /// app_metadata.
-  @lazySingleton
   SecretStore get secretStore => FlutterSecureStorageSecretStore();
 
-  @lazySingleton
   TokenStorage tokenStorage(SecretStore secrets) => SecureTokenStorage(secrets);
 
   /// Production token-refresher (Slice 1.1.3). Hits the auth server's
@@ -150,7 +140,6 @@ abstract class AppModule {
   /// call out of the auth/error interceptor chain (the refresh body
   /// carries the credential, and the refresher does its own DioException
   /// handling).
-  @lazySingleton
   TokenRefresher tokenRefresher(
     AppEnv env,
     CachedUserDao cachedUserDao,
@@ -172,7 +161,6 @@ abstract class AppModule {
   /// Higher-level auth bindings (repositories + bloc) are wired manually
   /// from `features/auth/auth_di.dart` so the module stays self-contained
   /// (same pattern as Modules 4–9).
-  @lazySingleton
   AuthRemoteDataSource authRemoteDataSource(AppEnv env) =>
       DioAuthRemoteDataSource(dio: buildDio(env));
 
@@ -180,18 +168,15 @@ abstract class AppModule {
   /// `local_auth` wrapper. The only file that imports `package:local_auth`
   /// — feature code goes through the `BiometricService` interface so
   /// tests can fake it without dragging Flutter in.
-  @lazySingleton
   BiometricService get biometricService => LocalAuthBiometricService();
 
   // ── Notifications (Slice 2.3.1) ──────────────────────────────
-  @lazySingleton
   NotificationsRepository notificationsRepository(NotificationsDao dao) =>
       NotificationsRepositoryImpl(dao: dao);
 
   /// `@injectable` (factory) so each `NotificationInboxPage` mount gets
   /// a fresh bloc — ties the watch subscription's lifetime to the
   /// page's lifetime.
-  @injectable
   NotificationInboxBloc notificationInboxBloc(
     NotificationsRepository repo,
   ) =>
@@ -207,30 +192,25 @@ abstract class AppModule {
   /// "[dev] Simulate push" button does an `is LocalPushSimulator`
   /// check to access `simulateNow()` — debug-only down-cast that
   /// disappears with the simulator binding when real FCM ships.
-  @LazySingleton(as: PushNotificationService)
   LocalPushSimulator localPushSimulator() => LocalPushSimulator();
 
-  @lazySingleton
   PushTokenStorage pushTokenStorage(SecretStore secrets) =>
       SecretStorePushTokenStorage(secrets: secrets);
 
   /// Stable per-install device id. Lives in the same secret store as
   /// the push token so a full app reinstall wipes both together.
-  @lazySingleton
   DeviceIdStorage deviceIdStorage(SecretStore secrets) =>
       SecretStoreDeviceIdStorage(secrets: secrets);
 
   /// REST client for `POST /me/devices` / `DELETE /me/devices/{id}`.
   /// Uses the project-wide [Dio] so the auth interceptor is already
   /// attached.
-  @lazySingleton
   DevicesRemoteDataSource devicesRemoteDataSource(Dio dio) =>
       DioDevicesRemoteDataSource(dio: dio);
 
   /// Coordinates the three-step register handshake (fetch FCM token →
   /// read-or-create stable id → POST). One call per lifecycle event,
   /// invoked from auth login/logout + the FCM token-refresh listener.
-  @lazySingleton
   DeviceRegistrar deviceRegistrar(
     DevicesRemoteDataSource remote,
     PushNotificationService push,
@@ -246,7 +226,6 @@ abstract class AppModule {
         logger: logger.child('devices'),
       );
 
-  @lazySingleton
   PushMessageRouter pushMessageRouter(
     PushNotificationService service,
     NotificationsRepository notifications,
@@ -263,29 +242,24 @@ abstract class AppModule {
   // ── OAuth2 PKCE datasources (Slice 1.2.2) ───────────────────
   /// Pure crypto — no platform deps, safe as a singleton. The internal
   /// `Random.secure()` is reseeded on every `generate()` from the OS RNG.
-  @lazySingleton
   PkceGenerator get pkceGenerator => PkceGenerator();
 
   /// In-memory holder for the in-flight authorization request. Memory
   /// only — verifier never lands in drift / secure-storage / prefs.
   /// Singleton because there's at most one OAuth flow at a time.
-  @lazySingleton
   OAuthFlowSession get oauthFlowSession => OAuthFlowSession();
 
   /// Dedicated Dio for the token endpoint (no shared interceptors —
   /// see `DioTokenRefresher` for the rationale; same cycle-break +
   /// no-recursive-refresh story).
-  @lazySingleton
   OAuthTokenDataSource oauthTokenDataSource(AppEnv env) =>
       DioOAuthTokenDataSource(dio: buildDio(env));
 
   /// Bridges the network-layer [SessionSignal] to the router-layer
   /// [AuthSession] without leaking Flutter into `core/network/`.
-  @lazySingleton
   SessionSignal sessionSignal(AuthSession session) =>
       _AuthSessionInvalidator(session);
 
-  @lazySingleton
   AuthInterceptor authInterceptor(
     TokenStorage storage,
     TokenRefresher refresher,
@@ -297,13 +271,11 @@ abstract class AppModule {
         sessionSignal: signal,
       );
 
-  @lazySingleton
   ErrorInterceptor get errorInterceptor => const ErrorInterceptor();
 
   // ── Dio (with interceptors attached) ─────────────────────────
   // Order matters: auth runs first so 401s get a refresh attempt before the
   // error interceptor maps them to Failure.unauthorized.
-  @lazySingleton
   Dio dio(
     AppEnv env,
     AuthInterceptor authInterceptor,
@@ -324,4 +296,100 @@ class _AuthSessionInvalidator implements SessionSignal {
 
   @override
   Future<void> invalidate() => _session.signOut();
+}
+
+/// Registers every core dependency into [getIt].
+///
+/// Hand-written replacement for the former generated `injection.config.dart`.
+/// All registrations are lazy (or factory), so declaration order doesn't
+/// matter — `SharedPreferences` must be registered by the caller first (see
+/// `main()`). `PermissionsRepository` is registered by `registerAuthModule`,
+/// which runs after this; the lazy `PermissionsSnapshot` binding tolerates
+/// that since it's only resolved on first use.
+void registerCoreDependencies(GetIt getIt) {
+  final m = AppModule();
+  getIt
+    ..registerLazySingleton<AppEnv>(() => m.appEnv)
+    ..registerLazySingleton<AppLogger>(() => m.appLogger)
+    ..registerLazySingleton<AnalyticsService>(() => m.analyticsService)
+    ..registerLazySingleton<LocaleService>(() => m.localeService)
+    ..registerLazySingleton<Connectivity>(() => m.connectivity)
+    ..registerLazySingleton<SecretStore>(() => m.secretStore)
+    ..registerLazySingleton<BiometricService>(() => m.biometricService)
+    ..registerLazySingleton<PkceGenerator>(() => m.pkceGenerator)
+    ..registerLazySingleton<OAuthFlowSession>(() => m.oauthFlowSession)
+    ..registerLazySingleton<ErrorInterceptor>(() => m.errorInterceptor)
+    ..registerLazySingleton<CachedUserDao>(
+        () => m.cachedUserDao(getIt<SharedPreferences>()))
+    ..registerLazySingleton<BiometricSettingsDao>(
+        () => m.biometricSettingsDao(getIt<SharedPreferences>()))
+    ..registerLazySingleton<NotificationsDao>(
+        () => m.notificationsDao(getIt<SharedPreferences>()))
+    ..registerLazySingleton<AuthSession>(StubAuthSession.new)
+    ..registerLazySingleton<DemoSignInService>(
+        () => DemoSignInService(getIt<CachedUserDao>()))
+    ..registerLazySingleton<PushNotificationService>(
+        () => m.localPushSimulator())
+    ..registerLazySingleton<CrashReporter>(
+        () => m.crashReporter(getIt<AppLogger>()))
+    ..registerLazySingleton<AuthRemoteDataSource>(
+        () => m.authRemoteDataSource(getIt<AppEnv>()))
+    ..registerLazySingleton<OAuthTokenDataSource>(
+        () => m.oauthTokenDataSource(getIt<AppEnv>()))
+    ..registerLazySingleton<ConnectivityChecker>(
+        () => m.connectivityChecker(getIt<Connectivity>()))
+    ..registerLazySingleton<RealtimeService>(
+        () => m.realtimeService(getIt<AppEnv>(), getIt<AppLogger>()))
+    ..registerLazySingleton<PermissionsSnapshot>(
+        () => PermissionsSnapshot(
+              cachedUserDao: getIt<CachedUserDao>(),
+              permissionsRepository: getIt<PermissionsRepository>(),
+            ))
+    ..registerLazySingleton<TokenStorage>(
+        () => m.tokenStorage(getIt<SecretStore>()))
+    ..registerLazySingleton<PushTokenStorage>(
+        () => m.pushTokenStorage(getIt<SecretStore>()))
+    ..registerLazySingleton<DeviceIdStorage>(
+        () => m.deviceIdStorage(getIt<SecretStore>()))
+    ..registerLazySingleton<NotificationsRepository>(
+        () => m.notificationsRepository(getIt<NotificationsDao>()))
+    ..registerLazySingleton<TokenRefresher>(() => m.tokenRefresher(
+          getIt<AppEnv>(),
+          getIt<CachedUserDao>(),
+          getIt<AppLogger>(),
+          getIt<CrashReporter>(),
+        ))
+    ..registerFactory<NotificationInboxBloc>(
+        () => m.notificationInboxBloc(getIt<NotificationsRepository>()))
+    ..registerLazySingleton<SessionSignal>(
+        () => m.sessionSignal(getIt<AuthSession>()))
+    ..registerLazySingleton<AppRouter>(() => AppRouter(
+          getIt<AuthSession>(),
+          getIt<PermissionsSnapshot>(),
+        ))
+    ..registerLazySingleton<AuthInterceptor>(() => m.authInterceptor(
+          getIt<TokenStorage>(),
+          getIt<TokenRefresher>(),
+          getIt<SessionSignal>(),
+        ))
+    ..registerLazySingleton<PushMessageRouter>(() => m.pushMessageRouter(
+          getIt<PushNotificationService>(),
+          getIt<NotificationsRepository>(),
+          getIt<PushTokenStorage>(),
+          getIt<AppLogger>(),
+        ))
+    ..registerLazySingleton<Dio>(() => m.dio(
+          getIt<AppEnv>(),
+          getIt<AuthInterceptor>(),
+          getIt<ErrorInterceptor>(),
+        ))
+    ..registerLazySingleton<DevicesRemoteDataSource>(
+        () => m.devicesRemoteDataSource(getIt<Dio>()))
+    ..registerLazySingleton<DeviceRegistrar>(() => m.deviceRegistrar(
+          getIt<DevicesRemoteDataSource>(),
+          getIt<PushNotificationService>(),
+          getIt<PushTokenStorage>(),
+          getIt<DeviceIdStorage>(),
+          getIt<AppLogger>(),
+        ));
 }

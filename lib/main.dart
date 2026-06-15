@@ -7,7 +7,6 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:injectable/injectable.dart';
 
 import 'app.dart';
 import 'core/di/injection.dart';
@@ -96,7 +95,7 @@ Future <void> main() async {
       getIt.registerSingleton<SharedPreferences>(
         await SharedPreferences.getInstance(),
       );
-      configureDependencies(environment: Environment.prod);
+      configureDependencies();
       // Hand-rolled DI for the device-registration stack. Must run
       // BEFORE registerAuthModule because AuthRepository consumes
       // DeviceRegistrar in its constructor (see push_di.dart for the

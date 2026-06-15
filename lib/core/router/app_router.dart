@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
-import 'package:injectable/injectable.dart';
 
 import '../../features/auth/presentation/pages/biometric_unlock_page.dart';
 import '../../features/auth/presentation/pages/forgot_password_page.dart';
@@ -55,7 +54,6 @@ import 'route_paths.dart';
 /// can be unit-tested without Flutter. Permission lookups go through
 /// [RouteAccess] (the location → required Permission table) and
 /// [PermissionsSnapshot.holds] (the in-memory mirror of drift).
-@lazySingleton
 class AppRouter {
   AppRouter(AuthSession session, PermissionsSnapshot permissions)
       : config = _build(session, permissions);
