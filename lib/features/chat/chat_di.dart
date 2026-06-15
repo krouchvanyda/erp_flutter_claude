@@ -309,14 +309,19 @@ Future<void> bootChatTransport(GetIt getIt) async {
   // inside the conversation. Covers conversations created mid-session
   // too, since `watchAll()` re-emits on every inbox change.
   //
-  // iOS-only per the call-flow guardrail — Android's working call path
-  // stays byte-for-byte unchanged (the transport methods are inert
-  // unless called).
-  if (Platform.isIOS) {
-    conversations.watchAll().listen((convs) {
-      transport.subscribeCallTopics(convs.map((c) => c.id));
-    });
-  }
+  // Runs on BOTH platforms. Android needs this too: without a boot-time
+  // call-topic subscription, the in-app overlay only appeared while the
+  // ChatConversationPage was open (its `subscribeConversation` was the
+  // ONLY thing subscribing `/topic/conversations/{id}/call`) — a callee
+  // on the dashboard/inbox got no invite frame and the overlay stayed
+  // dark. iOS behaviour is unchanged (it already ran this block); this
+  // just extends the same fix to Android's foreground off-page case.
+  // Idempotent + call-topic-only (no message double-processing), and the
+  // STOMP socket is dropped when backgrounded so the FCM/CallKit path is
+  // untouched.
+  conversations.watchAll().listen((convs) {
+    transport.subscribeCallTopics(convs.map((c) => c.id));
+  });
 
   // iOS-only: warm up the Stream client at COLD START so a callee
   // observes incoming calls on ANY screen from launch. The Stream
