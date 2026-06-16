@@ -977,7 +977,13 @@ class CallkitEventHandler {
     // end so it doesn't get turned into a hangup that closes the CALLER's
     // call. iOS-only; Android neither writes nor reads this map.
     if (Platform.isIOS) _acceptedAt[callCid] = DateTime.now();
-    final isVideo = (params['type']?.toString() == '1');
+    // CallKit's `type` flag ('1' = video) is UNRELIABLE for our calls: the
+    // backend rings Stream with the default (audio) call type and no custom
+    // data, so a VIDEO call reaches the native ringer flagged as audio and
+    // `params['type']` reads '0'. Used as-is it would seed `_active` and push
+    // the VOICE page for an accepted video call. Treat it as a fallback only;
+    // the authoritative type is fetched from the backend DTO below.
+    var isVideo = (params['type']?.toString() == '1');
     final signaling = _safelyGet<CallSignalingService>();
 
     // iOS killed/locked cold-start safety net — fire the BACKEND accept
@@ -1003,6 +1009,16 @@ class CallkitEventHandler {
         'even if the rest of the accept flow is suspended/slow',
       );
       unawaited(signaling.notifyBackendAcceptEarly(earlyId));
+    }
+    // Correct the voice/video flag from the authoritative backend DTO BEFORE
+    // we seed `_active` (step 1) and push the call page (step 2). The CallKit
+    // `type` flag misreports video as audio (see above), so without this an
+    // accepted VIDEO call would open the VoiceCallPage. Done after the early
+    // accept POST so the caller's ring still stops at the earliest moment;
+    // null result (bad id / offline) keeps the CallKit-flag fallback.
+    if (signaling != null) {
+      final resolved = await signaling.isVideoCall(_parseBackendCallId(callCid));
+      if (resolved != null) isVideo = resolved;
     }
     // VoIP-push CallKit entries carry the caller under CallKit's native keys
     // (`handle` / `nameCaller`); our FCM path uses `caller_id` / `caller_name`.

@@ -125,7 +125,7 @@ class _ErpMobileAppState extends State<ErpMobileApp>
       final callId = data['callId']?.toString() ?? '';
       final callerId = data['callerId']?.toString() ?? '';
       final callerName = data['callerName']?.toString() ?? 'Unknown';
-      final isVideo = data['isVideo'] == true;
+      var isVideo = data['isVideo'] == true;
       final streamCallCid = data['callCid']?.toString() ?? '';
       var conversationId = data['conversationId']?.toString() ?? '';
       if (callId.isEmpty || callerId.isEmpty) return;
@@ -151,6 +151,15 @@ class _ErpMobileAppState extends State<ErpMobileApp>
         debugPrint('[NativeCall] signaling not registered yet — skip');
         return;
       }
+
+      // The launch `isVideo` came from the Stream `call.ring` push, whose
+      // call type is always "default" (the backend mints every CID as
+      // default:erp-call-<id>), so a VIDEO call arrives flagged voice and
+      // would open the VoiceCallPage. Now that DI is up, re-confirm the type
+      // from the authoritative backend DTO (refresh-aware Dio). Null keeps the
+      // push value. Backstops the best-effort fix in the FCM background isolate.
+      final resolvedVideo = await signaling.isVideoCall(callId);
+      if (resolvedVideo != null) isVideo = resolvedVideo;
 
       // Stream ring pushes carry no local conversationId — resolve the
       // direct conversation with the caller so the call page renders the

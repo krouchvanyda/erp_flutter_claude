@@ -3,7 +3,8 @@
 How voice/video calls work on **iOS**, end to end — registration, incoming
 push, and the Accept / Reject / Hang-up handling. Companion docs:
 [`STREAM_VIDEO_CALL_SETUP.md`](./STREAM_VIDEO_CALL_SETUP.md),
-[`FCM_BACKGROUND_CALLS_PLAN.md`](./FCM_BACKGROUND_CALLS_PLAN.md).
+[`FCM_BACKGROUND_CALLS_PLAN.md`](./FCM_BACKGROUND_CALLS_PLAN.md),
+[`VIDEO_CALL_FLOW.md`](./VIDEO_CALL_FLOW.md) (voice-vs-video type propagation).
 
 > ## 🔒 Golden rule
 > **Android calls already work. Every iOS call fix must be iOS-only and must

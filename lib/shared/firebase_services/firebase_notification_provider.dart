@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 
@@ -93,19 +94,32 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
         data['call_display_name']?.toString() ??
         'Unknown caller';
     final callerId = data['created_by_id']?.toString() ?? '';
-    final isVideo = (data['call_type']?.toString() == 'video') ||
+    // Stream's `call.ring` push only carries the Stream call type, which the
+    // backend always mints as "default" (StreamTokenService.cidForCall →
+    // `default:erp-call-<id>`) — it never encodes our voice/video choice, so
+    // this is always false for a video call. Used as-is it shows a voice
+    // ringer AND stamps `isVideo=false` into the launch payload the accept
+    // handler routes on → an accepted video call opens the voice page.
+    var isVideo = (data['call_type']?.toString() == 'video') ||
         (data['video']?.toString() == 'true');
     // call_display_name is usually the conversation/group name; treat a
     // non-empty value that differs from the caller as a group title.
     final convName = data['call_display_name']?.toString() ?? '';
     final isGroup = convName.isNotEmpty && convName != callerName;
+    final ringTokens = await _readRejectTokens();
+    // Correct it from the authoritative backend DTO. Best-effort: this is the
+    // FCM background isolate (no DI), so it uses a bare HttpClient with the
+    // stored access token; null keeps the push-derived fallback above. The
+    // foreground accept path (app.dart) re-confirms via DI as a backstop.
+    final resolvedVideo =
+        await _fetchIsVideoFromBackend(callId, ringTokens.access);
+    if (resolvedVideo != null) isVideo = resolvedVideo;
     if (kDebugMode) {
       log('📞 [stream.call.ring] BG/KILLED → native call notif · '
           'cid=$callCid · callId=$callId · caller=$callerName');
     }
     debugPrint('[FCM-BG] call.ring → ErpCallKit.showIncomingCall '
-        'callId=$callId callCid=$callCid caller=$callerName');
-    final ringTokens = await _readRejectTokens();
+        'callId=$callId callCid=$callCid caller=$callerName isVideo=$isVideo');
     await ErpCallKit.showIncomingCall(
       callId: callId,
       callCid: callCid,
@@ -289,6 +303,44 @@ Future<({String access, String refresh})> _readRejectTokens() async {
     return (access: tokens.accessToken, refresh: tokens.refreshToken);
   } catch (_) {
     return (access: '', refresh: '');
+  }
+}
+
+/// Resolve whether a backgrounded/killed incoming call is video (`true`),
+/// voice (`false`), or unknown (`null`) from the AUTHORITATIVE backend DTO.
+///
+/// Stream's `call.ring` push only carries the Stream call type ("default" —
+/// `StreamTokenService.cidForCall` mints every CID as `default:erp-call-<id>`),
+/// never our voice/video flag, so the push-derived value is always voice.
+/// `GET /chats/calls/{id}` → `data.type` is the single source of truth.
+///
+/// Runs in the FCM background isolate where there is NO DI / Dio interceptor,
+/// so it uses a bare [HttpClient] with the already-stored access token and
+/// does NOT attempt a 401 refresh — best-effort, returns `null` on any
+/// failure so the caller keeps its push fallback. (`/chats/calls/{id}` is the
+/// same path the native reject POSTs to via `_callRejectBaseUrl`.)
+Future<bool?> _fetchIsVideoFromBackend(String callId, String accessToken) async {
+  final n = int.tryParse(callId);
+  if (n == null || accessToken.isEmpty) return null;
+  HttpClient? client;
+  try {
+    client = HttpClient()..connectionTimeout = const Duration(seconds: 4);
+    final req =
+        await client.getUrl(Uri.parse('$_callRejectBaseUrl/chats/calls/$n'));
+    req.headers.set(HttpHeaders.authorizationHeader, 'Bearer $accessToken');
+    final res = await req.close();
+    if (res.statusCode != 200) return null;
+    final body = await res.transform(utf8.decoder).join();
+    final decoded = jsonDecode(body);
+    final data = decoded is Map<String, dynamic> ? decoded['data'] : null;
+    final type = (data is Map ? data['type'] : null)?.toString().toUpperCase();
+    if (type == 'VIDEO') return true;
+    if (type == 'VOICE') return false;
+    return null;
+  } catch (_) {
+    return null;
+  } finally {
+    client?.close(force: true);
   }
 }
 

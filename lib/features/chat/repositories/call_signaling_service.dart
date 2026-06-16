@@ -855,7 +855,13 @@ class CallSignalingService {
       conversationId = call.id;
     }
 
-    final isVideo = state?.callType.value == 'video';
+    // `state.callType` is the STREAM call-type prefix (always "default" —
+    // the backend builds the CID as `default:erp-call-<id>` and rings Stream
+    // with no custom data), so it does NOT encode our voice/video choice.
+    // Reading it here opened every VIDEO call bridged from the native Stream
+    // VoIP ring as voice. Resolve the authoritative type off the backend
+    // ChatCallDto instead; fall back to voice on failure (old behaviour).
+    final isVideo = (await isVideoCall(backendCallId)) ?? false;
     final payload = <String, dynamic>{
       'type': 'call.invite',
       'callId': backendCallId,
@@ -1000,6 +1006,35 @@ class CallSignalingService {
       streamCallCid: cid,
       isVideo: type == ChatCallType.video,
     );
+  }
+
+  /// Resolve whether a call is video (`true`), voice (`false`), or unknown
+  /// (`null`) from the AUTHORITATIVE backend `ChatCallDto.type`.
+  ///
+  /// Neither the Stream call object (`state.callType` — always the `default`
+  /// CID prefix) nor the native CallKit `type` flag (the backend rings Stream
+  /// with the default/audio call type, so a video call reaches CallKit
+  /// flagged as audio) encodes our voice/video distinction. Every incoming
+  /// path that derived the type from Stream/CallKit therefore opened VIDEO
+  /// calls as voice. The `ChatCall` DTO is the single source of truth.
+  /// Returns `null` on bad id / network failure so callers keep their own
+  /// fallback (treat-as-voice), preserving the prior behaviour on error.
+  Future<bool?> isVideoCall(String callId) async {
+    final n = int.tryParse(callId);
+    if (n == null) return null;
+    try {
+      final dto = await remote.getCall(n);
+      switch ((dto['type'] as String?)?.toUpperCase()) {
+        case 'VIDEO':
+          return true;
+        case 'VOICE':
+          return false;
+        default:
+          return null;
+      }
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Best-effort cleanup of stale `RINGING` / `ANSWERED` call rows on
