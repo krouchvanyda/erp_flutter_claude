@@ -59,6 +59,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   late final ConversationsRepository _convRepo;
   late final MessagesRepository _msgRepo;
   late final ChatSettings _settings;
+  late final PresenceRepository _presence;
   StreamSubscription<ChatSettings>? _settingsSub;
   StreamSubscription<List<ChatMessage>>? _messagesSub;
   Timer? _markReadDebounce;
@@ -80,6 +81,13 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     _convRepo = context.read<ConversationsRepository>();
     _msgRepo = context.read<MessagesRepository>();
     _settings = context.read<ChatSettings>();
+    _presence = context.read<PresenceRepository>();
+    // Refresh this conversation's peer presence on entry. The global
+    // `/topic/presence` snapshot can be stale — if a peer came online
+    // AFTER our last loadAll, no ONLINE delta may have reached us, so
+    // their dot stays offline forever. Re-pulling on open is how the
+    // user sees an up-to-date status the moment they look at the chat.
+    unawaited(_refreshPeerPresence());
     // Slice 10.1.6 — register as the currently-open conversation so
     // inbound peer messages skip the unread bump (the user is
     // reading them in real time). Also clear any stale unread
@@ -189,6 +197,18 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         .where((p) => p.employeeId != me)
         .map((p) => p.employeeId)
         .toList(growable: false);
+  }
+
+  /// Pull the current presence for this conversation's peer(s) from
+  /// `GET /chats/presence?ids=…` on entry, so a dot that went stale
+  /// (peer came online with no ONLINE delta delivered to us) corrects
+  /// itself the moment the chat opens. Targeted to the peers in view —
+  /// no full-snapshot round-trip. Swallows errors (the repo already
+  /// does); the cached dot just stays as-is on failure.
+  Future<void> _refreshPeerPresence() async {
+    final ids = await _resolveTargetIds();
+    if (ids.isEmpty) return;
+    await _presence.loadFor(ids);
   }
 
   Future<void> _send() async {

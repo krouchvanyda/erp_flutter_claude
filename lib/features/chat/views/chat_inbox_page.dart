@@ -50,6 +50,13 @@ class _ChatInboxPageState extends State<ChatInboxPage>
   void initState() {
     super.initState();
     _tabs = TabController(length: 4, vsync: this);
+    // Refresh presence whenever the inbox opens. The `/topic/presence`
+    // snapshot can be stale — a peer who came online AFTER our last
+    // loadAll may not have delivered an ONLINE delta to us, leaving
+    // their dot offline forever. Re-pulling the full snapshot here (the
+    // same call used on boot/foreground) corrects every tile's dot at
+    // once the moment the user lands on the inbox.
+    unawaited(context.read<PresenceRepository>().loadAll());
   }
 
   @override
