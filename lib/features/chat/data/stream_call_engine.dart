@@ -13,6 +13,8 @@ import 'package:stream_video_flutter/stream_video_flutter.dart';
 import 'package:stream_video_flutter/stream_video_flutter_background.dart';
 import 'package:stream_video_push_notification/stream_video_push_notification.dart';
 
+import '../../../core/di/injection.dart';
+import 'chat_settings.dart';
 import 'chats_remote_data_source.dart';
 import 'users_cache.dart';
 
@@ -1686,7 +1688,23 @@ class StreamCallEngine {
     // by /users/me on login). Without this Stream falls back to the
     // bare userId in the VoIP notification body, so callees see a
     // ringer saying "10 is calling…" instead of "Mr A is calling…".
-    final displayName = UsersCache.instance.nameOf(userId) ?? '';
+    //
+    // UsersCache is IN-MEMORY only, so it can be empty when this client
+    // is built before login finishes populating it (a warmUp-vs-login
+    // race). Because the client is cached for the whole process, that
+    // leaves the caller stuck as the bare id ("11") for the session.
+    // Fall back to the PERSISTED identity (`ChatSettings.userName`,
+    // written by setIdentity on login and reloaded on cold start) so the
+    // real name is used regardless of warm-up timing. Backfill the cache
+    // so later lookups are consistent.
+    var displayName = UsersCache.instance.nameOf(userId) ?? '';
+    if (displayName.trim().isEmpty) {
+      final persisted = getIt<ChatSettings>().userName.trim();
+      if (persisted.isNotEmpty) {
+        displayName = persisted;
+        UsersCache.instance.put(userId: userId, name: persisted);
+      }
+    }
     final avatarUrl = UsersCache.instance.avatarOf(userId);
     // ignore: avoid_print
     print('[StreamCallEngine] building client as userId=$userId '
