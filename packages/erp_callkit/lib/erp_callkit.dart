@@ -30,10 +30,20 @@ class ErpCallKit {
   /// - [baseUrl]  REST base (e.g. `http://host:8080/api/v1`) so the
   ///   native receiver knows where to POST without DI.
   ///
-  /// Reject runs entirely in Kotlin (reads the JWT from secure storage,
-  /// refreshes on 401) — the app never opens. Accept / body-tap launch
-  /// MainActivity with the call data for Dart to consume via
-  /// [consumeLaunchAction].
+  /// Reject runs entirely in Kotlin — the app never opens. Accept /
+  /// body-tap launch MainActivity with the call data for Dart to consume
+  /// via [consumeLaunchAction].
+  ///
+  /// - [authToken] / [refreshToken]  the caller's JWTs, read in Dart (where
+  ///   `flutter_secure_storage` works reliably) and forwarded so the native
+  ///   Reject path can `POST .../reject` WITHOUT re-decrypting secure
+  ///   storage itself. The native side reads `EncryptedSharedPreferences`
+  ///   from a second instance, which throws `AEADBadTagException` on some
+  ///   OEMs (Samsung) — making the reject silently no-op. Passing the token
+  ///   here sidesteps that entirely. Both are optional: when omitted the
+  ///   native path falls back to its own `SecureTokenReader` (legacy
+  ///   behaviour). The values ride a `Bundle` inside a `PendingIntent`
+  ///   targeting our own non-exported receiver — not readable by other apps.
   static Future<void> showIncomingCall({
     required String callId,
     required String callCid,
@@ -44,6 +54,8 @@ class ErpCallKit {
     String conversationId = '',
     String conversationName = '',
     bool isGroup = false,
+    String authToken = '',
+    String refreshToken = '',
   }) async {
     await _channel.invokeMethod<void>('showIncomingCall', <String, dynamic>{
       'callId': callId,
@@ -55,6 +67,8 @@ class ErpCallKit {
       'conversationId': conversationId,
       'conversationName': conversationName,
       'isGroup': isGroup,
+      'authToken': authToken,
+      'refreshToken': refreshToken,
     });
   }
 

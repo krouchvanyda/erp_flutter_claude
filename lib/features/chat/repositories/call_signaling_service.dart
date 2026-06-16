@@ -1574,7 +1574,50 @@ class CallSignalingService {
           }
         });
       default:
-        // RINGING / unknown — keep local state, STOMP will reconcile.
+        // The backend reported a status we don't explicitly map. While the
+        // CALLER is still ringing, a recorded end (`endedAt` present) means
+        // the call resolved on the far side under a status string our
+        // switch doesn't recognise — the exact symptom of a minimized /
+        // backgrounded Android callee declining through the native
+        // notification path, whose reject lands on the backend under a
+        // different code path than an in-app `REJECTED`. Without this the
+        // ring heartbeat keeps polling a status it ignores and the caller's
+        // "Calling…" never clears.
+        //
+        // iOS-only (no-Android-impact rule) and ringing-only — a live
+        // `connected` call isn't in `outgoingRinging`, and a still-ringing
+        // call has no `endedAt`, so this can't tear down a real call or
+        // downgrade a transient pre-ring status.
+        final endedAt = dto['endedAt'];
+        if (Platform.isIOS &&
+            active.state == CallSignalState.outgoingRinging &&
+            endedAt != null) {
+          final reason = dto['endReason'] as String? ?? 'declined';
+          // ignore: avoid_print
+          print('[CallSignaling] reconcileActive — caller ring resolved by '
+              'backend (status=$status endedAt=$endedAt reason=$reason); '
+              'tearing down stuck "Calling…"');
+          unawaited(streamEngine.endActiveCall());
+          _clearNativeIncoming(active.callId);
+          _clearAllCallNotifications();
+          _setActive(active.copyWith(
+            state: CallSignalState.ended,
+            endReason: reason,
+          ));
+          Future.delayed(const Duration(milliseconds: 600), () {
+            if (_active?.callId == active.callId &&
+                _active?.state == CallSignalState.ended) {
+              _setActive(null);
+            }
+          });
+          return;
+        }
+        // RINGING / unknown-but-still-live — keep local state, STOMP will
+        // reconcile. Log the status so an unmapped terminal string shows up
+        // in the caller's device log next time this is investigated.
+        // ignore: avoid_print
+        print('[CallSignaling] reconcileActive — keeping ${active.state} '
+            '(backend status=$status, no endedAt)');
         return;
     }
   }

@@ -60,6 +60,12 @@ object IncomingCallNotifier {
         val conversationId = args["conversationId"]?.toString() ?: ""
         val conversationName = args["conversationName"]?.toString() ?: ""
         val isGroup = args["isGroup"] == true
+        // Dart-supplied JWTs so the Reject receiver can POST without
+        // re-decrypting flutter_secure_storage natively (which throws
+        // AEADBadTagException on some OEMs). Empty → native falls back to
+        // SecureTokenReader.
+        val authToken = args["authToken"]?.toString() ?: ""
+        val refreshToken = args["refreshToken"]?.toString() ?: ""
 
         if (callCid.isEmpty()) {
             Log.w(TAG, "show() skipped — empty callCid")
@@ -82,6 +88,8 @@ object IncomingCallNotifier {
             putString("conversationId", conversationId)
             putString("conversationName", conversationName)
             putBoolean("isGroup", isGroup)
+            putString("authToken", authToken)
+            putString("refreshToken", refreshToken)
         }
 
         // Reject → native broadcast receiver. Killed-app safe: no UI,

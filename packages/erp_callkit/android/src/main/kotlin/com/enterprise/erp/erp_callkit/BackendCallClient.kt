@@ -24,17 +24,38 @@ object BackendCallClient {
     private const val TAG = "ErpCallHttp"
     private const val TIMEOUT_MS = 10_000
 
-    fun rejectCall(context: Context, baseUrl: String, callId: String, reason: String): Boolean {
-        val tokens = SecureTokenReader.read(context)
-        if (tokens == null) {
-            Log.w(TAG, "no tokens — cannot authenticate reject")
+    fun rejectCall(
+        context: Context,
+        baseUrl: String,
+        callId: String,
+        reason: String,
+        bundleAccessToken: String = "",
+        bundleRefreshToken: String = "",
+    ): Boolean {
+        // Prefer the Dart-supplied tokens — they're read in Dart where
+        // flutter_secure_storage works reliably. Fall back to the native
+        // SecureTokenReader only for whichever token the bundle didn't
+        // carry (legacy callers / pre-fix notifications still in the tray).
+        // The native read can throw AEADBadTagException on some OEMs, which
+        // is exactly the bug this path now routes around.
+        var access = bundleAccessToken
+        var refreshToken = bundleRefreshToken
+        if (access.isEmpty() || refreshToken.isEmpty()) {
+            val tokens = SecureTokenReader.read(context)
+            if (tokens != null) {
+                if (access.isEmpty()) access = tokens.access
+                if (refreshToken.isEmpty()) refreshToken = tokens.refresh
+            }
+        }
+        if (access.isEmpty()) {
+            Log.w(TAG, "no access token (bundle empty + SecureTokenReader failed) — cannot authenticate reject")
             return false
         }
 
-        var code = postReject(baseUrl, callId, reason, tokens.access)
-        if (code == HttpURLConnection.HTTP_UNAUTHORIZED) {
+        var code = postReject(baseUrl, callId, reason, access)
+        if (code == HttpURLConnection.HTTP_UNAUTHORIZED && refreshToken.isNotEmpty()) {
             Log.i(TAG, "reject got 401 — refreshing access token")
-            val newAccess = refresh(context, baseUrl, tokens.refresh)
+            val newAccess = refresh(context, baseUrl, refreshToken)
             if (newAccess != null) {
                 code = postReject(baseUrl, callId, reason, newAccess)
             }

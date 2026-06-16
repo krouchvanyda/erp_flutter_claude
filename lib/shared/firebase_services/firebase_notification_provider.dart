@@ -10,6 +10,8 @@ import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/config/environments.dart';
+import '../../features/auth/repositories/flutter_secure_storage_secret_store.dart';
+import '../../features/auth/repositories/secure_token_storage.dart';
 import '../../features/chat/repositories/callkit_call_id.dart';
 import 'local_notification_provider.dart';
 
@@ -103,6 +105,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     }
     debugPrint('[FCM-BG] call.ring → ErpCallKit.showIncomingCall '
         'callId=$callId callCid=$callCid caller=$callerName');
+    final ringTokens = await _readRejectTokens();
     await ErpCallKit.showIncomingCall(
       callId: callId,
       callCid: callCid,
@@ -112,6 +115,8 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       baseUrl: _callRejectBaseUrl,
       conversationName: isGroup ? convName : '',
       isGroup: isGroup,
+      authToken: ringTokens.access,
+      refreshToken: ringTokens.refresh,
     );
     return;
   }
@@ -238,6 +243,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
         _parseBackendCallId(data['streamCallCid']?.toString() ?? '');
     debugPrint('[FCM-BG] call.invite → ErpCallKit.showIncomingCall '
         'callId=$callId caller=$callerName');
+    final inviteTokens = await _readRejectTokens();
     await ErpCallKit.showIncomingCall(
       callId: callId,
       callCid: data['streamCallCid']?.toString() ?? '',
@@ -248,6 +254,8 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       conversationId: data['conversationId']?.toString() ?? '',
       conversationName: data['conversationName']?.toString() ?? '',
       isGroup: data['isGroup']?.toString() == 'true',
+      authToken: inviteTokens.access,
+      refreshToken: inviteTokens.refresh,
     );
     return;
   }
@@ -265,6 +273,24 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 /// `Environments` URLs point at the same host today; `prod` matches the
 /// `configureDependencies(environment: Environment.prod)` call in main().
 const String _callRejectBaseUrl = Environments.prodApiBaseUrl;
+
+/// Reads the persisted JWTs from THIS (background) isolate so the native
+/// Reject path can authenticate without re-decrypting
+/// `EncryptedSharedPreferences` itself — a second native instance throws
+/// `AEADBadTagException` on some OEMs (Samsung), which silently no-ops the
+/// reject. `flutter_secure_storage` works fine from Dart here. Returns
+/// empty strings on any failure; the native side then falls back to its
+/// own `SecureTokenReader`.
+Future<({String access, String refresh})> _readRejectTokens() async {
+  try {
+    final tokens =
+        await SecureTokenStorage(FlutterSecureStorageSecretStore()).read();
+    if (tokens == null) return (access: '', refresh: '');
+    return (access: tokens.accessToken, refresh: tokens.refreshToken);
+  } catch (_) {
+    return (access: '', refresh: '');
+  }
+}
 
 /// Extract the backend numeric call id from a Stream CID
 /// (`default:erp-call-637` → `637`). Falls back to the trailing segment,

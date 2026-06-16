@@ -42,7 +42,14 @@ class CallActionReceiver : BroadcastReceiver() {
 
         val callId = data?.getString("callId") ?: ""
         val baseUrl = data?.getString("baseUrl") ?: ""
-        Log.i(TAG, "Reject tapped (killed-app path) · callId=$callId baseUrl=$baseUrl")
+        // Dart-supplied JWTs (preferred). Avoids the native
+        // SecureTokenReader, which throws AEADBadTagException reading
+        // flutter_secure_storage's EncryptedSharedPreferences from a second
+        // instance on some OEMs (Samsung) — the bug that made Reject no-op.
+        val authToken = data?.getString("authToken") ?: ""
+        val refreshToken = data?.getString("refreshToken") ?: ""
+        Log.i(TAG, "Reject tapped (killed-app path) · callId=$callId baseUrl=$baseUrl " +
+            "tokenFromBundle=${authToken.isNotEmpty()}")
 
         if (callId.isEmpty() || baseUrl.isEmpty()) {
             Log.w(TAG, "missing callId/baseUrl — cannot reject")
@@ -54,7 +61,11 @@ class CallActionReceiver : BroadcastReceiver() {
         val pending = goAsync()
         Thread {
             try {
-                val ok = BackendCallClient.rejectCall(appContext, baseUrl, callId, "declined")
+                val ok = BackendCallClient.rejectCall(
+                    appContext, baseUrl, callId, "declined",
+                    bundleAccessToken = authToken,
+                    bundleRefreshToken = refreshToken,
+                )
                 Log.i(TAG, "reject finished · ok=$ok · callId=$callId")
             } catch (e: Exception) {
                 Log.e(TAG, "reject threw: ${e.message}", e)
