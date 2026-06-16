@@ -11,7 +11,6 @@ import '../../../core/theme/app_font_size.dart';
 import '../../../core/theme/app_label.dart';
 import '../../../core/widgets/dynamic_status_bar.dart';
 import '../../../l10n/app_localizations.dart';
-import '../repositories/demo_sign_in.dart';
 
 class BiometricUnlockPage extends StatefulWidget {
   const BiometricUnlockPage({super.key});
@@ -27,15 +26,17 @@ class _BiometricUnlockPageState extends State<BiometricUnlockPage> {
     setState(() => _isAuthenticating = true);
 
     // Capture deps before the async gap (no getIt — read from the tree).
-    final demoSignIn = context.read<DemoSignInService>();
     final session = context.read<AuthSession>();
 
     // Simulate a delay for biometric check
     await Future.delayed(const Duration(milliseconds: 1500));
 
     if (mounted) {
-      // Perform demo sign-in simulation to trigger global auth state
-      await demoSignIn.seed();
+      // The real authenticated user was cached by AuthRepository.login() on
+      // the prior API sign-in and persists in shared_preferences across
+      // restarts. Biometric unlock just re-flips the session for that same
+      // user — do NOT seed a demo user here (it would overwrite the real
+      // cached user, e.g. hiding a SUPER_ADMIN's admin surface).
       if (session is StubAuthSession) {
         session.simulateSignIn();
       }

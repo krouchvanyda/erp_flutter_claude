@@ -324,7 +324,7 @@ class _LoginPageState extends State<LoginPage> {
                                     SizedBox(
                                       height: 54,
                                       child: OutlinedButton.icon(
-                                        onPressed: () => ConfigRouter.pushPageAnimation(context, const BiometricUnlockPage()),
+                                        onPressed: null,
                                         style: OutlinedButton.styleFrom(
                                           shape: RoundedRectangleBorder(
                                             borderRadius: BorderRadius.circular(AppRadii.md),

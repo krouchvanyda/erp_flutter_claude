@@ -10,7 +10,6 @@ import '../../features/auth/views/splash_page.dart';
 import '../../features/dashboard/views/admin_demo_page.dart';
 import '../../features/dashboard/views/dashboard_page.dart';
 import '../../features/chat/views/chat_inbox_page.dart';
-import '../../features/auth/repositories/demo_sign_in.dart';
 import '../../features/auth/repositories/auth_repository.dart';
 import '../di/injection.dart';
 import '../../features/notifications/views/notification_inbox_page.dart';
@@ -110,11 +109,14 @@ class AppRouter {
               // GoRouter picks up via `refreshListenable` and bounces to
               // /dashboard via the redirect policy. No `context.go` here.
               onSimulatedLogin: () async {
-                // Slice 3.2.4 — write the demo user + finance.approve
-                // permission BEFORE flipping the auth flag so the
-                // permissions snapshot has a current user by the time
-                // the redirect bounces us into the dashboard.
-                await getIt<DemoSignInService>().seed();
+                // AuthRepository.login()/register() has ALREADY cached the
+                // real authenticated user (id + merged roles + permissions)
+                // before this callback runs, so the permissions snapshot has
+                // a current user by the time the redirect bounces into the
+                // dashboard. Do NOT seed the demo user here — that overwrote
+                // `current_user_id` with `user-demo` (demo roles), which hid
+                // the super-admin Settings section for real SUPER_ADMIN
+                // logins. Just flip the auth flag.
                 if (session is StubAuthSession) {
                   session.simulateSignIn();
                 }

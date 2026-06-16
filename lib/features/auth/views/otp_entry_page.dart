@@ -11,7 +11,6 @@ import '../../../core/theme/app_font_size.dart';
 import '../../../core/theme/app_label.dart';
 import '../../../core/widgets/dynamic_status_bar.dart';
 import '../../../l10n/app_localizations.dart';
-import '../repositories/demo_sign_in.dart';
 import '../repositories/otp_repository.dart';
 import '../models/otp_verification_result.dart';
 import '../bloc/otp_bloc.dart';
@@ -45,10 +44,10 @@ class _OtpEntryView extends StatelessWidget {
           prev.hasSucceeded == false && next.hasSucceeded,
       listener: (context, state) async {
         // Capture deps before the async gap (no getIt — read from the tree).
-        final demoSignIn = context.read<DemoSignInService>();
         final session = context.read<AuthSession>();
-        // Perform demo sign-in simulation to trigger global auth state
-        await demoSignIn.seed();
+        // The real user was cached by the API login that preceded MFA; just
+        // flip the session for them. Do NOT seed a demo user here (it would
+        // overwrite the real cached user).
         if (session is StubAuthSession) {
           session.simulateSignIn();
         }
