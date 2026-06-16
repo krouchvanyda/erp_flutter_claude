@@ -70,6 +70,7 @@ to voice, preserving old behaviour):
 |---|---|---|
 | iOS foreground / online | — (already correct: STOMP `_callInviteFromDto` reads `json['type']`) | n/a |
 | iOS foreground misdetect / WS-up | `state.callType.value == 'video'` | `CallSignalingService._handleStreamIncomingCall` → `isVideoCall` |
+| iOS background ring (FCM `call.ring`) — CallKit "Audio" vs "Video" header | Stream push `call_type == 'video'` | `firebase_notification_provider._showStreamCallkitRinger` → `_fetchIsVideoFromBackend` (sets CallKit `type: 1`) |
 | iOS background / killed accept | CallKit `params['type'] == '1'` | `callkit_event_handler._handleAccept` → `isVideoCall` (after the early-accept POST, before seeding `_active` + page push) |
 | Android background / killed ring | Stream push `call_type == 'video'` | `firebase_notification_provider` `call.ring` → `_fetchIsVideoFromBackend` |
 | Android background / killed accept | launch payload `isVideo` | `app.dart._handleNativeCallLaunch` → `signaling.isVideoCall` (DI backstop) |
@@ -123,24 +124,50 @@ Accept → app launches → app.dart._handleNativeCallLaunch
 
 ## 5. Known limitations
 
-- **iOS native ringer icon may still show "voice" for a video call.** A
-  blocking `GET` before reporting a PushKit call risks iOS killing the app for
-  a late CallKit report, so `_showStreamCallkitRinger` is left as-is. The
-  *accept* is corrected in `_handleAccept`, so the call still opens as video —
-  only the ring glyph is wrong.
+- **iOS CallKit header "Audio" vs "Video".** iOS derives the "<app> Audio" /
+  "<app> Video" label from `hasVideo`. The native PushKit handler
+  (`StreamVideoPKDelegateManager.swift`) sets it from `payload.stream.video`
+  (`"false"` ⇒ Audio, else Video) — i.e. it is decided in Swift before any Dart
+  runs, so the FCM-path `_showStreamCallkitRinger` fix does NOT affect it. Fixed
+  on the **backend** via the top-level `video` ring flag (see §6) — NOT
+  `settings_override` (that shape was rejected and silently broke ringing).
+  (`_showStreamCallkitRinger` still sets `type:1` for the FCM-fallback ring, and
+  `_handleAccept` corrects the accepted call regardless.)
 - **Android FCM-BG fetch is best-effort.** No DI / no 401-refresh in the
   isolate; if the access token is stale the ring falls back to voice, but
   `app.dart`'s DI-backed `isVideoCall` still corrects the routing on accept.
 
 ---
 
-## 6. The real fix (backend follow-up — not done)
+## 6. Backend fix — Stream ring carries the video flag (correct shape)
 
-All §3 client fetches exist because the backend never tells Stream the call is
-video. If `StreamTokenService.cidForCall` / `StreamVideoService.ring` encoded
-the type so Stream's `call.ring` push carried `call_type: "video"` (or a video
-flag), **every** path — iOS + Android, ring icon + routing — would be correct
-with zero client guesswork, and the §2 helpers would become pure safety nets.
+`StreamVideoService.ring(...)` takes `isVideo` (from `ChatCallService.start`,
+`c.getType() == VIDEO`) and adds the **top-level `video`** flag to the Stream
+`POST /call/{type}/{id}` ring body **only for video calls**:
+
+```
+video:  { "ring": true, "video": true, "data": { "members": [...] } }
+voice:  { "ring": true,                "data": { "members": [...] } }   ← unchanged
+```
+
+A voice call sends the EXACT original body (no `video` field), so voice ringing
+is byte-for-byte identical to the long-working behaviour and is unaffected.
+`video` is a documented `GetOrCreateCallRequest` field (sibling of `ring`/
+`notify` — the Stream SDK sends it). It marks the call as video so the VoIP ring
+push carries `video:"true"`, which the iOS native handler
+(`StreamVideoPKDelegateManager`) turns into the CallKit "Video" header.
+
+> ⚠️ FIRST attempt used `data.settings_override.video = { enabled,
+> camera_default_on }` — Stream **rejected** that shape, and because this POST
+> swallows errors (`catch … log.warn`) the ring failed SILENTLY → no VoIP push →
+> NO incoming call on minimized/killed devices. NEVER add an unverified field to
+> the ring body. After deploying, confirm the backend log shows
+> `[stream] rang … video=true` and **no** `[stream] ring failed … status=4xx`,
+> and that a backgrounded device still rings.
+
+The §2/§3 client fetches remain as safety nets and still drive in-app page
+selection + the Android/FCM-fallback rings. The CID is still minted `default:` —
+only the top-level `video` flag encodes the call type for the ring.
 
 ---
 

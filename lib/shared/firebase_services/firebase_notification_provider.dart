@@ -411,10 +411,21 @@ Future<void> _showStreamCallkitRinger(RemoteMessage message) async {
       data['call_display_name']?.toString() ??
       'Unknown caller';
   final callerHandle = data['created_by_id']?.toString() ?? '';
-  // Stream encodes video calls as type=video in custom data; default
-  // to audio (type=0) when unknown.
-  final isVideo = (data['call_type']?.toString() == 'video') ||
+  // Stream's `call.ring` push only carries the Stream call type ("default" —
+  // the backend mints every CID as `default:erp-call-<id>`), so this is always
+  // false for a video call → CallKit renders "<app> Audio" and `type:0`.
+  var isVideo = (data['call_type']?.toString() == 'video') ||
       (data['video']?.toString() == 'true');
+  // Correct it from the authoritative backend DTO so the CallKit header reads
+  // "Video" (iOS derives the Audio/Video label from `hasVideo`, i.e. our
+  // `type` below). Best-effort: bare HttpClient + stored token, no DI here;
+  // null keeps the push fallback. This is an FCM-triggered `showCallkitIncoming`
+  // (not a PushKit `didReceiveIncomingPush` callback), so the extra round-trip
+  // does NOT risk the late-CallKit-report app kill that PushKit imposes.
+  final ringTokens = await _readRejectTokens();
+  final resolvedVideo =
+      await _fetchIsVideoFromBackend(_parseBackendCallId(callCid), ringTokens.access);
+  if (resolvedVideo != null) isVideo = resolvedVideo;
 
   final params = CallKitParams(
     id: id,
