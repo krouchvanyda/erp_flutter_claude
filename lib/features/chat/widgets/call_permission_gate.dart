@@ -1,23 +1,24 @@
-import 'dart:io' show Platform;
-
 import 'package:permission_handler/permission_handler.dart';
 
-/// Ensures the permissions a call needs are granted before the call is placed.
-/// Returns `true` when the call may proceed.
+/// Requests the permissions a call needs BEFORE the call is placed, so the
+/// native system prompt appears up front (the moment the call page opens)
+/// instead of mid-call when WebRTC first touches the camera/mic.
 ///
-/// **iOS-only** — on Android this returns `true` immediately so the existing
-/// (working) Android call flow is completely unchanged.
+/// Returns `true` when every needed permission is granted. The result is
+/// **advisory** — the call pages place the call regardless (a denial just
+/// transmits no audio/video rather than blocking the ring), so this never
+/// stops the callee from ringing.
 ///
-/// Uses the **native** iOS permission prompt (`request()`) — the same
-/// Allow / Don't Allow dialog iOS shows for notifications. No custom dialog:
-///   * already granted → proceed
-///   * not yet asked → the native system prompt appears
-///   * denied → returns `false` and the caller simply doesn't open the call
-///     (iOS won't re-show the native prompt once denied; the user re-enables
-///     it from Settings)
+/// Runs on **both iOS and Android**. (It used to be iOS-only; Android now
+/// also prompts — for a video call that means **camera + mic up front**,
+/// which is the requested behaviour.)
+///
+/// Uses the native permission prompt (`request()`):
+///   * already granted        → proceed
+///   * denied / not yet asked  → the native system prompt appears
+///   * permanently denied      → no re-prompt (the user re-enables it from
+///     Settings); we just report the current grant state
 Future<bool> ensureCallPermissions({bool needCamera = false}) async {
-  if (!Platform.isIOS) return true; // Android flow unaffected.
-
   Future<bool> ensure(Permission permission) async {
     var status = await permission.status;
     if (status.isGranted) return true;
