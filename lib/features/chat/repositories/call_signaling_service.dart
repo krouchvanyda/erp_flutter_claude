@@ -961,6 +961,13 @@ class CallSignalingService {
     // sheet gets the caller's name + profile photo instead of initials.
     var conv = await conversations.findById(conversationId);
     conv ??= await conversations.findDirectWith(callerId);
+    // Caller's photo straight from the push/launch payload (the native
+    // notifier + backend both carry it). On a KILLED-app launch over the
+    // lock screen the local conv hasn't loaded yet, so `conv` is null and
+    // its `displayAvatarUrl` would leave the full-screen incoming sheet on
+    // initials — this payload value is the only avatar source there.
+    final pushAvatar = (data['avatarUrl'] ?? data['callerAvatarUrl'])
+        ?.toString();
     _setActive(ActiveCall(
       callId: callId,
       conversationId: conversationId,
@@ -973,7 +980,8 @@ class CallSignalingService {
       conversationName: conv?.name,
       isGroup: conv?.isGroup ?? false,
       conversationAvatarFilePath: conv?.avatarFilePath,
-      conversationAvatarUrl: conv?.displayAvatarUrl,
+      conversationAvatarUrl: conv?.displayAvatarUrl ??
+          (pushAvatar != null && pushAvatar.isNotEmpty ? pushAvatar : null),
       streamCallCid: streamCallCid,
     ));
     // Subscribe so the matching `call.hangup` / `call.accept` frames

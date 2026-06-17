@@ -263,6 +263,13 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     debugPrint('[FCM-BG] call.invite → ErpCallKit.showIncomingCall '
         'callId=$callId caller=$callerName');
     final inviteTokens = await _readRejectTokens();
+    // Caller's photo for the native ring. The backend invite push carries
+    // `callerAvatarUrl` (relative `/uploads/...`); resolve to an absolute
+    // URL the native notifier can download. No extra backend round trip.
+    final rawInviteAvatar = data['callerAvatarUrl']?.toString();
+    final inviteAvatar = (rawInviteAvatar == null || rawInviteAvatar.isEmpty)
+        ? ''
+        : _absoluteUploadUrl(rawInviteAvatar);
     await ErpCallKit.showIncomingCall(
       callId: callId,
       callCid: data['streamCallCid']?.toString() ?? '',
@@ -275,6 +282,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       isGroup: data['isGroup']?.toString() == 'true',
       authToken: inviteTokens.access,
       refreshToken: inviteTokens.refresh,
+      avatarUrl: inviteAvatar,
     );
     return;
   }

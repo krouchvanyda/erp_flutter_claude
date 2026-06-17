@@ -99,6 +99,11 @@ object IncomingCallNotifier {
             putBoolean("isGroup", isGroup)
             putString("authToken", authToken)
             putString("refreshToken", refreshToken)
+            // Rides the full-screen intent → consumeLaunchAction so the
+            // Flutter in-app incoming sheet (shown over the lock screen on
+            // a killed-app launch) can paint the caller's photo instead of
+            // initials, even before the local conversation has loaded.
+            putString("avatarUrl", avatarUrl)
         }
 
         // Reject → native broadcast receiver. Killed-app safe: no UI,

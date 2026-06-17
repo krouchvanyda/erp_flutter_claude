@@ -181,6 +181,10 @@ class _ErpMobileAppState extends State<ErpMobileApp>
         'callType': isVideo ? 'video' : 'voice',
         'startedAt': DateTime.now().toUtc().toIso8601String(),
         'streamCallCid': streamCallCid,
+        // Caller's photo from the native launch payload so the in-app
+        // incoming sheet (shown over the lock screen on a killed-app
+        // launch) paints it even before the local conversation loads.
+        'avatarUrl': data['avatarUrl']?.toString() ?? '',
       };
       debugPrint('[NativeCall] launch action accept=$accept '
           'callId=$callId conv=$conversationId caller=$callerName');
