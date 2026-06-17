@@ -21,6 +21,7 @@ import '../repositories/call_log_repository.dart';
 import '../repositories/conversations_repository.dart';
 import '../repositories/messages_repository.dart';
 import '../repositories/presence_repository.dart';
+import '../repositories/users_cache.dart';
 import '../models/call_log.dart';
 import '../models/chat_message.dart';
 import '../models/conversation.dart';
@@ -126,7 +127,10 @@ class _Hero extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isGroup = conversation.isGroup;
-    final hasPhoto = (conversation.avatarFilePath ?? '').isNotEmpty;
+    // A photo = a locally-picked file OR a server-side avatar (peer's
+    // profile photo for direct convs, uploaded group photo for groups).
+    final hasPhoto = (conversation.avatarFilePath ?? '').isNotEmpty ||
+        (conversation.displayAvatarUrl ?? '').isNotEmpty;
     return Column(
       children: [
         // Slice 10.3.3 — group avatar is tappable (admin only).
@@ -154,6 +158,7 @@ class _Hero extends StatelessWidget {
                               name: conversation.name,
                               size: 96,
                               avatarFilePath: conversation.avatarFilePath,
+                              avatarUrl: conversation.displayAvatarUrl,
                               showStatus: false,
                             )
                           : GroupAvatarCluster(
@@ -167,6 +172,8 @@ class _Hero extends StatelessWidget {
                           // user-set photo (drives the inbox tile too
                           // via the same `ChatAvatar(avatarFilePath:)`).
                           avatarFilePath: conversation.avatarFilePath,
+                          // Server-side peer profile photo.
+                          avatarUrl: conversation.displayAvatarUrl,
                           // Live presence for the other person; dot
                           // ticks on every `/topic/presence` frame.
                           userId: conversation.participantPreviews.isNotEmpty
@@ -748,6 +755,8 @@ class _Members extends StatelessWidget {
                 presence: PresenceStatus.online,
                 isAdmin: true,
                 userId: context.read<ChatSettings>().userId,
+                avatarUrl: UsersCache.instance
+                    .avatarOf(context.read<ChatSettings>().userId),
               ),
               for (final p in shown) ...[
                 const _Hairline(),
@@ -759,6 +768,7 @@ class _Members extends StatelessWidget {
                   // Drive the row's dot from PresenceRepository so
                   // it ticks live on every `/topic/presence` frame.
                   userId: p.employeeId,
+                  avatarUrl: p.avatarUrl,
                 ),
               ],
               if (extra > 0) ...[
@@ -790,12 +800,14 @@ class _MemberRow extends StatelessWidget {
     required this.role,
     required this.isAdmin,
     this.userId,
+    this.avatarUrl,
   });
   final String name;
   final PresenceStatus presence;
   final String? role;
   final bool isAdmin;
   final String? userId;
+  final String? avatarUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -807,6 +819,7 @@ class _MemberRow extends StatelessWidget {
           ChatAvatar(
             name: name,
             size: 40,
+            avatarUrl: avatarUrl,
             userId: userId,
             presence: userId == null ? presence : null,
           ),
@@ -1232,7 +1245,8 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
         final name = u.fullName.trim().isEmpty
             ? (u.email.trim().isEmpty ? 'User #${u.id}' : u.email)
             : u.fullName;
-        mapped.add(ChatParticipantPreview(employeeId: u.id, name: name));
+        mapped.add(ChatParticipantPreview(
+            employeeId: u.id, name: name, avatarUrl: u.avatarUrl));
       }
       mapped.sort(
         (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
@@ -1412,6 +1426,7 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
                                 ChatAvatar(
                                   name: p.name,
                                   size: 40,
+                                  avatarUrl: p.avatarUrl,
                                   userId: p.employeeId,
                                 ),
                                 const SizedBox(width: 12),

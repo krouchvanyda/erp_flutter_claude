@@ -346,7 +346,10 @@ class _VideoCallPageState extends State<VideoCallPage>
                 conv?.avatarFilePath ?? active?.conversationAvatarFilePath;
             // Server-side photo (peer profile / uploaded group photo);
             // only the local ChatConversation carries it.
-            final avatarUrl = conv?.displayAvatarUrl;
+            // Fall back to the call payload's server avatar URL on the
+            // cold-start / incoming path where `conv` hasn't resolved.
+            final avatarUrl =
+                conv?.displayAvatarUrl ?? active?.conversationAvatarUrl;
             return Stack(
               children: [
                 // Remote video — real Stream tracks when the SDK has

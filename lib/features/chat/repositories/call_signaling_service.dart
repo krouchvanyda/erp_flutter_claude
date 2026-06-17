@@ -52,6 +52,7 @@ class ActiveCall {
     this.conversationName,
     this.isGroup = false,
     this.conversationAvatarFilePath,
+    this.conversationAvatarUrl,
     this.streamCallCid,
   });
 
@@ -102,6 +103,13 @@ class ActiveCall {
   /// shows that photo instead of just an icon.
   final String? conversationAvatarFilePath;
 
+  /// Server-side photo for the call hero / incoming sheet: the peer's
+  /// profile avatar for direct calls, the uploaded group photo for
+  /// group calls (resolved from `conversation.displayAvatarUrl`).
+  /// Unlike [conversationAvatarFilePath] this is a real URL that exists
+  /// on every device, so the callee's incoming sheet can show it too.
+  final String? conversationAvatarUrl;
+
   /// Stream Video call CID (e.g. `default:abc123`) — opaque to the
   /// signalling layer, fed straight into `StreamCallEngine.join(...)`
   /// once both sides have accepted. Null when the backend hasn't
@@ -129,6 +137,7 @@ class ActiveCall {
         conversationName: conversationName,
         isGroup: isGroup,
         conversationAvatarFilePath: conversationAvatarFilePath,
+        conversationAvatarUrl: conversationAvatarUrl,
         streamCallCid: streamCallCid ?? this.streamCallCid,
       );
 }
@@ -455,6 +464,7 @@ class CallSignalingService {
       conversationName: conv?.name,
       isGroup: conv?.isGroup ?? false,
       conversationAvatarFilePath: conv?.avatarFilePath,
+      conversationAvatarUrl: conv?.displayAvatarUrl,
     );
     // Slice 10.2.11 — fresh outgoing call, reset the joined-callees
     // set so leftovers from a prior call can't confuse the auto-end.
@@ -944,7 +954,13 @@ class CallSignalingService {
     );
     _logIdByCallId[callId] = logged.id;
 
-    final conv = await conversations.findById(conversationId);
+    // The invite carries the CALLER's conversation id, which often
+    // doesn't resolve to a local conv on this (callee) device because
+    // the seed reuses ids per device (Slice 10.1.8). For a direct call,
+    // fall back to the local direct conv with the caller so the incoming
+    // sheet gets the caller's name + profile photo instead of initials.
+    var conv = await conversations.findById(conversationId);
+    conv ??= await conversations.findDirectWith(callerId);
     _setActive(ActiveCall(
       callId: callId,
       conversationId: conversationId,
@@ -957,6 +973,7 @@ class CallSignalingService {
       conversationName: conv?.name,
       isGroup: conv?.isGroup ?? false,
       conversationAvatarFilePath: conv?.avatarFilePath,
+      conversationAvatarUrl: conv?.displayAvatarUrl,
       streamCallCid: streamCallCid,
     ));
     // Subscribe so the matching `call.hangup` / `call.accept` frames
@@ -2013,7 +2030,11 @@ class CallSignalingService {
         // can show the GROUP name (e.g. "TEST01") with "Vibol is
         // calling" as a subtitle, instead of just "Vibol". Direct
         // calls keep showing the caller's name as the header.
-        final conv = await conversations.findById(conversationId);
+        // Fall back to the local direct conv with the caller when the
+        // caller's conv id doesn't resolve here (per-device id reuse,
+        // Slice 10.1.8) so the sheet still gets the caller's photo.
+        var conv = await conversations.findById(conversationId);
+        conv ??= await conversations.findDirectWith(callerId);
         _setActive(ActiveCall(
           callId: callId,
           conversationId: conversationId,
@@ -2026,6 +2047,7 @@ class CallSignalingService {
           conversationName: conv?.name,
           isGroup: conv?.isGroup ?? false,
           conversationAvatarFilePath: conv?.avatarFilePath,
+          conversationAvatarUrl: conv?.displayAvatarUrl,
         ));
         // Subscribe to `/topic/conversations/{convId}/call` so the
         // accept / reject / hangup frames that come AFTER the invite

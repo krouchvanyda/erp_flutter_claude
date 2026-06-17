@@ -691,6 +691,7 @@ class _SelectedChips extends StatelessWidget {
                 avatar: ChatAvatar(
                   name: resolve(id).name,
                   size: 24,
+                  avatarUrl: resolve(id).avatarUrl,
                   showStatus: false,
                 ),
                 label: AppLabel(
@@ -805,7 +806,12 @@ class _MemberList extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Row(
                 children: [
-                  ChatAvatar(name: p.name, size: 44, userId: p.employeeId),
+                  ChatAvatar(
+                    name: p.name,
+                    size: 44,
+                    avatarUrl: p.avatarUrl,
+                    userId: p.employeeId,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: AppLabel(

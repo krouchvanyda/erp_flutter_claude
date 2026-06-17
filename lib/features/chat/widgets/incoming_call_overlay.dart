@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:erp_mobile/core/di/service_locator.dart';
 
 import '../../../core/router/app_router.dart';
+import '../../../core/widgets/app_images.dart' show ensureHttp;
+import 'chat_avatar.dart' show AvatarAuthHeaders;
 import '../../../core/router/route_paths.dart';
 import '../../../core/theme/app_font_size.dart';
 import '../../../core/theme/app_label.dart';
@@ -476,42 +479,76 @@ class _IncomingAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasPhoto =
+    final hasLocalPhoto =
         (call.conversationAvatarFilePath ?? '').isNotEmpty;
-    return Container(
-      width: 132,
-      height: 132,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white.withValues(alpha: 0.08),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.18),
-          width: 2,
-        ),
-        image: hasPhoto
-            ? DecorationImage(
-                image: FileImage(File(call.conversationAvatarFilePath!)),
-                fit: BoxFit.cover,
-              )
-            : null,
-      ),
-      alignment: Alignment.center,
-      child: hasPhoto
-          ? null
-          : (call.isGroup
-              ? const Icon(
-                  Icons.groups_rounded,
-                  color: Colors.white,
-                  size: 56,
-                )
+    final hasNetworkPhoto = !hasLocalPhoto &&
+        (call.conversationAvatarUrl ?? '').isNotEmpty;
+
+    // Dark translucent circle with a group icon / initials — both the
+    // no-photo state AND the network placeholder/error fallback.
+    Widget fallback() => Container(
+          width: 132,
+          height: 132,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white.withValues(alpha: 0.08),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.18),
+              width: 2,
+            ),
+          ),
+          alignment: Alignment.center,
+          child: call.isGroup
+              ? const Icon(Icons.groups_rounded, color: Colors.white, size: 56)
               : AppLabel(
                   text: _initialsFor(call.peerName),
                   fontSize: AppFontSize.value40,
                   color: Colors.white,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 0.5,
-                )),
-    );
+                ),
+        );
+
+    if (hasNetworkPhoto) {
+      // Peer profile photo (direct) / group photo — exists on every
+      // device, so the callee's incoming sheet shows it too.
+      AvatarAuthHeaders.ensureLoaded();
+      return ClipOval(
+        child: AnimatedBuilder(
+          animation: AvatarAuthHeaders.revision,
+          builder: (_, __) => CachedNetworkImage(
+            imageUrl: ensureHttp(call.conversationAvatarUrl!),
+            httpHeaders: AvatarAuthHeaders.headers,
+            width: 132,
+            height: 132,
+            fit: BoxFit.cover,
+            placeholder: (_, __) => fallback(),
+            errorWidget: (_, __, ___) => fallback(),
+          ),
+        ),
+      );
+    }
+
+    if (hasLocalPhoto) {
+      return Container(
+        width: 132,
+        height: 132,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withValues(alpha: 0.08),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.18),
+            width: 2,
+          ),
+          image: DecorationImage(
+            image: FileImage(File(call.conversationAvatarFilePath!)),
+            fit: BoxFit.cover,
+          ),
+        ),
+      );
+    }
+
+    return fallback();
   }
 
   static String _initialsFor(String raw) {

@@ -375,7 +375,11 @@ class _VoiceCallPageState extends State<VoiceCallPage>
           // Only the local ChatConversation carries it — the ActiveCall
           // push payload doesn't, so this stays null on the cold-start
           // accept path until the conv resolves.
-          final avatarUrl = conv?.displayAvatarUrl;
+          // Prefer the resolved conversation; fall back to the call
+          // payload's server avatar URL on the cold-start / incoming
+          // path where the local ChatConversation hasn't resolved yet.
+          final avatarUrl =
+              conv?.displayAvatarUrl ?? active?.conversationAvatarUrl;
           final isGroup = conv?.isGroup ?? active?.isGroup ?? false;
           final hasIdentity = conv != null || active != null;
           return Stack(

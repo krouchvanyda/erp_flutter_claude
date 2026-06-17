@@ -193,6 +193,9 @@ class _LeadingAvatar extends StatelessWidget {
     return ChatAvatar(
       name: message.senderName,
       size: 36,
+      // Sender's server-side profile photo (resolved from the backend
+      // member/user payload into UsersCache); falls back to initials.
+      avatarUrl: message.senderAvatarUrl,
       // Show a live presence dot for the sender of incoming bubbles
       // so group chats surface who's online without having to open
       // the chat info page.

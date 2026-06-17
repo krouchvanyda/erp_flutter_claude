@@ -1052,7 +1052,14 @@ class _RecentCallTile extends StatelessWidget {
               Stack(
                 alignment: Alignment.bottomRight,
                 children: [
-                  ChatAvatar(name: peerName, size: 44, showStatus: false),
+                  ChatAvatar(
+                    name: peerName,
+                    size: 44,
+                    // Matches the displayed caller name above; resolves
+                    // their profile photo from the directory cache.
+                    avatarUrl: UsersCache.instance.avatarOf(log.callerId),
+                    showStatus: false,
+                  ),
                   Container(
                     width: 18,
                     height: 18,

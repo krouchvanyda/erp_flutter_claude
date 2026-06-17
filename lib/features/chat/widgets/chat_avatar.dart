@@ -309,6 +309,7 @@ class GroupAvatarCluster extends StatelessWidget {
                 child: ChatAvatar(
                   name: visible[2].name,
                   size: backSize,
+                  avatarUrl: visible[2].avatarUrl,
                   showStatus: false,
                 ),
               ),
@@ -322,6 +323,7 @@ class GroupAvatarCluster extends StatelessWidget {
                 child: ChatAvatar(
                   name: visible[1].name,
                   size: backSize,
+                  avatarUrl: visible[1].avatarUrl,
                   showStatus: false,
                 ),
               ),
@@ -334,6 +336,7 @@ class GroupAvatarCluster extends StatelessWidget {
               child: ChatAvatar(
                 name: visible.first.name,
                 size: frontSize,
+                avatarUrl: visible.first.avatarUrl,
                 showStatus: false,
               ),
             ),

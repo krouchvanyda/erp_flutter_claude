@@ -165,7 +165,12 @@ class _ResultTile extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ChatAvatar(name: message.senderName, size: 40, showStatus: false),
+              ChatAvatar(
+                name: message.senderName,
+                size: 40,
+                avatarUrl: message.senderAvatarUrl,
+                showStatus: false,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
