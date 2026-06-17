@@ -61,6 +61,7 @@ class _VoiceCallPageState extends State<VoiceCallPage>
   late final CallSignalingService _signaling;
   late final StreamCallEngine _streamEngine;
   bool _placedInvite = false;
+  bool _permissionHandled = false;
 
   @override
   void initState() {
@@ -83,10 +84,11 @@ class _VoiceCallPageState extends State<VoiceCallPage>
       if (existing.state == CallSignalState.connected) {
         _stage = _CallStage.connected;
         _startTicker();
-        // Already connected on mount (callee accept / re-push) — reflect a
-        // denied mic permission once the first frame can show a snackbar.
+        // Already connected on mount (callee accept / re-push) — once
+        // foreground, prompt for the mic if a native bg/killed accept couldn't,
+        // then reflect the result.
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) unawaited(_syncMicWithPermission());
+          if (mounted) unawaited(_handleMicPermissionOnConnect());
         });
       }
     } else {
@@ -208,6 +210,28 @@ class _VoiceCallPageState extends State<VoiceCallPage>
     } catch (_) {/* swallow */}
   }
 
+  /// Runs once when the call reaches connected. For the CALLEE (didn't place
+  /// the invite), a native background/killed accept never prompted for the mic
+  /// — iOS can only show that prompt now that the app is foreground — so request
+  /// it here. [_connectOptions] joined with the mic DISABLED (permission not yet
+  /// granted), so on a fresh grant enable the live mic track + unmute. Then
+  /// reflect a denial via [_syncMicWithPermission]. The caller already prompted
+  /// in [_placeOutgoingWithPermission], so for them this only reflects. (On
+  /// Android `ensureCallPermissions` is a no-op — WebRTC prompted at join — so
+  /// this just reflects there.)
+  Future<void> _handleMicPermissionOnConnect() async {
+    if (_permissionHandled) return;
+    _permissionHandled = true;
+    if (!_placedInvite) {
+      final granted = await ensureCallPermissions(); // foreground prompt (iOS)
+      if (mounted && granted) {
+        setState(() => _muted = false);
+        await _applyMicState(false); // enable the now-granted live mic
+      }
+    }
+    await _syncMicWithPermission(); // denied → muted + warning
+  }
+
   /// Reflect a DENIED mic permission in the UI (iOS **and** Android). The mic
   /// is already off when denied — on iOS [_connectOptions] disabled the track,
   /// on Android WebRTC's own prompt yields no audio — but the mute button
@@ -272,8 +296,9 @@ class _VoiceCallPageState extends State<VoiceCallPage>
         !_appliedInitialAudioRoute) {
       _appliedInitialAudioRoute = true;
       unawaited(_applyAudioRoute(_speaker));
-      // Reflect a denied mic permission (iOS) now that we're connected.
-      unawaited(_syncMicWithPermission());
+      // Prompt for the mic if a native bg/killed accept couldn't, then reflect
+      // the result now that we're connected + foreground.
+      unawaited(_handleMicPermissionOnConnect());
     }
     // Slice 10.2.4 — show a friendly toast when the peer rejected
     // with a known reason. The page is about to pop in ~600ms; the

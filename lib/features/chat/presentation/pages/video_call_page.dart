@@ -44,6 +44,7 @@ class _VideoCallPageState extends State<VideoCallPage>
   bool _muted = false;
   bool _cameraOn = true;
   bool _permissionSynced = false;
+  bool _placedInvite = false;
   bool _frontCamera = true;
   bool _speaker = true;
   bool _controlsVisible = true;
@@ -72,13 +73,14 @@ class _VideoCallPageState extends State<VideoCallPage>
       _connected = true;
       _startTicker();
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) unawaited(_syncMediaWithPermission());
+        if (mounted) unawaited(_handleMediaPermissionOnConnect());
       });
     } else if (existing == null ||
         existing.conversationId != widget.conversationId) {
       // Place a new outgoing video invite — gated on mic + camera
       // permission (iOS-only; Android unchanged). Without them the Stream
       // join fails silently and the ring never reaches the peer.
+      _placedInvite = true;
       _status = 'Calling…';
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) unawaited(_placeOutgoingWithPermission());
@@ -104,14 +106,40 @@ class _VideoCallPageState extends State<VideoCallPage>
     );
   }
 
+  /// Runs once when the call reaches connected. For the CALLEE (didn't place
+  /// the invite), a native background/killed accept never prompted for
+  /// mic/camera — iOS can only show it now that the app is foreground — so
+  /// request here. [_connectOptions] joined with the tracks DISABLED (perms not
+  /// yet granted), so on a grant enable the live mic/camera. Then reflect any
+  /// denial via [_syncMediaWithPermission]. The caller already prompted in
+  /// [_placeOutgoingWithPermission], so for them this only reflects. (On Android
+  /// `ensureCallPermissions` is a no-op — WebRTC prompted at join.)
+  Future<void> _handleMediaPermissionOnConnect() async {
+    if (_permissionSynced) return;
+    _permissionSynced = true;
+    if (!_placedInvite) {
+      await ensureCallPermissions(needCamera: true); // foreground prompt (iOS)
+      if (!mounted) return;
+      final call = _engine.callNotifier.value;
+      if (await isMicrophoneGranted()) {
+        setState(() => _muted = false);
+        await call?.setMicrophoneEnabled(enabled: true);
+      }
+      if (await isCameraGranted()) {
+        setState(() => _cameraOn = true);
+        await call?.setCameraEnabled(enabled: true);
+      }
+      if (!mounted) return;
+    }
+    await _syncMediaWithPermission(); // denied → muted/off + warning
+  }
+
   /// Reflect DENIED mic/camera permissions in the UI (iOS **and** Android). The
   /// media is already off when denied — on iOS [_connectOptions] disabled the
   /// tracks, on Android WebRTC's own prompt yields nothing — but the mic and
   /// camera buttons default to ON, so the callee saw active controls ("looks
-  /// like allowed"). Flip them off + warn so the UI matches reality. Runs once.
+  /// like allowed"). Flip them off + warn so the UI matches reality.
   Future<void> _syncMediaWithPermission() async {
-    if (_permissionSynced) return;
-    _permissionSynced = true;
     final micGranted = await isMicrophoneGranted();
     final camGranted = await isCameraGranted();
     if (!mounted || (micGranted && camGranted)) return;
@@ -211,7 +239,7 @@ class _VideoCallPageState extends State<VideoCallPage>
       }
     });
     if (call.state == CallSignalState.connected) {
-      unawaited(_syncMediaWithPermission());
+      unawaited(_handleMediaPermissionOnConnect());
     }
     if (call.state == CallSignalState.ended && call.endReason != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
