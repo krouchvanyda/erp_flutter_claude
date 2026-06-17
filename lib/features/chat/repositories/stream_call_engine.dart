@@ -259,25 +259,22 @@ class StreamCallEngine {
   /// No-op when [streamCallCid] is null/empty (backend hasn't shipped
   /// Stream integration for this call) or the token endpoint fails.
   /// Build the [CallConnectOptions] for a Stream join, gating each media
-  /// track on the OS permission **on iOS only**. Enabling a track the user
-  /// declined makes `call.join()` fail — and the failure path calls
-  /// `leave()`, which cancels the call (for the caller that stops the
-  /// callee's ring; for the callee it drops the call they just accepted).
-  /// Mapping a declined permission to a DISABLED track lets the join
-  /// succeed: the call connects, the user just publishes nothing on that
-  /// track. Android requests mic/camera up-front at launch, so both stay
-  /// enabled there exactly as before.
+  /// track on the OS permission **on both iOS and Android**. A track the user
+  /// DECLINED must not be published — so the peer does NOT hear a denied mic or
+  /// see a denied camera. (Enabling a declined track can also make
+  /// `call.join()` fail, whose failure path calls `leave()` and cancels the
+  /// call.) Mapping a declined permission to a DISABLED track lets the join
+  /// succeed and publishes nothing on that track. A GRANTED permission — the
+  /// normal case — keeps the track enabled exactly as before, so this only
+  /// changes the denied case.
   Future<CallConnectOptions> _connectOptions({required bool isVideo}) async {
-    var micEnabled = true;
-    var camEnabled = isVideo;
+    final micEnabled = await Permission.microphone.isGranted;
+    final camEnabled = isVideo && await Permission.camera.isGranted;
     if (Platform.isIOS) {
-      micEnabled = await Permission.microphone.isGranted;
-      camEnabled = isVideo && await Permission.camera.isGranted;
-      // ignore: avoid_print
-      print('[StreamCallEngine] iOS track gating · '
-          'mic=$micEnabled cam=$camEnabled');
       await configureIosCallAudio(isVideo: isVideo);
     }
+    // ignore: avoid_print
+    print('[StreamCallEngine] track gating · mic=$micEnabled cam=$camEnabled');
     return CallConnectOptions(
       camera: camEnabled ? TrackOption.enabled() : TrackOption.disabled(),
       microphone:

@@ -30,3 +30,13 @@ Future<bool> ensureCallPermissions({bool needCamera = false}) async {
   final camOk = needCamera ? await ensure(Permission.camera) : true;
   return micOk && camOk;
 }
+
+/// Whether the OS currently grants the microphone. Used by the in-call UI to
+/// reflect a "Don't Allow" choice — the mic track is already disabled at join
+/// when permission is denied, but the mute button defaults to "unmuted", so
+/// without this the callee who tapped "Don't Allow" sees an active mic ("looks
+/// like allowed"). Lets the page show the mic as muted instead.
+Future<bool> isMicrophoneGranted() => Permission.microphone.isGranted;
+
+/// Camera equivalent for the video call page (denied camera → show camera off).
+Future<bool> isCameraGranted() => Permission.camera.isGranted;

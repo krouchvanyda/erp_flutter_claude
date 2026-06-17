@@ -43,6 +43,7 @@ class _VideoCallPageState extends State<VideoCallPage>
     with WidgetsBindingObserver {
   bool _muted = false;
   bool _cameraOn = true;
+  bool _permissionSynced = false;
   bool _frontCamera = true;
   bool _speaker = true;
   bool _controlsVisible = true;
@@ -70,6 +71,9 @@ class _VideoCallPageState extends State<VideoCallPage>
         existing.state == CallSignalState.connected) {
       _connected = true;
       _startTicker();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_syncMediaWithPermission());
+      });
     } else if (existing == null ||
         existing.conversationId != widget.conversationId) {
       // Place a new outgoing video invite — gated on mic + camera
@@ -91,6 +95,33 @@ class _VideoCallPageState extends State<VideoCallPage>
   /// mic/camera, so the other side must always ring; if the user denies, A
   /// simply transmits no audio/video. (Old behaviour popped the page on
   /// denial, so the callee never rang — that's the bug this fixes.)
+  /// Reflect DENIED mic/camera permissions in the UI (iOS **and** Android).
+  /// The mic and camera buttons default to ON, so a callee who tapped "Don't
+  /// Allow" saw active controls ("looks like allowed"). Flip them off + warn so
+  /// the UI matches reality. Runs once per call.
+  Future<void> _syncMediaWithPermission() async {
+    if (_permissionSynced) return;
+    _permissionSynced = true;
+    final micGranted = await isMicrophoneGranted();
+    final camGranted = await isCameraGranted();
+    if (!mounted || (micGranted && camGranted)) return;
+    setState(() {
+      if (!micGranted) _muted = true;
+      if (!camGranted) _cameraOn = false;
+    });
+    final what = !micGranted && !camGranted
+        ? 'Microphone and camera are off'
+        : !micGranted
+            ? 'Microphone is off'
+            : 'Camera is off';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$what — permission denied'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   Future<void> _placeOutgoingWithPermission() async {
     await ensureCallPermissions(needCamera: true);
     if (!mounted) return;
@@ -178,6 +209,9 @@ class _VideoCallPageState extends State<VideoCallPage>
           break;
       }
     });
+    if (call.state == CallSignalState.connected) {
+      unawaited(_syncMediaWithPermission());
+    }
     if (call.state == CallSignalState.ended && call.endReason != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
