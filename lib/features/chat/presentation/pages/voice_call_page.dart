@@ -83,6 +83,11 @@ class _VoiceCallPageState extends State<VoiceCallPage>
       if (existing.state == CallSignalState.connected) {
         _stage = _CallStage.connected;
         _startTicker();
+        // Already connected on mount (callee accept / re-push) — reflect a
+        // denied mic permission once the first frame can show a snackbar.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) unawaited(_syncMicWithPermission());
+        });
       }
     } else {
       _placedInvite = true;
@@ -203,6 +208,25 @@ class _VoiceCallPageState extends State<VoiceCallPage>
     } catch (_) {/* swallow */}
   }
 
+  /// Reflect a DENIED mic permission in the UI (iOS **and** Android). The mic
+  /// is already off when denied — on iOS [_connectOptions] disabled the track,
+  /// on Android WebRTC's own prompt yields no audio — but the mute button
+  /// defaults to "unmuted", so the callee saw an active mic ("looks like
+  /// allowed"). Flip it to muted + warn so the UI matches reality. Idempotent;
+  /// runs on connect.
+  Future<void> _syncMicWithPermission() async {
+    if (_muted) return;
+    final granted = await isMicrophoneGranted();
+    if (granted || !mounted) return;
+    setState(() => _muted = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Microphone is off — permission denied'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   void _onActiveCallChanged() {
     final call = _signaling.activeCallListenable.value;
     if (!mounted) return;
@@ -248,6 +272,8 @@ class _VoiceCallPageState extends State<VoiceCallPage>
         !_appliedInitialAudioRoute) {
       _appliedInitialAudioRoute = true;
       unawaited(_applyAudioRoute(_speaker));
+      // Reflect a denied mic permission (iOS) now that we're connected.
+      unawaited(_syncMicWithPermission());
     }
     // Slice 10.2.4 — show a friendly toast when the peer rejected
     // with a known reason. The page is about to pop in ~600ms; the
