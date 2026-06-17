@@ -344,6 +344,9 @@ class _VideoCallPageState extends State<VideoCallPage>
                 active?.peerName;
             final avatarPath =
                 conv?.avatarFilePath ?? active?.conversationAvatarFilePath;
+            // Server-side photo (peer profile / uploaded group photo);
+            // only the local ChatConversation carries it.
+            final avatarUrl = conv?.displayAvatarUrl;
             return Stack(
               children: [
                 // Remote video — real Stream tracks when the SDK has
@@ -360,9 +363,13 @@ class _VideoCallPageState extends State<VideoCallPage>
                     builder: (context, call, _) {
                       Widget placeholder() => _remoteVideoOn
                           ? _RemoteVideoPlaceholder(
-                              name: displayName, avatarFilePath: avatarPath)
+                              name: displayName,
+                              avatarFilePath: avatarPath,
+                              avatarUrl: avatarUrl)
                           : _RemoteOffPlaceholder(
-                              name: displayName, avatarFilePath: avatarPath);
+                              name: displayName,
+                              avatarFilePath: avatarPath,
+                              avatarUrl: avatarUrl);
                       if (call == null || !_remoteVideoOn) {
                         return placeholder();
                       }
@@ -537,6 +544,7 @@ class _RemoteVideoPlaceholder extends StatelessWidget {
   const _RemoteVideoPlaceholder({
     required this.name,
     required this.avatarFilePath,
+    required this.avatarUrl,
   });
 
   /// Caller/peer display name. Comes from the local ChatConversation
@@ -545,6 +553,7 @@ class _RemoteVideoPlaceholder extends StatelessWidget {
   /// instead of a blank screen.
   final String? name;
   final String? avatarFilePath;
+  final String? avatarUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -570,6 +579,7 @@ class _RemoteVideoPlaceholder extends StatelessWidget {
                 size: 132,
                 // Slice 10.2.10 — show the group photo if one is set.
                 avatarFilePath: avatarFilePath,
+                avatarUrl: avatarUrl,
                 showStatus: false,
               ),
               const SizedBox(height: 16),
@@ -597,9 +607,11 @@ class _RemoteOffPlaceholder extends StatelessWidget {
   const _RemoteOffPlaceholder({
     required this.name,
     required this.avatarFilePath,
+    required this.avatarUrl,
   });
   final String? name;
   final String? avatarFilePath;
+  final String? avatarUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -615,6 +627,7 @@ class _RemoteOffPlaceholder extends StatelessWidget {
               name: name!,
               size: 96,
               avatarFilePath: avatarFilePath,
+              avatarUrl: avatarUrl,
               showStatus: false,
             ),
           const SizedBox(height: 16),

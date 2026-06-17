@@ -57,6 +57,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   bool _typingShown = false; // demo: simulated remote-typing
 
   late final ConversationsRepository _convRepo;
+  late final ChatTransport _transport;
   late final MessagesRepository _msgRepo;
   late final ChatSettings _settings;
   late final PresenceRepository _presence;
@@ -79,6 +80,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   void initState() {
     super.initState();
     _convRepo = context.read<ConversationsRepository>();
+    _transport = context.read<ChatTransport>();
     _msgRepo = context.read<MessagesRepository>();
     _settings = context.read<ChatSettings>();
     _presence = context.read<PresenceRepository>();
@@ -136,7 +138,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     // Prompt 3 — drop the per-conv STOMP subscriptions
     // (`/topic/conversations/{id}` + `…/call`) so we don't keep them
     // alive for every chat the user has ever opened this session.
-    context.read<ChatTransport>().unsubscribeConversation(widget.conversationId);
+    _transport.unsubscribeConversation(widget.conversationId);
     _settingsSub?.cancel();
     _messagesSub?.cancel();
     _markReadDebounce?.cancel();
@@ -418,7 +420,8 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                   // cluster for groups even after the admin uploaded
                   // a photo (Slice 10.3.6 sync).
                   if (conv.isGroup &&
-                      (conv.avatarFilePath ?? '').isEmpty)
+                      (conv.avatarFilePath ?? '').isEmpty &&
+                      (conv.displayAvatarUrl ?? '').isEmpty)
                     GroupAvatarCluster(
                       previews: conv.participantPreviews,
                       size: 36,
@@ -428,6 +431,9 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                       name: conv.name,
                       size: 36,
                       avatarFilePath: conv.avatarFilePath,
+                      // Server-side photo (peer profile / group upload);
+                      // local pick still wins inside ChatAvatar.
+                      avatarUrl: conv.displayAvatarUrl,
                       // For direct convs feed `userId` so the dot
                       // tracks live `/topic/presence` updates from
                       // PresenceRepository. Groups don't show a dot.

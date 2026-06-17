@@ -45,13 +45,23 @@ class MyProfileRepository {
   final StreamController<MyProfile> _changes =
       StreamController<MyProfile>.broadcast();
 
+  /// Access token the cached [_state] was loaded for. The token encodes
+  /// the signed-in user, so a mismatch means a DIFFERENT user is now
+  /// authenticated (e.g. logout-as-Z → login-as-X on the same app
+  /// process) and the cache must NOT be trusted — otherwise the new
+  /// user sees the previous user's profile. Also flips on a token
+  /// rotation for the same user, which just costs one extra fetch.
+  String? _cachedForToken;
+
   /// Returns the current snapshot — kicks off the network fetch on
   /// first call and caches the result. Concurrent callers during the
   /// first fetch share the same in-flight future so we don't hit the
-  /// endpoint twice on cold start.
+  /// endpoint twice on cold start. The cache is invalidated when the
+  /// authenticated user (access token) changes.
   Future<MyProfile> get() async {
+    final currentToken = await _accessToken();
     final cached = _state;
-    if (cached != null) return cached;
+    if (cached != null && _cachedForToken == currentToken) return cached;
     return _inflightLoad ??= _load().whenComplete(() => _inflightLoad = null);
   }
 
@@ -72,13 +82,33 @@ class MyProfileRepository {
       _tokens.read(),
     ]);
     final dto = results[0] as EmployeeDto?;
-    final headers = _headersFrom(results[1]);
+    final tokens = results[1];
+    final headers = _headersFrom(tokens);
     final next = dto != null
         ? _projectFromDto(dto, previous: _state, avatarHeaders: headers)
         : _placeholderForMissingRecord();
     _state = next;
+    // Stamp the cache with the token it was loaded for so a later user
+    // switch invalidates it (see [get]).
+    _cachedForToken = _accessTokenFrom(tokens);
     if (!_changes.isClosed) _changes.add(next);
     return next;
+  }
+
+  /// Current access token (or null when logged out), used by [get] to
+  /// detect a user switch.
+  Future<String?> _accessToken() async => _accessTokenFrom(await _tokens.read());
+
+  /// Extract the `accessToken` from a (dynamic) `AuthTokens`, mirroring
+  /// [_headersFrom]'s tolerance of the data-layer's import-free typing.
+  String? _accessTokenFrom(Object? tokens) {
+    if (tokens == null) return null;
+    try {
+      final at = (tokens as dynamic).accessToken as String?;
+      return (at == null || at.isEmpty) ? null : at;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// `{Authorization: Bearer <token>}` when tokens are present.

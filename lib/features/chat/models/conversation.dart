@@ -72,6 +72,21 @@ class ChatConversation {
   /// Lightweight previews for the avatar cluster on group rows.
   final List<ChatParticipantPreview> participantPreviews;
 
+  /// The server-side photo to show in the hero/tile/AppBar:
+  ///   - groups: the conversation-level [avatarUrl] (uploaded group photo)
+  ///   - direct: the OTHER person's profile avatar, which the backend
+  ///     ships on the member preview rather than the conversation itself.
+  /// Returns null when no server photo exists (callers then fall back to
+  /// a locally-picked [avatarFilePath] or the initials gradient).
+  String? get displayAvatarUrl {
+    if ((avatarUrl ?? '').isNotEmpty) return avatarUrl;
+    if (!isGroup && participantPreviews.isNotEmpty) {
+      final url = participantPreviews.first.avatarUrl;
+      if ((url ?? '').isNotEmpty) return url;
+    }
+    return null;
+  }
+
   /// Group-only counters surfaced in the AppBar subtitle of the
   /// conversation page ("X members · Y online").
   final int onlineCount;

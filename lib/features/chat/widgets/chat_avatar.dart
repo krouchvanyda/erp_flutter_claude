@@ -1,11 +1,67 @@
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:erp_mobile/core/di/service_locator.dart';
 
+import '../../../core/network/token_storage.dart';
 import '../../../core/theme/app_label.dart';
+import '../../../core/widgets/app_images.dart' show ensureHttp;
 import '../repositories/presence_repository.dart';
 import '../models/conversation.dart';
+
+/// Process-level cache of the `Authorization: Bearer <token>` header
+/// that the server-side avatar route requires (the employee/avatar
+/// static endpoint is auth-gated — `MyProfilePage` loads its own avatar
+/// the same way). [ChatAvatar] sends these headers with its
+/// [CachedNetworkImage] request so a peer's profile photo actually
+/// loads instead of 401ing and falling back to initials.
+///
+/// The token is read once, lazily, off the build path. [revision] ticks
+/// when the header becomes available so any mounted avatars rebuild and
+/// re-issue the (now authorized) request. [refresh] re-reads the token
+/// after a login / identity rehydrate so a rotated token doesn't leave
+/// the header stale.
+class AvatarAuthHeaders {
+  AvatarAuthHeaders._();
+
+  static Map<String, String>? _headers;
+  static bool _loading = false;
+
+  /// Bumps when [_headers] changes so [ChatAvatar] can rebuild.
+  static final ValueNotifier<int> revision = ValueNotifier<int>(0);
+
+  static Map<String, String>? get headers => _headers;
+
+  /// Kick a one-time async load if we don't have headers yet. Safe to
+  /// call from `build` — it no-ops once loaded or while a load is in
+  /// flight, and never touches storage synchronously.
+  static void ensureLoaded() {
+    if (_headers != null || _loading) return;
+    _load();
+  }
+
+  /// Force a re-read (call after login / token refresh).
+  static void refresh() => _load();
+
+  static void _load() {
+    if (!GetIt.I.isRegistered<TokenStorage>()) return;
+    _loading = true;
+    GetIt.I<TokenStorage>().read().then((tokens) {
+      final at = tokens?.accessToken;
+      final next = (at != null && at.isNotEmpty)
+          ? <String, String>{'Authorization': 'Bearer $at'}
+          : null;
+      _loading = false;
+      if (next != null && next['Authorization'] != _headers?['Authorization']) {
+        _headers = next;
+        revision.value++;
+      }
+    }).catchError((_) {
+      _loading = false;
+    });
+  }
+}
 
 /// Circular avatar with initials fallback. Used for direct chats and
 /// participant rows. Group rows use [GroupAvatarCluster] instead.
@@ -46,48 +102,89 @@ class ChatAvatar extends StatelessWidget {
     final hue = name.codeUnits.fold<int>(0, (a, b) => a + b);
     final colors = _gradientFor(hue);
     final dotSize = (size * 0.28).clamp(8.0, 18.0);
-    final hasPhoto = avatarFilePath != null && avatarFilePath!.isNotEmpty;
+    // A locally-picked file takes priority over the server URL so a
+    // freshly-picked image shows immediately (before any upload). When
+    // neither is set we fall back to the initials gradient.
+    final hasLocalPhoto = avatarFilePath != null && avatarFilePath!.isNotEmpty;
+    final hasNetworkPhoto = !hasLocalPhoto &&
+        avatarUrl != null &&
+        avatarUrl!.trim().isNotEmpty;
     final presenceRepo = (userId != null &&
             GetIt.I.isRegistered<PresenceRepository>())
         ? GetIt.I<PresenceRepository>()
         : null;
+
+    // Gradient + initials disc — both the no-photo state AND the
+    // placeholder/error fallback while a network avatar loads or 404s.
+    Widget initialsCircle() => Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: colors,
+            ),
+          ),
+          alignment: Alignment.center,
+          child: AppLabel(
+            text: initials,
+            fontSize: size * 0.38,
+            color: Colors.white,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.5,
+          ),
+        );
+
+    Widget avatarFace;
+    if (hasLocalPhoto) {
+      avatarFace = Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: theme.colorScheme.surface,
+          image: DecorationImage(
+            image: FileImage(File(avatarFilePath!)),
+            fit: BoxFit.cover,
+          ),
+        ),
+      );
+    } else if (hasNetworkPhoto) {
+      // The avatar route is auth-gated — attach the cached Bearer header
+      // (loaded lazily off the build path) and rebuild when it arrives
+      // so the request is authorized. Without this the image 401s and
+      // shows initials, never the peer's real photo.
+      AvatarAuthHeaders.ensureLoaded();
+      avatarFace = ClipOval(
+        child: AnimatedBuilder(
+          animation: AvatarAuthHeaders.revision,
+          builder: (_, __) => CachedNetworkImage(
+            // Cache key stays the URL across header changes so a token
+            // refresh doesn't orphan an already-downloaded image.
+            cacheKey: ensureHttp(avatarUrl!),
+            imageUrl: ensureHttp(avatarUrl!),
+            httpHeaders: AvatarAuthHeaders.headers,
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
+            placeholder: (_, __) => initialsCircle(),
+            errorWidget: (_, __, ___) => initialsCircle(),
+          ),
+        ),
+      );
+    } else {
+      avatarFace = initialsCircle();
+    }
+
     return SizedBox(
       width: size,
       height: size,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          Container(
-            width: size,
-            height: size,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: hasPhoto
-                  ? null
-                  : LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: colors,
-                    ),
-              color: hasPhoto ? theme.colorScheme.surface : null,
-              image: hasPhoto
-                  ? DecorationImage(
-                      image: FileImage(File(avatarFilePath!)),
-                      fit: BoxFit.cover,
-                    )
-                  : null,
-            ),
-            alignment: Alignment.center,
-            child: hasPhoto
-                ? null
-                : AppLabel(
-                    text: initials,
-                    fontSize: size * 0.38,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.5,
-                  ),
-          ),
+          avatarFace,
           if (showStatus)
             Positioned(
               right: -1,

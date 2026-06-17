@@ -112,10 +112,10 @@ class _NewConversationPageState extends State<NewConversationPage> {
           ChatParticipantPreview(
             employeeId: u.id,
             name: _displayNameFor(u),
-            // Backend doesn't ship avatar URL or presence on UserDto
-            // yet — keep nulls so ChatAvatar falls back to initials and
-            // the status dot stays grey. Wire real values in once
-            // backend adds them.
+            // Avatar flows through when the `/users` payload carries it;
+            // null falls back to initials. Presence still stays grey
+            // until the backend ships it on UserDto.
+            avatarUrl: u.avatarUrl,
           ),
         );
       }
@@ -126,7 +126,7 @@ class _NewConversationPageState extends State<NewConversationPage> {
         page.items.where((u) => u.enabled).map((u) => (
               id: u.id,
               name: _displayNameFor(u),
-              avatarUrl: null as String?,
+              avatarUrl: u.avatarUrl,
             )),
       );
       mapped.sort(

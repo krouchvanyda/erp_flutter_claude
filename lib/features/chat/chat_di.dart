@@ -159,7 +159,10 @@ Future<void> bootChatTransport(GetIt getIt) async {
         page.items.where((u) => u.enabled).map((u) => (
               id: u.id,
               name: u.fullName.trim().isEmpty ? u.email : u.fullName,
-              avatarUrl: null as String?,
+              // Pass through the avatar when the `/users` payload carries
+              // it (UserDto parses it tolerantly). Lets a peer's profile
+              // photo land in the inbox tile / chat header / call hero.
+              avatarUrl: u.avatarUrl,
             )),
       );
     } catch (_) {

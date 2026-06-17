@@ -19,6 +19,7 @@ import 'core/push/push_token_storage.dart';
 import 'core/router/auth_session.dart';
 import 'features/chat/repositories/callkit_event_handler.dart';
 import 'features/chat/repositories/chat_settings.dart';
+import 'features/chat/widgets/chat_avatar.dart' show AvatarAuthHeaders;
 import 'features/chat/repositories/stream_call_engine.dart';
 import 'features/chat/repositories/users_cache.dart';
 import 'features/settings/repositories/users_remote_data_source.dart';
@@ -276,6 +277,10 @@ Future<void> _rehydrateChatIdentityOnAuth(GetIt getIt) async {
       userName: displayName,
     );
     UsersCache.instance.put(userId: me.id, name: displayName);
+    // Refresh the cached Bearer header used by ChatAvatar to load
+    // auth-gated peer/group photos, so a freshly-rotated token doesn't
+    // leave avatar requests 401ing.
+    AvatarAuthHeaders.refresh();
     // ignore: avoid_print
     print('🎬 CHAT: setIdentity(userId=${me.id}, name=$displayName) OK '
         '— STOMP will reconnect with this identity, presence will flow');

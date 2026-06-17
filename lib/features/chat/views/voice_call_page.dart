@@ -371,6 +371,11 @@ class _VoiceCallPageState extends State<VoiceCallPage>
               'Unknown';
           final avatarPath =
               conv?.avatarFilePath ?? active?.conversationAvatarFilePath;
+          // Server-side photo (peer profile / uploaded group photo).
+          // Only the local ChatConversation carries it — the ActiveCall
+          // push payload doesn't, so this stays null on the cold-start
+          // accept path until the conv resolves.
+          final avatarUrl = conv?.displayAvatarUrl;
           final isGroup = conv?.isGroup ?? active?.isGroup ?? false;
           final hasIdentity = conv != null || active != null;
           return Stack(
@@ -408,6 +413,7 @@ class _VoiceCallPageState extends State<VoiceCallPage>
                       _PulsingAvatar(
                         name: displayName,
                         avatarFilePath: avatarPath,
+                        avatarUrl: avatarUrl,
                         isGroup: isGroup,
                         previews: conv?.participantPreviews ?? const [],
                         active: _stage == _CallStage.calling ||
@@ -473,12 +479,14 @@ class _PulsingAvatar extends StatelessWidget {
   const _PulsingAvatar({
     required this.name,
     required this.avatarFilePath,
+    required this.avatarUrl,
     required this.isGroup,
     required this.previews,
     required this.active,
   });
   final String name;
   final String? avatarFilePath;
+  final String? avatarUrl;
   final bool isGroup;
   final List<ChatParticipantPreview> previews;
   final bool active;
@@ -494,13 +502,15 @@ class _PulsingAvatar extends StatelessWidget {
     // (Slice 10.3.3 stored it on `avatarFilePath`). Falls back to the
     // 3-avatar cluster when no photo exists. Direct calls always use
     // ChatAvatar — same as before.
-    final hasPhoto = (avatarFilePath ?? '').isNotEmpty;
+    final hasPhoto =
+        (avatarFilePath ?? '').isNotEmpty || (avatarUrl ?? '').isNotEmpty;
     final avatar = isGroup
         ? (hasPhoto
             ? ChatAvatar(
                 name: name,
                 size: 112,
                 avatarFilePath: avatarFilePath,
+                avatarUrl: avatarUrl,
                 showStatus: false,
               )
             : GroupAvatarCluster(
@@ -511,6 +521,7 @@ class _PulsingAvatar extends StatelessWidget {
             name: name,
             size: 112,
             avatarFilePath: avatarFilePath,
+            avatarUrl: avatarUrl,
             showStatus: false,
           );
 

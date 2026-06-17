@@ -13,6 +13,7 @@ class UserDto {
     required this.email,
     required this.fullName,
     this.phone,
+    this.avatarUrl,
     this.enabled = true,
     this.roles = const <String>[],
     this.permissions = const <String>[],
@@ -22,6 +23,12 @@ class UserDto {
   final String email;
   final String fullName;
   final String? phone;
+
+  /// Server-side avatar URL when the `/users` payload joins it in (the
+  /// backend may surface the linked employee's avatar here). Null when
+  /// absent — chat then falls back to initials. Parsed tolerantly from
+  /// several possible key names since the field is optional.
+  final String? avatarUrl;
   final bool enabled;
   final List<String> roles;
   final List<String> permissions;
@@ -63,6 +70,10 @@ class UserDto {
       fullName: (json['fullName'] ?? json['name'] ?? json['displayName'] ?? '')
           as String,
       phone: json['phone'] as String?,
+      avatarUrl: (json['avatarUrl'] ??
+          json['avatar'] ??
+          json['photoUrl'] ??
+          json['imageUrl']) as String?,
       enabled: (json['enabled'] ?? true) as bool,
       roles: readTokenList('roles'),
       permissions: readTokenList('permissions'),

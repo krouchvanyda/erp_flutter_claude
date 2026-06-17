@@ -128,9 +128,17 @@ class ConversationsRepository {
       final items = body['items'];
       if (items is! List) return;
       final next = <ChatConversation>[];
+      final seenIds = <String>{};
       for (final raw in items) {
         if (raw is Map<String, dynamic>) {
-          next.add(conversationFromDto(raw, currentUserId: userId));
+          final conv = conversationFromDto(raw, currentUserId: userId);
+          // Dedup by id, keeping the first occurrence. A backend that
+          // returns the same conversation twice (pagination overlap, a
+          // direct conv matching two member rows) would otherwise leave
+          // duplicate ids in `_seed`, which crashes the inbox list —
+          // two tiles share `ValueKey(conversation.id)` on their
+          // Dismissible and trip the sliver child-order assertion.
+          if (seenIds.add(conv.id)) next.add(conv);
         }
       }
       _seed
@@ -504,7 +512,16 @@ class ConversationsRepository {
         ? 'conv-${DateTime.now().microsecondsSinceEpoch}'
         : draft.id;
     final stamped = draft.copyWith(id: id);
-    _seed.insert(0, stamped);
+    // Dedupe by id. The backend returns the SAME (existing) direct conversation
+    // for a repeat "new chat" with the same person, and the STOMP
+    // `conversation.create` echo can re-deliver the one we just POSTed — so a
+    // blind insert produced duplicate inbox tiles. Replace in place if present.
+    final idx = _seed.indexWhere((c) => c.id == id);
+    if (idx == -1) {
+      _seed.insert(0, stamped);
+    } else {
+      _seed[idx] = stamped;
+    }
     await _emit();
     return stamped;
   }

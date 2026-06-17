@@ -134,9 +134,9 @@ ChatConversation conversationFromDto(
   final typeRaw = (json['type'] as String? ?? 'DIRECT').toUpperCase();
   final isGroup = typeRaw == 'GROUP';
 
-  // Build participant previews from the members[] array; resolve
-  // display name + avatar + presence via the local seed because
-  // backend's MemberDto only carries `userId, role, muted, lastReadMessageId`.
+  // Build participant previews from the members[] array. The backend's
+  // MemberDto now ships `fullName` + `avatarUrl` (used directly below);
+  // UsersCache + presence are the fallback for older backends / missing rows.
   final previews = <ChatParticipantPreview>[];
   String? otherDisplayName;
   PresenceStatus directPresence = PresenceStatus.offline;
@@ -152,7 +152,14 @@ ChatConversation conversationFromDto(
       // id this member has read). Threaded onto the preview so the
       // chat bubble's read-tick can compute who has caught up.
       final lastReadId = m['lastReadMessageId']?.toString();
+      // Prefer the name/avatar the backend now ships on the member DTO
+      // (MemberDto.fullName / avatarUrl); fall back to the UsersCache resolution
+      // (then a "User #<id>" placeholder) for older backends or missing rows.
+      final dtoName = (m['fullName'] as String?)?.trim();
+      final dtoAvatar = m['avatarUrl'] as String?;
       final p = _resolveParticipant(uid).copyWith(
+        name: (dtoName != null && dtoName.isNotEmpty) ? dtoName : null,
+        avatarUrl: dtoAvatar,
         lastReadMessageId: lastReadId,
       );
       previews.add(p);

@@ -89,7 +89,16 @@ class _ChatInboxPageState extends State<ChatInboxPage>
           c.name.toLowerCase().contains(q) ||
           (c.lastMessageBody ?? '').toLowerCase().contains(q));
     }
-    return result.toList();
+    // Dedup by id, keeping the first occurrence (order preserved). Two
+    // conversations with the same id would give their per-tile
+    // `Dismissible`s the same `ValueKey(conversation.id)`, which trips
+    // RenderSliverMultiBoxAdaptor's child-order assertion
+    // (`indexOf(child) > index`) and crashes the whole list. The real-
+    // time sync paths (group propagation 10.1.7, implicit direct-conv
+    // creation 10.1.8) can momentarily surface the same id twice; this
+    // is the render-boundary guard against that.
+    final seen = <String>{};
+    return result.where((c) => seen.add(c.id)).toList();
   }
 
   @override
@@ -481,9 +490,12 @@ class _Tile extends StatelessWidget {
                 // Slice 10.3.5 — user-set photo wins for both groups
                 // and direct convs. Groups fall back to the 3-avatar
                 // cluster; direct convs fall back to the initials
-                // gradient (handled inside ChatAvatar).
+                // gradient (handled inside ChatAvatar). A server-side
+                // `avatarUrl` also counts as a photo, so a group with
+                // an uploaded photo (no local file) renders it too.
                 if (conversation.isGroup &&
-                    (conversation.avatarFilePath ?? '').isEmpty)
+                    (conversation.avatarFilePath ?? '').isEmpty &&
+                    (conversation.displayAvatarUrl ?? '').isEmpty)
                   GroupAvatarCluster(
                     previews: conversation.participantPreviews,
                     size: 52,
@@ -493,6 +505,10 @@ class _Tile extends StatelessWidget {
                     name: conversation.name,
                     size: 52,
                     avatarFilePath: conversation.avatarFilePath,
+                    // Server-side photo — peer's profile avatar for
+                    // direct convs, uploaded group photo otherwise.
+                    // A local pick still wins inside ChatAvatar.
+                    avatarUrl: conversation.displayAvatarUrl,
                     // For direct convs feed the other person's id so
                     // the dot tracks live presence from
                     // PresenceRepository (rebuilds on every
@@ -893,6 +909,7 @@ class _IdentitySheetState extends State<_IdentitySheet> {
                             ChatAvatar(
                               name: p.name,
                               size: 40,
+                              avatarUrl: p.avatarUrl,
                               // Live presence from PresenceRepository
                               // rather than the (now-empty) seed
                               // `p.presence`. The legacy demo sheet
