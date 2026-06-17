@@ -7,6 +7,7 @@ import '../../../core/theme/app_font_size.dart';
 import '../../../core/theme/app_label.dart';
 import '../../../core/theme/app_radii.dart';
 import '../models/chat_message.dart';
+import '../repositories/users_cache.dart';
 import 'chat_avatar.dart';
 
 /// Slice 10.1.2 — chat bubble rendering all four content types
@@ -193,9 +194,13 @@ class _LeadingAvatar extends StatelessWidget {
     return ChatAvatar(
       name: message.senderName,
       size: 36,
-      // Sender's server-side profile photo (resolved from the backend
-      // member/user payload into UsersCache); falls back to initials.
-      avatarUrl: message.senderAvatarUrl,
+      // Sender's server-side profile photo. Prefer the value baked onto
+      // the message, but fall back to a live UsersCache lookup so the
+      // photo still shows on the first frame (before the repo's
+      // re-resolve patches it in) or if it was parsed before `/users`
+      // had loaded avatars.
+      avatarUrl: message.senderAvatarUrl ??
+          UsersCache.instance.avatarOf(message.senderId),
       // Show a live presence dot for the sender of incoming bubbles
       // so group chats surface who's online without having to open
       // the chat info page.

@@ -7,11 +7,17 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.Person
+import androidx.core.graphics.drawable.IconCompat
+import java.net.HttpURLConnection
+import java.net.URL
 
 /**
  * Builds and tears down the native incoming-call notification.
@@ -66,6 +72,9 @@ object IncomingCallNotifier {
         // SecureTokenReader.
         val authToken = args["authToken"]?.toString() ?: ""
         val refreshToken = args["refreshToken"]?.toString() ?: ""
+        // Caller's public profile-photo URL (absolute). Downloaded off the
+        // main thread and shown as the round caller avatar on the ring.
+        val avatarUrl = args["avatarUrl"]?.toString() ?: ""
 
         if (callCid.isEmpty()) {
             Log.w(TAG, "show() skipped — empty callCid")
@@ -127,41 +136,72 @@ object IncomingCallNotifier {
         // -call look), instead of the plain text "Reject | Accept" actions
         // a vanilla notification shows. CallStyle.forIncomingCall takes the
         // DECLINE intent first, then the ANSWER intent.
-        val caller = androidx.core.app.Person.Builder()
-            .setName(title)
-            .setImportant(true)
-            .build()
-        val callStyle = NotificationCompat.CallStyle
-            .forIncomingCall(caller, rejectPending, acceptPending)
+        //
+        // [callerIcon] is the caller's downloaded profile photo (null until
+        // it arrives). Posting is factored into a closure so we can show the
+        // ring INSTANTLY without a photo, then re-post the same id with the
+        // avatar once the off-thread download completes. setOnlyAlertOnce so
+        // the avatar update is silent (no second ring / heads-up).
+        fun postNotification(callerIcon: IconCompat?) {
+            val callerBuilder = Person.Builder()
+                .setName(title)
+                .setImportant(true)
+            if (callerIcon != null) callerBuilder.setIcon(callerIcon)
+            val caller = callerBuilder.build()
+            val callStyle = NotificationCompat.CallStyle
+                .forIncomingCall(caller, rejectPending, acceptPending)
 
-        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.sym_call_incoming)
-            .setStyle(callStyle)
-            // CallStyle drives the title from the Person; keep contentText
-            // as the "Incoming voice call" subtitle for the collapsed row.
-            .setContentText(text)
-            .setCategory(NotificationCompat.CATEGORY_CALL)
-            .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setOngoing(true)
-            .setAutoCancel(false)
-            // Backend-independent safety net: if NO cancel signal ever
-            // reaches this device (caller ended the call but neither the
-            // STOMP `call.hangup` nor a Stream/backend end-push was
-            // delivered — common when the callee is killed and OEM battery
-            // savers drop the wake push), the ring would otherwise hang on
-            // screen forever. Auto-expire it after the ring window so it
-            // can never outlive a call that's already over. Matches the
-            // 60 s ring timeout in CallSignalingService.
-            .setTimeoutAfter(RING_TIMEOUT_MS)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setContentIntent(contentPending)
-            .setFullScreenIntent(contentPending, true)
+            val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.sym_call_incoming)
+                .setStyle(callStyle)
+                // CallStyle drives the title from the Person; keep contentText
+                // as the "Incoming voice call" subtitle for the collapsed row.
+                .setContentText(text)
+                .setCategory(NotificationCompat.CATEGORY_CALL)
+                .setPriority(NotificationCompat.PRIORITY_MAX)
+                .setOnlyAlertOnce(true)
+                .setOngoing(true)
+                .setAutoCancel(false)
+                // Backend-independent safety net: if NO cancel signal ever
+                // reaches this device (caller ended the call but neither the
+                // STOMP `call.hangup` nor a Stream/backend end-push was
+                // delivered — common when the callee is killed and OEM battery
+                // savers drop the wake push), the ring would otherwise hang on
+                // screen forever. Auto-expire it after the ring window so it
+                // can never outlive a call that's already over. Matches the
+                // 60 s ring timeout in CallSignalingService.
+                .setTimeoutAfter(RING_TIMEOUT_MS)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setContentIntent(contentPending)
+                .setFullScreenIntent(contentPending, true)
+            // CallStyle renders the round caller avatar from the Person's
+            // icon (set above) — no separate setLargeIcon needed.
 
-        try {
-            NotificationManagerCompat.from(context).notify(id, builder.build())
-        } catch (e: SecurityException) {
-            // POST_NOTIFICATIONS not granted — nothing we can do from here.
-            Log.e(TAG, "notify() denied (no POST_NOTIFICATIONS?): ${e.message}")
+            try {
+                NotificationManagerCompat.from(context).notify(id, builder.build())
+            } catch (e: SecurityException) {
+                // POST_NOTIFICATIONS not granted — nothing we can do from here.
+                Log.e(TAG, "notify() denied (no POST_NOTIFICATIONS?): ${e.message}")
+            }
+        }
+
+        // Instant ring (no photo yet) so we never delay the incoming call.
+        postNotification(null)
+
+        // Then fetch the caller's avatar off the main thread and re-post the
+        // SAME notification with it. Best-effort: any failure just leaves the
+        // default caller glyph. Skipped when no URL was supplied.
+        if (avatarUrl.isNotEmpty()) {
+            Thread {
+                val bmp = downloadBitmap(avatarUrl)
+                if (bmp != null) {
+                    try {
+                        postNotification(IconCompat.createWithBitmap(bmp))
+                    } catch (e: Exception) {
+                        Log.w(TAG, "avatar re-post failed: ${e.message}")
+                    }
+                }
+            }.apply { isDaemon = true }.start()
         }
 
         // OS-level safety net. `setTimeoutAfter` is ignored by some OEMs
@@ -330,4 +370,30 @@ object IncomingCallNotifier {
 
     private fun immutableFlag(): Int =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
+
+    /**
+     * Download the caller's avatar (public `/uploads/avatars/...` URL — no
+     * auth needed). Runs on a background thread; returns null on any failure
+     * so the ring just keeps its default glyph. Decoded at a modest sample
+     * size — the icon is rendered small, no need for a full-res bitmap.
+     */
+    private fun downloadBitmap(url: String): Bitmap? {
+        var conn: HttpURLConnection? = null
+        return try {
+            conn = (URL(url).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 4000
+                readTimeout = 4000
+                instanceFollowRedirects = true
+            }
+            if (conn.responseCode != HttpURLConnection.HTTP_OK) return null
+            conn.inputStream.use { input ->
+                BitmapFactory.decodeStream(input)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "avatar download failed: ${e.message}")
+            null
+        } finally {
+            try { conn?.disconnect() } catch (_: Exception) {}
+        }
+    }
 }

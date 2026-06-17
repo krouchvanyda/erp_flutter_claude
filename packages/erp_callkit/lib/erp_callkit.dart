@@ -56,6 +56,7 @@ class ErpCallKit {
     bool isGroup = false,
     String authToken = '',
     String refreshToken = '',
+    String avatarUrl = '',
   }) async {
     await _channel.invokeMethod<void>('showIncomingCall', <String, dynamic>{
       'callId': callId,
@@ -69,6 +70,10 @@ class ErpCallKit {
       'isGroup': isGroup,
       'authToken': authToken,
       'refreshToken': refreshToken,
+      // Absolute, public URL of the caller's profile photo. The native
+      // notifier downloads it and shows it as the caller's round avatar on
+      // the incoming-call notification. Empty → default person glyph.
+      'avatarUrl': avatarUrl,
     });
   }
 

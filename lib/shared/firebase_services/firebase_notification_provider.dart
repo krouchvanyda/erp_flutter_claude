@@ -111,9 +111,8 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     // FCM background isolate (no DI), so it uses a bare HttpClient with the
     // stored access token; null keeps the push-derived fallback above. The
     // foreground accept path (app.dart) re-confirms via DI as a backstop.
-    final resolvedVideo =
-        await _fetchIsVideoFromBackend(callId, ringTokens.access);
-    if (resolvedVideo != null) isVideo = resolvedVideo;
+    final meta = await _fetchCallMetaFromBackend(callId, ringTokens.access);
+    if (meta.isVideo != null) isVideo = meta.isVideo!;
     if (kDebugMode) {
       log('📞 [stream.call.ring] BG/KILLED → native call notif · '
           'cid=$callCid · callId=$callId · caller=$callerName');
@@ -131,6 +130,12 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       isGroup: isGroup,
       authToken: ringTokens.access,
       refreshToken: ringTokens.refresh,
+      // Caller's profile photo for the native ring (resolved from the
+      // backend; falls back to any image the Stream push carried).
+      avatarUrl: meta.avatarUrl ??
+          (data['created_by_image']?.toString().trim().isNotEmpty == true
+              ? data['created_by_image'].toString().trim()
+              : ''),
     );
     return;
   }
@@ -319,9 +324,11 @@ Future<({String access, String refresh})> _readRejectTokens() async {
 /// does NOT attempt a 401 refresh — best-effort, returns `null` on any
 /// failure so the caller keeps its push fallback. (`/chats/calls/{id}` is the
 /// same path the native reject POSTs to via `_callRejectBaseUrl`.)
-Future<bool?> _fetchIsVideoFromBackend(String callId, String accessToken) async {
+Future<({bool? isVideo, String? avatarUrl})> _fetchCallMetaFromBackend(
+    String callId, String accessToken) async {
+  const empty = (isVideo: null, avatarUrl: null);
   final n = int.tryParse(callId);
-  if (n == null || accessToken.isEmpty) return null;
+  if (n == null || accessToken.isEmpty) return empty;
   HttpClient? client;
   try {
     client = HttpClient()..connectionTimeout = const Duration(seconds: 4);
@@ -329,19 +336,41 @@ Future<bool?> _fetchIsVideoFromBackend(String callId, String accessToken) async 
         await client.getUrl(Uri.parse('$_callRejectBaseUrl/chats/calls/$n'));
     req.headers.set(HttpHeaders.authorizationHeader, 'Bearer $accessToken');
     final res = await req.close();
-    if (res.statusCode != 200) return null;
+    if (res.statusCode != 200) return empty;
     final body = await res.transform(utf8.decoder).join();
     final decoded = jsonDecode(body);
     final data = decoded is Map<String, dynamic> ? decoded['data'] : null;
     final type = (data is Map ? data['type'] : null)?.toString().toUpperCase();
-    if (type == 'VIDEO') return true;
-    if (type == 'VOICE') return false;
-    return null;
+    final bool? isVideo = type == 'VIDEO'
+        ? true
+        : type == 'VOICE'
+            ? false
+            : null;
+    // Caller's profile photo (relative `/uploads/avatars/...`) → resolve to
+    // an absolute URL the native CallKit ring can load (route is public).
+    final rawAvatar =
+        (data is Map ? data['callerAvatarUrl'] : null)?.toString();
+    final avatarUrl = (rawAvatar == null || rawAvatar.trim().isEmpty)
+        ? null
+        : _absoluteUploadUrl(rawAvatar.trim());
+    return (isVideo: isVideo, avatarUrl: avatarUrl);
   } catch (_) {
-    return null;
+    return empty;
   } finally {
     client?.close(force: true);
   }
+}
+
+/// Resolve a possibly-relative upload URL (e.g. `/uploads/avatars/13-x.png`)
+/// against the API host, stripping the `/api/v1` prefix the way the app's
+/// `ensureHttp` does — there's no DI in this background isolate.
+String _absoluteUploadUrl(String url) {
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  final host = _callRejectBaseUrl
+      .replaceAll(RegExp(r'/api/v\d+/?$'), '')
+      .replaceAll(RegExp(r'/+$'), '');
+  final path = url.replaceAll(RegExp(r'^/+'), '');
+  return '$host/$path';
 }
 
 /// Extract the backend numeric call id from a Stream CID
@@ -423,14 +452,22 @@ Future<void> _showStreamCallkitRinger(RemoteMessage message) async {
   // (not a PushKit `didReceiveIncomingPush` callback), so the extra round-trip
   // does NOT risk the late-CallKit-report app kill that PushKit imposes.
   final ringTokens = await _readRejectTokens();
-  final resolvedVideo =
-      await _fetchIsVideoFromBackend(_parseBackendCallId(callCid), ringTokens.access);
-  if (resolvedVideo != null) isVideo = resolvedVideo;
+  final meta = await _fetchCallMetaFromBackend(
+      _parseBackendCallId(callCid), ringTokens.access);
+  if (meta.isVideo != null) isVideo = meta.isVideo!;
+  // Caller's profile photo for the native ring (killed/minimized Android).
+  // Prefer the resolved backend URL; fall back to any image the Stream push
+  // itself carried. Null → CallKit shows its default caller glyph.
+  final callerAvatar = meta.avatarUrl ??
+      (data['created_by_image']?.toString().trim().isNotEmpty == true
+          ? data['created_by_image'].toString().trim()
+          : null);
 
   final params = CallKitParams(
     id: id,
     nameCaller: callerName,
     appName: 'ERP',
+    avatar: callerAvatar,
     handle: callerHandle,
     type: isVideo ? 1 : 0,
     // Persist the whole Stream payload so the accept/decline handler

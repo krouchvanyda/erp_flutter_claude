@@ -33,20 +33,29 @@ class MessagesRepository {
   final StreamController<List<ChatMessage>> _changes =
       StreamController<List<ChatMessage>>.broadcast();
 
-  /// Patch any cached message whose [senderName] doesn't match what
-  /// the cache now resolves for its [senderId]. No-op if nothing
-  /// changes (keeps demo seed messages with their original names).
+  /// Patch any cached message whose [senderName] OR [senderAvatarUrl]
+  /// doesn't match what the cache now resolves for its [senderId].
+  ///
+  /// The avatar is checked independently of the name: a message is often
+  /// parsed when the cache already knows the sender's NAME (so the name
+  /// is correct) but not yet their AVATAR (e.g. messages loaded before
+  /// `/users` finished, or the photo synced later). Keying purely on the
+  /// name — as this used to — meant the avatar never got filled in once
+  /// the name matched, so message bubbles stayed on initials forever.
   void _reresolveSenderNames() {
     var anyChanged = false;
     for (var i = 0; i < _seed.length; i++) {
       final m = _seed[i];
-      final cached = UsersCache.instance.nameOf(m.senderId);
-      if (cached == null || cached == m.senderName) continue;
+      final cachedName = UsersCache.instance.nameOf(m.senderId);
       final cachedAvatar = UsersCache.instance.avatarOf(m.senderId);
-      _seed[i] = m.copyWith(
-        senderName: cached,
-        senderAvatarUrl: cachedAvatar ?? m.senderAvatarUrl,
-      );
+      final nextName = (cachedName != null && cachedName.isNotEmpty)
+          ? cachedName
+          : m.senderName;
+      final nextAvatar = cachedAvatar ?? m.senderAvatarUrl;
+      if (nextName == m.senderName && nextAvatar == m.senderAvatarUrl) {
+        continue;
+      }
+      _seed[i] = m.copyWith(senderName: nextName, senderAvatarUrl: nextAvatar);
       anyChanged = true;
     }
     if (anyChanged) _emit();
