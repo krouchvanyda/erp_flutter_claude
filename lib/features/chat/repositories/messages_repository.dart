@@ -84,6 +84,22 @@ class MessagesRepository {
     _remote = remote;
   }
 
+  /// Upload a picked image / voice clip / file to the backend and return the
+  /// HOSTED absolute url to put on the message's `fileUrl`/`voiceUrl`. Returns
+  /// null when there's no remote wired (demo mode) or the upload fails — the
+  /// caller then falls back to sending the local path (sender-only preview).
+  Future<String?> uploadAttachment(String filePath, {String? fileName}) async {
+    final remote = _remote;
+    if (remote == null) return null;
+    try {
+      final res = await remote.uploadAttachment(filePath, fileName: fileName);
+      final url = res['url']?.toString();
+      return (url != null && url.isNotEmpty) ? url : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Prompt 3 — pull message history for [conversationId] from the
   /// backend, merge into the local cache (de-duped by id), and ask
   /// the transport to subscribe to live updates for that conv.

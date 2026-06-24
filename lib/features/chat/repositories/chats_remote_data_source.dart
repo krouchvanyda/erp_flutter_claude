@@ -91,6 +91,14 @@ abstract class ChatsRemoteDataSource {
   Future<void> deleteMessage(int messageId);
   Future<List<dynamic>> toggleReaction(int messageId, String emoji);
 
+  /// `POST /chats/attachments` (multipart) — upload a chat attachment
+  /// (image / voice / file) and get back the HOSTED url. Send that url as
+  /// the message's `fileUrl`/`voiceUrl` so every participant loads the same
+  /// file instead of the sender's local device path. The returned `url` is
+  /// absolute (resolved against the API origin) so `Image.network` works on
+  /// every device.
+  Future<Map<String, dynamic>> uploadAttachment(String filePath, {String? fileName});
+
   // ── Calls ─────────────────────────────────────────────────────────
   Future<Map<String, dynamic>> startCall(
     int conversationId, {
@@ -315,6 +323,43 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
       data: reqBody,
     );
     return ApiEnvelope.parse<Map<String, dynamic>>(res.data!, (d) => d);
+  }
+
+  @override
+  Future<Map<String, dynamic>> uploadAttachment(
+    String filePath, {
+    String? fileName,
+  }) async {
+    final form = FormData.fromMap(<String, dynamic>{
+      'file': await MultipartFile.fromFile(filePath, filename: fileName),
+    });
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/chats/attachments',
+      data: form,
+    );
+    final dto = ApiEnvelope.parse<Map<String, dynamic>>(res.data!, (d) => d);
+    // The server returns a SERVER-RELATIVE url (e.g. `/uploads/chat/x.jpg`).
+    // Resolve it to an absolute `http://host:port/uploads/chat/x.jpg` against
+    // the API origin so `Image.network` renders it on every device — and so
+    // the peer (who receives this exact string over STOMP) can load it too.
+    final rawUrl = dto['url']?.toString() ?? '';
+    return <String, dynamic>{
+      ...dto,
+      'url': _absoluteUrl(rawUrl),
+    };
+  }
+
+  /// Turn a server-relative path (`/uploads/chat/x.jpg`) into an absolute URL
+  /// using the dio base URL's origin (scheme + host + port). Leaves already-
+  /// absolute `http(s)://` urls untouched.
+  String _absoluteUrl(String url) {
+    if (url.isEmpty || url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    final base = Uri.parse(_dio.options.baseUrl);
+    final origin =
+        '${base.scheme}://${base.host}${base.hasPort ? ':${base.port}' : ''}';
+    return url.startsWith('/') ? '$origin$url' : '$origin/$url';
   }
 
   @override

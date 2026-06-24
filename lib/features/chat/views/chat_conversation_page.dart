@@ -603,6 +603,23 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       final size = await file.length();
       final now = DateTime.now();
       final targetIds = await _resolveTargetIds();
+      // Upload to the backend FIRST and send the HOSTED url — otherwise the
+      // peer receives our local device path (e.g. /data/.../img.jpg), which
+      // doesn't exist on their phone, so the image never shows for them.
+      // Falls back to the local path only if the upload fails (sender-only
+      // preview) so the send still goes through.
+      final hostedUrl =
+          await _msgRepo.uploadAttachment(picked.path, fileName: picked.name);
+      if (!mounted) return;
+      if (hostedUrl == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Image upload failed — the recipient may not see this photo.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
       await _msgRepo.send(
         ChatMessage(
           id: '',
@@ -610,7 +627,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
           senderId: _currentUserId,
           senderName: _currentUserName,
           type: ChatMessageType.image,
-          fileUrl: picked.path,
+          fileUrl: hostedUrl ?? picked.path,
           fileName: picked.name,
           fileSizeBytes: size,
           sentAt: now,
