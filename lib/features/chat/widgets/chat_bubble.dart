@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -27,6 +28,7 @@ class ChatBubble extends StatelessWidget {
     this.onTapVoice,
     this.onTapImage,
     this.isVoicePlaying = false,
+    this.voiceProgress,
     this.highlight = false,
     this.expectedReaderIds = const <String>{},
   });
@@ -44,6 +46,11 @@ class ChatBubble extends StatelessWidget {
   /// The conversation page wires this to push [ImageViewerPage].
   final VoidCallback? onTapImage;
   final bool isVoicePlaying;
+
+  /// Playback progress (0..1) of THIS voice clip while it's the one playing —
+  /// drives the waveform fill + elapsed-time counter. Null when this message
+  /// isn't the active clip (renders as a fully-unplayed waveform).
+  final ValueListenable<double>? voiceProgress;
   final bool highlight;
 
   /// Every conversation member EXCEPT us — the set the read-receipt
@@ -121,6 +128,7 @@ class ChatBubble extends StatelessWidget {
                             onTapVoice: onTapVoice,
                             onTapImage: onTapImage,
                             isVoicePlaying: isVoicePlaying,
+                            voiceProgress: voiceProgress,
                             expectedReaderIds: expectedReaderIds,
                           ),
                         ),
@@ -217,6 +225,7 @@ class _BubbleContent extends StatelessWidget {
     required this.onTapVoice,
     required this.onTapImage,
     required this.isVoicePlaying,
+    this.voiceProgress,
     this.expectedReaderIds = const <String>{},
   });
   final ChatMessage message;
@@ -225,6 +234,7 @@ class _BubbleContent extends StatelessWidget {
   final VoidCallback? onTapVoice;
   final VoidCallback? onTapImage;
   final bool isVoicePlaying;
+  final ValueListenable<double>? voiceProgress;
   final Set<String> expectedReaderIds;
 
   @override
@@ -249,6 +259,7 @@ class _BubbleContent extends StatelessWidget {
               message: message,
               isOwn: isOwn,
               isPlaying: isVoicePlaying,
+              progress: voiceProgress,
               onTap: onTapVoice,
             ),
           ChatMessageType.image =>
@@ -351,11 +362,15 @@ class _VoiceContent extends StatelessWidget {
     required this.isOwn,
     required this.isPlaying,
     required this.onTap,
+    this.progress,
   });
   final ChatMessage message;
   final bool isOwn;
   final bool isPlaying;
   final VoidCallback? onTap;
+
+  /// Live 0..1 progress while THIS clip is the one playing; null otherwise.
+  final ValueListenable<double>? progress;
 
   @override
   Widget build(BuildContext context) {
@@ -364,9 +379,36 @@ class _VoiceContent extends StatelessWidget {
     final bg = isOwn
         ? theme.colorScheme.onPrimary.withValues(alpha: 0.15)
         : theme.colorScheme.primaryContainer.withValues(alpha: 0.5);
-    final duration = message.voiceDurationSeconds ?? 0;
-    final minutes = (duration ~/ 60).toString();
-    final seconds = (duration % 60).toString().padLeft(2, '0');
+    final timeColor = isOwn
+        ? theme.colorScheme.onPrimary.withValues(alpha: 0.9)
+        : theme.colorScheme.onSurface;
+    final total = message.voiceDurationSeconds ?? 0;
+
+    // Waveform + duration counter — shows elapsed time while playing,
+    // total duration otherwise.
+    Widget body(double p) {
+      final shownSeconds = p > 0 ? (p * total).round() : total;
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _Waveform(
+            isOwn: isOwn,
+            isPlaying: isPlaying,
+            color: fg,
+            progress: p,
+          ),
+          const SizedBox(width: 10),
+          AppLabel(
+            text: _fmt(shownSeconds),
+            fontSize: AppFontSize.value12,
+            color: timeColor,
+            fontWeight: FontWeight.w700,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ],
+      );
+    }
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadii.pill),
@@ -384,25 +426,19 @@ class _VoiceContent extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          _Waveform(
-            isOwn: isOwn,
-            isPlaying: isPlaying,
-            color: fg,
-          ),
-          const SizedBox(width: 10),
-          AppLabel(
-            text: '$minutes:$seconds',
-            fontSize: AppFontSize.value12,
-            color: isOwn
-                ? theme.colorScheme.onPrimary.withValues(alpha: 0.9)
-                : theme.colorScheme.onSurface,
-            fontWeight: FontWeight.w700,
-            fontFeatures: const [FontFeature.tabularFigures()],
-          ),
+          progress == null
+              ? body(0)
+              : ValueListenableBuilder<double>(
+                  valueListenable: progress!,
+                  builder: (_, p, __) => body(p),
+                ),
         ],
       ),
     );
   }
+
+  static String _fmt(int s) =>
+      '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
 }
 
 class _Waveform extends StatelessWidget {
@@ -410,15 +446,21 @@ class _Waveform extends StatelessWidget {
     required this.isOwn,
     required this.isPlaying,
     required this.color,
+    this.progress = 0,
   });
   final bool isOwn;
   final bool isPlaying;
   final Color color;
 
+  /// 0..1 — bars before this fraction render as "played" (full color),
+  /// the rest stay faded.
+  final double progress;
+
   @override
   Widget build(BuildContext context) {
     // Static silhouette — real waveform would come from the audio file.
     const heights = [0.4, 0.7, 0.5, 0.9, 0.6, 0.8, 0.4, 0.7, 0.5, 0.9, 0.3, 0.6, 0.4, 0.5];
+    final filled = progress.clamp(0.0, 1.0) * heights.length;
     return SizedBox(
       width: 110,
       height: 24,
@@ -431,7 +473,9 @@ class _Waveform extends StatelessWidget {
               width: 3,
               height: 22 * heights[i],
               decoration: BoxDecoration(
-                color: color.withValues(alpha: isPlaying ? 0.95 : 0.55),
+                color: color.withValues(
+                  alpha: i < filled ? 0.95 : 0.55,
+                ),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),

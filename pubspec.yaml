@@ -103,6 +103,8 @@ dependencies:
   # See packages/erp_callkit. Media still flows through Stream Video.
   erp_callkit:
     path: packages/erp_callkit
+  record: ^6.2.1
+  just_audio: ^0.10.5
 
 dev_dependencies:
   flutter_test:

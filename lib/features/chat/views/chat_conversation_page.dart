@@ -2,11 +2,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:record/record.dart';
 
 import '../../../core/router/config_router.dart';
 import '../../../core/theme/app_font_size.dart';
@@ -55,6 +60,21 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   String? _highlightId;
   String? _playingVoiceId;
   bool _typingShown = false; // demo: simulated remote-typing
+
+  /// Single shared player for voice-message playback. One at a time — tapping
+  /// a second clip stops the first. Disposed in [dispose].
+  final AudioPlayer _voicePlayer = AudioPlayer();
+  StreamSubscription<PlayerState>? _voicePlayerSub;
+
+  /// Live 0..1 playback progress of the currently-playing clip, fed to that
+  /// message's bubble so its waveform fills as it plays (Telegram-style).
+  final ValueNotifier<double> _voiceProgress = ValueNotifier<double>(0);
+  StreamSubscription<Duration>? _voicePosSub;
+  Duration _voiceTotal = Duration.zero;
+
+  /// True when the current clip ([_playingVoiceId]) is loaded but PAUSED —
+  /// the position is held so the next tap resumes from there.
+  bool _voicePaused = false;
 
   late final ConversationsRepository _convRepo;
   late final ChatTransport _transport;
@@ -142,6 +162,10 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     _settingsSub?.cancel();
     _messagesSub?.cancel();
     _markReadDebounce?.cancel();
+    _voicePlayerSub?.cancel();
+    _voicePosSub?.cancel();
+    _voicePlayer.dispose();
+    _voiceProgress.dispose();
     _inputCtrl.dispose();
     _scrollCtrl.dispose();
     super.dispose();
@@ -348,6 +372,8 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                                 scrollController: _scrollCtrl,
                                 highlightId: _highlightId,
                                 playingVoiceId: _playingVoiceId,
+                                voiceProgress: _voiceProgress,
+                                voicePaused: _voicePaused,
                                 typingShown: _typingShown,
                                 onLongPressBubble: _showContextMenu,
                                 onReact: _toggleReaction,
@@ -655,10 +681,145 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     }
   }
 
-  void _toggleVoice(String messageId) {
-    setState(() {
-      _playingVoiceId = _playingVoiceId == messageId ? null : messageId;
-    });
+  /// Tap handler on a voice bubble. Tapping the currently-playing clip stops
+  /// it; tapping any other starts playback (which then auto-advances through
+  /// the sender's run — see [_onVoiceComplete]).
+  Future<void> _toggleVoice(String messageId) async {
+    // Same clip → pause / resume, KEEPING the position (don't restart). So
+    // playing to 3s then tapping pauses at 3s (play icon shows); tapping again
+    // resumes from 3s to the end.
+    if (_playingVoiceId == messageId) {
+      if (_voicePaused) {
+        if (mounted) setState(() => _voicePaused = false);
+        await _voicePlayer.play(); // resumes from the held position
+      } else {
+        await _voicePlayer.pause();
+        if (mounted) setState(() => _voicePaused = true);
+      }
+      return;
+    }
+    await _startVoice(messageId, auto: false);
+  }
+
+  /// Stop tracking playback position and clear the waveform fill / paused flag.
+  void _resetVoiceProgress() {
+    _voicePosSub?.cancel();
+    _voicePosSub = null;
+    _voiceProgress.value = 0;
+    _voicePaused = false;
+  }
+
+  /// Load + play the voice [messageId]. [auto] true means this is an
+  /// auto-advance from a previous clip finishing (so we stay silent on demo /
+  /// error cases instead of nagging the user with a snackbar).
+  Future<void> _startVoice(String messageId, {required bool auto}) async {
+    final msg = await _msgRepo.findById(messageId);
+    final url = msg?.voiceUrl ?? '';
+    // Demo seed clips (and empty urls) have no real audio to play.
+    if (url.isEmpty || url.startsWith('demo://')) {
+      if (!mounted) return;
+      if (!auto) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('This voice clip is a demo placeholder — no audio.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      _resetVoiceProgress();
+      setState(() => _playingVoiceId = null);
+      return;
+    }
+    try {
+      await _voicePlayer.stop();
+      // When this clip finishes, try to auto-advance to the next one in the
+      // same sender's run. Capture [messageId] so the handler knows which
+      // clip just ended.
+      _voicePlayerSub?.cancel();
+      _voicePlayerSub = _voicePlayer.playerStateStream.listen((s) {
+        if (s.processingState == ProcessingState.completed) {
+          _onVoiceComplete(messageId);
+        }
+      });
+      final isNetwork = url.startsWith('http://') || url.startsWith('https://');
+      final loaded = isNetwork
+          ? await _voicePlayer.setUrl(url)
+          : await _voicePlayer.setFilePath(url); // locally-recorded
+      if (!mounted) return;
+      // Drive the waveform fill from real playback position.
+      _voiceTotal =
+          loaded ?? Duration(seconds: msg?.voiceDurationSeconds ?? 0);
+      _voiceProgress.value = 0;
+      _voicePosSub?.cancel();
+      _voicePosSub = _voicePlayer.positionStream.listen((pos) {
+        final t = _voiceTotal.inMilliseconds;
+        _voiceProgress.value =
+            t > 0 ? (pos.inMilliseconds / t).clamp(0.0, 1.0) : 0.0;
+      });
+      setState(() {
+        _playingVoiceId = messageId;
+        _voicePaused = false;
+      });
+      await _voicePlayer.play();
+    } catch (e) {
+      if (!mounted) return;
+      _resetVoiceProgress();
+      setState(() => _playingVoiceId = null);
+      if (!auto) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not play voice message: $e'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  /// A clip finished — auto-play the NEXT voice in the SAME sender's run
+  /// (Telegram-style). Stops as soon as a message from a different person
+  /// appears, so:
+  ///   • A sends 2–3 voices in a row → they play through automatically.
+  ///   • A sends one, then the listener (or anyone else) replies → the run
+  ///     ends and we do NOT auto-play that reply.
+  Future<void> _onVoiceComplete(String finishedId) async {
+    // `completed` can fire more than once for the same clip — ignore the
+    // duplicates so we don't skip the next one in the run.
+    if (_playingVoiceId != finishedId) return;
+    // Detach this clip's listener right away so a repeated `completed`
+    // (or one arriving during the await below) can't double-advance.
+    // _startVoice re-attaches a fresh listener for the next clip.
+    _voicePlayerSub?.cancel();
+    _voicePlayerSub = null;
+    final nextId = await _nextRunVoiceId(finishedId);
+    if (!mounted) return;
+    if (nextId == null) {
+      _resetVoiceProgress();
+      setState(() => _playingVoiceId = null);
+      return;
+    }
+    await _startVoice(nextId, auto: true);
+  }
+
+  /// The next playable voice message that belongs to the same uninterrupted
+  /// run as [finishedId] — i.e. the next voice from the SAME sender with no
+  /// message from anyone else in between. Returns null when the run ends.
+  Future<String?> _nextRunVoiceId(String finishedId) async {
+    final msgs = await _msgRepo.getForConversation(widget.conversationId);
+    // `getForConversation` is ascending by sentAt (oldest → newest).
+    final idx = msgs.indexWhere((m) => m.id == finishedId);
+    if (idx < 0) return null;
+    final senderId = msgs[idx].senderId;
+    for (var i = idx + 1; i < msgs.length; i++) {
+      final m = msgs[i];
+      // Anyone else sending anything (text or voice) breaks the run.
+      if (m.senderId != senderId) return null;
+      if (m.type != ChatMessageType.voice || m.isDeleted) continue;
+      final url = m.voiceUrl ?? '';
+      if (url.isEmpty || url.startsWith('demo://')) return null;
+      return m.id;
+    }
+    return null;
   }
 
   /// Slice 10.1.9 — tap on an inline call entry re-opens the matching
@@ -851,109 +1012,269 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     );
   }
 
+  /// Ask for the microphone BEFORE recording a voice message — on both iOS
+  /// and Android. Returns true only when granted. On denial we surface a
+  /// hint; if the user permanently denied it, the snackbar offers a shortcut
+  /// to the OS Settings (the only place it can be re-enabled).
+  Future<bool> _ensureMicPermission() async {
+    var status = await Permission.microphone.status;
+    if (status.isGranted) return true;
+    // Not yet granted — trigger the native system prompt (covers "denied",
+    // "restricted" and the never-asked first-run state on both platforms).
+    if (!status.isPermanentlyDenied) {
+      status = await Permission.microphone.request();
+    }
+    if (status.isGranted) return true;
+    if (!mounted) return false;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text(
+            'Microphone permission is needed to record a voice message.'),
+        behavior: SnackBarBehavior.floating,
+        action: status.isPermanentlyDenied
+            ? SnackBarAction(label: 'Settings', onPressed: openAppSettings)
+            : null,
+      ),
+    );
+    return false;
+  }
+
   Future<void> _showVoiceRecording() async {
-    final theme = Theme.of(context);
-    await showModalBottomSheet<void>(
+    // Gate the recorder on the mic permission (iOS + Android). No prompt was
+    // shown before, so a fresh install could "record" without ever asking.
+    if (!await _ensureMicPermission()) return;
+    if (!mounted) return;
+    // Open the recorder sheet — it records to a temp .m4a and returns the
+    // file path + duration on Send (null on Cancel / dismiss).
+    final result = await showModalBottomSheet<_VoiceRecording>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (sheetCtx) => Container(
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(AppRadii.lg),
-          border: Border.all(
-            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+      isDismissible: true,
+      enableDrag: false,
+      builder: (_) => const _VoiceRecorderSheet(),
+    );
+    if (result == null || !mounted) return;
+    final now = DateTime.now();
+    final targetIds = await _resolveTargetIds();
+    // Upload the clip so peers hear the SAME hosted file (a local path is
+    // invisible on their device). Falls back to the local path on failure
+    // (sender-only playback) so the send still goes through.
+    final hostedUrl = await _msgRepo.uploadAttachment(
+      result.path,
+      fileName: 'voice_${now.millisecondsSinceEpoch}.m4a',
+    );
+    if (!mounted) return;
+    if (hostedUrl == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Voice upload failed — the recipient may not hear this clip.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+    await _msgRepo.send(
+      ChatMessage(
+        id: '',
+        conversationId: widget.conversationId,
+        senderId: _currentUserId,
+        senderName: _currentUserName,
+        type: ChatMessageType.voice,
+        voiceUrl: hostedUrl ?? result.path,
+        voiceDurationSeconds: result.durationSeconds,
+        sentAt: now,
+      ),
+      targetIds: targetIds,
+    );
+    // Body is raw preview — inbox prefixes "You: ".
+    await _convRepo.updateLastMessage(
+      id: widget.conversationId,
+      body: '🎤 Voice message · ${_fmtVoiceDuration(result.durationSeconds)}',
+      senderId: _currentUserId,
+      senderName: _currentUserName,
+      type: 'voice',
+      at: now,
+    );
+  }
+
+  static String _fmtVoiceDuration(int seconds) {
+    final m = seconds ~/ 60;
+    final s = seconds % 60;
+    return '$m:${s.toString().padLeft(2, '0')}';
+  }
+}
+
+/// Result handed back by [_VoiceRecorderSheet] when the user taps Send.
+class _VoiceRecording {
+  const _VoiceRecording({required this.path, required this.durationSeconds});
+  final String path;
+  final int durationSeconds;
+}
+
+/// Modal sheet that records a voice message to a temp `.m4a` while open.
+/// Pops with a [_VoiceRecording] on Send, or `null` on Cancel / dismiss
+/// (discarding the file). Recording starts the instant it mounts — the mic
+/// permission is already granted by the caller ([_showVoiceRecording]).
+class _VoiceRecorderSheet extends StatefulWidget {
+  const _VoiceRecorderSheet();
+
+  @override
+  State<_VoiceRecorderSheet> createState() => _VoiceRecorderSheetState();
+}
+
+class _VoiceRecorderSheetState extends State<_VoiceRecorderSheet> {
+  final AudioRecorder _recorder = AudioRecorder();
+  Timer? _ticker;
+  Duration _elapsed = Duration.zero;
+  String? _path;
+  bool _ready = false;
+  bool _finishing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _start();
+  }
+
+  Future<void> _start() async {
+    try {
+      final dir = await getTemporaryDirectory();
+      final path =
+          '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      await _recorder.start(
+        const RecordConfig(encoder: AudioEncoder.aacLc),
+        path: path,
+      );
+      if (!mounted) {
+        await _recorder.stop();
+        return;
+      }
+      setState(() {
+        _path = path;
+        _ready = true;
+      });
+      _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!mounted) return;
+        setState(() => _elapsed += const Duration(seconds: 1));
+      });
+    } catch (_) {
+      if (mounted) Navigator.pop(context); // couldn't start — bail
+    }
+  }
+
+  Future<void> _finish({required bool send}) async {
+    if (_finishing) return;
+    _finishing = true;
+    _ticker?.cancel();
+    String? path;
+    try {
+      path = await _recorder.stop();
+    } catch (_) {}
+    path ??= _path;
+    if (!mounted) return;
+    // Need at least ~1s of audio to count as a clip.
+    if (send && path != null && _elapsed.inMilliseconds >= 1000) {
+      Navigator.pop(
+        context,
+        _VoiceRecording(
+          path: path,
+          durationSeconds: _elapsed.inSeconds < 1 ? 1 : _elapsed.inSeconds,
+        ),
+      );
+    } else {
+      if (path != null) {
+        try {
+          File(path).deleteSync();
+        } catch (_) {}
+      }
+      Navigator.pop(context);
+    }
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    _recorder.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final m = _elapsed.inMinutes;
+    final s = _elapsed.inSeconds % 60;
+    final timeLabel = '$m:${s.toString().padLeft(2, '0')}';
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 12,
+                height: 12,
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+              ).animate(onPlay: (c) => c.repeat()).fade(
+                    begin: 0.3,
+                    end: 1.0,
+                    duration: 600.ms,
+                  ),
+              const SizedBox(width: 8),
+              AppLabel(
+                text: _ready ? 'Recording…' : 'Starting…',
+                fontSize: AppFontSize.value14,
+                fontWeight: FontWeight.w800,
+              ),
+              const Spacer(),
+              AppLabel(
+                text: timeLabel,
+                fontSize: AppFontSize.value14,
+                color: theme.colorScheme.onSurfaceVariant,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ],
           ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                  ),
-                ).animate(onPlay: (c) => c.repeat()).fade(
-                      begin: 0.3,
-                      end: 1.0,
-                      duration: 600.ms,
-                    ),
-                const SizedBox(width: 8),
-                AppLabel(
-                  text: 'Recording…',
-                  fontSize: AppFontSize.value14,
-                  fontWeight: FontWeight.w800,
-                ),
-                const Spacer(),
-                AppLabel(
-                  text: '0:03',
-                  fontSize: AppFontSize.value14,
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => Navigator.pop(sheetCtx),
-                    icon: const Icon(Icons.close_rounded),
-                    label: AppLabel(
-                      text: 'Cancel',
-                      fontSize: AppFontSize.value14,
-                      fontWeight: FontWeight.w600,
-                    ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _finish(send: false),
+                  icon: const Icon(Icons.close_rounded),
+                  label: AppLabel(
+                    text: 'Cancel',
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () async {
-                      Navigator.pop(sheetCtx);
-                      final now = DateTime.now();
-                      final targetIds = await _resolveTargetIds();
-                      await _msgRepo.send(
-                        ChatMessage(
-                          id: '',
-                          conversationId: widget.conversationId,
-                          senderId: _currentUserId,
-                          senderName: _currentUserName,
-                          type: ChatMessageType.voice,
-                          voiceUrl: 'demo://voice/new-clip.m4a',
-                          voiceDurationSeconds: 3,
-                          sentAt: now,
-                        ),
-                        targetIds: targetIds,
-                      );
-                      // Body is raw preview — inbox prefixes "You: ".
-                      await _convRepo.updateLastMessage(
-                        id: widget.conversationId,
-                        body: '🎤 Voice message · 0:03',
-                        senderId: _currentUserId,
-                        senderName: _currentUserName,
-                        type: 'voice',
-                        at: now,
-                      );
-                    },
-                    icon: const Icon(Icons.send_rounded),
-                    label: AppLabel(
-                      text: 'Send',
-                      fontSize: AppFontSize.value14,
-                      fontWeight: FontWeight.w600,
-                    ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: _ready ? () => _finish(send: true) : null,
+                  icon: const Icon(Icons.send_rounded),
+                  label: AppLabel(
+                    text: 'Send',
+                    fontSize: AppFontSize.value14,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -1015,6 +1336,8 @@ class _MessageList extends StatelessWidget {
     required this.scrollController,
     required this.highlightId,
     required this.playingVoiceId,
+    required this.voiceProgress,
+    required this.voicePaused,
     required this.typingShown,
     required this.currentUserId,
     required this.onLongPressBubble,
@@ -1031,6 +1354,8 @@ class _MessageList extends StatelessWidget {
   final ScrollController scrollController;
   final String? highlightId;
   final String? playingVoiceId;
+  final ValueListenable<double> voiceProgress;
+  final bool voicePaused;
   final bool typingShown;
   final String currentUserId;
   final void Function(ChatMessage m) onLongPressBubble;
@@ -1111,7 +1436,12 @@ class _MessageList extends StatelessWidget {
               onJumpToReply: onJumpToReply,
               onTapVoice: () => onTapVoice(item.message!.id),
               onTapImage: () => onTapImage(item.message!),
-              isVoicePlaying: playingVoiceId == item.message!.id,
+              // "Playing" (pause icon) only when actively playing — paused
+              // shows the play/resume icon but keeps the filled waveform.
+              isVoicePlaying:
+                  playingVoiceId == item.message!.id && !voicePaused,
+              voiceProgress:
+                  playingVoiceId == item.message!.id ? voiceProgress : null,
               highlight: highlightId == item.message!.id,
             ),
           _ListItemKind.call => _CallEntryBubble(

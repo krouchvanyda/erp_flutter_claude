@@ -1,4 +1,6 @@
 PODS:
+  - audio_session (0.0.1):
+    - Flutter
   - battery_plus (1.0.0):
     - Flutter
   - connectivity_plus (0.0.1):
@@ -75,6 +77,9 @@ PODS:
     - GoogleUtilities/Privacy
   - image_picker_ios (0.0.1):
     - Flutter
+  - just_audio (0.0.1):
+    - Flutter
+    - FlutterMacOS
   - local_auth_darwin (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -94,6 +99,8 @@ PODS:
   - permission_handler_apple (9.3.0):
     - Flutter
   - PromisesObjC (2.4.0)
+  - record_ios (1.2.1):
+    - Flutter
   - shared_preferences_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -114,6 +121,7 @@ PODS:
     - Flutter
 
 DEPENDENCIES:
+  - audio_session (from `.symlinks/plugins/audio_session/ios`)
   - battery_plus (from `.symlinks/plugins/battery_plus/ios`)
   - connectivity_plus (from `.symlinks/plugins/connectivity_plus/ios`)
   - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
@@ -124,11 +132,13 @@ DEPENDENCIES:
   - flutter_local_notifications (from `.symlinks/plugins/flutter_local_notifications/ios`)
   - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
+  - just_audio (from `.symlinks/plugins/just_audio/darwin`)
   - local_auth_darwin (from `.symlinks/plugins/local_auth_darwin/darwin`)
   - mobile_scanner (from `.symlinks/plugins/mobile_scanner/darwin`)
   - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
+  - record_ios (from `.symlinks/plugins/record_ios/ios`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
   - sqflite_darwin (from `.symlinks/plugins/sqflite_darwin/darwin`)
   - stream_video_flutter (from `.symlinks/plugins/stream_video_flutter/ios`)
@@ -151,6 +161,8 @@ SPEC REPOS:
     - StreamWebRTC
 
 EXTERNAL SOURCES:
+  audio_session:
+    :path: ".symlinks/plugins/audio_session/ios"
   battery_plus:
     :path: ".symlinks/plugins/battery_plus/ios"
   connectivity_plus:
@@ -171,6 +183,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/flutter_secure_storage/ios"
   image_picker_ios:
     :path: ".symlinks/plugins/image_picker_ios/ios"
+  just_audio:
+    :path: ".symlinks/plugins/just_audio/darwin"
   local_auth_darwin:
     :path: ".symlinks/plugins/local_auth_darwin/darwin"
   mobile_scanner:
@@ -181,6 +195,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/path_provider_foundation/darwin"
   permission_handler_apple:
     :path: ".symlinks/plugins/permission_handler_apple/ios"
+  record_ios:
+    :path: ".symlinks/plugins/record_ios/ios"
   shared_preferences_foundation:
     :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
   sqflite_darwin:
@@ -195,6 +211,7 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/thermal/ios"
 
 SPEC CHECKSUMS:
+  audio_session: 9bb7f6c970f21241b19f5a3658097ae459681ba0
   battery_plus: b42253f6d2dde71712f8c36fef456d99121c5977
   connectivity_plus: cb623214f4e1f6ef8fe7403d580fdad517d2f7dd
   CryptoSwift: e64e11850ede528a02a0f3e768cec8e9d92ecb90
@@ -213,6 +230,7 @@ SPEC CHECKSUMS:
   GoogleDataTransport: aae35b7ea0c09004c3797d53c8c41f66f219d6a7
   GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
   image_picker_ios: e0ece4aa2a75771a7de3fa735d26d90817041326
+  just_audio: 4e391f57b79cad2b0674030a00453ca5ce817eed
   local_auth_darwin: c3ee6cce0a8d56be34c8ccb66ba31f7f180aaebb
   mobile_scanner: 9157936403f5a0644ca3779a38ff8404c5434a93
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
@@ -220,6 +238,7 @@ SPEC CHECKSUMS:
   path_provider_foundation: bb55f6dbba17d0dccd6737fe6f7f34fbd0376880
   permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
+  record_ios: 980fd386a97a35987d0fce3dfda4b26a38c90f4c
   shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
   stream_video_flutter: 8f29c5bae6c5330a8d5fe801a8f092f437db2b50

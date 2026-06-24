@@ -331,7 +331,15 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
     String? fileName,
   }) async {
     final form = FormData.fromMap(<String, dynamic>{
-      'file': await MultipartFile.fromFile(filePath, filename: fileName),
+      'file': await MultipartFile.fromFile(
+        filePath,
+        filename: fileName,
+        // Set the MIME type explicitly — dio defaults a MultipartFile to
+        // `application/octet-stream`, which the backend's content-type
+        // allowlist REJECTS. Derive it from the extension so images AND
+        // voice clips upload successfully.
+        contentType: _contentTypeFor(fileName ?? filePath),
+      ),
     });
     final res = await _dio.post<Map<String, dynamic>>(
       '/chats/attachments',
@@ -360,6 +368,51 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
     final origin =
         '${base.scheme}://${base.host}${base.hasPort ? ':${base.port}' : ''}';
     return url.startsWith('/') ? '$origin$url' : '$origin/$url';
+  }
+
+  /// MIME type for a chat attachment, derived from its file extension. Must
+  /// match the backend's `app.uploads.chat-attachment.allowed-content-types`
+  /// allowlist — anything not listed there is rejected on upload.
+  DioMediaType? _contentTypeFor(String pathOrName) {
+    final lower = pathOrName.toLowerCase();
+    String type;
+    String sub;
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
+      type = 'image';
+      sub = 'jpeg';
+    } else if (lower.endsWith('.png')) {
+      type = 'image';
+      sub = 'png';
+    } else if (lower.endsWith('.webp')) {
+      type = 'image';
+      sub = 'webp';
+    } else if (lower.endsWith('.gif')) {
+      type = 'image';
+      sub = 'gif';
+    } else if (lower.endsWith('.heic')) {
+      type = 'image';
+      sub = 'heic';
+    } else if (lower.endsWith('.m4a') ||
+        lower.endsWith('.mp4') ||
+        lower.endsWith('.aac')) {
+      type = 'audio';
+      sub = 'mp4'; // AAC-LC in an MP4 container — backend maps audio/mp4 → .m4a
+    } else if (lower.endsWith('.mp3')) {
+      type = 'audio';
+      sub = 'mpeg';
+    } else if (lower.endsWith('.ogg')) {
+      type = 'audio';
+      sub = 'ogg';
+    } else if (lower.endsWith('.wav')) {
+      type = 'audio';
+      sub = 'wav';
+    } else if (lower.endsWith('.pdf')) {
+      type = 'application';
+      sub = 'pdf';
+    } else {
+      return null; // let dio decide; backend may still reject unknown types
+    }
+    return DioMediaType(type, sub);
   }
 
   @override

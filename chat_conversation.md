@@ -225,33 +225,65 @@ await _convRepo.updateLastMessage(widget.conversationId, '📷 Photo', me, type:
 
 ## 5. Voice
 
-**Status: ⚠️ demo stub.** Handler: `_showVoiceRecording()` shows the
-hold-to-record sheet, but **Send** currently ships a hardcoded clip:
+**Status: ✅ implemented, cross-device (record → upload → send → playback).**
+Packages: [`record`](https://pub.dev/packages/record) (capture) +
+[`just_audio`](https://pub.dev/packages/just_audio) (playback).
+
+### Record → send
+
+`_showVoiceRecording()`:
+
+1. **Permission** — `_ensureMicPermission()` requests the mic up front (iOS +
+   Android); bails with a hint (and a Settings shortcut if permanently denied).
+2. **Record** — opens `_VoiceRecorderSheet`, a stateful sheet that records an
+   `.m4a` (AAC-LC) to a temp file via `AudioRecorder().start(...)` and shows a
+   live timer. **Send** stops and returns `_VoiceRecording(path, durationSeconds)`;
+   **Cancel/dismiss** discards the temp file.
+3. **Upload** — `_msgRepo.uploadAttachment(path, fileName: 'voice_….m4a')` →
+   hosted URL (see [§8](#8-attachments-image-voice-file)). Falls back to the
+   local path (sender-only) with a warning if upload fails.
+4. **Send** — with `voiceUrl: hostedUrl, voiceDurationSeconds: realSeconds`.
 
 ```dart
+final result = await showModalBottomSheet<_VoiceRecording>(
+  context: context, builder: (_) => const _VoiceRecorderSheet());
+if (result == null) return;
+final hostedUrl = await _msgRepo.uploadAttachment(
+    result.path, fileName: 'voice_${now.millisecondsSinceEpoch}.m4a');
 await _msgRepo.send(
   ChatMessage(
     …,
     type: ChatMessageType.voice,
-    voiceUrl: 'demo://voice/new-clip.m4a',   // hardcoded
-    voiceDurationSeconds: 3,                  // hardcoded
-    sentAt: DateTime.now(),
+    voiceUrl: hostedUrl ?? result.path,        // http(s) URL on success
+    voiceDurationSeconds: result.durationSeconds,
+    sentAt: now,
   ),
   targetIds: await _resolveTargetIds(),
 );
-await _convRepo.updateLastMessage(
-  widget.conversationId, '🎤 Voice message · 0:03', me, type: 'voice');
+await _convRepo.updateLastMessage(widget.conversationId,
+    '🎤 Voice message · ${_fmtVoiceDuration(result.durationSeconds)}', me, type: 'voice');
 ```
 
-**To make it real** (packages are already in the project plan: `record`,
-`just_audio`):
+### Playback
 
-1. On press-and-hold start: `await AudioRecorder().start(path: tmpM4a)`.
-2. On release: `final path = await recorder.stop();` and measure the elapsed
-   duration.
-3. Upload the file (see [§8](#8-attachments-image-voice-file)) → hosted `voiceUrl`.
-4. Send with `voiceUrl: hostedUrl, voiceDurationSeconds: realSeconds`.
-5. Slide-to-cancel past the threshold → discard, no send.
+`_toggleVoice(messageId)` plays via a shared `just_audio` `AudioPlayer` (one
+clip at a time — tapping a second stops the first):
+
+- network URL → `setUrl`, local path → `setFilePath`, `demo://`/empty → snackbar
+  ("demo placeholder — no audio").
+- Resets the playing highlight when the clip completes; the player is disposed
+  with the page.
+
+### Platform notes
+
+- Upload sends `Content-Type: audio/mp4` (set explicitly in
+  `ChatsRemoteDataSource._contentTypeFor` — dio otherwise defaults to
+  `application/octet-stream`, which the backend allowlist rejects).
+- iOS plays the LAN `http://` clip thanks to `NSAllowsArbitraryLoads`; Android
+  via `usesCleartextTraffic="true"`. Mic needs `NSMicrophoneUsageDescription`
+  (+ Podfile `PERMISSION_MICROPHONE=1`) / `RECORD_AUDIO` — all present.
+- Existing `demo://` **seed** clips are placeholders with no real bytes — only
+  newly recorded clips have audio.
 
 ---
 
@@ -326,12 +358,15 @@ which:
    device and the peer (who receives this exact string over STOMP) can load it.
 
 `/uploads/**` is public on the backend, so no auth header is needed to fetch the
-file. Backend contract: see `CHAT_MESSAGES_BACKEND.md` §8.
+file. The upload also sets an explicit `Content-Type` from the file extension
+(`ChatsRemoteDataSource._contentTypeFor`) — dio otherwise defaults a multipart
+file to `application/octet-stream`, which the backend allowlist rejects. Backend
+contract: see `CHAT_MESSAGES_BACKEND.md` §8.
 
 ### Wiring per kind
 
 - **Image** — ✅ done (see [§4](#4-image)): upload → send `fileUrl = hostedUrl`.
-- **Voice** — switch the [§5](#5-voice) stub to: record → `uploadAttachment(clipPath)`
+- **Voice** — ✅ done (see [§5](#5-voice)): record → `uploadAttachment(clipPath)`
   → send `voiceUrl = hostedUrl, voiceDurationSeconds: realSeconds`.
 - **File** — in the [§6](#6-file) handler: `uploadAttachment(f.path)` → send
   `fileUrl = hostedUrl`.
@@ -371,7 +406,7 @@ setting either field to the hosted URL is all that's required end-to-end.
 | Edit | `_send()` → `_msgRepo.edit()` | — | `editedAt`, new `body` | ✅ |
 | Delete | menu → `_msgRepo.softDelete()` | — | `isDeleted` | ✅ |
 | Image | `_sendPickedImage()` | `image` | `fileUrl`(hosted URL), `fileName`, `fileSizeBytes` | ✅ (upload → send) |
-| Voice | `_showVoiceRecording()` | `voice` | `voiceUrl`, `voiceDurationSeconds` | ⚠️ demo stub |
+| Voice | `_showVoiceRecording()` | `voice` | `voiceUrl`(hosted URL), `voiceDurationSeconds` | ✅ (record → upload → send → playback) |
 | File | `_attachStub('File picker')` | `file` | `fileUrl`, `fileName`, `fileSizeBytes` | 🔲 stub |
 | Location | `_attachStub('Map share')` | (none yet) | — | 🔲 stub |
 
