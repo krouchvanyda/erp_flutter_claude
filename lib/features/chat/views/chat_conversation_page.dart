@@ -1124,11 +1124,16 @@ class _VoiceRecorderSheet extends StatefulWidget {
 
 class _VoiceRecorderSheetState extends State<_VoiceRecorderSheet> {
   final AudioRecorder _recorder = AudioRecorder();
+  final Stopwatch _watch = Stopwatch();
   Timer? _ticker;
-  Duration _elapsed = Duration.zero;
+  StreamSubscription<Amplitude>? _ampSub;
   String? _path;
   bool _ready = false;
   bool _finishing = false;
+
+  /// Smoothed mic level (0..1) — drives the amplitude halo that pulses
+  /// around the send button, exactly like Telegram's recorder.
+  double _level = 0;
 
   @override
   void initState() {
@@ -1149,13 +1154,26 @@ class _VoiceRecorderSheetState extends State<_VoiceRecorderSheet> {
         await _recorder.stop();
         return;
       }
+      _watch.start();
       setState(() {
         _path = path;
         _ready = true;
       });
-      _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      // Fast ticker so the timer ticks in centiseconds (0:19,36) like
+      // Telegram's recording bar.
+      _ticker = Timer.periodic(const Duration(milliseconds: 50), (_) {
         if (!mounted) return;
-        setState(() => _elapsed += const Duration(seconds: 1));
+        setState(() {});
+      });
+      // Live mic level → smoothed 0..1, drives the amplitude halo around
+      // the send button. `amp.current` is in dBFS (≈ -45 quiet … 0 loud).
+      _ampSub = _recorder
+          .onAmplitudeChanged(const Duration(milliseconds: 80))
+          .listen((amp) {
+        if (!mounted) return;
+        final norm = ((amp.current + 45) / 45).clamp(0.0, 1.0);
+        // Ease toward the new level so the halo breathes instead of jittering.
+        _level = _level * 0.6 + norm * 0.4;
       });
     } catch (_) {
       if (mounted) Navigator.pop(context); // couldn't start — bail
@@ -1166,6 +1184,8 @@ class _VoiceRecorderSheetState extends State<_VoiceRecorderSheet> {
     if (_finishing) return;
     _finishing = true;
     _ticker?.cancel();
+    _watch.stop();
+    final elapsed = _watch.elapsed;
     String? path;
     try {
       path = await _recorder.stop();
@@ -1173,12 +1193,12 @@ class _VoiceRecorderSheetState extends State<_VoiceRecorderSheet> {
     path ??= _path;
     if (!mounted) return;
     // Need at least ~1s of audio to count as a clip.
-    if (send && path != null && _elapsed.inMilliseconds >= 1000) {
+    if (send && path != null && elapsed.inMilliseconds >= 1000) {
       Navigator.pop(
         context,
         _VoiceRecording(
           path: path,
-          durationSeconds: _elapsed.inSeconds < 1 ? 1 : _elapsed.inSeconds,
+          durationSeconds: elapsed.inSeconds < 1 ? 1 : elapsed.inSeconds,
         ),
       );
     } else {
@@ -1194,87 +1214,130 @@ class _VoiceRecorderSheetState extends State<_VoiceRecorderSheet> {
   @override
   void dispose() {
     _ticker?.cancel();
+    _ampSub?.cancel();
     _recorder.dispose();
     super.dispose();
   }
 
+  /// Telegram-style timer — minutes:seconds,centiseconds (e.g. `0:19,36`).
+  String _fmt(Duration d) {
+    final m = d.inMinutes;
+    final s = d.inSeconds % 60;
+    final cs = (d.inMilliseconds % 1000) ~/ 10;
+    return '$m:${s.toString().padLeft(2, '0')},${cs.toString().padLeft(2, '0')}';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final m = _elapsed.inMinutes;
-    final s = _elapsed.inSeconds % 60;
-    final timeLabel = '$m:${s.toString().padLeft(2, '0')}';
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+    final cs = Theme.of(context).colorScheme;
+    final timeLabel = _fmt(_watch.elapsed);
+    // Bottom-align so that even though the modal sheet is allotted a tall
+    // slot, ONLY the thin bar is painted — the space above stays transparent
+    // and shows the dimmed chat behind it, exactly like Telegram.
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: Container(
+        color: cs.surface,
+        child: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: 64,
+            child: Stack(
+              clipBehavior: Clip.none, // let the send button bulge upward
+              children: [
+                // Left: blinking red dot + centiseconds timer.
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 20),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 11,
+                          height: 11,
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                        ).animate(onPlay: (c) => c.repeat(reverse: true)).fade(
+                              begin: 0.25,
+                              end: 1.0,
+                              duration: 700.ms,
+                            ),
+                        const SizedBox(width: 12),
+                        AppLabel(
+                          text: timeLabel,
+                          fontSize: AppFontSize.value16,
+                          color: cs.onSurface,
+                          fontWeight: FontWeight.w600,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // Center: Cancel.
+                Align(
+                  alignment: Alignment.center,
+                  child: TextButton(
+                    onPressed: () => _finish(send: false),
+                    child: AppLabel(
+                      text: 'Cancel',
+                      fontSize: AppFontSize.value16,
+                      color: cs.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                // Right: send button bulging up from the bar, amplitude halo
+                // behind it. Halo base (70) > the 56px button so a ring is
+                // always visible and grows as you speak.
+                Positioned(
+                  right: 8,
+                  bottom: 4,
+                  child: SizedBox(
+                    width: 92,
+                    height: 92,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 120),
+                          curve: Curves.easeOut,
+                          width: 70 + _level * 26,
+                          height: 70 + _level * 26,
+                          decoration: BoxDecoration(
+                            color: cs.primary.withValues(alpha: 0.28),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        Material(
+                          color: _ready
+                              ? cs.primary
+                              : cs.onSurface.withValues(alpha: 0.2),
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: _ready ? () => _finish(send: true) : null,
+                            child: const Padding(
+                              padding: EdgeInsets.all(14),
+                              child: Icon(
+                                Icons.arrow_upward_rounded,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 12,
-                height: 12,
-                decoration: const BoxDecoration(
-                  color: Colors.red,
-                  shape: BoxShape.circle,
-                ),
-              ).animate(onPlay: (c) => c.repeat()).fade(
-                    begin: 0.3,
-                    end: 1.0,
-                    duration: 600.ms,
-                  ),
-              const SizedBox(width: 8),
-              AppLabel(
-                text: _ready ? 'Recording…' : 'Starting…',
-                fontSize: AppFontSize.value14,
-                fontWeight: FontWeight.w800,
-              ),
-              const Spacer(),
-              AppLabel(
-                text: timeLabel,
-                fontSize: AppFontSize.value14,
-                color: theme.colorScheme.onSurfaceVariant,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _finish(send: false),
-                  icon: const Icon(Icons.close_rounded),
-                  label: AppLabel(
-                    text: 'Cancel',
-                    fontSize: AppFontSize.value14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: _ready ? () => _finish(send: true) : null,
-                  icon: const Icon(Icons.send_rounded),
-                  label: AppLabel(
-                    text: 'Send',
-                    fontSize: AppFontSize.value14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }
