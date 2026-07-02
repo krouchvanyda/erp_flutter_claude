@@ -11,6 +11,7 @@ import 'package:stream_video_flutter/stream_video_flutter.dart' show Call;
 import 'users_cache.dart';
 
 import '../models/call_log.dart';
+import '../models/conversation.dart';
 import 'callkit_call_id.dart';
 import 'chat_settings.dart';
 import 'chat_transport.dart';
@@ -396,6 +397,29 @@ class CallSignalingService {
   /// (status: `noAnswer`) and broadcasts a `call.invite` envelope to
   /// the peer. Returns the new `callId` so the calling page can wait
   /// on state changes via [activeCall].
+  /// The incoming-call wire (`ChatCallDto` / push payload) frequently
+  /// ships a `User #<id>` placeholder for the caller name because the DTO
+  /// carries no name. Recover the real display name from the local
+  /// conversation's participant previews, then the [UsersCache], falling
+  /// back to the placeholder only when nothing else is known.
+  String _resolvePeerName(
+    String wireName,
+    String callerId,
+    ChatConversation? conv,
+  ) {
+    bool placeholder(String? n) =>
+        n == null || n.trim().isEmpty || n.startsWith('User #');
+    if (!placeholder(wireName)) return wireName;
+    if (conv != null) {
+      for (final p in conv.participantPreviews) {
+        if (p.employeeId == callerId && !placeholder(p.name)) return p.name;
+      }
+    }
+    final cached = UsersCache.instance.nameOf(callerId);
+    if (!placeholder(cached)) return cached!;
+    return wireName;
+  }
+
   Future<ActiveCall> startOutgoing({
     required String conversationId,
     required ChatCallType callType,
@@ -943,17 +967,6 @@ class CallSignalingService {
             DateTime.now().toUtc();
     final streamCallCid = data['streamCallCid']?.toString();
 
-    // Log a missed-by-default row so the inbox tile / call history
-    // reflects the call attempt even if the user never opens it.
-    final logged = await callLog.logStart(
-      conversationId: conversationId,
-      callerId: callerId,
-      callerName: callerName,
-      callType: callType,
-      at: startedAt,
-    );
-    _logIdByCallId[callId] = logged.id;
-
     // The invite carries the CALLER's conversation id, which often
     // doesn't resolve to a local conv on this (callee) device because
     // the seed reuses ids per device (Slice 10.1.8). For a direct call,
@@ -961,6 +974,20 @@ class CallSignalingService {
     // sheet gets the caller's name + profile photo instead of initials.
     var conv = await conversations.findById(conversationId);
     conv ??= await conversations.findDirectWith(callerId);
+    // Push payload's `callerName` may be a "User #<id>" placeholder —
+    // recover the real name from the conv / UsersCache.
+    final peerName = _resolvePeerName(callerName, callerId, conv);
+
+    // Log a missed-by-default row so the inbox tile / call history
+    // reflects the call attempt even if the user never opens it.
+    final logged = await callLog.logStart(
+      conversationId: conversationId,
+      callerId: callerId,
+      callerName: peerName,
+      callType: callType,
+      at: startedAt,
+    );
+    _logIdByCallId[callId] = logged.id;
     // Caller's photo straight from the push/launch payload (the native
     // notifier + backend both carry it). On a KILLED-app launch over the
     // lock screen the local conv hasn't loaded yet, so `conv` is null and
@@ -972,7 +999,7 @@ class CallSignalingService {
       callId: callId,
       conversationId: conversationId,
       peerId: callerId,
-      peerName: callerName,
+      peerName: peerName,
       callType: callType,
       state: CallSignalState.incomingRinging,
       startedAt: startedAt,
@@ -2026,14 +2053,6 @@ class CallSignalingService {
           // Drop the prior log row so we don't leak entries.
           _logIdByCallId.remove(prior.callId);
         }
-        final logged = await callLog.logStart(
-          conversationId: conversationId,
-          callerId: callerId,
-          callerName: callerName,
-          callType: callType,
-          at: startedAt,
-        );
-        _logIdByCallId[callId] = logged.id;
         // Slice 10.2.9 — look up the local conv so the incoming sheet
         // can show the GROUP name (e.g. "TEST01") with "Vibol is
         // calling" as a subtitle, instead of just "Vibol". Direct
@@ -2043,11 +2062,23 @@ class CallSignalingService {
         // Slice 10.1.8) so the sheet still gets the caller's photo.
         var conv = await conversations.findById(conversationId);
         conv ??= await conversations.findDirectWith(callerId);
+        // The wire `callerName` is often a "User #<id>" placeholder —
+        // recover the real name from the conv / UsersCache so the sheet
+        // shows who's actually calling.
+        final peerName = _resolvePeerName(callerName, callerId, conv);
+        final logged = await callLog.logStart(
+          conversationId: conversationId,
+          callerId: callerId,
+          callerName: peerName,
+          callType: callType,
+          at: startedAt,
+        );
+        _logIdByCallId[callId] = logged.id;
         _setActive(ActiveCall(
           callId: callId,
           conversationId: conversationId,
           peerId: callerId,
-          peerName: callerName,
+          peerName: peerName,
           callType: callType,
           state: CallSignalState.incomingRinging,
           startedAt: startedAt,

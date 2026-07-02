@@ -27,6 +27,7 @@ import '../repositories/call_log_repository.dart';
 import '../repositories/conversations_repository.dart';
 import '../repositories/messages_repository.dart';
 import '../repositories/presence_repository.dart';
+import '../repositories/users_cache.dart';
 import '../models/call_log.dart';
 import '../models/chat_message.dart';
 import '../models/conversation.dart';
@@ -454,7 +455,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                     )
                   else
                     ChatAvatar(
-                      name: conv.name,
+                      name: _displayName(conv),
                       size: 36,
                       avatarFilePath: conv.avatarFilePath,
                       // Server-side photo (peer profile / group upload);
@@ -477,7 +478,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         AppLabel(
-                          text: conv.name,
+                          text: _displayName(conv),
                           fontSize: AppFontSize.value16,
                           fontWeight: FontWeight.w800,
                           maxLines: 1,
@@ -1537,6 +1538,26 @@ class _MessageList extends StatelessWidget {
     }
     return 'Someone';
   }
+}
+
+/// Resolve a real display name for a conversation header — a direct conv
+/// whose `name` is still a "User #id" placeholder (the DTO shipped no name,
+/// or the UsersCache hadn't hydrated at creation time) recovers the peer's
+/// name from the participant preview, then the UsersCache. Groups always use
+/// their own name. Mirrors `_resolvePeerName` in CallSignalingService so the
+/// chat header and the incoming-call sheet agree.
+String _displayName(ChatConversation c) {
+  bool placeholder(String? n) =>
+      n == null || n.trim().isEmpty || n.startsWith('User #');
+  if (c.isGroup) return c.name;
+  if (!placeholder(c.name)) return c.name;
+  if (c.participantPreviews.isNotEmpty) {
+    final other = c.participantPreviews.first;
+    if (!placeholder(other.name)) return other.name;
+    final cached = UsersCache.instance.nameOf(other.employeeId);
+    if (!placeholder(cached)) return cached!;
+  }
+  return c.name.isNotEmpty ? c.name : 'Someone';
 }
 
 enum _ListItemKind { separator, message, call, typing }
