@@ -25,6 +25,7 @@ import '../repositories/presence_repository.dart';
 import '../models/call_log.dart';
 import '../models/conversation.dart';
 import '../widgets/chat_avatar.dart';
+import '../widgets/chat_notification_router.dart';
 import 'chat_conversation_page.dart';
 import 'new_conversation_page.dart';
 import 'video_call_page.dart';
@@ -59,10 +60,16 @@ class _ChatInboxPageState extends State<ChatInboxPage>
     // same call used on boot/foreground) corrects every tile's dot at
     // once the moment the user lands on the inbox.
     unawaited(context.read<PresenceRepository>().loadAll());
+    // A chat-notification tap that arrived before the inbox existed
+    // (cold start / still on login) is opened now that the router has
+    // settled on the signed-in screen.
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => ChatNotificationRouter.inboxReady());
   }
 
   @override
   void dispose() {
+    ChatNotificationRouter.inboxDisposed();
     _tabs.dispose();
     _searchCtrl.dispose();
     super.dispose();

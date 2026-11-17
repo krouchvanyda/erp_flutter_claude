@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:erp_callkit/erp_callkit.dart';
 import 'package:erp_mobile/shared/firebase_services/firebase_notification_provider.dart';
+import 'package:erp_mobile/shared/firebase_services/local_notification_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -16,6 +18,7 @@ import 'core/theme/app_theme.dart';
 import 'core/widgets/locale_rebuilder.dart';
 import 'features/chat/repositories/call_signaling_service.dart';
 import 'features/chat/repositories/conversations_repository.dart';
+import 'features/chat/widgets/chat_notification_router.dart';
 import 'features/chat/widgets/incoming_call_overlay.dart';
 import 'features/settings/repositories/preferences_repository.dart';
 import 'features/settings/models/user_preferences.dart' as pref_entities;
@@ -78,16 +81,24 @@ class _ErpMobileAppState extends State<ErpMobileApp>
         debugPrint('message ── in app ── $message');
       },
     );
+    // Tap on an OS-rendered notification (payload had a `notification`
+    // block) → open that chat. Call taps are handled by the native
+    // ringer / CallNotificationRouter, so `open` ignores call payloads.
     FirebaseNotificationProvider.instance.initOnMessageOpenedApp(
       getData: (message) {
         debugPrint('message ── out of app (minimised) ── $message');
+        ChatNotificationRouter.open(message.data);
       },
     );
     FirebaseNotificationProvider.instance.handleInitialMessage(
       getData: (message) {
         debugPrint('message ── killed app ── $message');
+        ChatNotificationRouter.open(message.data);
       },
     );
+    // Same, for a tap on one of OUR local notifications (data-only push)
+    // that launched the app from killed.
+    unawaited(LocalNotificationProvider().handleLaunchFromNotification());
   }
 
   @override

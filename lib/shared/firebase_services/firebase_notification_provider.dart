@@ -15,6 +15,7 @@ import '../../features/auth/repositories/flutter_secure_storage_secret_store.dar
 import '../../features/auth/repositories/secure_token_storage.dart';
 import '../../features/chat/repositories/callkit_call_id.dart';
 import 'local_notification_provider.dart';
+import '../../features/chat/widgets/chat_notification_router.dart';
 
 /// Top-level background message handler. **Must be a top-level (or
 /// static) function annotated with `@pragma('vm:entry-point')`** so
@@ -830,6 +831,12 @@ class FirebaseNotificationProvider {
           );
           return;
         }
+
+        // Chat message for the conversation the user is looking at right
+        // now — it is already arriving live over STOMP, so a banner would
+        // be noise. (iOS + `notification` block returned above: the OS
+        // shows those itself and we can't filter them per message.)
+        if (ChatNotificationRouter.isViewing(message.data)) return;
 
         LocalNotificationProvider().sendNotification(
           title: notif?.title ?? message.data['title']?.toString(),

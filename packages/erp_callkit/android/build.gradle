@@ -5,13 +5,13 @@ buildscript {
     // Match the host app exactly (android/settings.gradle.kts):
     // AGP 8.9.1, Kotlin 2.1.0. Mismatched versions put two AGP/Kotlin
     // plugins on the build classpath and fail the configure step.
-    ext.kotlin_version = '2.1.0'
+    ext.kotlin_version = '2.2.21'
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.9.1'
+        classpath 'com.android.tools.build:gradle:8.13.2'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
 }

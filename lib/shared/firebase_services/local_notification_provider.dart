@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../../features/chat/widgets/call_notification_router.dart';
+import '../../features/chat/widgets/chat_notification_router.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
@@ -45,6 +46,27 @@ class LocalNotificationProvider {
   bool _initialized = false;
 
   LocalNotificationProvider();
+
+  /// Cold start from a tap on one of OUR local notifications (the app
+  /// was killed, so `onDidReceiveNotificationResponse` never fired).
+  /// Call once after the first frame. Calls go through
+  /// [CallNotificationRouter] first; chat taps open the conversation.
+  Future<void> handleLaunchFromNotification() async {
+    try {
+      final details =
+          await flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();
+      final response = details?.notificationResponse;
+      final body = response?.payload;
+      if (details?.didNotificationLaunchApp != true || body == null) return;
+      final handled = await CallNotificationRouter.dispatch(
+        body,
+        actionId: response?.actionId,
+      );
+      if (!handled) _handleNotificationResponse(body);
+    } catch (e) {
+      if (kDebugMode) log('❌ Error reading notification launch details: $e');
+    }
+  }
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -277,9 +299,10 @@ void _handleNotificationResponse(String payload) {
     if (kDebugMode) {
       log("📲 Notification tapped: $notificationData");
     }
-    // TODO(navigation): deep-link to the relevant screen using the
-    // payload's `route` field once the router-side handler exists.
-    // Currently a no-op beyond the log.
+    // Chat message → open that conversation (parked until the inbox is
+    // up on a cold start). Runs on the main isolate for normal taps; in
+    // the background-response isolate it is a harmless no-op.
+    ChatNotificationRouter.open(notificationData);
   } catch (e) {
     if (kDebugMode) {
       log("❌ Error handling notification response: $e");
