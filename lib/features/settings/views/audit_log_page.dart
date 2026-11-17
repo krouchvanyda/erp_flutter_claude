@@ -2,13 +2,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:erp_mobile/shared/widgets/app_background_gradient.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:get/get.dart' show Trans;
 
 import '../../../core/theme/app_font_size.dart';
 import '../../../core/theme/app_label.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/widgets/dynamic_app_bar.dart';
 import '../../../core/widgets/dynamic_status_bar.dart';
-import '../../../l10n/app_localizations.dart';
 import '../repositories/security_repositories.dart';
 import '../models/audit_log_entry.dart';
 
@@ -28,12 +28,11 @@ class _AuditLogPageState extends State<AuditLogPage> {
   Widget build(BuildContext context) {
     final repo = context.read<AuditLogRepository>();
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: l10n.auditLogPageTitle,
+        title: 'auditLogPageTitle'.tr,
         centerTitle: true,
       ),
       body: DynamicStatusBar(
@@ -78,7 +77,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
                         child: TextField(
                           onChanged: (q) => setState(() => _searchQuery = q),
                           decoration: InputDecoration(
-                            hintText: l10n.auditLogSearchHint,
+                            hintText: 'auditLogSearchHint'.tr,
                             prefixIcon: Icon(Icons.search, color: theme.colorScheme.primary),
                             border: InputBorder.none,
                             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -135,7 +134,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
                       Expanded(
                         child: Center(
                           child: AppLabel(
-                            text: l10n.auditLogEmpty,
+                            text: 'auditLogEmpty'.tr,
                             fontSize: AppFontSize.value14,
                             fontWeight: FontWeight.w500,
                           ),
@@ -292,7 +291,6 @@ class _LogEntryTile extends StatelessWidget {
 
   void _showDetailsSheet(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -317,22 +315,22 @@ class _LogEntryTile extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             AppLabel(
-              text: l10n.auditLogDetailDialogTitle,
+              text: 'auditLogDetailDialogTitle'.tr,
               fontSize: AppFontSize.value16,
               fontWeight: FontWeight.bold,
             ),
             const SizedBox(height: 16),
-            _metaRow(context, l10n.auditLogActorIdLabel, entry.actorId),
-            _metaRow(context, l10n.auditLogActorNameLabel, entry.actorName),
-            _metaRow(context, l10n.auditLogActionVerbLabel, _actionVerb(entry.action).toUpperCase()),
-            _metaRow(context, l10n.auditLogTargetTypeLabel, entry.targetType),
-            _metaRow(context, l10n.auditLogTargetIdLabel, entry.targetId),
-            _metaRow(context, l10n.auditLogTargetLabelLabel, entry.targetLabel),
-            _metaRow(context, l10n.auditLogTimestampLabel, entry.occurredAt.toIso8601String()),
+            _metaRow(context, 'auditLogActorIdLabel'.tr, entry.actorId),
+            _metaRow(context, 'auditLogActorNameLabel'.tr, entry.actorName),
+            _metaRow(context, 'auditLogActionVerbLabel'.tr, _actionVerb(entry.action).toUpperCase()),
+            _metaRow(context, 'auditLogTargetTypeLabel'.tr, entry.targetType),
+            _metaRow(context, 'auditLogTargetIdLabel'.tr, entry.targetId),
+            _metaRow(context, 'auditLogTargetLabelLabel'.tr, entry.targetLabel),
+            _metaRow(context, 'auditLogTimestampLabel'.tr, entry.occurredAt.toIso8601String()),
             if (entry.detail != null) ...[
               const SizedBox(height: 8),
               AppLabel(
-                text: l10n.auditLogAdditionalMetadataLabel,
+                text: 'auditLogAdditionalMetadataLabel'.tr,
                 fontSize: AppFontSize.value12,
                 fontWeight: FontWeight.bold,
               ),
@@ -358,7 +356,7 @@ class _LogEntryTile extends StatelessWidget {
               child: FilledButton(
                 onPressed: () => Navigator.pop(sheetCtx),
                 child: AppLabel(
-                  text: l10n.auditLogCloseAction,
+                  text: 'auditLogCloseAction'.tr,
                   fontSize: AppFontSize.value14,
                   fontWeight: FontWeight.w600,
                 ),
@@ -445,23 +443,23 @@ class _LogEntryTile extends StatelessWidget {
   String _actionVerb(AuditAction a) {
     switch (a) {
       case AuditAction.signIn:
-        return 'signed into';
+        return 'auditVerbSignIn'.tr;
       case AuditAction.signOut:
-        return 'signed out from';
+        return 'auditVerbSignOut'.tr;
       case AuditAction.approve:
-        return 'approved';
+        return 'auditVerbApprove'.tr;
       case AuditAction.reject:
-        return 'rejected';
+        return 'auditVerbReject'.tr;
       case AuditAction.create:
-        return 'created';
+        return 'auditVerbCreate'.tr;
       case AuditAction.update:
-        return 'updated';
+        return 'auditVerbUpdate'.tr;
       case AuditAction.delete:
-        return 'deleted';
+        return 'auditVerbDelete'.tr;
       case AuditAction.permissionChange:
-        return 'changed permissions on';
+        return 'auditVerbPermissionChange'.tr;
       case AuditAction.exportData:
-        return 'exported';
+        return 'auditVerbExport'.tr;
     }
   }
 

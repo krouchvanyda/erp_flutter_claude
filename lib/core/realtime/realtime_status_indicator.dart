@@ -1,7 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart' show Trans;
 
-import '../../l10n/app_localizations.dart';
 import '../theme/app_font_size.dart';
 import '../theme/app_label.dart';
 import 'realtime_connection_state.dart';
@@ -44,9 +44,8 @@ class _Pill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
     final color = _colorFor(theme, state);
-    final label = _labelFor(l10n, state);
+    final label = _labelFor(state);
     return Tooltip(
       message: label,
       child: Padding(
@@ -76,12 +75,12 @@ class _Pill extends StatelessWidget {
     };
   }
 
-  static String _labelFor(AppLocalizations l10n, RealtimeConnectionState s) {
+  static String _labelFor(RealtimeConnectionState s) {
     return switch (s) {
-      RealtimeConnectionState.connected => l10n.realtimeStatusLive,
-      RealtimeConnectionState.connecting => l10n.realtimeStatusConnecting,
-      RealtimeConnectionState.reconnecting => l10n.realtimeStatusReconnecting,
-      RealtimeConnectionState.disconnected => l10n.realtimeStatusOffline,
+      RealtimeConnectionState.connected => 'realtimeStatusLive'.tr,
+      RealtimeConnectionState.connecting => 'realtimeStatusConnecting'.tr,
+      RealtimeConnectionState.reconnecting => 'realtimeStatusReconnecting'.tr,
+      RealtimeConnectionState.disconnected => 'realtimeStatusOffline'.tr,
     };
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:erp_mobile/shared/widgets/app_background_gradient.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:get/get.dart' show Trans;
 
 import '../../../core/error/failure.dart';
 import '../../../core/theme/app_font_size.dart';
@@ -9,7 +10,6 @@ import '../../../core/theme/app_label.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/widgets/dynamic_app_bar.dart';
 import '../../../core/widgets/dynamic_status_bar.dart';
-import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../repositories/admin_repositories.dart';
 import '../models/managed_user.dart';
@@ -34,12 +34,11 @@ class RoleEditorPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final repo = context.read<RolesRepository>();
-    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: l10n.roleEditorPageTitle,
+        title: 'roleEditorPageTitle'.tr,
         centerTitle: true,
       ),
       body: DynamicStatusBar(
@@ -81,7 +80,7 @@ class RoleEditorPage extends StatelessWidget {
         elevation: 4,
         icon: const Icon(Icons.add),
         label: AppLabel(
-          text: l10n.roleEditorNewRoleAction,
+          text: 'roleEditorNewRoleAction'.tr,
           fontSize: AppFontSize.value14,
           fontWeight: FontWeight.bold,
         ),
@@ -95,7 +94,6 @@ class RoleEditorPage extends StatelessWidget {
     Set<String> selectedScopes = {};
     String? errorMsg;
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
 
     await showModalBottomSheet<void>(
       context: context,
@@ -140,25 +138,25 @@ class RoleEditorPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 AppLabel(
-                  text: l10n.roleEditorCreateCustomRoleTitle,
+                  text: 'roleEditorCreateCustomRoleTitle'.tr,
                   fontSize: AppFontSize.value16,
                   fontWeight: FontWeight.bold,
                 ),
                 const SizedBox(height: 16),
                 AppTextField(
                   controller: nameCtrl,
-                  label: l10n.roleEditorRoleNameLabel,
+                  label: 'roleEditorRoleNameLabel'.tr,
                   icon: Icons.badge_outlined,
                 ),
                 const SizedBox(height: 12),
                 AppTextField(
                   controller: descCtrl,
-                  label: l10n.roleEditorDescriptionLabel,
+                  label: 'roleEditorDescriptionLabel'.tr,
                   icon: Icons.notes_outlined,
                 ),
                 const SizedBox(height: 16),
                 AppLabel(
-                  text: l10n.roleEditorAssignScopesHeading,
+                  text: 'roleEditorAssignScopesHeading'.tr,
                   fontSize: AppFontSize.value14,
                   fontWeight: FontWeight.bold,
                 ),
@@ -231,7 +229,7 @@ class RoleEditorPage extends StatelessWidget {
                       }
                     },
                     child: AppLabel(
-                      text: l10n.roleEditorCreateRoleAction,
+                      text: 'roleEditorCreateRoleAction'.tr,
                       fontSize: AppFontSize.value14,
                       fontWeight: FontWeight.bold,
                     ),
@@ -275,7 +273,6 @@ class _RoleCardState extends State<_RoleCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
     final isSys = widget.role.isSystem;
 
     return Container(
@@ -340,7 +337,7 @@ class _RoleCardState extends State<_RoleCard> {
                                   borderRadius: BorderRadius.circular(AppRadii.pill),
                                 ),
                                 child: AppLabel(
-                                  text: l10n.roleEditorSystemBadge,
+                                  text: 'roleEditorSystemBadge'.tr,
                                   fontSize: AppFontSize.value8,
                                   fontWeight: FontWeight.bold,
                                   color: theme.colorScheme.onSurfaceVariant,
@@ -374,7 +371,7 @@ class _RoleCardState extends State<_RoleCard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   AppLabel(
-                    text: l10n.roleEditorPermissionScopesHeading,
+                    text: 'roleEditorPermissionScopesHeading'.tr,
                     fontSize: AppFontSize.value11,
                     color: theme.colorScheme.primary,
                     fontWeight: FontWeight.w900,
@@ -404,7 +401,7 @@ class _RoleCardState extends State<_RoleCard> {
                         style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
                         icon: const Icon(Icons.delete_outline, size: 18),
                         label: AppLabel(
-                          text: l10n.roleEditorDeleteRoleAction,
+                          text: 'roleEditorDeleteRoleAction'.tr,
                           fontSize: AppFontSize.value14,
                           fontWeight: FontWeight.bold,
                         ),
@@ -423,7 +420,6 @@ class _RoleCardState extends State<_RoleCard> {
 
   Future<void> _toggleScope(String scope, bool selected) async {
     final messenger = ScaffoldMessenger.of(context);
-    final l10n = AppLocalizations.of(context);
     final next = Set<String>.of(widget.role.permissionTokens);
     if (selected) {
       next.add(scope);
@@ -438,7 +434,7 @@ class _RoleCardState extends State<_RoleCard> {
     } on Failure catch (f) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text(l10n.roleEditorUpdateFailedSnack(f.toString())),
+          content: Text('roleEditorUpdateFailedSnack'.trParams({'error': f.toString()})),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -447,7 +443,6 @@ class _RoleCardState extends State<_RoleCard> {
 
   Future<void> _confirmDelete(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
-    final l10n = AppLocalizations.of(context);
     final rolesRepo = context.read<RolesRepository>();
     final users = await context.read<ManagedUsersRepository>().getAll();
     // Pre-check: refuse early so we don't even show the confirm dialog
@@ -462,7 +457,7 @@ class _RoleCardState extends State<_RoleCard> {
       } on ConflictFailure catch (f) {
         messenger.showSnackBar(
           SnackBar(
-            content: Text(f.message ?? l10n.roleEditorCannotDeleteFallback),
+            content: Text(f.message ?? 'roleEditorCannotDeleteFallback'.tr),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -474,12 +469,12 @@ class _RoleCardState extends State<_RoleCard> {
       context: context,
       builder: (dialogCtx) => AlertDialog(
         title: AppLabel(
-          text: l10n.roleEditorDeleteConfirmTitle(widget.role.name),
+          text: 'roleEditorDeleteConfirmTitle'.trParams({'name': widget.role.name}),
           fontSize: AppFontSize.value18,
           fontWeight: FontWeight.bold,
         ),
         content: AppLabel(
-          text: l10n.roleEditorDeleteConfirmMessage,
+          text: 'roleEditorDeleteConfirmMessage'.tr,
           fontSize: AppFontSize.value14,
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.lg)),
@@ -487,7 +482,7 @@ class _RoleCardState extends State<_RoleCard> {
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx, false),
             child: AppLabel(
-              text: l10n.commonCancelAction,
+              text: 'commonCancelAction'.tr,
               fontSize: AppFontSize.value14,
               fontWeight: FontWeight.w600,
             ),
@@ -496,7 +491,7 @@ class _RoleCardState extends State<_RoleCard> {
             style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
             onPressed: () => Navigator.pop(dialogCtx, true),
             child: AppLabel(
-              text: l10n.roleEditorDeleteAction,
+              text: 'roleEditorDeleteAction'.tr,
               fontSize: AppFontSize.value14,
               fontWeight: FontWeight.bold,
             ),

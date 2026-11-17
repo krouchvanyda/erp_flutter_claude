@@ -5,6 +5,7 @@ import '../widgets/call_permission_gate.dart';
 
 import 'package:flutter/material.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart';
+import 'package:get/get.dart' show Trans;
 
 import '../../../core/theme/app_font_size.dart';
 import '../../../core/theme/app_label.dart';
@@ -56,7 +57,7 @@ class _VideoCallPageState extends State<VideoCallPage>
   late final CallSignalingService _signaling;
   late final StreamCallEngine _engine;
   bool _connected = false;
-  String _status = 'Connecting…';
+  String _status = 'chatCallConnecting'.tr;
 
   @override
   void initState() {
@@ -81,12 +82,12 @@ class _VideoCallPageState extends State<VideoCallPage>
       // permission. Without them the Stream join fails silently and the ring
       // never reaches the peer.
       _placedInvite = true;
-      _status = 'Calling…';
+      _status = 'chatCallCalling'.tr;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) unawaited(_placeOutgoingWithPermission());
       });
     } else {
-      _status = 'Ringing…';
+      _status = 'chatCallRinging'.tr;
     }
     _resetHideTimer();
   }
@@ -137,13 +138,13 @@ class _VideoCallPageState extends State<VideoCallPage>
       if (!camGranted) _cameraOn = false;
     });
     final what = !micGranted && !camGranted
-        ? 'Microphone and camera are off'
+        ? 'chatMicAndCameraOff'.tr
         : !micGranted
-            ? 'Microphone is off'
-            : 'Camera is off';
+            ? 'chatMicOff'.tr
+            : 'chatCameraIsOff'.tr;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$what — permission denied'),
+        content: Text('chatPermissionDenied'.trParams({'what': what})),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -217,9 +218,9 @@ class _VideoCallPageState extends State<VideoCallPage>
     setState(() {
       switch (call.state) {
         case CallSignalState.outgoingRinging:
-          _status = 'Calling…';
+          _status = 'chatCallCalling'.tr;
         case CallSignalState.incomingRinging:
-          _status = 'Ringing…';
+          _status = 'chatCallRinging'.tr;
         case CallSignalState.connected:
           _connected = true;
           if (_ticker == null) _startTicker();
@@ -227,10 +228,10 @@ class _VideoCallPageState extends State<VideoCallPage>
           // Slice 10.2.4 — reflect the reason in the top-bar label so
           // the user sees WHY before the page pops.
           _status = switch (call.endReason) {
-            'busy' => 'Busy',
-            'declined' => 'Declined',
-            'no_answer' => 'No answer',
-            _ => 'Call ended',
+            'busy' => 'chatCallBusy'.tr,
+            'declined' => 'chatCallDeclined'.tr,
+            'no_answer' => 'chatCallNoAnswer'.tr,
+            _ => 'chatCallEnded'.tr,
           };
         case CallSignalState.idle:
           break;
@@ -243,12 +244,12 @@ class _VideoCallPageState extends State<VideoCallPage>
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final reason = switch (call.endReason) {
-          'busy' => '${call.peerName} is on another call.',
-          'declined' => '${call.peerName} declined the call.',
+          'busy' => 'chatPeerOnAnotherCall'.trParams({'name': call.peerName}),
+          'declined' => 'chatPeerDeclined'.trParams({'name': call.peerName}),
           'already_in_call' =>
-            '${call.peerName} is in another call. Try again in a moment.',
-          'failed' => 'Could not start the call. Try again.',
-          'no_answer' => '${call.peerName} didn\'t answer.',
+            'chatPeerInAnotherCallRetry'.trParams({'name': call.peerName}),
+          'failed' => 'chatCallStartFailed'.tr,
+          'no_answer' => 'chatPeerNoAnswer'.trParams({'name': call.peerName}),
           _ => null,
         };
         if (reason != null) {
@@ -409,7 +410,7 @@ class _VideoCallPageState extends State<VideoCallPage>
                       child: Row(
                         children: [
                           AppLabel(
-                            text: 'Video Call',
+                            text: 'chatVideoCallTitle'.tr,
                             fontSize: AppFontSize.value12,
                             color: Colors.white.withValues(alpha: 0.85),
                             fontWeight: FontWeight.w800,
@@ -504,27 +505,27 @@ class _VideoCallPageState extends State<VideoCallPage>
                               icon: _muted ? Icons.mic_off_rounded : Icons.mic_rounded,
                               active: _muted,
                               activeColor: Colors.red,
-                              label: 'Mute',
+                              label: 'chatCallMute'.tr,
                               onTap: _toggleMute,
                             ),
                             _CtrlButton(
                               icon: _cameraOn ? Icons.videocam_rounded : Icons.videocam_off_rounded,
                               active: !_cameraOn,
                               activeColor: Colors.white24,
-                              label: 'Camera',
+                              label: 'chatCallCamera'.tr,
                               onTap: _toggleCamera,
                             ),
                             _CtrlButton(
                               icon: Icons.cameraswitch_rounded,
                               active: false,
-                              label: 'Flip',
+                              label: 'chatCallFlip'.tr,
                               onTap: _flipCamera,
                             ),
                             _CtrlButton(
                               icon: _speaker ? Icons.volume_up_rounded : Icons.hearing_rounded,
                               active: _speaker,
                               activeColor: const Color(0xFF6366F1),
-                              label: 'Speaker',
+                              label: 'chatCallSpeaker'.tr,
                               onTap: _toggleSpeaker,
                             ),
                             _EndCtrl(onTap: _endCall),
@@ -594,7 +595,7 @@ class _RemoteVideoPlaceholder extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               AppLabel(
-                text: 'Video preview',
+                text: 'chatVideoPreview'.tr,
                 fontSize: AppFontSize.value13,
                 color: Colors.white60,
               ),
@@ -637,7 +638,7 @@ class _RemoteOffPlaceholder extends StatelessWidget {
           const Icon(Icons.videocam_off_rounded, color: Colors.white54, size: 28),
           const SizedBox(height: 8),
           AppLabel(
-            text: 'Camera off',
+            text: 'chatCameraOff'.tr,
             fontSize: AppFontSize.value14,
             color: Colors.white.withValues(alpha: 0.65),
             fontWeight: FontWeight.w700,
@@ -670,11 +671,11 @@ class _LocalPip extends StatelessWidget {
       child: cameraOn
           ? Column(
               mainAxisSize: MainAxisSize.min,
-              children: const [
+              children: [
                 Icon(Icons.person_rounded, color: Colors.white70, size: 40),
                 SizedBox(height: 6),
                 AppLabel(
-                  text: 'You',
+                  text: 'chatYou'.tr,
                   fontSize: AppFontSize.value14,
                   color: Colors.white70,
                   fontWeight: FontWeight.w800,
@@ -820,7 +821,7 @@ class _EndCtrl extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         AppLabel(
-          text: 'End',
+          text: 'chatCallEnd'.tr,
           fontSize: AppFontSize.value11,
           color: Colors.white.withValues(alpha: 0.85),
           fontWeight: FontWeight.w700,

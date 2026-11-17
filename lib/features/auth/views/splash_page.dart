@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:get/get.dart' show Trans;
 
 import '../../../core/network/token_storage.dart';
 import '../../../core/router/auth_session.dart';
@@ -11,7 +12,6 @@ import '../../../core/router/route_paths.dart';
 import '../../../core/theme/app_font_size.dart';
 import '../../../core/theme/app_label.dart';
 import '../../../core/widgets/dynamic_status_bar.dart';
-import '../../../l10n/app_localizations.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -74,7 +74,6 @@ class _SplashPageState extends State<SplashPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       body: DynamicStatusBar(
@@ -145,7 +144,7 @@ class _SplashPageState extends State<SplashPage> {
                   
                   // Animated App Name
                   AppLabel(
-                    text: l10n.appName,
+                    text: 'appName'.tr,
                     fontSize: AppFontSize.value32,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 4,
@@ -159,7 +158,7 @@ class _SplashPageState extends State<SplashPage> {
 
                   // Subtle Tagline
                   AppLabel(
-                    text: l10n.splashTagline,
+                    text: 'splashTagline'.tr,
                     fontSize: AppFontSize.value14,
                     color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
                     letterSpacing: 2,

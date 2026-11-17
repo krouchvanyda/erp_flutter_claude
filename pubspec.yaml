@@ -10,8 +10,13 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # Material/Cupertino widget strings (date pickers, back tooltips…) in km/en.
+  # App text itself is GetX `.tr` — see lib/localization/.
   flutter_localizations:
     sdk: flutter
+  # GetX is used for translations ONLY (`'key'.tr`). No GetX state,
+  # routing or widgets — BLoC owns all state.
+  get: ^4.7.3
 
   # ── State management ────────────────────────────────────────────
   flutter_bloc: ^8.1.6
@@ -125,7 +130,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  generate: true
 
   assets:
     - assets/images/

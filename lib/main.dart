@@ -12,6 +12,8 @@ import 'app.dart';
 import 'core/di/injection.dart';
 import 'core/error/crash_hooks.dart';
 import 'core/error/logging_crash_reporter.dart';
+import 'core/i18n/locale_cubit.dart';
+import 'localization/language.dart';
 import 'core/network/token_storage.dart';
 import 'core/push/device_registrar.dart';
 import 'core/push/push_di.dart';
@@ -104,9 +106,12 @@ Future <void> main() async {
       // removed). Register it synchronously BEFORE configureDependencies so
       // the @module DAO bindings (cached user, biometric, notifications) can
       // resolve it.
-      getIt.registerSingleton<SharedPreferences>(
-        await SharedPreferences.getInstance(),
-      );
+      final prefs = await SharedPreferences.getInstance();
+      getIt.registerSingleton<SharedPreferences>(prefs);
+      // GetX translations (text only — no GetX state). Load them with the
+      // saved / device language BEFORE the first frame so `'key'.tr`
+      // never flashes raw keys. LocaleCubit owns later changes.
+      await Language.init(LocaleCubit.initial(prefs));
       configureDependencies();
       // Hand-rolled DI for the device-registration stack. Must run
       // BEFORE registerAuthModule because AuthRepository consumes

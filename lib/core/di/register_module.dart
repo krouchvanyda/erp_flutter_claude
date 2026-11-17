@@ -28,8 +28,6 @@ import '../analytics/analytics_service.dart';
 import '../analytics/noop_analytics_service.dart';
 import '../error/crash_reporter.dart';
 import '../error/logging_crash_reporter.dart';
-import '../i18n/in_memory_locale_service.dart';
-import '../i18n/locale_service.dart';
 import '../utils/logger/app_logger.dart';
 import '../utils/logger/console_logger.dart';
 import '../../features/auth/repositories/auth_remote_data_source.dart';
@@ -74,10 +72,6 @@ class AppModule {
   /// Firebase / Segment / Mixpanel later.
   AnalyticsService get analyticsService => const NoopAnalyticsService();
 
-  // ── Localization ─────────────────────────────────────────────
-  /// Process-lifetime locale holder. Module 9 (Settings) will swap in a
-  /// `shared_preferences`-backed implementation that survives app restart.
-  LocaleService get localeService => InMemoryLocaleService();
 
   // ── Local persistence (shared_preferences) ──────────────────
   // The drift/SQLite database was removed; structural data that used to
@@ -275,7 +269,6 @@ void registerCoreDependencies(GetIt getIt) {
     ..registerLazySingleton<AppEnv>(() => m.appEnv)
     ..registerLazySingleton<AppLogger>(() => m.appLogger)
     ..registerLazySingleton<AnalyticsService>(() => m.analyticsService)
-    ..registerLazySingleton<LocaleService>(() => m.localeService)
     ..registerLazySingleton<Connectivity>(() => m.connectivity)
     ..registerLazySingleton<SecretStore>(() => m.secretStore)
     ..registerLazySingleton<BiometricService>(() => m.biometricService)

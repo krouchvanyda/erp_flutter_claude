@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:erp_mobile/shared/widgets/app_background_gradient.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:get/get.dart' show Trans;
 
 import '../../../core/error/failure.dart';
 import '../../../core/theme/app_font_size.dart';
@@ -9,7 +10,6 @@ import '../../../core/theme/app_label.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/widgets/dynamic_app_bar.dart';
 import '../../../core/widgets/dynamic_status_bar.dart';
-import '../../../l10n/app_localizations.dart';
 import '../repositories/admin_repositories.dart';
 import '../models/managed_user.dart';
 
@@ -29,12 +29,11 @@ class _UserManagementPageState extends State<UserManagementPage> {
   Widget build(BuildContext context) {
     final usersRepo = context.read<ManagedUsersRepository>();
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: l10n.userMgmtPageTitle,
+        title: 'userMgmtPageTitle'.tr,
         centerTitle: true,
       ),
       body: DynamicStatusBar(
@@ -61,10 +60,10 @@ class _UserManagementPageState extends State<UserManagementPage> {
                       scrollDirection: Axis.horizontal,
                       child: Row(
                         children: [
-                          _filterTab(l10n.userMgmtFilterAll, null),
-                          _filterTab(l10n.userMgmtFilterActive, ManagedUserStatus.active),
-                          _filterTab(l10n.userMgmtFilterInvited, ManagedUserStatus.invited),
-                          _filterTab(l10n.userMgmtFilterSuspended, ManagedUserStatus.suspended),
+                          _filterTab('userMgmtFilterAll'.tr, null),
+                          _filterTab('userMgmtFilterActive'.tr, ManagedUserStatus.active),
+                          _filterTab('userMgmtFilterInvited'.tr, ManagedUserStatus.invited),
+                          _filterTab('userMgmtFilterSuspended'.tr, ManagedUserStatus.suspended),
                         ],
                       ),
                     ),
@@ -85,7 +84,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
                       if (users.isEmpty) {
                         return Center(
                           child: AppLabel(
-                            text: l10n.userMgmtEmpty,
+                            text: 'userMgmtEmpty'.tr,
                             fontSize: AppFontSize.value14,
                             fontWeight: FontWeight.w500,
                           ),
@@ -117,7 +116,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
         elevation: 4,
         icon: const Icon(Icons.person_add),
         label: AppLabel(
-          text: l10n.userMgmtInviteUserAction,
+          text: 'userMgmtInviteUserAction'.tr,
           fontSize: AppFontSize.value14,
           fontWeight: FontWeight.bold,
         ),
@@ -167,7 +166,6 @@ class _UserManagementPageState extends State<UserManagementPage> {
     final allRoles = await rolesRepo.getAll();
     if (!mounted) return;
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
 
     await showModalBottomSheet<void>(
@@ -200,7 +198,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
               ),
               const SizedBox(height: 16),
               AppLabel(
-                text: l10n.userMgmtInviteSheetTitle,
+                text: 'userMgmtInviteSheetTitle'.tr,
                 fontSize: AppFontSize.value16,
                 fontWeight: FontWeight.bold,
               ),
@@ -208,7 +206,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
               TextField(
                 controller: emailCtrl,
                 decoration: InputDecoration(
-                  labelText: l10n.userMgmtEmailAddressLabel,
+                  labelText: 'userMgmtEmailAddressLabel'.tr,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
                   prefixIcon: const Icon(Icons.email_outlined),
                 ),
@@ -217,14 +215,14 @@ class _UserManagementPageState extends State<UserManagementPage> {
               TextField(
                 controller: nameCtrl,
                 decoration: InputDecoration(
-                  labelText: l10n.userMgmtFullNameLabel,
+                  labelText: 'userMgmtFullNameLabel'.tr,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
                   prefixIcon: const Icon(Icons.person_outline),
                 ),
               ),
               const SizedBox(height: 16),
               AppLabel(
-                text: l10n.userMgmtAssignRolesLabel,
+                text: 'userMgmtAssignRolesLabel'.tr,
                 fontSize: AppFontSize.value14,
                 fontWeight: FontWeight.bold,
               ),
@@ -294,7 +292,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
                       }
                       messenger.showSnackBar(
                         SnackBar(
-                          content: Text(l10n.userMgmtInvitedSnack(emailCtrl.text.trim())),
+                          content: Text('userMgmtInvitedSnack'.trParams({'email': emailCtrl.text.trim()})),
                           behavior: SnackBarBehavior.floating,
                         ),
                       );
@@ -305,7 +303,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
                     }
                   },
                   child: AppLabel(
-                    text: l10n.userMgmtSendInvitationAction,
+                    text: 'userMgmtSendInvitationAction'.tr,
                     fontSize: AppFontSize.value14,
                     fontWeight: FontWeight.bold,
                   ),
@@ -328,7 +326,6 @@ class _UserRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final isMe = user.id == currentUserId;
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
 
     return Container(
       decoration: BoxDecoration(
@@ -368,7 +365,7 @@ class _UserRow extends StatelessWidget {
                   children: [
                     Expanded(
                       child: AppLabel(
-                        text: user.name.isEmpty ? l10n.userMgmtNewUserPlaceholder : user.name,
+                        text: user.name.isEmpty ? 'userMgmtNewUserPlaceholder'.tr : user.name,
                         fontSize: AppFontSize.value14,
                         fontWeight: FontWeight.bold,
                       ),
@@ -382,14 +379,14 @@ class _UserRow extends StatelessWidget {
                           borderRadius: BorderRadius.circular(AppRadii.pill),
                         ),
                         child: AppLabel(
-                          text: l10n.userMgmtYouBadge,
+                          text: 'userMgmtYouBadge'.tr,
                           fontSize: AppFontSize.value9,
                           color: theme.colorScheme.primary,
                           fontWeight: FontWeight.bold,
                         ),
                       )
                     else
-                      _statusBadge(user.status, theme, l10n),
+                      _statusBadge(user.status, theme),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -436,7 +433,7 @@ class _UserRow extends StatelessWidget {
                     children: [
                       const Icon(Icons.check_circle_outline, size: 18, color: Colors.green),
                       const SizedBox(width: 8),
-                      Text(l10n.userMgmtActivateUserAction),
+                      Text('userMgmtActivateUserAction'.tr),
                     ],
                   ),
                 ),
@@ -447,7 +444,7 @@ class _UserRow extends StatelessWidget {
                     children: [
                       const Icon(Icons.block_flipped, size: 18, color: Colors.red),
                       const SizedBox(width: 8),
-                      Text(l10n.userMgmtSuspendUserAction),
+                      Text('userMgmtSuspendUserAction'.tr),
                     ],
                   ),
                 ),
@@ -460,7 +457,6 @@ class _UserRow extends StatelessWidget {
 
   Future<void> _runAction(BuildContext context, String action) async {
     final messenger = ScaffoldMessenger.of(context);
-    final l10n = AppLocalizations.of(context);
     final repo = context.read<ManagedUsersRepository>();
     try {
       final next = await repo.changeStatus(
@@ -472,28 +468,28 @@ class _UserRow extends StatelessWidget {
       );
       messenger.showSnackBar(
         SnackBar(
-          content: Text(l10n.userMgmtStatusSetSnack(_localizedStatusName(next.status, l10n))),
+          content: Text('userMgmtStatusSetSnack'.trParams({'status': _localizedStatusName(next.status)})),
           behavior: SnackBarBehavior.floating,
         ),
       );
     } on ConflictFailure catch (f) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text(f.message ?? l10n.userMgmtCannotApplyFallback),
+          content: Text(f.message ?? 'userMgmtCannotApplyFallback'.tr),
           behavior: SnackBarBehavior.floating,
         ),
       );
     }
   }
 
-  String _localizedStatusName(ManagedUserStatus s, AppLocalizations l10n) {
+  String _localizedStatusName(ManagedUserStatus s) {
     switch (s) {
       case ManagedUserStatus.active:
-        return l10n.userMgmtFilterActive;
+        return 'userMgmtFilterActive'.tr;
       case ManagedUserStatus.invited:
-        return l10n.userMgmtFilterInvited;
+        return 'userMgmtFilterInvited'.tr;
       case ManagedUserStatus.suspended:
-        return l10n.userMgmtFilterSuspended;
+        return 'userMgmtFilterSuspended'.tr;
     }
   }
 
@@ -519,7 +515,7 @@ class _UserRow extends StatelessWidget {
     }
   }
 
-  Widget _statusBadge(ManagedUserStatus s, ThemeData theme, AppLocalizations l10n) {
+  Widget _statusBadge(ManagedUserStatus s, ThemeData theme) {
     final bg = _avatarColor(s, theme);
     final text = _textColor(s, theme);
 
@@ -530,7 +526,7 @@ class _UserRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.pill),
       ),
       child: AppLabel(
-        text: _badgeLabel(s, l10n),
+        text: _badgeLabel(s),
         fontSize: AppFontSize.value9,
         color: text,
         fontWeight: FontWeight.bold,
@@ -538,14 +534,14 @@ class _UserRow extends StatelessWidget {
     );
   }
 
-  String _badgeLabel(ManagedUserStatus s, AppLocalizations l10n) {
+  String _badgeLabel(ManagedUserStatus s) {
     switch (s) {
       case ManagedUserStatus.active:
-        return l10n.userMgmtStatusActive;
+        return 'userMgmtStatusActive'.tr;
       case ManagedUserStatus.invited:
-        return l10n.userMgmtStatusInvited;
+        return 'userMgmtStatusInvited'.tr;
       case ManagedUserStatus.suspended:
-        return l10n.userMgmtStatusSuspended;
+        return 'userMgmtStatusSuspended'.tr;
     }
   }
 }

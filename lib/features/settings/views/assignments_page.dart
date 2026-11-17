@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:erp_mobile/core/di/service_locator.dart';
+import 'package:get/get.dart' show Trans;
 
 import '../../../core/security/app_permissions.dart';
 import '../../../core/theme/app_font_size.dart';
@@ -13,7 +14,6 @@ import '../../../core/theme/app_radii.dart';
 import '../../../core/widgets/dynamic_app_bar.dart';
 import '../../../core/widgets/dynamic_status_bar.dart';
 import '../../../core/widgets/loading_screen.dart';
-import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_background_gradient.dart';
 import '../repositories/roles_remote_data_source.dart';
 import '../repositories/users_remote_data_source.dart';
@@ -80,12 +80,11 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: l10n.assignmentsPageTitle,
+        title: 'assignmentsPageTitle'.tr,
         centerTitle: true,
       ),
       body: DynamicStatusBar(
@@ -216,7 +215,6 @@ class _AssignRolesFormState extends State<_AssignRolesForm> {
   Future<void> _save() async {
     if (!_isDirty || _saving) return;
     final messenger = ScaffoldMessenger.of(context);
-    final l10n = AppLocalizations.of(context);
     setState(() => _saving = true);
 
     // UserDto.id is a stringified Spring Long — parse back to int for
@@ -232,7 +230,7 @@ class _AssignRolesFormState extends State<_AssignRolesForm> {
       setState(() => _saving = false);
       messenger.showSnackBar(
         SnackBar(
-          content: Text(l10n.assignmentsSaveFailedSnack),
+          content: Text('assignmentsSaveFailedSnack'.tr),
           behavior: SnackBarBehavior.floating,
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
@@ -274,12 +272,12 @@ class _AssignRolesFormState extends State<_AssignRolesForm> {
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-              '${l10n.assignmentsSaveFailedSnack}: ${_humanError(e)}'),
+              '${'assignmentsSaveFailedSnack'.tr}: ${_humanError(e)}'),
           behavior: SnackBarBehavior.floating,
           backgroundColor: Theme.of(context).colorScheme.error,
           duration: const Duration(seconds: 6),
           action: SnackBarAction(
-            label: 'Copy',
+            label: 'commonCopyAction'.tr,
             textColor: Colors.white,
             onPressed: () {
               Clipboard.setData(ClipboardData(text: e.toString()));
@@ -330,7 +328,6 @@ class _AssignRolesFormState extends State<_AssignRolesForm> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
     final canEdit = widget.bundle.canEdit;
 
     return Column(
@@ -343,7 +340,7 @@ class _AssignRolesFormState extends State<_AssignRolesForm> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 AppLabel(
-                  text: l10n.assignmentsAssignSubtitle,
+                  text: 'assignmentsAssignSubtitle'.tr,
                   fontSize: AppFontSize.value13,
                   color: theme.colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w500,
@@ -355,7 +352,7 @@ class _AssignRolesFormState extends State<_AssignRolesForm> {
                 // editable — the previous "pick a user first" gate
                 // would feel arbitrary in this order, so it's gone.
                 // The save bar still gates on the combination.
-                _FieldLabel(text: l10n.assignmentsRoleFieldLabel),
+                _FieldLabel(text: 'assignmentsRoleFieldLabel'.tr),
                 const SizedBox(height: 6),
                 _AssignRoleDropdown(
                   roles: widget.bundle.roles,
@@ -365,14 +362,14 @@ class _AssignRolesFormState extends State<_AssignRolesForm> {
                 ),
                 const SizedBox(height: 8),
                 AppLabel(
-                  text: l10n.assignmentsRoleHelperCurrentRole,
+                  text: 'assignmentsRoleHelperCurrentRole'.tr,
                   fontSize: AppFontSize.value12,
                   color: theme.colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w400,
                 ),
                 const SizedBox(height: 20),
                 // ── USERS section ───────────────────────────────────
-                _FieldLabel(text: l10n.assignmentsUserFieldLabel),
+                _FieldLabel(text: 'assignmentsUserFieldLabel'.tr),
                 const SizedBox(height: 6),
                 _UserPickerField(
                   selectedUsers: _selectedUsers,
@@ -400,10 +397,12 @@ class _AssignRolesFormState extends State<_AssignRolesForm> {
               saving: _saving,
               // Save label = "Assign role to N users". Mode is no
               // longer a knob, so the label is just count-aware.
-              dirtyLabel: l10n.assignmentsSaveActionAssign(
+              dirtyLabel: 'assignmentsSaveActionAssign'.trPluralParams(
+                'assignmentsSaveActionAssignPlural',
                 _selectedUserIds.length,
+                {'count': '${_selectedUserIds.length}'},
               ),
-              cleanLabel: l10n.assignmentsNoChangesYet,
+              cleanLabel: 'assignmentsNoChangesYet'.tr,
               onSave: _save,
             ),
           ),
@@ -460,7 +459,6 @@ class _UserPickerField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
     final hasSelection = selectedUsers.isNotEmpty;
 
     String? summary;
@@ -472,9 +470,13 @@ class _UserPickerField extends StatelessWidget {
       // "John +3 others" — keeps the field height stable regardless of
       // selection size, and the count line below carries the exact
       // number so the user never has to count names.
-      summary = l10n.assignmentsUsersSelectedSummary(
-        _displayName(selectedUsers.first),
+      summary = 'assignmentsUsersSelectedSummary'.trPluralParams(
+        'assignmentsUsersSelectedSummaryPlural',
         selectedUsers.length - 1,
+        {
+          'first': _displayName(selectedUsers.first),
+          'count': '${selectedUsers.length - 1}',
+        },
       );
     }
 
@@ -513,15 +515,18 @@ class _UserPickerField extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         AppLabel(
-                          text: l10n.assignmentsUsersSelectedCount(
-                              selectedUsers.length),
+                          text: 'assignmentsUsersSelectedCount'.trPluralParams(
+                            'assignmentsUsersSelectedCountPlural',
+                            selectedUsers.length,
+                            {'count': '${selectedUsers.length}'},
+                          ),
                           fontSize: AppFontSize.value12,
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ],
                     )
                   : AppLabel(
-                      text: l10n.assignmentsPickUsersPrompt,
+                      text: 'assignmentsPickUsersPrompt'.tr,
                       fontSize: AppFontSize.value14,
                       color: theme.colorScheme.onSurfaceVariant,
                       fontWeight: FontWeight.w500,
@@ -682,7 +687,6 @@ class _RoleStatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
     final isEmpty = roles.isEmpty;
 
     final bg = isEmpty
@@ -696,7 +700,7 @@ class _RoleStatusChip extends StatelessWidget {
     // If the backend ever returns multiple (legacy data created before
     // the policy was tightened), only the first surfaces here; the
     // next REPLACE-mode save will collapse the user back to one role.
-    final label = isEmpty ? l10n.assignmentsUserNoRoleBadge : roles.first;
+    final label = isEmpty ? 'assignmentsUserNoRoleBadge'.tr : roles.first;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -790,7 +794,6 @@ class _UserPickerSheetState extends State<_UserPickerSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
     final users = _filtered;
     final maxHeight = MediaQuery.of(context).size.height * 0.75;
 
@@ -827,7 +830,11 @@ class _UserPickerSheetState extends State<_UserPickerSheet> {
                 children: [
                   Expanded(
                     child: AppLabel(
-                      text: l10n.assignmentsUsersSelectedCount(_picked.length),
+                      text: 'assignmentsUsersSelectedCount'.trPluralParams(
+                        'assignmentsUsersSelectedCountPlural',
+                        _picked.length,
+                        {'count': '${_picked.length}'},
+                      ),
                       fontSize: AppFontSize.value14,
                       fontWeight: FontWeight.w700,
                     ),
@@ -835,11 +842,11 @@ class _UserPickerSheetState extends State<_UserPickerSheet> {
                   TextButton(
                     onPressed:
                         _allFilteredSelected ? null : _selectAllFiltered,
-                    child: Text(l10n.assignmentsSelectAllAction),
+                    child: Text('assignmentsSelectAllAction'.tr),
                   ),
                   TextButton(
                     onPressed: _picked.isEmpty ? null : _clearAll,
-                    child: Text(l10n.assignmentsClearSelectionAction),
+                    child: Text('assignmentsClearSelectionAction'.tr),
                   ),
                 ],
               ),
@@ -848,7 +855,7 @@ class _UserPickerSheetState extends State<_UserPickerSheet> {
                 autofocus: false,
                 onChanged: (q) => setState(() => _query = q),
                 decoration: InputDecoration(
-                  hintText: l10n.assignmentsUsersSearchHint,
+                  hintText: 'assignmentsUsersSearchHint'.tr,
                   prefixIcon: const Icon(Icons.search),
                   filled: true,
                   fillColor: theme.colorScheme.surfaceContainerHighest
@@ -874,21 +881,21 @@ class _UserPickerSheetState extends State<_UserPickerSheet> {
                   padding: EdgeInsets.zero,
                   children: [
                     _FilterChip(
-                      label: l10n.assignmentsFilterAll,
+                      label: 'assignmentsFilterAll'.tr,
                       selected: _roleFilter == _RoleFilter.all,
                       onTap: () =>
                           setState(() => _roleFilter = _RoleFilter.all),
                     ),
                     const SizedBox(width: 6),
                     _FilterChip(
-                      label: l10n.assignmentsFilterHasRole,
+                      label: 'assignmentsFilterHasRole'.tr,
                       selected: _roleFilter == _RoleFilter.hasRole,
                       onTap: () =>
                           setState(() => _roleFilter = _RoleFilter.hasRole),
                     ),
                     const SizedBox(width: 6),
                     _FilterChip(
-                      label: l10n.assignmentsFilterNoRole,
+                      label: 'assignmentsFilterNoRole'.tr,
                       selected: _roleFilter == _RoleFilter.noRole,
                       onTap: () =>
                           setState(() => _roleFilter = _RoleFilter.noRole),
@@ -901,7 +908,7 @@ class _UserPickerSheetState extends State<_UserPickerSheet> {
                 child: users.isEmpty
                     ? _EmptyHint(
                         icon: Icons.person_outline,
-                        message: l10n.assignmentsEmptyUsers,
+                        message: 'assignmentsEmptyUsers'.tr,
                       )
                     : ListView.separated(
                         shrinkWrap: true,
@@ -930,7 +937,7 @@ class _UserPickerSheetState extends State<_UserPickerSheet> {
                     ),
                   ),
                   child: AppLabel(
-                    text: l10n.assignmentsConfirmDoneAction,
+                    text: 'assignmentsConfirmDoneAction'.tr,
                     fontSize: AppFontSize.value14,
                     fontWeight: FontWeight.bold,
                   ),
@@ -962,12 +969,11 @@ class _AssignRoleDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
     return DropdownButtonFormField<RoleDto>(
       initialValue: value,
       isExpanded: true,
       decoration: InputDecoration(
-        labelText: l10n.assignmentsRolePickerLabel,
+        labelText: 'assignmentsRolePickerLabel'.tr,
         prefixIcon: const Icon(Icons.shield_outlined),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.md),
@@ -976,7 +982,7 @@ class _AssignRoleDropdown extends StatelessWidget {
         fillColor: theme.colorScheme.surface,
       ),
       hint: AppLabel(
-        text: l10n.assignmentsPickRolePrompt,
+        text: 'assignmentsPickRolePrompt'.tr,
         fontSize: AppFontSize.value14,
         color: theme.colorScheme.onSurfaceVariant,
       ),
@@ -1013,7 +1019,7 @@ class _AssignRoleDropdown extends StatelessWidget {
                       borderRadius: BorderRadius.circular(AppRadii.pill),
                     ),
                     child: AppLabel(
-                      text: l10n.assignmentsSystemRoleBadge,
+                      text: 'assignmentsSystemRoleBadge'.tr,
                       fontSize: AppFontSize.value9,
                       color: theme.colorScheme.onSurfaceVariant,
                       fontWeight: FontWeight.w900,
@@ -1115,7 +1121,6 @@ class _SuperAdminLock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
@@ -1136,14 +1141,14 @@ class _SuperAdminLock extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             AppLabel(
-              text: l10n.assignmentsSuperAdminOnlyTitle,
+              text: 'assignmentsSuperAdminOnlyTitle'.tr,
               fontSize: AppFontSize.value18,
               fontWeight: FontWeight.w900,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             AppLabel(
-              text: l10n.assignmentsSuperAdminOnlyMessage,
+              text: 'assignmentsSuperAdminOnlyMessage'.tr,
               fontSize: AppFontSize.value14,
               color: theme.colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w500,
@@ -1165,7 +1170,6 @@ class _ErrorPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -1179,7 +1183,7 @@ class _ErrorPanel extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             AppLabel(
-              text: l10n.commonLoadFailedFallback,
+              text: 'commonLoadFailedFallback'.tr,
               fontSize: AppFontSize.value14,
               color: theme.colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w600,
@@ -1190,7 +1194,7 @@ class _ErrorPanel extends StatelessWidget {
               onPressed: onRetry,
               icon: const Icon(Icons.refresh_rounded, size: 18),
               label: AppLabel(
-                text: l10n.commonRetryAction,
+                text: 'commonRetryAction'.tr,
                 fontSize: AppFontSize.value14,
                 fontWeight: FontWeight.w700,
               ),

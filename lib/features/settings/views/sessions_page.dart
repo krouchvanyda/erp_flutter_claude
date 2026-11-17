@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:erp_mobile/shared/widgets/app_background_gradient.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:get/get.dart' show Trans;
 
 import '../../../core/error/failure.dart';
 import '../../../core/theme/app_font_size.dart';
@@ -9,7 +10,6 @@ import '../../../core/theme/app_label.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/widgets/dynamic_app_bar.dart';
 import '../../../core/widgets/dynamic_status_bar.dart';
-import '../../../l10n/app_localizations.dart';
 import '../repositories/security_repositories.dart';
 import '../models/device_session.dart';
 
@@ -20,12 +20,11 @@ class SessionsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final repo = context.read<DeviceSessionsRepository>();
-    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: l10n.sessionsPageTitle,
+        title: 'sessionsPageTitle'.tr,
         centerTitle: true,
         actions: [
           PopupMenuButton<String>(
@@ -36,7 +35,7 @@ class SessionsPage extends StatelessWidget {
                 await repo.revokeAllOthers();
                 messenger.showSnackBar(
                   SnackBar(
-                    content: Text(l10n.sessionsSignOutOthersSnack),
+                    content: Text('sessionsSignOutOthersSnack'.tr),
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
@@ -49,7 +48,7 @@ class SessionsPage extends StatelessWidget {
                   children: [
                     const Icon(Icons.logout, size: 18),
                     const SizedBox(width: 8),
-                    Text(l10n.sessionsSignOutOthersAction),
+                    Text('sessionsSignOutOthersAction'.tr),
                   ],
                 ),
               ),
@@ -72,7 +71,7 @@ class SessionsPage extends StatelessWidget {
                 if (sessions.isEmpty) {
                   return Center(
                     child: AppLabel(
-                      text: l10n.sessionsEmpty,
+                      text: 'sessionsEmpty'.tr,
                       fontSize: AppFontSize.value14,
                     ),
                   );
@@ -107,7 +106,6 @@ class _SessionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
 
     return Container(
       decoration: BoxDecoration(
@@ -168,7 +166,7 @@ class _SessionCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(AppRadii.pill),
                             ),
                             child: AppLabel(
-                              text: l10n.sessionsThisDeviceLabel,
+                              text: 'sessionsThisDeviceLabel'.tr,
                               fontSize: AppFontSize.value10,
                               color: theme.colorScheme.primary,
                               fontWeight: FontWeight.bold,
@@ -190,11 +188,11 @@ class _SessionCard extends StatelessWidget {
           const SizedBox(height: 16),
           const Divider(height: 1),
           const SizedBox(height: 12),
-          _kv(context, l10n.sessionsLastActiveLabel, _fmt(session.lastActiveAt, withTime: true)),
-          _kv(context, l10n.sessionsSignedInLabel, _fmt(session.signedInAt)),
-          _kv(context, l10n.sessionsLocationLabel, session.location),
+          _kv(context, 'sessionsLastActiveLabel'.tr, _fmt(session.lastActiveAt, withTime: true)),
+          _kv(context, 'sessionsSignedInLabel'.tr, _fmt(session.signedInAt)),
+          _kv(context, 'sessionsLocationLabel'.tr, session.location),
           if (session.ipAddress != null)
-            _kv(context, l10n.sessionsIpAddressLabel, session.ipAddress!),
+            _kv(context, 'sessionsIpAddressLabel'.tr, session.ipAddress!),
           if (!session.isCurrent) ...[
             const SizedBox(height: 8),
             Align(
@@ -210,7 +208,7 @@ class _SessionCard extends StatelessWidget {
                 ),
                 icon: const Icon(Icons.logout, size: 16),
                 label: AppLabel(
-                  text: l10n.sessionsRevokeAccessAction,
+                  text: 'sessionsRevokeAccessAction'.tr,
                   fontSize: AppFontSize.value14,
                   fontWeight: FontWeight.bold,
                 ),
@@ -225,12 +223,11 @@ class _SessionCard extends StatelessWidget {
 
   Future<void> _revoke(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
-    final l10n = AppLocalizations.of(context);
     try {
       await context.read<DeviceSessionsRepository>().revokeGuarded(session);
       messenger.showSnackBar(
         SnackBar(
-          content: Text(l10n.sessionsRevokedSnack(session.deviceLabel)),
+          content: Text('sessionsRevokedSnack'.trParams({'device': session.deviceLabel})),
           behavior: SnackBarBehavior.floating,
         ),
       );

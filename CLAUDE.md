@@ -15,7 +15,7 @@
 | Navigation | go_router | Declarative routing |
 | Models / state | **Hand-written immutable classes + Dart 3 `sealed class`** | Manual `==`/`hashCode`/`copyWith`; `json_serializable` still used for data-layer JSON models |
 | Calls / media | Stream Video (`stream_video_flutter`) + `erp_callkit` | Module 10 |
-| Localization | flutter_localizations (built-in) | i18n |
+| Localization | **GetX `.tr` — translations only** (`lib/localization/`) | `english.dart` / `khmer.dart` maps; language owned by `LocaleCubit` (BLoC). `flutter_localizations` kept only for Material/Cupertino widget strings |
 | Testing | bloc_test, mocktail, flutter_test | Unit + widget tests |
 
 ### Removed from the original plan (do not reintroduce without discussion)
@@ -425,7 +425,13 @@ TABLE: chat_call_log
 - No business logic in widgets
 - No direct API calls from BLoC — always through the Repository
 - No `BuildContext` inside BLoC
-- No hardcoded strings — always use l10n ARB keys
+- **Translations: GetX only for translations.** Keep GetX for translations only; no GetX state, routing or widgets anywhere (BLoC owns all state). Never hard-code UI text.
+  - Text lives in `lib/localization/english.dart` (`trEN`) and `khmer.dart` (`trKM`), registered by `Language` (`en_US`, `km_KH`; not `kh_KH`, which never matches Khmer).
+  - Use: `'key'.tr`, `'key'.trParams({'name': x})` with `@name` in the text, plurals `'key'.trPluralParams('keyPlural', n, {'count': '$n'})`.
+  - UI files import only `import 'package:get/get.dart' show Trans;` (a test fails on any other GetX import outside `language.dart` and `locale_cubit.dart`).
+  - Switching language: `LocaleCubit` saves it (SharedPreferences), calls `Language.apply` (sets `Get.locale` + `Intl.defaultLocale`), and `LocaleRebuilder` (above MaterialApp) redraws all screens. Don't use `Get.updateLocale`.
+  - `test/localization/translation_keys_test.dart` checks both files have the same keys and every key used in `lib/` exists.
+  - Data is not UI text: message bodies sent to the server (e.g. `'📷 Photo'`) and logic sentinels (e.g. the `'User #'` fallback-name prefix) stay untranslated.
 - No commercial/paid packages — validate every package on pub.dev for open-source license (MIT, BSD, Apache 2.0)
 - Don't share BLoC instances across unrelated modules — use scoped BLoC providers
 - Don't introduce new `UseCase` classes or abstract repository interfaces — new code stays flat

@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:get/get.dart' show Trans;
 
 import '../../../core/router/config_router.dart';
 import '../../../core/theme/app_font_size.dart';
@@ -150,14 +151,14 @@ class _NewConversationPageState extends State<NewConversationPage> {
       setState(() {
         _loadingDirectory = false;
         _directoryError = isForbidden
-            ? 'You don\'t have permission to browse users.\nAsk an admin to enable chat directory access.'
-            : 'Could not load users. Tap retry.';
+            ? 'chatDirectoryNoPermission'.tr
+            : 'chatLoadUsersTapRetry'.tr;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
         _loadingDirectory = false;
-        _directoryError = 'Could not load users. Tap retry.';
+        _directoryError = 'chatLoadUsersTapRetry'.tr;
       });
     }
   }
@@ -226,8 +227,8 @@ class _NewConversationPageState extends State<NewConversationPage> {
         if (n == null) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Selection contains a non-backend user.'),
+              SnackBar(
+                content: Text('chatSelectionNonBackendUser'.tr),
               ),
             );
           }
@@ -266,7 +267,7 @@ class _NewConversationPageState extends State<NewConversationPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Could not create conversation: $e'),
+          content: Text('chatCreateConversationFailed'.trParams({'error': '$e'})),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -279,7 +280,7 @@ class _NewConversationPageState extends State<NewConversationPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: DynamicAppBar(title: 'New Message', centerTitle: true),
+      appBar: DynamicAppBar(title: 'chatNewMessageTitle'.tr, centerTitle: true),
       body: DynamicStatusBar(
         child: Stack(
           children: [
@@ -352,7 +353,7 @@ class _NewConversationPageState extends State<NewConversationPage> {
                   _BottomBar(
                     enabled: _canCreate,
                     busy: _creating,
-                    label: 'Create Group',
+                    label: 'chatCreateGroup'.tr,
                     onPressed: _confirmCreateGroup,
                   ),
               ],
@@ -384,8 +385,8 @@ class _ModeToggle extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(child: _Pill(label: 'Direct', selected: mode == _Mode.direct, onTap: () => onChanged(_Mode.direct))),
-          Expanded(child: _Pill(label: 'Group', selected: mode == _Mode.group, onTap: () => onChanged(_Mode.group))),
+          Expanded(child: _Pill(label: 'chatModeDirect'.tr, selected: mode == _Mode.direct, onTap: () => onChanged(_Mode.direct))),
+          Expanded(child: _Pill(label: 'chatModeGroup'.tr, selected: mode == _Mode.group, onTap: () => onChanged(_Mode.group))),
         ],
       ),
     );
@@ -502,13 +503,13 @@ class _GroupNameSheetState extends State<_GroupNameSheet> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     AppLabel(
-                      text: 'Name your group',
+                      text: 'chatNameYourGroup'.tr,
                       fontSize: AppFontSize.value16,
                       fontWeight: FontWeight.w800,
                     ),
                     const SizedBox(height: 2),
                     AppLabel(
-                      text: '${widget.memberCount} member${widget.memberCount == 1 ? '' : 's'} selected',
+                      text: 'chatMembersSelected'.trPluralParams('chatMembersSelectedPlural', widget.memberCount, {'count': '${widget.memberCount}'}),
                       fontSize: AppFontSize.value12,
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -527,8 +528,8 @@ class _GroupNameSheetState extends State<_GroupNameSheet> {
               if (canConfirm) Navigator.pop(context, _ctrl.text);
             },
             decoration: InputDecoration(
-              labelText: 'Group name',
-              hintText: 'e.g. Q3 Launch Crew',
+              labelText: 'chatGroupName'.tr,
+              hintText: 'chatGroupNameExample'.tr,
               prefixIcon: const Icon(Icons.edit_outlined, size: 20),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppRadii.md),
@@ -549,7 +550,7 @@ class _GroupNameSheetState extends State<_GroupNameSheet> {
                     ),
                   ),
                   child: AppLabel(
-                    text: 'Cancel',
+                    text: 'commonCancelAction'.tr,
                     fontSize: AppFontSize.value14,
                     fontWeight: FontWeight.bold,
                   ),
@@ -569,7 +570,7 @@ class _GroupNameSheetState extends State<_GroupNameSheet> {
                     ),
                   ),
                   child: AppLabel(
-                    text: 'Create Group',
+                    text: 'chatCreateGroup'.tr,
                     fontSize: AppFontSize.value14,
                     fontWeight: FontWeight.bold,
                   ),
@@ -648,7 +649,7 @@ class _SearchBar extends StatelessWidget {
               );
             },
           ),
-          hintText: 'Search employees',
+          hintText: 'chatSearchEmployees'.tr,
           hintStyle: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
             fontWeight: FontWeight.w500,
@@ -765,7 +766,7 @@ class _MemberList extends StatelessWidget {
                 FilledButton.tonal(
                   onPressed: onRetry,
                   child: AppLabel(
-                    text: 'Retry',
+                    text: 'commonRetryAction'.tr,
                     fontSize: AppFontSize.value14,
                     fontWeight: FontWeight.w700,
                   ),
@@ -777,9 +778,9 @@ class _MemberList extends StatelessWidget {
       );
     }
     if (people.isEmpty) {
-      return const Center(
+      return Center(
         child: AppLabel(
-          text: 'No employees match.',
+          text: 'chatNoEmployeesMatch'.tr,
           fontSize: AppFontSize.value14,
         ),
       );

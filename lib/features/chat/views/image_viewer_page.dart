@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart' show Trans;
 
 import '../../../core/theme/app_font_size.dart';
 import '../../../core/theme/app_label.dart';
@@ -141,8 +142,8 @@ class _ImageViewerPageState extends State<ImageViewerPage> {
 
   void _onShare(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Share would open the OS share sheet here.'),
+      SnackBar(
+        content: Text('chatShareStub'.tr),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -150,8 +151,8 @@ class _ImageViewerPageState extends State<ImageViewerPage> {
 
   void _onSave(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Save to gallery would run here.'),
+      SnackBar(
+        content: Text('chatSaveToGalleryStub'.tr),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -169,15 +170,15 @@ class _ImageSurface extends StatelessWidget {
       return Image.network(
         url,
         fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => const _Placeholder(
-          message: 'Could not load image',
+        errorBuilder: (_, __, ___) => _Placeholder(
+          message: 'chatImageLoadFailed'.tr,
         ),
       );
     }
     if (url.startsWith('demo://')) {
       return _Placeholder(
-        message: message.fileName ?? 'Demo asset',
-        subtitle: 'No bytes available — this is a seeded message.',
+        message: message.fileName ?? 'chatDemoAsset'.tr,
+        subtitle: 'chatSeededMessageNoBytes'.tr,
       );
     }
     // Treat anything else as a local file path.
@@ -196,14 +197,14 @@ class _ImageSurface extends StatelessWidget {
           return Image.file(
             file,
             fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => const _Placeholder(
-              message: 'Could not decode image',
+            errorBuilder: (_, __, ___) => _Placeholder(
+              message: 'chatImageDecodeFailed'.tr,
             ),
           );
         }
         return _Placeholder(
-          message: message.fileName ?? 'Image not found',
-          subtitle: 'The file may have been moved or removed.',
+          message: message.fileName ?? 'chatImageNotFound'.tr,
+          subtitle: 'chatImageMovedOrRemoved'.tr,
         );
       },
     );
@@ -315,7 +316,7 @@ class _Caption extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           AppLabel(
-            text: message.fileName ?? 'Photo',
+            text: message.fileName ?? 'chatPhoto'.tr,
             fontSize: AppFontSize.value15,
             color: Colors.white,
             fontWeight: FontWeight.w800,
@@ -324,7 +325,7 @@ class _Caption extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           AppLabel(
-            text: 'Sent by ${message.senderName} · ${_formatStamp(message.sentAt)}',
+            text: 'chatSentByAt'.trParams({'name': message.senderName, 'time': _formatStamp(message.sentAt)}),
             fontSize: AppFontSize.value12,
             color: Colors.white.withValues(alpha: 0.75),
             fontWeight: FontWeight.w500,

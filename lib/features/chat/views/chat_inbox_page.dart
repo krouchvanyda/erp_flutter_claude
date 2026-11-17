@@ -7,6 +7,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:erp_mobile/core/di/service_locator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:get/get.dart' show Trans;
 
 import '../../../core/router/config_router.dart';
 import '../../../core/router/route_paths.dart';
@@ -99,11 +100,11 @@ class _ChatInboxPageState extends State<ChatInboxPage>
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: 'Messages',
+        title: 'chatInboxTitle'.tr,
         centerTitle: false,
         actions: [
           IconButton(
-            tooltip: 'New message',
+            tooltip: 'chatNewMessage'.tr,
             icon: const Icon(Icons.edit_note_rounded),
             onPressed: () => ConfigRouter.pushPageAnimation(
               context,
@@ -114,7 +115,7 @@ class _ChatInboxPageState extends State<ChatInboxPage>
           // pushNamed (not goNamed) keeps Chat underneath so back
           // returns to the inbox.
           IconButton(
-            tooltip: 'Settings',
+            tooltip: 'chatSettingsTooltip'.tr,
             icon: const Icon(Icons.settings_outlined),
             onPressed: () => context.pushNamed(RoutePaths.settingsName),
           ),
@@ -230,7 +231,7 @@ class _SearchField extends StatelessWidget {
               );
             },
           ),
-          hintText: 'Search conversations',
+          hintText: 'chatSearchConversations'.tr,
           hintStyle: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
             fontWeight: FontWeight.w500,
@@ -277,11 +278,11 @@ class _Tabs extends StatelessWidget {
         ),
         dividerColor: Colors.transparent,
         splashBorderRadius: BorderRadius.circular(AppRadii.pill),
-        tabs: const [
-          Tab(text: 'All'),
-          Tab(text: 'Unread'),
-          Tab(text: 'Groups'),
-          Tab(text: 'Calls'),
+        tabs: [
+          Tab(text: 'chatTabAll'.tr),
+          Tab(text: 'chatTabUnread'.tr),
+          Tab(text: 'chatTabGroups'.tr),
+          Tab(text: 'chatTabCalls'.tr),
         ],
       ),
     );
@@ -339,7 +340,7 @@ class _Tile extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             AppLabel(
-              text: conversation.isMuted ? 'Unmute' : 'Mute',
+              text: conversation.isMuted ? 'chatUnmute'.tr : 'chatMute'.tr,
               fontSize: AppFontSize.value14,
               color: Colors.blue.shade700,
               fontWeight: FontWeight.w800,
@@ -358,7 +359,7 @@ class _Tile extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             AppLabel(
-              text: 'Delete',
+              text: 'chatDelete'.tr,
               fontSize: AppFontSize.value14,
               color: Colors.red.shade700,
               fontWeight: FontWeight.w800,
@@ -377,12 +378,12 @@ class _Tile extends StatelessWidget {
               context: context,
               builder: (dCtx) => AlertDialog(
                 title: AppLabel(
-                  text: 'Delete conversation?',
+                  text: 'chatDeleteConversationTitle'.tr,
                   fontSize: AppFontSize.value18,
                   fontWeight: FontWeight.w800,
                 ),
                 content: AppLabel(
-                  text: 'Remove "${conversation.name}" from your inbox. The other side keeps the conversation.',
+                  text: 'chatDeleteConversationBody'.trParams({'name': conversation.name}),
                   fontSize: AppFontSize.value14,
                   maxLines: 4,
                 ),
@@ -390,7 +391,7 @@ class _Tile extends StatelessWidget {
                   TextButton(
                     onPressed: () => Navigator.pop(dCtx, false),
                     child: AppLabel(
-                      text: 'Cancel',
+                      text: 'commonCancelAction'.tr,
                       fontSize: AppFontSize.value14,
                       fontWeight: FontWeight.w600,
                     ),
@@ -401,7 +402,7 @@ class _Tile extends StatelessWidget {
                     ),
                     onPressed: () => Navigator.pop(dCtx, true),
                     child: AppLabel(
-                      text: 'Delete',
+                      text: 'chatDelete'.tr,
                       fontSize: AppFontSize.value14,
                       fontWeight: FontWeight.w600,
                     ),
@@ -421,8 +422,8 @@ class _Tile extends StatelessWidget {
         unawaited(repo.deleteRemote(conversation.id).catchError((Object e) {
           if (!context.mounted) return;
           final msg = e is DioException && e.response?.statusCode == 403
-              ? 'Only an admin can delete this group.'
-              : 'Could not delete this conversation.';
+              ? 'chatDeleteGroupAdminOnly'.tr
+              : 'chatDeleteConversationFailed'.tr;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(msg),
@@ -595,15 +596,15 @@ class _Tile extends StatelessWidget {
     // canonical "no messages ever" signal so we don't accidentally
     // hit this branch for a deleted-only message or a voice/image
     // with empty body.
-    if (c.lastMessageAt == null) return '💬 No message yet';
+    if (c.lastMessageAt == null) return 'chatNoMessageYet'.tr;
     final body = c.lastMessageBody;
-    if (body == null && c.lastMessageType == 'text') return '💬 No message yet';
+    if (body == null && c.lastMessageType == 'text') return 'chatNoMessageYet'.tr;
 
     // Heuristic for soft-delete: backend sends body "Message deleted"
     // OR no body with type=text. The conv doesn't currently carry a
     // separate `deleted` flag on its last-message snapshot — if/when
     // it does, swap to that.
-    if (body == 'Message deleted') return 'Message deleted';
+    if (body == 'Message deleted') return 'chatMessageDeleted'.tr;
 
     // Sender prefix:
     //   * own message       → "You: ..."
@@ -615,7 +616,7 @@ class _Tile extends StatelessWidget {
     final isOwn = c.lastMessageSenderId == me;
     String prefix = '';
     if (isOwn) {
-      prefix = 'You: ';
+      prefix = 'chatPreviewYouPrefix'.tr;
     } else if (c.isGroup) {
       final senderName = (c.lastMessageSenderName ?? '').trim();
       if (senderName.isNotEmpty) {
@@ -626,12 +627,12 @@ class _Tile extends StatelessWidget {
       }
     }
     final type = c.lastMessageType;
-    if (type == 'image') return '${prefix}📷 Photo';
-    if (type == 'file') return '${prefix}📎 File';
+    if (type == 'image') return '$prefix${'chatPreviewPhoto'.tr}';
+    if (type == 'file') return '$prefix${'chatPreviewFile'.tr}';
     if (type == 'voice') {
       // We don't carry duration on the conv snapshot today; fall back
       // to a label without timing. Real duration shows in the bubble.
-      return '${prefix}🎤 Voice message';
+      return '$prefix${'chatPreviewVoice'.tr}';
     }
     return '$prefix${body ?? ''}';
   }
@@ -642,7 +643,7 @@ class _Tile extends StatelessWidget {
     final today = DateTime(now.year, now.month, now.day);
     final diff = today.difference(whenDay).inDays;
     if (diff == 0) return DateFormat('HH:mm').format(when);
-    if (diff == 1) return 'Yesterday';
+    if (diff == 1) return 'chatYesterday'.tr;
     if (diff < 7) return DateFormat('EEE').format(when);
     return DateFormat('d MMM').format(when);
   }
@@ -667,8 +668,8 @@ class _PresenceInline extends StatelessWidget {
         final p = repo.statusOf(userId);
         final (String? label, Color color) = switch (p.effectiveStatus) {
           PresenceStatus.online => (null, Colors.transparent),
-          PresenceStatus.busy => ('In a call', const Color(0xFFE2A03F)),
-          PresenceStatus.away => ('Away', const Color(0xFFE2A03F)),
+          PresenceStatus.busy => ('chatPresenceInCall'.tr, const Color(0xFFE2A03F)),
+          PresenceStatus.away => ('chatPresenceAway'.tr, const Color(0xFFE2A03F)),
           PresenceStatus.offline => (null, Colors.transparent),
         };
         if (label == null) return const SizedBox.shrink();
@@ -746,13 +747,13 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             AppLabel(
-              text: 'No conversations',
+              text: 'chatEmptyConversationsTitle'.tr,
               fontSize: AppFontSize.value16,
               fontWeight: FontWeight.w800,
             ),
             const SizedBox(height: 6),
             AppLabel(
-              text: 'Start a chat with a teammate or create a group.',
+              text: 'chatEmptyConversationsBody'.tr,
               fontSize: AppFontSize.value12,
               color: theme.colorScheme.onSurfaceVariant,
               textAlign: TextAlign.center,
@@ -794,13 +795,13 @@ class _RecentCallsList extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   AppLabel(
-                    text: 'No calls yet',
+                    text: 'chatEmptyCallsTitle'.tr,
                     fontSize: AppFontSize.value16,
                     fontWeight: FontWeight.w800,
                   ),
                   const SizedBox(height: 6),
                   AppLabel(
-                    text: 'Place a voice or video call from any conversation.',
+                    text: 'chatEmptyCallsBody'.tr,
                     fontSize: AppFontSize.value12,
                     color: Theme.of(context)
                         .colorScheme
@@ -953,11 +954,11 @@ class _RecentCallTile extends StatelessWidget {
   }
 
   static String _subtitle(ChatCallLog log, bool isMissed, bool isOutgoing) {
-    if (isMissed) return 'Missed';
+    if (isMissed) return 'chatCallMissed'.tr;
     if (log.durationSeconds > 0) {
-      return '${isOutgoing ? "Outgoing" : "Incoming"} · ${log.formattedDuration()}';
+      return '${isOutgoing ? 'chatCallOutgoing'.tr : 'chatCallIncoming'.tr} · ${log.formattedDuration()}';
     }
-    return isOutgoing ? 'Outgoing' : 'Incoming';
+    return isOutgoing ? 'chatCallOutgoing'.tr : 'chatCallIncoming'.tr;
   }
 
   static String _formatStamp(DateTime when) {
@@ -966,7 +967,7 @@ class _RecentCallTile extends StatelessWidget {
     final today = DateTime(now.year, now.month, now.day);
     final diff = today.difference(whenDay).inDays;
     if (diff == 0) return DateFormat('HH:mm').format(when);
-    if (diff == 1) return 'Yesterday';
+    if (diff == 1) return 'chatYesterday'.tr;
     if (diff < 7) return DateFormat('EEE').format(when);
     return DateFormat('d MMM').format(when);
   }

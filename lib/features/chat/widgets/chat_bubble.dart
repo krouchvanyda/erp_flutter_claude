@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:get/get.dart' show Trans;
 
 import '../../../core/theme/app_font_size.dart';
 import '../../../core/theme/app_label.dart';
@@ -242,7 +243,7 @@ class _BubbleContent extends StatelessWidget {
     final theme = Theme.of(context);
     if (message.isDeleted) {
       return AppLabel(
-        text: 'Message deleted',
+        text: 'chatMessageDeleted'.tr,
         fontSize: AppFontSize.value14,
         color: theme.colorScheme.onSurfaceVariant,
         fontStyle: FontStyle.italic,
@@ -653,7 +654,7 @@ class _BubbleFooter extends StatelessWidget {
       children: [
         if (message.editedAt != null) ...[
           AppLabel(
-            text: 'edited · ',
+            text: 'chatEditedPrefix'.tr,
             fontSize: AppFontSize.value10,
             color: color,
             fontStyle: FontStyle.italic,
@@ -840,8 +841,8 @@ class DateSeparatorChip extends StatelessWidget {
     final today = DateTime(now.year, now.month, now.day);
     final that = DateTime(d.year, d.month, d.day);
     final diff = today.difference(that).inDays;
-    if (diff == 0) return 'Today';
-    if (diff == 1) return 'Yesterday';
+    if (diff == 0) return 'chatToday'.tr;
+    if (diff == 1) return 'chatYesterday'.tr;
     if (diff < 7) return DateFormat('EEEE').format(d);
     return DateFormat('EEE d MMM yyyy').format(d);
   }

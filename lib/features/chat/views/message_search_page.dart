@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
+import 'package:get/get.dart' show Trans;
 
 import '../../../core/router/config_router.dart';
 import '../../../core/theme/app_font_size.dart';
@@ -60,7 +61,7 @@ class _MessageSearchPageState extends State<MessageSearchPage> {
             autofocus: true,
             onChanged: (v) => setState(() => _query = v),
             decoration: InputDecoration(
-              hintText: 'Search messages…',
+              hintText: 'chatSearchMessagesHint'.tr,
               border: InputBorder.none,
               isDense: true,
               suffixIcon: ValueListenableBuilder<TextEditingValue>(
@@ -96,8 +97,8 @@ class _MessageSearchPageState extends State<MessageSearchPage> {
                   return _Hint(
                     icon: Icons.search_rounded,
                     text: widget.conversationId != null
-                        ? 'Search this conversation\'s messages.'
-                        : 'Search every conversation for text, file names, or @mentions.',
+                        ? 'chatSearchThisConversation'.tr
+                        : 'chatSearchEveryConversation'.tr,
                   );
                 }
                 if (!snap.hasData) {
@@ -107,7 +108,7 @@ class _MessageSearchPageState extends State<MessageSearchPage> {
                 if (results.isEmpty) {
                   return _Hint(
                     icon: Icons.search_off_rounded,
-                    text: 'No messages match "${_query.trim()}".',
+                    text: 'chatNoMessagesMatchQuery'.trParams({'query': _query.trim()}),
                   );
                 }
                 return ListView.separated(
@@ -223,7 +224,7 @@ class _ResultTile extends StatelessWidget {
                       },
                     ),
                     _HighlightedPreview(
-                      body: message.body ?? message.fileName ?? '(media)',
+                      body: message.body ?? message.fileName ?? 'chatMediaFallback'.tr,
                       query: query,
                     ),
                   ],

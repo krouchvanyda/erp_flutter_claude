@@ -3,11 +3,11 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:get/get.dart' show Trans;
 
 import '../../../core/theme/app_font_size.dart';
 import '../../../core/theme/app_label.dart';
 import '../../../core/widgets/dynamic_status_bar.dart';
-import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_text_field.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
@@ -37,7 +37,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       body: DynamicStatusBar(
@@ -120,7 +119,6 @@ class _FormView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
     return Column(
       key: const ValueKey('form'),
       mainAxisAlignment: MainAxisAlignment.center,
@@ -135,7 +133,7 @@ class _FormView extends StatelessWidget {
         const SizedBox(height: 32),
 
         AppLabel(
-          text: l10n.forgotPasswordTitle,
+          text: 'forgotPasswordTitle'.tr,
           fontSize: AppFontSize.value22,
           fontWeight: FontWeight.bold,
           textAlign: TextAlign.center,
@@ -144,7 +142,7 @@ class _FormView extends StatelessWidget {
         const SizedBox(height: 16),
 
         AppLabel(
-          text: l10n.forgotPasswordSubtitle,
+          text: 'forgotPasswordSubtitle'.tr,
           fontSize: AppFontSize.value16,
           color: theme.colorScheme.onSurfaceVariant,
           textAlign: TextAlign.center,
@@ -172,14 +170,14 @@ class _FormView extends StatelessWidget {
                   children: [
                     AppTextField(
                       controller: emailController,
-                      label: l10n.commonEmailLabel,
+                      label: 'commonEmailLabel'.tr,
                       icon: Icons.email_outlined,
                       hintText: 'name@company.com',
                       keyboardType: TextInputType.emailAddress,
                       textCapitalization: TextCapitalization.none,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return l10n.forgotPasswordValidatorEmailRequired;
+                          return 'forgotPasswordValidatorEmailRequired'.tr;
                         }
                         return null;
                       },
@@ -187,7 +185,7 @@ class _FormView extends StatelessWidget {
                     const SizedBox(height: 32),
                     FilledButton(
                       onPressed: onReset,
-                      child: Text(l10n.forgotPasswordSendResetAction),
+                      child: Text('forgotPasswordSendResetAction'.tr),
                     ),
                   ],
                 ),
@@ -206,7 +204,6 @@ class _SuccessView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
     return Column(
       key: const ValueKey('success'),
       mainAxisAlignment: MainAxisAlignment.center,
@@ -227,7 +224,7 @@ class _SuccessView extends StatelessWidget {
         const SizedBox(height: 32),
 
         AppLabel(
-          text: l10n.forgotPasswordSentTitle,
+          text: 'forgotPasswordSentTitle'.tr,
           fontSize: AppFontSize.value22,
           fontWeight: FontWeight.bold,
         ),
@@ -235,7 +232,7 @@ class _SuccessView extends StatelessWidget {
         const SizedBox(height: 16),
 
         AppLabel(
-          text: l10n.forgotPasswordSentSubtitle,
+          text: 'forgotPasswordSentSubtitle'.tr,
           fontSize: AppFontSize.value16,
           color: theme.colorScheme.onSurfaceVariant,
           textAlign: TextAlign.center,
@@ -245,7 +242,7 @@ class _SuccessView extends StatelessWidget {
 
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text(l10n.forgotPasswordBackToLoginAction),
+          child: Text('forgotPasswordBackToLoginAction'.tr),
         ),
       ],
     );

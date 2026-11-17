@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:erp_mobile/shared/widgets/app_background_gradient.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:get/get.dart' show Trans;
 
 import '../../../core/router/config_router.dart';
 import '../../../core/security/app_permissions.dart';
@@ -13,7 +14,6 @@ import '../../../core/widgets/dynamic_status_bar.dart';
 import '../../../core/widgets/loading_screen.dart';
 import '../../auth/repositories/cached_user_dao.dart';
 import '../../auth/models/user.dart';
-import '../../../l10n/app_localizations.dart';
 import 'api_config_page.dart';
 import 'app_lock_page.dart';
 import 'appearance_page.dart';
@@ -55,7 +55,6 @@ class _SettingsHomePageState extends State<SettingsHomePage> {
   Future<void> _handleSignOut() async {
     if (_signingOut) return;
 
-    final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final theme = Theme.of(context);
 
@@ -63,12 +62,12 @@ class _SettingsHomePageState extends State<SettingsHomePage> {
       context: context,
       builder: (dialogCtx) => AlertDialog(
         title: AppLabel(
-          text: l10n.settingsHomeSignOutConfirmTitle,
+          text: 'settingsHomeSignOutConfirmTitle'.tr,
           fontSize: AppFontSize.value18,
           fontWeight: FontWeight.bold,
         ),
         content: AppLabel(
-          text: l10n.settingsHomeSignOutConfirmMessage,
+          text: 'settingsHomeSignOutConfirmMessage'.tr,
           fontSize: AppFontSize.value14,
         ),
         shape: RoundedRectangleBorder(
@@ -78,7 +77,7 @@ class _SettingsHomePageState extends State<SettingsHomePage> {
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx, false),
             child: AppLabel(
-              text: l10n.commonCancelAction,
+              text: 'commonCancelAction'.tr,
               fontSize: AppFontSize.value14,
               fontWeight: FontWeight.w600,
             ),
@@ -89,7 +88,7 @@ class _SettingsHomePageState extends State<SettingsHomePage> {
             ),
             onPressed: () => Navigator.pop(dialogCtx, true),
             child: AppLabel(
-              text: l10n.settingsHomeSignOutAction,
+              text: 'settingsHomeSignOutAction'.tr,
               fontSize: AppFontSize.value14,
               fontWeight: FontWeight.bold,
             ),
@@ -112,7 +111,7 @@ class _SettingsHomePageState extends State<SettingsHomePage> {
       setState(() => _signingOut = false);
       messenger.showSnackBar(
         SnackBar(
-          content: Text(l10n.settingsHomeSignOutErrorSnack),
+          content: Text('settingsHomeSignOutErrorSnack'.tr),
           behavior: SnackBarBehavior.floating,
           backgroundColor: theme.colorScheme.error,
         ),
@@ -123,11 +122,10 @@ class _SettingsHomePageState extends State<SettingsHomePage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: DynamicAppBar(title: l10n.settingsHomePageTitle, centerTitle: true),
+      appBar: DynamicAppBar(title: 'settingsHomePageTitle'.tr, centerTitle: true),
       body: DynamicStatusBar(
         child: Stack(
           children: [
@@ -144,20 +142,20 @@ class _SettingsHomePageState extends State<SettingsHomePage> {
 
                 // Account Group — Slices 9.1.4 / 9.1.5.
                 _Section(
-                  title: l10n.settingsHomeAccountSection,
+                  title: 'settingsHomeAccountSection'.tr,
                   children: [
                     _Tile(
                       icon: Icons.person_outline,
-                      title: l10n.settingsHomeMyProfileTitle,
-                      subtitle: l10n.settingsHomeMyProfileSubtitle,
+                      title: 'settingsHomeMyProfileTitle'.tr,
+                      subtitle: 'settingsHomeMyProfileSubtitle'.tr,
                       page: const MyProfilePage(),
                       color: Colors.deepPurple,
                     ),
                     const Divider(height: 1, indent: 56),
                     _Tile(
                       icon: Icons.shield_outlined,
-                      title: l10n.settingsHomeMyRolesTitle,
-                      subtitle: l10n.settingsHomeMyRolesSubtitle,
+                      title: 'settingsHomeMyRolesTitle'.tr,
+                      subtitle: 'settingsHomeMyRolesSubtitle'.tr,
                       page: const MyRolesPage(),
                       color: Colors.cyan.shade700,
                     ),
@@ -171,28 +169,28 @@ class _SettingsHomePageState extends State<SettingsHomePage> {
 
                 // Preferences Group
                 _Section(
-                      title: l10n.settingsHomePreferencesSection,
+                      title: 'settingsHomePreferencesSection'.tr,
                       children: [
                         _Tile(
                           icon: Icons.brightness_6_outlined,
-                          title: l10n.settingsHomeAppearanceTitle,
-                          subtitle: l10n.settingsHomeAppearanceSubtitle,
+                          title: 'settingsHomeAppearanceTitle'.tr,
+                          subtitle: 'settingsHomeAppearanceSubtitle'.tr,
                           page: const AppearancePage(),
                           color: Colors.blue,
                         ),
                         const Divider(height: 1, indent: 56),
                         _Tile(
                           icon: Icons.language_outlined,
-                          title: l10n.settingsHomeLanguageTitle,
-                          subtitle: l10n.settingsHomeLanguageSubtitle,
+                          title: 'settingsHomeLanguageTitle'.tr,
+                          subtitle: 'settingsHomeLanguageSubtitle'.tr,
                           page: const LanguagePage(),
                           color: Colors.indigo,
                         ),
                         const Divider(height: 1, indent: 56),
                         _Tile(
                           icon: Icons.notifications_outlined,
-                          title: l10n.settingsHomeNotificationsTitle,
-                          subtitle: l10n.settingsHomeNotificationsSubtitle,
+                          title: 'settingsHomeNotificationsTitle'.tr,
+                          subtitle: 'settingsHomeNotificationsSubtitle'.tr,
                           page: const NotificationPreferencesPage(),
                           color: Colors.amber.shade800,
                         ),
@@ -206,28 +204,28 @@ class _SettingsHomePageState extends State<SettingsHomePage> {
 
                 // Security Group
                 _Section(
-                      title: l10n.settingsHomeSecuritySection,
+                      title: 'settingsHomeSecuritySection'.tr,
                       children: [
                         _Tile(
                           icon: Icons.devices_other_outlined,
-                          title: l10n.settingsHomeActiveDevicesTitle,
-                          subtitle: l10n.settingsHomeActiveDevicesSubtitle,
+                          title: 'settingsHomeActiveDevicesTitle'.tr,
+                          subtitle: 'settingsHomeActiveDevicesSubtitle'.tr,
                           page: const SessionsPage(),
                           color: Colors.teal,
                         ),
                         const Divider(height: 1, indent: 56),
                         _Tile(
                           icon: Icons.history_edu_outlined,
-                          title: l10n.settingsHomeAuditLogTitle,
-                          subtitle: l10n.settingsHomeAuditLogSubtitle,
+                          title: 'settingsHomeAuditLogTitle'.tr,
+                          subtitle: 'settingsHomeAuditLogSubtitle'.tr,
                           page: const AuditLogPage(),
                           color: Colors.deepPurple,
                         ),
                         const Divider(height: 1, indent: 56),
                         _Tile(
                           icon: Icons.lock_outline,
-                          title: l10n.settingsHomeAppLockTitle,
-                          subtitle: l10n.settingsHomeAppLockSubtitle,
+                          title: 'settingsHomeAppLockTitle'.tr,
+                          subtitle: 'settingsHomeAppLockSubtitle'.tr,
                           page: const AppLockPage(),
                           color: Colors.pink,
                         ),
@@ -261,28 +259,28 @@ class _SettingsHomePageState extends State<SettingsHomePage> {
                         isSuperAdmin(user?.roles ?? const <String>{});
                     if (!isAdmin) return const SizedBox.shrink();
                     return _Section(
-                      title: l10n.settingsHomeAdminSection,
+                      title: 'settingsHomeAdminSection'.tr,
                       children: [
                         _Tile(
                           icon: Icons.people_alt_outlined,
-                          title: l10n.settingsHomeUserMgmtTitle,
-                          subtitle: l10n.settingsHomeUserMgmtSubtitle,
+                          title: 'settingsHomeUserMgmtTitle'.tr,
+                          subtitle: 'settingsHomeUserMgmtSubtitle'.tr,
                           page: const UserManagementPage(),
                           color: Colors.orange.shade700,
                         ),
                         const Divider(height: 1, indent: 56),
                         _Tile(
                           icon: Icons.shield_outlined,
-                          title: l10n.settingsHomeRolesPermsTitle,
-                          subtitle: l10n.settingsHomeRolesPermsSubtitle,
+                          title: 'settingsHomeRolesPermsTitle'.tr,
+                          subtitle: 'settingsHomeRolesPermsSubtitle'.tr,
                           page: const RoleEditorPage(),
                           color: Colors.cyan.shade700,
                         ),
                         const Divider(height: 1, indent: 56),
                         _Tile(
                           icon: Icons.tune_rounded,
-                          title: l10n.assignmentsPageTitle,
-                          subtitle: l10n.assignmentsRolesTab,
+                          title: 'assignmentsPageTitle'.tr,
+                          subtitle: 'assignmentsRolesTab'.tr,
                           page: const AssignmentsPage(),
                           color: Colors.deepPurple,
                           // Assignments page pops with `true` after a
@@ -296,7 +294,7 @@ class _SettingsHomePageState extends State<SettingsHomePage> {
                             if (result == true && context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text(l10n.assignmentsSavedSnack),
+                                  content: Text('assignmentsSavedSnack'.tr),
                                   behavior: SnackBarBehavior.floating,
                                 ),
                               );
@@ -306,8 +304,8 @@ class _SettingsHomePageState extends State<SettingsHomePage> {
                         const Divider(height: 1, indent: 56),
                         _Tile(
                           icon: Icons.cloud_outlined,
-                          title: l10n.settingsHomeApiConfigTitle,
-                          subtitle: l10n.settingsHomeApiConfigSubtitle,
+                          title: 'settingsHomeApiConfigTitle'.tr,
+                          subtitle: 'settingsHomeApiConfigSubtitle'.tr,
                           page: const ApiConfigPage(),
                           color: Colors.blueGrey,
                         ),
@@ -339,7 +337,7 @@ class _SettingsHomePageState extends State<SettingsHomePage> {
                       onPressed: _signingOut ? null : _handleSignOut,
                       icon: const Icon(Icons.logout_rounded),
                       label: AppLabel(
-                        text: l10n.settingsHomeSignOutAction,
+                        text: 'settingsHomeSignOutAction'.tr,
                         fontSize: AppFontSize.value14,
                         fontWeight: FontWeight.w600,
                       ),

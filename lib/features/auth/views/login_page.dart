@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:get/get.dart' show Trans;
 
 import '../../../core/error/failure.dart';
 import '../../../core/router/config_router.dart';
@@ -11,7 +12,6 @@ import '../../../core/theme/app_label.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/widgets/dynamic_status_bar.dart';
 import '../../../core/widgets/loading_screen.dart';
-import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../repositories/auth_repository.dart';
 import 'biometric_unlock_page.dart';
@@ -46,7 +46,6 @@ class _LoginPageState extends State<LoginPage> {
     if (_submitting) return;
 
     final messenger = ScaffoldMessenger.of(context);
-    final l10n = AppLocalizations.of(context);
 
     setState(() => _submitting = true);
     final result = await context.read<AuthRepository>().login(
@@ -59,7 +58,7 @@ class _LoginPageState extends State<LoginPage> {
     result.fold(
       (failure) => messenger.showSnackBar(
         SnackBar(
-          content: Text(_failureMessage(failure, l10n)),
+          content: Text(_failureMessage(failure)),
           behavior: SnackBarBehavior.floating,
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
@@ -73,11 +72,11 @@ class _LoginPageState extends State<LoginPage> {
   /// localized generic when it's null (and a network-specific one for
   /// connectivity issues so the user knows to retry instead of fixing
   /// their password).
-  String _failureMessage(Failure failure, AppLocalizations l10n) {
+  String _failureMessage(Failure failure) {
     return switch (failure) {
       NetworkFailure(:final message) ||
       TimeoutFailure(:final message) =>
-        message ?? l10n.authNetworkErrorFallback,
+        message ?? 'authNetworkErrorFallback'.tr,
       UnauthorizedFailure(:final message) ||
       ValidationFailure(:final message) ||
       ServerFailure(:final message) ||
@@ -86,15 +85,14 @@ class _LoginPageState extends State<LoginPage> {
       ConflictFailure(:final message) ||
       RateLimitFailure(:final message) ||
       UnknownFailure(:final message) =>
-        message ?? l10n.authGenericErrorFallback,
-      CancelledFailure() => l10n.authGenericErrorFallback,
+        message ?? 'authGenericErrorFallback'.tr,
+      CancelledFailure() => 'authGenericErrorFallback'.tr,
     };
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       body: DynamicStatusBar(
@@ -171,7 +169,7 @@ class _LoginPageState extends State<LoginPage> {
                         const SizedBox(height: 16),
                         
                         AppLabel(
-                          text: l10n.appName,
+                          text: 'appName'.tr,
                           fontSize: AppFontSize.value24,
                           fontWeight: FontWeight.bold,
                           color: theme.colorScheme.primary,
@@ -181,7 +179,7 @@ class _LoginPageState extends State<LoginPage> {
                         const SizedBox(height: 8),
 
                         AppLabel(
-                          text: l10n.loginWelcomeSubtitle,
+                          text: 'loginWelcomeSubtitle'.tr,
                           fontSize: AppFontSize.value14,
                           color: theme.colorScheme.onSurfaceVariant,
                           textAlign: TextAlign.center,
@@ -217,18 +215,18 @@ class _LoginPageState extends State<LoginPage> {
                                   children: [
                                     AppTextField(
                                       controller: _emailController,
-                                      label: l10n.commonEmailLabel,
+                                      label: 'commonEmailLabel'.tr,
                                       icon: Icons.email_outlined,
                                       hintText: 'name@company.com',
                                       keyboardType: TextInputType.emailAddress,
                                       textCapitalization: TextCapitalization.none,
                                       validator: (value) {
                                         if (value == null || value.isEmpty) {
-                                          return l10n.loginValidatorEmailRequired;
+                                          return 'loginValidatorEmailRequired'.tr;
                                         }
                                         final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
                                         if (!emailRegex.hasMatch(value)) {
-                                          return l10n.loginValidatorEmailInvalid;
+                                          return 'loginValidatorEmailInvalid'.tr;
                                         }
                                         return null;
                                       },
@@ -238,7 +236,7 @@ class _LoginPageState extends State<LoginPage> {
 
                                     AppTextField(
                                       controller: _passwordController,
-                                      label: l10n.loginPasswordLabel,
+                                      label: 'loginPasswordLabel'.tr,
                                       icon: Icons.lock_outline_rounded,
                                       obscureText: _obscurePassword,
                                       textCapitalization: TextCapitalization.none,
@@ -253,10 +251,10 @@ class _LoginPageState extends State<LoginPage> {
                                       ),
                                       validator: (value) {
                                         if (value == null || value.isEmpty) {
-                                          return l10n.loginValidatorPasswordRequired;
+                                          return 'loginValidatorPasswordRequired'.tr;
                                         }
                                         if (value.length < 6) {
-                                          return l10n.loginValidatorPasswordTooShort;
+                                          return 'loginValidatorPasswordTooShort'.tr;
                                         }
                                         return null;
                                       },
@@ -266,7 +264,7 @@ class _LoginPageState extends State<LoginPage> {
                                       alignment: Alignment.centerRight,
                                       child: TextButton(
                                         onPressed: () => ConfigRouter.pushPageAnimation(context, const ForgotPasswordPage()),
-                                        child: Text(l10n.loginForgotPasswordAction),
+                                        child: Text('loginForgotPasswordAction'.tr),
                                       ),
                                     ),
 
@@ -288,7 +286,7 @@ class _LoginPageState extends State<LoginPage> {
                                             borderRadius: BorderRadius.circular(AppRadii.md),
                                           ),
                                         ),
-                                        child: Text(l10n.loginSignInAction),
+                                        child: Text('loginSignInAction'.tr),
                                       ),
                                     ).animate().shimmer(delay: 2000.ms, duration: 1500.ms),
 
@@ -304,7 +302,7 @@ class _LoginPageState extends State<LoginPage> {
                                         Padding(
                                           padding: const EdgeInsets.symmetric(horizontal: 12),
                                           child: AppLabel(
-                                            text: l10n.loginOrSecureWith,
+                                            text: 'loginOrSecureWith'.tr,
                                             fontSize: AppFontSize.value11,
                                             color: theme.colorScheme.onSurfaceVariant,
                                             fontWeight: FontWeight.w700,
@@ -337,7 +335,7 @@ class _LoginPageState extends State<LoginPage> {
                                           Icons.fingerprint_rounded,
                                           color: theme.colorScheme.primary,
                                         ),
-                                        label: Text(l10n.loginUseBiometricsAction),
+                                        label: Text('loginUseBiometricsAction'.tr),
                                       ),
                                     ),
                                   ],
@@ -354,7 +352,7 @@ class _LoginPageState extends State<LoginPage> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             AppLabel(
-                              text: l10n.loginNoAccountPrompt,
+                              text: 'loginNoAccountPrompt'.tr,
                               fontSize: AppFontSize.value13,
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
@@ -363,7 +361,7 @@ class _LoginPageState extends State<LoginPage> {
                                 context,
                                 RegisterPage(onSimulatedRegister: widget.onSimulatedLogin),
                               ),
-                              child: Text(l10n.loginCreateAccountAction),
+                              child: Text('loginCreateAccountAction'.tr),
                             ),
                           ],
                         ).animate().fadeIn(delay: 700.ms),
@@ -371,7 +369,7 @@ class _LoginPageState extends State<LoginPage> {
                         // Demo Link
                         // TextButton(
                         //   onPressed: () => ConfigRouter.pushPageAnimation(context, const OtpEntryPage()),
-                        //   child: Text(l10n.loginOtpDemoLink),
+                        //   child: Text('loginOtpDemoLink'.tr),
                         // ).animate().fadeIn(delay: 800.ms),
                       ],
                     ),

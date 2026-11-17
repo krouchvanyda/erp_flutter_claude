@@ -1,8 +1,8 @@
 /// Pure-Dart field validators (Slice 3.2.3).
 ///
 /// Each returns `null` on valid input, an error code (string) on
-/// invalid. Codes — not localised messages — so the UI maps them via
-/// AppLocalizations and the validator stays Flutter-free.
+/// invalid. Codes — not localised messages — so the UI maps them to
+/// `'key'.tr` text and the validator stays Flutter-free.
 class Validators {
   Validators._();
 

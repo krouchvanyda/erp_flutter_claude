@@ -4,13 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:get/get.dart' show Trans;
 
 import '../../../core/router/auth_session.dart';
 import '../../../core/router/route_paths.dart';
 import '../../../core/theme/app_font_size.dart';
 import '../../../core/theme/app_label.dart';
 import '../../../core/widgets/dynamic_status_bar.dart';
-import '../../../l10n/app_localizations.dart';
 import '../repositories/otp_repository.dart';
 import '../models/otp_verification_result.dart';
 import '../bloc/otp_bloc.dart';
@@ -37,7 +37,6 @@ class _OtpEntryView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
 
     return BlocConsumer<OtpBloc, OtpState>(
       listenWhen: (prev, next) =>
@@ -131,7 +130,7 @@ class _OtpEntryView extends StatelessWidget {
                                   const SizedBox(height: 24),
                                   
                                   AppLabel(
-                                    text: l10n.otpPageTitle,
+                                    text: 'otpPageTitle'.tr,
                                     fontSize: AppFontSize.value22,
                                     fontWeight: FontWeight.bold,
                                     color: theme.colorScheme.onSurface,
@@ -141,7 +140,7 @@ class _OtpEntryView extends StatelessWidget {
                                   const SizedBox(height: 12),
 
                                   AppLabel(
-                                    text: l10n.otpSubtitle,
+                                    text: 'otpSubtitle'.tr,
                                     fontSize: AppFontSize.value16,
                                     color: theme.colorScheme.onSurfaceVariant,
                                     textAlign: TextAlign.center,
@@ -189,7 +188,7 @@ class _OtpEntryView extends StatelessWidget {
                                             
                                             if (state.hasError)
                                               AppLabel(
-                                                text: _errorMessage(l10n, state.rejectionReason!),
+                                                text: _errorMessage(state.rejectionReason!),
                                                 fontSize: AppFontSize.value12,
                                                 color: theme.colorScheme.error,
                                                 fontWeight: FontWeight.bold,
@@ -213,14 +212,14 @@ class _OtpEntryView extends StatelessWidget {
                                                         color: Colors.white,
                                                       ),
                                                     )
-                                                  : Text(l10n.otpVerifyButton),
+                                                  : Text('otpVerifyButton'.tr),
                                             ).animate().shimmer(delay: 2000.ms, duration: 1500.ms),
                                             
                                             const SizedBox(height: 16),
                                             
                                             TextButton(
                                               onPressed: () {}, // Resend logic
-                                              child: Text(l10n.otpResendCodeAction),
+                                              child: Text('otpResendCodeAction'.tr),
                                             ),
                                           ],
                                         ),
@@ -231,7 +230,7 @@ class _OtpEntryView extends StatelessWidget {
                                   const SizedBox(height: 40),
                                   
                                   AppLabel(
-                                    text: l10n.otpDevHint(OtpRepository.devCode),
+                                    text: 'otpDevHint'.trParams({'code': OtpRepository.devCode}),
                                     fontSize: AppFontSize.value12,
                                     color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
                                     fontStyle: FontStyle.italic,
@@ -254,12 +253,12 @@ class _OtpEntryView extends StatelessWidget {
     );
   }
 
-  String _errorMessage(AppLocalizations l10n, OtpRejectionReason reason) {
+  String _errorMessage(OtpRejectionReason reason) {
     return switch (reason) {
-      OtpRejectionReason.incorrect => l10n.otpErrorIncorrect,
-      OtpRejectionReason.expired => l10n.otpErrorExpired,
-      OtpRejectionReason.tooManyAttempts => l10n.otpErrorTooManyAttempts,
-      OtpRejectionReason.networkError => l10n.otpErrorNetwork,
+      OtpRejectionReason.incorrect => 'otpErrorIncorrect'.tr,
+      OtpRejectionReason.expired => 'otpErrorExpired'.tr,
+      OtpRejectionReason.tooManyAttempts => 'otpErrorTooManyAttempts'.tr,
+      OtpRejectionReason.networkError => 'otpErrorNetwork'.tr,
     };
   }
 }

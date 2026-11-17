@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:erp_mobile/core/di/service_locator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:get/get.dart' show Trans;
 
 import '../../../core/router/config_router.dart';
 import '../../../core/theme/app_font_size.dart';
@@ -41,7 +42,7 @@ class ChatInfoPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: const DynamicAppBar(title: 'Info', centerTitle: false),
+      appBar: DynamicAppBar(title: 'chatInfo'.tr, centerTitle: false),
       body: DynamicStatusBar(
         child: Stack(
           children: [
@@ -268,9 +269,9 @@ class _Hero extends StatelessWidget {
           .where((p) =>
               repo.statusOf(p.employeeId).status == PresenceStatus.online)
           .length;
-      return '${c.totalMembers} members · $onlineNow online';
+      return 'chatGroupMembersOnline'.trParams({'members': '${c.totalMembers}', 'online': '$onlineNow'});
     }
-    if (c.participantPreviews.isEmpty) return 'Offline';
+    if (c.participantPreviews.isEmpty) return 'chatPresenceOffline'.tr;
     final otherId = c.participantPreviews.first.employeeId;
     final p = GetIt.I<PresenceRepository>().statusOf(otherId);
     // `effectiveStatus` keeps a fresh-OFFLINE as AWAY for up to 5 min
@@ -278,33 +279,33 @@ class _Hero extends StatelessWidget {
     // of skipping straight to plain "Last seen X" / "Offline".
     switch (p.effectiveStatus) {
       case PresenceStatus.online:
-        return 'Online now';
+        return 'chatPresenceOnlineNow'.tr;
       case PresenceStatus.busy:
-        return 'In a call';
+        return 'chatPresenceInCall'.tr;
       case PresenceStatus.away:
         return p.lastSeenAt != null
-            ? 'Away · last seen ${_relativeTime(p.lastSeenAt!)}'
-            : 'Away';
+            ? 'chatPresenceAwayLastSeen'.trParams({'time': _relativeTime(p.lastSeenAt!)})
+            : 'chatPresenceAway'.tr;
       case PresenceStatus.offline:
         return p.lastSeenAt != null
-            ? 'Last seen ${_relativeTime(p.lastSeenAt!)}'
-            : 'Offline';
+            ? 'chatPresenceLastSeen'.trParams({'time': _relativeTime(p.lastSeenAt!)})
+            : 'chatPresenceOffline'.tr;
     }
   }
 
   String _relativeTime(DateTime when) {
     final diff = DateTime.now().difference(when);
-    if (diff.inSeconds < 60) return 'just now';
+    if (diff.inSeconds < 60) return 'chatTimeJustNow'.tr;
     if (diff.inMinutes < 60) {
       final m = diff.inMinutes;
-      return '$m minute${m == 1 ? '' : 's'} ago';
+      return 'chatTimeMinutesAgo'.trPluralParams('chatTimeMinutesAgoPlural', m, {'count': '$m'});
     }
     if (diff.inHours < 24) {
       final h = diff.inHours;
-      return '$h hour${h == 1 ? '' : 's'} ago';
+      return 'chatTimeHoursAgo'.trPluralParams('chatTimeHoursAgoPlural', h, {'count': '$h'});
     }
     final d = diff.inDays;
-    if (d < 7) return '$d day${d == 1 ? '' : 's'} ago';
+    if (d < 7) return 'chatTimeDaysAgo'.trPluralParams('chatTimeDaysAgoPlural', d, {'count': '$d'});
     return DateFormat('d MMM').format(when);
   }
 }
@@ -321,7 +322,7 @@ class _QuickActions extends StatelessWidget {
           _ActionRow(
             icon: Icons.call_rounded,
             iconColor: Colors.green.shade700,
-            label: 'Voice call',
+            label: 'chatVoiceCall'.tr,
             onTap: () => ConfigRouter.pushPageAnimation(
               context,
               VoiceCallPage(conversationId: conversation.id),
@@ -331,7 +332,7 @@ class _QuickActions extends StatelessWidget {
           _ActionRow(
             icon: Icons.videocam_rounded,
             iconColor: Colors.blue.shade700,
-            label: 'Video call',
+            label: 'chatVideoCall'.tr,
             onTap: () => ConfigRouter.pushPageAnimation(
               context,
               VideoCallPage(conversationId: conversation.id),
@@ -341,7 +342,7 @@ class _QuickActions extends StatelessWidget {
           _ActionRow(
             icon: Icons.search_rounded,
             iconColor: Colors.deepPurple,
-            label: 'Search messages',
+            label: 'chatSearchMessages'.tr,
             onTap: () => ConfigRouter.pushPageAnimation(
               context,
               MessageSearchPage(conversationId: conversation.id),
@@ -352,7 +353,7 @@ class _QuickActions extends StatelessWidget {
             _ActionRow(
               icon: Icons.person_add_alt_1_rounded,
               iconColor: Colors.orange.shade700,
-              label: 'Add members',
+              label: 'chatAddMembers'.tr,
               onTap: () => _showAddMembersSheet(context, conversation),
             ),
           ],
@@ -386,7 +387,7 @@ class _SharedMedia extends StatelessWidget {
               child: Row(
                 children: [
                   AppLabel(
-                    text: 'SHARED MEDIA',
+                    text: 'chatSharedMediaHeader'.tr,
                     fontSize: AppFontSize.value10,
                     color: theme.colorScheme.primary,
                     fontWeight: FontWeight.w900,
@@ -397,7 +398,7 @@ class _SharedMedia extends StatelessWidget {
                     TextButton(
                       onPressed: () {},
                       child: AppLabel(
-                        text: 'See all',
+                        text: 'chatSeeAll'.tr,
                         fontSize: AppFontSize.value13,
                         fontWeight: FontWeight.w600,
                       ),
@@ -411,7 +412,7 @@ class _SharedMedia extends StatelessWidget {
                       padding: const EdgeInsets.all(16),
                       child: Center(
                         child: AppLabel(
-                          text: 'No shared media yet.',
+                          text: 'chatNoSharedMedia'.tr,
                           fontSize: AppFontSize.value14,
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -483,8 +484,8 @@ class _MediaTile extends StatelessWidget {
                     ImageViewerPage(message: message),
                   )
               : () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('File download would run here.'),
+                    SnackBar(
+                      content: Text('chatFileDownloadStub'.tr),
                       behavior: SnackBarBehavior.floating,
                     ),
                   ),
@@ -555,7 +556,7 @@ class _CallHistorySection extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
               child: AppLabel(
-                text: 'CALL HISTORY',
+                text: 'chatCallHistoryHeader'.tr,
                 fontSize: AppFontSize.value10,
                 color: theme.colorScheme.primary,
                 fontWeight: FontWeight.w900,
@@ -664,12 +665,14 @@ class _CallHistoryRow extends StatelessWidget {
 
   static String _labelFor(
       bool isVideo, bool isOutgoing, bool isMissed, ChatCallStatus status) {
-    final kind = isVideo ? 'Video' : 'Voice';
-    if (isMissed) return 'Missed $kind call';
+    // Separate keys per kind: word order differs between languages.
+    if (isMissed) return isVideo ? 'chatMissedVideoCall'.tr : 'chatMissedVoiceCall'.tr;
     if (status == ChatCallStatus.rejected && isOutgoing) {
-      return 'Declined $kind call';
+      return isVideo ? 'chatDeclinedVideoCall'.tr : 'chatDeclinedVoiceCall'.tr;
     }
-    return '${isOutgoing ? "Outgoing" : "Incoming"} $kind call';
+    return isOutgoing
+        ? (isVideo ? 'chatOutgoingVideoCall'.tr : 'chatOutgoingVoiceCall'.tr)
+        : (isVideo ? 'chatIncomingVideoCall'.tr : 'chatIncomingVoiceCall'.tr);
   }
 
   static String _subtitleFor(ChatCallLog log) {
@@ -685,8 +688,8 @@ class _CallHistoryRow extends StatelessWidget {
     final whenDay = DateTime(when.year, when.month, when.day);
     final today = DateTime(now.year, now.month, now.day);
     final diff = today.difference(whenDay).inDays;
-    if (diff == 0) return 'Today ${DateFormat.Hm().format(when)}';
-    if (diff == 1) return 'Yesterday ${DateFormat.Hm().format(when)}';
+    if (diff == 0) return 'chatTodayAt'.trParams({'time': DateFormat.Hm().format(when)});
+    if (diff == 1) return 'chatYesterdayAt'.trParams({'time': DateFormat.Hm().format(when)});
     if (diff < 7) return DateFormat('EEE HH:mm').format(when);
     return DateFormat('d MMM HH:mm').format(when);
   }
@@ -704,7 +707,7 @@ class _Settings extends StatelessWidget {
           _SwitchRow(
             icon: Icons.notifications_off_outlined,
             iconColor: Colors.amber.shade700,
-            label: 'Mute notifications',
+            label: 'chatMuteNotifications'.tr,
             value: conversation.isMuted,
             onChanged: (v) => context.read<ConversationsRepository>()
                 .setMuted(conversation.id, v),
@@ -714,7 +717,7 @@ class _Settings extends StatelessWidget {
             _ActionRow(
               icon: Icons.push_pin_outlined,
               iconColor: Colors.teal,
-              label: 'View pinned message',
+              label: 'chatViewPinnedMessage'.tr,
               onTap: () => Navigator.pop(context),
             ),
           ],
@@ -739,7 +742,7 @@ class _Members extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
           child: AppLabel(
-            text: 'MEMBERS · ${conversation.totalMembers}',
+            text: 'chatMembersHeader'.trParams({'count': '${conversation.totalMembers}'}),
             fontSize: AppFontSize.value10,
             color: theme.colorScheme.primary,
             fontWeight: FontWeight.w900,
@@ -751,7 +754,7 @@ class _Members extends StatelessWidget {
             children: [
               _MemberRow(
                 name: context.read<ChatSettings>().userName,
-                role: 'You',
+                role: 'chatYou'.tr,
                 presence: PresenceStatus.online,
                 isAdmin: true,
                 userId: context.read<ChatSettings>().userId,
@@ -778,7 +781,7 @@ class _Members extends StatelessWidget {
                   child: TextButton(
                     onPressed: () {},
                     child: AppLabel(
-                      text: '+ $extra more',
+                      text: 'chatMoreMembers'.trParams({'count': '$extra'}),
                       fontSize: AppFontSize.value13,
                       fontWeight: FontWeight.w600,
                     ),
@@ -877,7 +880,7 @@ class _DangerZone extends StatelessWidget {
               icon: Icons.exit_to_app_rounded,
               iconColor: theme.colorScheme.error,
               destructive: true,
-              label: 'Leave group',
+              label: 'chatLeaveGroup'.tr,
               onTap: () => _confirmLeave(context),
             ),
             const _Hairline(),
@@ -886,7 +889,7 @@ class _DangerZone extends StatelessWidget {
             icon: Icons.cleaning_services_rounded,
             iconColor: theme.colorScheme.error,
             destructive: true,
-            label: 'Clear chat history',
+            label: 'chatClearHistory'.tr,
             onTap: () => _confirmClear(context),
           ),
         ],
@@ -899,12 +902,12 @@ class _DangerZone extends StatelessWidget {
       context: context,
       builder: (dCtx) => AlertDialog(
         title: AppLabel(
-          text: 'Leave "${conversation.name}"?',
+          text: 'chatLeaveGroupTitle'.trParams({'name': conversation.name}),
           fontSize: AppFontSize.value18,
           fontWeight: FontWeight.w800,
         ),
         content: AppLabel(
-          text: 'You will stop receiving messages from this group. An admin can re-add you.',
+          text: 'chatLeaveGroupBody'.tr,
           fontSize: AppFontSize.value14,
           maxLines: 4,
         ),
@@ -912,7 +915,7 @@ class _DangerZone extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.pop(dCtx, false),
             child: AppLabel(
-              text: 'Cancel',
+              text: 'commonCancelAction'.tr,
               fontSize: AppFontSize.value14,
               fontWeight: FontWeight.w600,
             ),
@@ -922,7 +925,7 @@ class _DangerZone extends StatelessWidget {
                 backgroundColor: Theme.of(context).colorScheme.error),
             onPressed: () => Navigator.pop(dCtx, true),
             child: AppLabel(
-              text: 'Leave',
+              text: 'chatLeave'.tr,
               fontSize: AppFontSize.value14,
               fontWeight: FontWeight.w600,
             ),
@@ -942,7 +945,7 @@ class _DangerZone extends StatelessWidget {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Could not leave: $e'),
+          content: Text('chatLeaveFailed'.trParams({'error': '$e'})),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -957,12 +960,12 @@ class _DangerZone extends StatelessWidget {
       context: context,
       builder: (dCtx) => AlertDialog(
         title: AppLabel(
-          text: 'Clear chat history?',
+          text: 'chatClearHistoryTitle'.tr,
           fontSize: AppFontSize.value18,
           fontWeight: FontWeight.w800,
         ),
         content: AppLabel(
-          text: 'This clears the history on your device only. Other members keep their copy.',
+          text: 'chatClearHistoryBody'.tr,
           fontSize: AppFontSize.value14,
           maxLines: 4,
         ),
@@ -970,7 +973,7 @@ class _DangerZone extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.pop(dCtx, false),
             child: AppLabel(
-              text: 'Cancel',
+              text: 'commonCancelAction'.tr,
               fontSize: AppFontSize.value14,
               fontWeight: FontWeight.w600,
             ),
@@ -980,7 +983,7 @@ class _DangerZone extends StatelessWidget {
                 backgroundColor: Theme.of(context).colorScheme.error),
             onPressed: () => Navigator.pop(dCtx, true),
             child: AppLabel(
-              text: 'Clear',
+              text: 'chatClear'.tr,
               fontSize: AppFontSize.value14,
               fontWeight: FontWeight.w600,
             ),
@@ -990,8 +993,8 @@ class _DangerZone extends StatelessWidget {
     );
     if (ok != true || !context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('History cleared on this device.'),
+      SnackBar(
+        content: Text('chatHistoryCleared'.tr),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -1166,8 +1169,8 @@ Future<void> _showAddMembersSheet(
   if (memberIds.isEmpty) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Selection contains no backend users.'),
+      SnackBar(
+        content: Text('chatSelectionNoBackendUsers'.tr),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -1180,7 +1183,7 @@ Future<void> _showAddMembersSheet(
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Could not add members: $e'),
+        content: Text('chatAddMembersFailed'.trParams({'error': '$e'})),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -1191,8 +1194,8 @@ Future<void> _showAddMembersSheet(
     SnackBar(
       content: Text(
         picks.length == 1
-            ? '${picks.first.name} added to the group.'
-            : '${picks.length} members added.',
+            ? 'chatMemberAdded'.trParams({'name': picks.first.name})
+            : 'chatMembersAdded'.trParams({'count': '${picks.length}'}),
       ),
       behavior: SnackBarBehavior.floating,
     ),
@@ -1260,7 +1263,7 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = 'Could not load users.';
+        _error = 'chatLoadUsersFailed'.tr;
       });
     }
   }
@@ -1325,13 +1328,12 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     AppLabel(
-                      text: 'Add members',
+                      text: 'chatAddMembers'.tr,
                       fontSize: AppFontSize.value16,
                       fontWeight: FontWeight.w800,
                     ),
                     AppLabel(
-                      text: 'Pick from your directory — already-in-group folks '
-                          'are filtered out.',
+                      text: 'chatAddMembersHint'.tr,
                       fontSize: AppFontSize.value12,
                       color: theme.colorScheme.onSurfaceVariant,
                       maxLines: 2,
@@ -1346,7 +1348,7 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
             controller: _searchCtrl,
             onChanged: (v) => setState(() => _query = v),
             decoration: InputDecoration(
-              hintText: 'Search employees…',
+              hintText: 'chatSearchEmployeesHint'.tr,
               prefixIcon: const Icon(Icons.search_rounded, size: 20),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppRadii.md),
@@ -1381,9 +1383,8 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
                     child: Center(
                       child: AppLabel(
                         text: _query.isEmpty
-                            ? 'Everyone in the directory is already in this '
-                                'group.'
-                            : 'No employees match "${_query.trim()}".',
+                            ? 'chatEveryoneAlreadyInGroup'.tr
+                            : 'chatNoEmployeesMatchQuery'.trParams({'query': _query.trim()}),
                         fontSize: AppFontSize.value14,
                         color: theme.colorScheme.onSurfaceVariant,
                         textAlign: TextAlign.center,
@@ -1468,7 +1469,7 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
                     ),
                   ),
                   child: AppLabel(
-                    text: 'Cancel',
+                    text: 'commonCancelAction'.tr,
                     fontSize: AppFontSize.value14,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1504,8 +1505,8 @@ class _AddMembersSheetState extends State<_AddMembersSheet> {
                   ),
                   child: AppLabel(
                     text: _selected.isEmpty
-                        ? 'Add'
-                        : 'Add ${_selected.length}',
+                        ? 'chatAdd'.tr
+                        : 'chatAddCount'.trParams({'count': '${_selected.length}'}),
                     fontSize: AppFontSize.value14,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1547,7 +1548,7 @@ Future<void> _showRenameSheet(
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Could not rename: $e'),
+        content: Text('chatRenameFailed'.trParams({'error': '$e'})),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -1606,7 +1607,7 @@ class _RenameGroupSheetState extends State<_RenameGroupSheet> {
           ),
           const SizedBox(height: 16),
           AppLabel(
-            text: 'Rename group',
+            text: 'chatRenameGroup'.tr,
             fontSize: AppFontSize.value16,
             fontWeight: FontWeight.w800,
           ),
@@ -1620,7 +1621,7 @@ class _RenameGroupSheetState extends State<_RenameGroupSheet> {
               if (canSave) Navigator.pop(context, _ctrl.text);
             },
             decoration: InputDecoration(
-              labelText: 'Group name',
+              labelText: 'chatGroupName'.tr,
               prefixIcon: const Icon(Icons.edit_outlined, size: 20),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppRadii.md),
@@ -1641,7 +1642,7 @@ class _RenameGroupSheetState extends State<_RenameGroupSheet> {
                     ),
                   ),
                   child: AppLabel(
-                    text: 'Cancel',
+                    text: 'commonCancelAction'.tr,
                     fontSize: AppFontSize.value14,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1661,7 +1662,7 @@ class _RenameGroupSheetState extends State<_RenameGroupSheet> {
                     ),
                   ),
                   child: AppLabel(
-                    text: 'Save',
+                    text: 'chatSave'.tr,
                     fontSize: AppFontSize.value14,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1679,8 +1680,10 @@ class _RenameGroupSheetState extends State<_RenameGroupSheet> {
 /// chats read "Change/Add contact photo", groups read "Change/Add
 /// group photo" — same sheet, two contexts.
 String _photoSheetTitle(ChatConversation conversation, bool hasPhoto) {
-  final what = conversation.isGroup ? 'group photo' : 'contact photo';
-  return hasPhoto ? 'Change $what' : 'Add a $what';
+  if (conversation.isGroup) {
+  return hasPhoto ? 'chatChangeGroupPhoto'.tr : 'chatAddGroupPhoto'.tr;
+  }
+  return hasPhoto ? 'chatChangeContactPhoto'.tr : 'chatAddContactPhoto'.tr;
 }
 
 Future<void> _showChangePhotoSheet(
@@ -1694,8 +1697,8 @@ Future<void> _showChangePhotoSheet(
     context: context,
     title: _photoSheetTitle(conversation, hasPhoto),
     subtitle: conversation.isGroup
-        ? 'Photo will sync to every group member.'
-        : 'Photo only changes on this device.',
+        ? 'chatPhotoSyncsToGroup'.tr
+        : 'chatPhotoLocalOnly'.tr,
     allowRemove: hasPhoto,
   );
   if (!context.mounted || choice == null) return;
@@ -1732,8 +1735,8 @@ Future<void> _pickGroupPhoto(
     if (!await file.exists()) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not read the selected image.'),
+        SnackBar(
+          content: Text('chatImageSelectedReadFailed'.tr),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -1750,7 +1753,7 @@ Future<void> _pickGroupPhoto(
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Could not pick image: $e'),
+        content: Text('chatImagePickFailed'.trParams({'error': '$e'})),
         behavior: SnackBarBehavior.floating,
       ),
     );

@@ -12,6 +12,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
+import 'package:get/get.dart' show Trans;
 
 import '../../../core/router/config_router.dart';
 import '../../../core/theme/app_font_size.dart';
@@ -508,17 +509,17 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       ),
       actions: [
         IconButton(
-          tooltip: 'Voice call',
+          tooltip: 'chatVoiceCall'.tr,
           icon: const Icon(Icons.call_rounded),
           onPressed: () => _startCall(isVideo: false),
         ),
         IconButton(
-          tooltip: 'Video call',
+          tooltip: 'chatVideoCall'.tr,
           icon: const Icon(Icons.videocam_rounded),
           onPressed: () => _startCall(isVideo: true),
         ),
         IconButton(
-          tooltip: 'Info',
+          tooltip: 'chatInfo'.tr,
           icon: const Icon(Icons.more_vert_rounded),
           onPressed: () => ConfigRouter.pushPageAnimation(
             context,
@@ -538,10 +539,10 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
           .where((p) =>
               repo.statusOf(p.employeeId).status == PresenceStatus.online)
           .length;
-      return '${c.totalMembers} members · $onlineNow online';
+      return 'chatGroupMembersOnline'.trParams({'members': '${c.totalMembers}', 'online': '$onlineNow'});
     }
     // Direct conv — read live status of the other person.
-    if (c.participantPreviews.isEmpty) return 'Offline';
+    if (c.participantPreviews.isEmpty) return 'chatPresenceOffline'.tr;
     final otherId = c.participantPreviews.first.employeeId;
     final p = context.read<PresenceRepository>().statusOf(otherId);
     // `effectiveStatus` promotes a fresh-OFFLINE (last-seen < 5 min)
@@ -549,17 +550,17 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     // instead of jumping straight to a last-seen timestamp.
     switch (p.effectiveStatus) {
       case PresenceStatus.online:
-        return 'Online';
+        return 'chatPresenceOnline'.tr;
       case PresenceStatus.busy:
-        return 'In a call';
+        return 'chatPresenceInCall'.tr;
       case PresenceStatus.away:
         return p.lastSeenAt != null
-            ? 'Away · last seen ${_relativeTime(p.lastSeenAt!)}'
-            : 'Away';
+            ? 'chatPresenceAwayLastSeen'.trParams({'time': _relativeTime(p.lastSeenAt!)})
+            : 'chatPresenceAway'.tr;
       case PresenceStatus.offline:
         return p.lastSeenAt != null
-            ? 'Last seen ${_relativeTime(p.lastSeenAt!)}'
-            : 'Offline';
+            ? 'chatPresenceLastSeen'.trParams({'time': _relativeTime(p.lastSeenAt!)})
+            : 'chatPresenceOffline'.tr;
     }
   }
 
@@ -567,17 +568,17 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   /// for the one place we need a relative timestamp.
   String _relativeTime(DateTime when) {
     final diff = DateTime.now().difference(when);
-    if (diff.inSeconds < 60) return 'just now';
+    if (diff.inSeconds < 60) return 'chatTimeJustNow'.tr;
     if (diff.inMinutes < 60) {
       final m = diff.inMinutes;
-      return '$m minute${m == 1 ? '' : 's'} ago';
+      return 'chatTimeMinutesAgo'.trPluralParams('chatTimeMinutesAgoPlural', m, {'count': '$m'});
     }
     if (diff.inHours < 24) {
       final h = diff.inHours;
-      return '$h hour${h == 1 ? '' : 's'} ago';
+      return 'chatTimeHoursAgo'.trPluralParams('chatTimeHoursAgoPlural', h, {'count': '$h'});
     }
     final d = diff.inDays;
-    if (d < 7) return '$d day${d == 1 ? '' : 's'} ago';
+    if (d < 7) return 'chatTimeDaysAgo'.trPluralParams('chatTimeDaysAgoPlural', d, {'count': '$d'});
     return DateFormat('d MMM').format(when);
   }
 
@@ -620,8 +621,8 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       if (!await file.exists()) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not read the picked image.'),
+          SnackBar(
+            content: Text('chatImageReadFailed'.tr),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -640,9 +641,9 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       if (!mounted) return;
       if (hostedUrl == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-                'Image upload failed — the recipient may not see this photo.'),
+                'chatImageUploadFailed'.tr),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -675,7 +676,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Could not send image: $e'),
+          content: Text('chatImageSendFailed'.trParams({'error': '$e'})),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -721,8 +722,8 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       if (!mounted) return;
       if (!auto) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('This voice clip is a demo placeholder — no audio.'),
+          SnackBar(
+            content: Text('chatVoiceDemoPlaceholder'.tr),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -769,7 +770,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       if (!auto) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Could not play voice message: $e'),
+            content: Text('chatVoicePlayFailed'.trParams({'error': '$e'})),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -874,7 +875,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
               const Divider(height: 1),
               _ActionTile(
                 icon: Icons.reply_rounded,
-                label: 'Reply',
+                label: 'chatReply'.tr,
                 onTap: () {
                   Navigator.pop(sheetCtx);
                   setState(() => _replyingToId = m.id);
@@ -883,7 +884,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
               if (m.type == ChatMessageType.text)
                 _ActionTile(
                   icon: Icons.copy_rounded,
-                  label: 'Copy text',
+                  label: 'chatCopyText'.tr,
                   onTap: () async {
                     await Clipboard.setData(
                         ClipboardData(text: m.body ?? ''));
@@ -893,7 +894,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
               if (isOwn && m.type == ChatMessageType.text)
                 _ActionTile(
                   icon: Icons.edit_outlined,
-                  label: 'Edit',
+                  label: 'chatEdit'.tr,
                   onTap: () {
                     Navigator.pop(sheetCtx);
                     setState(() {
@@ -904,7 +905,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                 ),
               _ActionTile(
                 icon: m.isPinned ? Icons.push_pin : Icons.push_pin_outlined,
-                label: m.isPinned ? 'Unpin' : 'Pin to conversation',
+                label: m.isPinned ? 'chatUnpin'.tr : 'chatPinToConversation'.tr,
                 onTap: () async {
                   Navigator.pop(sheetCtx);
                   await _msgRepo.setPinned(m.id, !m.isPinned);
@@ -917,7 +918,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
               if (isOwn)
                 _ActionTile(
                   icon: Icons.delete_outline,
-                  label: 'Delete',
+                  label: 'chatDelete'.tr,
                   destructive: true,
                   onTap: () async {
                     Navigator.pop(sheetCtx);
@@ -960,7 +961,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                 children: [
                   _AttachTile(
                     icon: Icons.camera_alt_rounded,
-                    label: 'Camera',
+                    label: 'chatAttachCamera'.tr,
                     color: theme.colorScheme.primary,
                     onTap: () async {
                       Navigator.pop(sheetCtx);
@@ -969,7 +970,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                   ),
                   _AttachTile(
                     icon: Icons.image_rounded,
-                    label: 'Gallery',
+                    label: 'chatAttachGallery'.tr,
                     color: Colors.green.shade600,
                     onTap: () async {
                       Navigator.pop(sheetCtx);
@@ -978,20 +979,20 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                   ),
                   _AttachTile(
                     icon: Icons.insert_drive_file_rounded,
-                    label: 'File',
+                    label: 'chatAttachFile'.tr,
                     color: Colors.orange.shade700,
                     onTap: () {
                       Navigator.pop(sheetCtx);
-                      _attachStub('File picker');
+                      _attachStub('chatAttachFilePicker'.tr);
                     },
                   ),
                   _AttachTile(
                     icon: Icons.location_on_rounded,
-                    label: 'Location',
+                    label: 'chatAttachLocation'.tr,
                     color: Colors.red,
                     onTap: () {
                       Navigator.pop(sheetCtx);
-                      _attachStub('Map share');
+                      _attachStub('chatAttachMapShare'.tr);
                     },
                   ),
                 ],
@@ -1008,7 +1009,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
-        content: Text('$what would open here.'),
+        content: Text('chatFeatureWouldOpen'.trParams({'feature': what})),
       ),
     );
   }
@@ -1029,11 +1030,11 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     if (!mounted) return false;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text(
-            'Microphone permission is needed to record a voice message.'),
+        content: Text(
+            'chatMicPermissionNeeded'.tr),
         behavior: SnackBarBehavior.floating,
         action: status.isPermanentlyDenied
-            ? SnackBarAction(label: 'Settings', onPressed: openAppSettings)
+            ? SnackBarAction(label: 'chatOpenSettings'.tr, onPressed: openAppSettings)
             : null,
       ),
     );
@@ -1067,9 +1068,9 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     if (!mounted) return;
     if (hostedUrl == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-              'Voice upload failed — the recipient may not hear this clip.'),
+              'chatVoiceUploadFailed'.tr),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -1284,7 +1285,7 @@ class _VoiceRecorderSheetState extends State<_VoiceRecorderSheet> {
                   child: TextButton(
                     onPressed: () => _finish(send: false),
                     child: AppLabel(
-                      text: 'Cancel',
+                      text: 'commonCancelAction'.tr,
                       fontSize: AppFontSize.value16,
                       color: cs.primary,
                       fontWeight: FontWeight.w600,
@@ -1376,7 +1377,7 @@ class _PinnedBanner extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: AppLabel(
-                  text: m.body ?? '(pinned message)',
+                  text: m.body ?? 'chatPinnedMessageFallback'.tr,
                   fontSize: AppFontSize.value12,
                   color: theme.colorScheme.onTertiaryContainer,
                   fontWeight: FontWeight.w700,
@@ -1514,7 +1515,7 @@ class _MessageList extends StatelessWidget {
               onTap: () => onTapCall(item.callLog!),
             ),
           _ListItemKind.typing => TypingIndicator(
-              label: '${_typingLabelFor(item.conversation!)} is typing…',
+              label: 'chatIsTyping'.trParams({'name': _typingLabelFor(item.conversation!)}),
             ),
         };
       },
@@ -1531,12 +1532,12 @@ class _MessageList extends StatelessWidget {
   /// before the backend's refresh fills it in, which previously
   /// crashed with `Bad state: No element`.
   static String _typingLabelFor(ChatConversation c) {
-    if (!c.isGroup) return c.name.isNotEmpty ? c.name : 'Someone';
+    if (!c.isGroup) return c.name.isNotEmpty ? c.name : 'chatSomeone'.tr;
     if (c.participantPreviews.isNotEmpty) {
       final first = c.participantPreviews.first.name;
       if (first.trim().isNotEmpty) return first;
     }
-    return 'Someone';
+    return 'chatSomeone'.tr;
   }
 }
 
@@ -1557,7 +1558,7 @@ String _displayName(ChatConversation c) {
     final cached = UsersCache.instance.nameOf(other.employeeId);
     if (!placeholder(cached)) return cached!;
   }
-  return c.name.isNotEmpty ? c.name : 'Someone';
+  return c.name.isNotEmpty ? c.name : 'chatSomeone'.tr;
 }
 
 enum _ListItemKind { separator, message, call, typing }
@@ -1639,11 +1640,11 @@ class _CallEntryBubble extends StatelessWidget {
     final isVideo = log.callType == ChatCallType.video;
     String title;
     if (missed) {
-      title = isVideo ? 'Missed video call' : 'Missed voice call';
+      title = isVideo ? 'chatMissedVideoCall'.tr : 'chatMissedVoiceCall'.tr;
     } else if (declined) {
-      title = isVideo ? 'Declined video call' : 'Declined voice call';
+      title = isVideo ? 'chatDeclinedVideoCall'.tr : 'chatDeclinedVoiceCall'.tr;
     } else {
-      title = isVideo ? 'Video call' : 'Voice call';
+      title = isVideo ? 'chatVideoCall'.tr : 'chatVoiceCall'.tr;
     }
     final subtitle = log.durationSeconds > 0
         ? log.formattedDuration()
@@ -1745,7 +1746,7 @@ class _ReplyPreviewBar extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     AppLabel(
-                      text: 'Replying to ${m?.senderName ?? '…'}',
+                      text: 'chatReplyingTo'.trParams({'name': m?.senderName ?? '…'}),
                       fontSize: AppFontSize.value12,
                       color: theme.colorScheme.primary,
                       fontWeight: FontWeight.w800,
@@ -1787,7 +1788,7 @@ class _EditPreviewBar extends StatelessWidget {
           Icon(Icons.edit_rounded, size: 16, color: theme.colorScheme.tertiary),
           const SizedBox(width: 8),
           AppLabel(
-            text: 'Editing message',
+            text: 'chatEditingMessage'.tr,
             fontSize: AppFontSize.value12,
             color: theme.colorScheme.onTertiaryContainer,
             fontWeight: FontWeight.w800,
@@ -1838,7 +1839,7 @@ class _InputRow extends StatelessWidget {
             IconButton(
               icon: const Icon(Icons.attach_file_rounded),
               onPressed: onAttach,
-              tooltip: 'Attach',
+              tooltip: 'chatAttach'.tr,
             ),
             Expanded(
               child: Container(
@@ -1850,8 +1851,8 @@ class _InputRow extends StatelessWidget {
                   controller: controller,
                   minLines: 1,
                   maxLines: 5,
-                  decoration: const InputDecoration(
-                    hintText: 'Message…',
+                  decoration: InputDecoration(
+                    hintText: 'chatMessageHint'.tr,
                     border: InputBorder.none,
                     contentPadding:
                         EdgeInsets.symmetric(horizontal: 14, vertical: 10),

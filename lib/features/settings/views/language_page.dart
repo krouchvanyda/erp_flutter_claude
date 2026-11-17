@@ -2,30 +2,29 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:erp_mobile/shared/widgets/app_background_gradient.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:get/get.dart' show Trans;
 
 import '../../../core/theme/app_font_size.dart';
 import '../../../core/theme/app_label.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/widgets/dynamic_app_bar.dart';
 import '../../../core/widgets/dynamic_status_bar.dart';
-import '../../../l10n/app_localizations.dart';
-import '../repositories/preferences_repository.dart';
+import '../../../core/i18n/locale_cubit.dart';
 import '../models/user_preferences.dart';
 
-/// Slice 9.1.2 — language selector.
+/// Slice 9.1.2 — language selector. Switching goes through [LocaleCubit],
+/// which saves the choice and redraws every screen immediately.
 class LanguagePage extends StatelessWidget {
   const LanguagePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final repo = context.read<PreferencesRepository>();
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: l10n.languagePageTitle,
+        title: 'languagePageTitle'.tr,
         centerTitle: true,
       ),
       body: DynamicStatusBar(
@@ -33,13 +32,8 @@ class LanguagePage extends StatelessWidget {
           children: [
             // Background Canvas
             AppBackgroundGradient(),
-            StreamBuilder<UserPreferences>(
-              stream: repo.watch(),
-              builder: (context, snap) {
-                if (!snap.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final lang = snap.data!.language;
+            BlocBuilder<LocaleCubit, Locale>(
+              builder: (context, locale) {
                 return ListView(
                   padding: EdgeInsets.only(
                     top: context.dynamicAppBarPadding,
@@ -49,7 +43,7 @@ class LanguagePage extends StatelessWidget {
                   ),
                   children: [
                     AppLabel(
-                      text: l10n.languageSelectPreferredHeading,
+                      text: 'languageSelectPreferredHeading'.tr,
                       fontSize: AppFontSize.value11,
                       color: theme.colorScheme.primary,
                       fontWeight: FontWeight.w900,
@@ -59,39 +53,14 @@ class LanguagePage extends StatelessWidget {
                     for (final l in AppLanguage.values) ...[
                       _LanguageCard(
                         lang: l,
-                        isSelected: lang == l,
-                        onTap: () async => await repo.setLanguage(l),
+                        // Enum names double as language codes ('en'/'km').
+                        isSelected: locale.languageCode == l.name,
+                        onTap: () => context
+                            .read<LocaleCubit>()
+                            .changeLanguage(l.name),
                       ).animate().fadeIn().slideY(begin: 0.05, end: 0, duration: 300.ms),
                       const SizedBox(height: 16),
                     ],
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(AppRadii.md),
-                        border: Border.all(
-                          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            color: theme.colorScheme.onSurfaceVariant,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: AppLabel(
-                              text: l10n.languageDemoLaunchNote,
-                              fontSize: AppFontSize.value12,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ).animate().fadeIn(delay: 200.ms),
                   ],
                 );
               },
@@ -117,7 +86,6 @@ class _LanguageCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
 
     return InkWell(
       onTap: onTap,
@@ -172,13 +140,13 @@ class _LanguageCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   AppLabel(
-                    text: _label(l10n, lang),
+                    text: _label(lang),
                     fontSize: AppFontSize.value14,
                     fontWeight: FontWeight.bold,
                   ),
                   const SizedBox(height: 2),
                   AppLabel(
-                    text: _nativeLabel(l10n, lang),
+                    text: _nativeLabel(lang),
                     fontSize: AppFontSize.value12,
                     color: theme.colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w500,
@@ -226,21 +194,21 @@ class _LanguageCard extends StatelessWidget {
     }
   }
 
-  String _label(AppLocalizations l10n, AppLanguage l) {
+  String _label(AppLanguage l) {
     switch (l) {
       case AppLanguage.en:
-        return l10n.languageEnglishLabel;
+        return 'languageEnglishLabel'.tr;
       case AppLanguage.km:
-        return l10n.languageKhmerLabel;
+        return 'languageKhmerLabel'.tr;
     }
   }
 
-  String _nativeLabel(AppLocalizations l10n, AppLanguage l) {
+  String _nativeLabel(AppLanguage l) {
     switch (l) {
       case AppLanguage.en:
-        return l10n.languageEnglishNative;
+        return 'languageEnglishNative'.tr;
       case AppLanguage.km:
-        return l10n.languageKhmerNative;
+        return 'languageKhmerNative'.tr;
     }
   }
 }

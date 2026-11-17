@@ -4,13 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:get/get.dart' show Trans;
 
 import '../../../core/router/auth_session.dart';
 import '../../../core/router/route_paths.dart';
 import '../../../core/theme/app_font_size.dart';
 import '../../../core/theme/app_label.dart';
 import '../../../core/widgets/dynamic_status_bar.dart';
-import '../../../l10n/app_localizations.dart';
 
 class BiometricUnlockPage extends StatefulWidget {
   const BiometricUnlockPage({super.key});
@@ -56,7 +56,6 @@ class _BiometricUnlockPageState extends State<BiometricUnlockPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       body: DynamicStatusBar(
@@ -114,7 +113,7 @@ class _BiometricUnlockPageState extends State<BiometricUnlockPage> {
                       const SizedBox(height: 48),
                       
                       AppLabel(
-                        text: _isAuthenticating ? l10n.biometricAuthenticatingTitle : l10n.biometricPageTitle,
+                        text: _isAuthenticating ? 'biometricAuthenticatingTitle'.tr : 'biometricPageTitle'.tr,
                         fontSize: AppFontSize.value22,
                         fontWeight: FontWeight.bold,
                       ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2, end: 0),
@@ -123,8 +122,8 @@ class _BiometricUnlockPageState extends State<BiometricUnlockPage> {
 
                       AppLabel(
                         text: _isAuthenticating
-                          ? l10n.biometricHoldFingerSubtitle
-                          : l10n.biometricUseFingerprintSubtitle,
+                          ? 'biometricHoldFingerSubtitle'.tr
+                          : 'biometricUseFingerprintSubtitle'.tr,
                         fontSize: AppFontSize.value16,
                         color: theme.colorScheme.onSurfaceVariant,
                         textAlign: TextAlign.center,
@@ -141,7 +140,7 @@ class _BiometricUnlockPageState extends State<BiometricUnlockPage> {
                             children: [
                               FilledButton(
                                 onPressed: _simulateAuth,
-                                child: Text(l10n.biometricUnlockNowAction),
+                                child: Text('biometricUnlockNowAction'.tr),
                               ).animate().fadeIn(delay: 800.ms).slideY(begin: 0.5, end: 0),
 
                               const SizedBox(height: 16),
@@ -154,7 +153,7 @@ class _BiometricUnlockPageState extends State<BiometricUnlockPage> {
                                 // is a no-op. Pop instead — reveals
                                 // the LoginPage that pushed us here.
                                 onPressed: () => Navigator.pop(context),
-                                child: Text(l10n.biometricUsePasswordInsteadAction),
+                                child: Text('biometricUsePasswordInsteadAction'.tr),
                               ).animate().fadeIn(delay: 1000.ms),
                             ],
                           ),

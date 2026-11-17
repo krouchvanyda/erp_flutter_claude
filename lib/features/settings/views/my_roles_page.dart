@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:erp_mobile/core/di/service_locator.dart';
 import 'package:intl/intl.dart';
+import 'package:get/get.dart' show Trans;
 
 import '../../../core/theme/app_font_size.dart';
 import '../../../core/theme/app_label.dart';
@@ -12,7 +13,6 @@ import '../../../core/theme/app_radii.dart';
 import '../../../core/widgets/dynamic_app_bar.dart';
 import '../../../core/widgets/dynamic_status_bar.dart';
 import '../../../core/widgets/loading_screen.dart';
-import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_background_gradient.dart';
 import '../repositories/users_remote_data_source.dart';
 import '../repositories/permission_catalog.dart';
@@ -58,11 +58,10 @@ class _MyRolesPageState extends State<MyRolesPage> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: l10n.myRolesPageTitle,
+        title: 'myRolesPageTitle'.tr,
         centerTitle: true,
       ),
       body: DynamicStatusBar(
@@ -203,7 +202,6 @@ class _ErrorPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
     final detail = _humanError();
     return Center(
       child: Padding(
@@ -218,7 +216,7 @@ class _ErrorPanel extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             AppLabel(
-              text: l10n.commonLoadFailedFallback,
+              text: 'commonLoadFailedFallback'.tr,
               fontSize: AppFontSize.value14,
               color: theme.colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w600,
@@ -240,7 +238,7 @@ class _ErrorPanel extends StatelessWidget {
               onPressed: onRetry,
               icon: const Icon(Icons.refresh_rounded, size: 18),
               label: AppLabel(
-                text: l10n.commonRetryAction,
+                text: 'commonRetryAction'.tr,
                 fontSize: AppFontSize.value14,
                 fontWeight: FontWeight.w700,
               ),
@@ -296,7 +294,6 @@ class _Body extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
     final granted = vm.grantedSorted.where(_matchesQuery).toList();
 
     return ListView(
@@ -318,7 +315,7 @@ class _Body extends StatelessWidget {
         ).animate().fadeIn(delay: 60.ms),
         const SizedBox(height: 20),
         _ListSectionHeader(
-          title: l10n.myRolesGrantedTitle,
+          title: 'myRolesGrantedTitle'.tr,
           count: granted.length,
           accent: Colors.green,
           icon: Icons.check_circle,
@@ -328,8 +325,8 @@ class _Body extends StatelessWidget {
           _EmptyPanel(
             icon: Icons.lock_outline,
             message: query.trim().isEmpty
-                ? 'No permissions granted yet.'
-                : 'No granted permissions match "${query.trim()}".',
+                ? 'myRolesNoPermissionsYet'.tr
+                : 'myRolesNoPermissionsMatch'.trParams({'query': query.trim()}),
           )
         else
           _ScopeListCard(
@@ -350,7 +347,6 @@ class _RoleSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
     final df = DateFormat('d MMM yyyy · HH:mm');
     return Container(
       padding: const EdgeInsets.all(18),
@@ -392,7 +388,7 @@ class _RoleSummaryCard extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: AppLabel(
-                  text: l10n.myRolesAssignedRolesLabel,
+                  text: 'myRolesAssignedRolesLabel'.tr,
                   fontSize: AppFontSize.value14,
                   color: theme.colorScheme.onPrimary,
                   fontWeight: FontWeight.w900,
@@ -475,7 +471,7 @@ class _RoleSummaryCard extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               AppLabel(
-                text: l10n.myRolesSyncedAtLabel(df.format(vm.lastSyncedAt)),
+                text: 'myRolesSyncedAtLabel'.trParams({'timestamp': df.format(vm.lastSyncedAt)}),
                 fontSize: AppFontSize.value12,
                 color: theme.colorScheme.onPrimary.withValues(alpha: 0.85),
                 fontWeight: FontWeight.w600,
@@ -510,7 +506,7 @@ class _SearchBar extends StatelessWidget {
         controller: controller,
         onChanged: onChanged,
         decoration: InputDecoration(
-          hintText: AppLocalizations.of(context).myRolesSearchHint,
+          hintText: 'myRolesSearchHint'.tr,
           prefixIcon: Icon(
             Icons.search,
             color: theme.colorScheme.onSurfaceVariant,

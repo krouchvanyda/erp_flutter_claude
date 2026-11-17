@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:get/get.dart' show Trans;
 
 import '../../../core/error/failure.dart';
 import '../../../core/theme/app_font_size.dart';
@@ -10,7 +11,6 @@ import '../../../core/theme/app_label.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/widgets/dynamic_status_bar.dart';
 import '../../../core/widgets/loading_screen.dart';
-import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../repositories/auth_repository.dart';
 
@@ -56,7 +56,6 @@ class _RegisterPageState extends State<RegisterPage> {
     if (_submitting) return;
 
     final messenger = ScaffoldMessenger.of(context);
-    final l10n = AppLocalizations.of(context);
 
     setState(() => _submitting = true);
     final result = await context.read<AuthRepository>().register(
@@ -71,7 +70,7 @@ class _RegisterPageState extends State<RegisterPage> {
     result.fold(
       (failure) => messenger.showSnackBar(
         SnackBar(
-          content: Text(_failureMessage(failure, l10n)),
+          content: Text(_failureMessage(failure)),
           behavior: SnackBarBehavior.floating,
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
@@ -85,11 +84,11 @@ class _RegisterPageState extends State<RegisterPage> {
   /// rather than a shared helper because future slices may want to
   /// surface field-level [ValidationFailure.fieldErrors] differently
   /// here (e.g. inline on the email field instead of in a snackbar).
-  String _failureMessage(Failure failure, AppLocalizations l10n) {
+  String _failureMessage(Failure failure) {
     return switch (failure) {
       NetworkFailure(:final message) ||
       TimeoutFailure(:final message) =>
-        message ?? l10n.authNetworkErrorFallback,
+        message ?? 'authNetworkErrorFallback'.tr,
       UnauthorizedFailure(:final message) ||
       ValidationFailure(:final message) ||
       ServerFailure(:final message) ||
@@ -98,15 +97,14 @@ class _RegisterPageState extends State<RegisterPage> {
       ConflictFailure(:final message) ||
       RateLimitFailure(:final message) ||
       UnknownFailure(:final message) =>
-        message ?? l10n.authGenericErrorFallback,
-      CancelledFailure() => l10n.authGenericErrorFallback,
+        message ?? 'authGenericErrorFallback'.tr,
+      CancelledFailure() => 'authGenericErrorFallback'.tr,
     };
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       body: DynamicStatusBar(
@@ -183,7 +181,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         const SizedBox(height: 16),
 
                         AppLabel(
-                          text: l10n.registerWelcomeTitle,
+                          text: 'registerWelcomeTitle'.tr,
                           fontSize: AppFontSize.value24,
                           fontWeight: FontWeight.bold,
                           color: theme.colorScheme.primary,
@@ -193,7 +191,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         const SizedBox(height: 8),
 
                         AppLabel(
-                          text: l10n.registerWelcomeSubtitle,
+                          text: 'registerWelcomeSubtitle'.tr,
                           fontSize: AppFontSize.value14,
                           color: theme.colorScheme.onSurfaceVariant,
                           textAlign: TextAlign.center,
@@ -229,13 +227,13 @@ class _RegisterPageState extends State<RegisterPage> {
                                   children: [
                                     AppTextField(
                                       controller: _fullNameController,
-                                      label: l10n.registerFullNameLabel,
+                                      label: 'registerFullNameLabel'.tr,
                                       icon: Icons.person_outline_rounded,
-                                      hintText: l10n.registerFullNameHint,
+                                      hintText: 'registerFullNameHint'.tr,
                                       textCapitalization: TextCapitalization.words,
                                       validator: (value) {
                                         if (value == null || value.trim().isEmpty) {
-                                          return l10n.registerValidatorFullNameRequired;
+                                          return 'registerValidatorFullNameRequired'.tr;
                                         }
                                         return null;
                                       },
@@ -245,18 +243,18 @@ class _RegisterPageState extends State<RegisterPage> {
 
                                     AppTextField(
                                       controller: _emailController,
-                                      label: l10n.commonEmailLabel,
+                                      label: 'commonEmailLabel'.tr,
                                       icon: Icons.email_outlined,
                                       hintText: 'name@company.com',
                                       keyboardType: TextInputType.emailAddress,
                                       textCapitalization: TextCapitalization.none,
                                       validator: (value) {
                                         if (value == null || value.isEmpty) {
-                                          return l10n.loginValidatorEmailRequired;
+                                          return 'loginValidatorEmailRequired'.tr;
                                         }
                                         final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
                                         if (!emailRegex.hasMatch(value)) {
-                                          return l10n.loginValidatorEmailInvalid;
+                                          return 'loginValidatorEmailInvalid'.tr;
                                         }
                                         return null;
                                       },
@@ -266,15 +264,15 @@ class _RegisterPageState extends State<RegisterPage> {
 
                                     AppTextField(
                                       controller: _phoneController,
-                                      label: l10n.commonPhoneLabel,
+                                      label: 'commonPhoneLabel'.tr,
                                       icon: Icons.phone_outlined,
-                                      hintText: l10n.registerPhoneHint,
+                                      hintText: 'registerPhoneHint'.tr,
                                       keyboardType: TextInputType.phone,
                                       textCapitalization: TextCapitalization.none,
                                       validator: (value) {
                                         final trimmed = value?.trim() ?? '';
                                         if (trimmed.isEmpty) {
-                                          return l10n.registerValidatorPhoneRequired;
+                                          return 'registerValidatorPhoneRequired'.tr;
                                         }
                                         // Permissive — anything with at least
                                         // 6 digits passes; the backend is the
@@ -282,7 +280,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                         final digitCount =
                                             trimmed.replaceAll(RegExp(r'\D'), '').length;
                                         if (digitCount < 6) {
-                                          return l10n.registerValidatorPhoneInvalid;
+                                          return 'registerValidatorPhoneInvalid'.tr;
                                         }
                                         return null;
                                       },
@@ -292,7 +290,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
                                     AppTextField(
                                       controller: _passwordController,
-                                      label: l10n.loginPasswordLabel,
+                                      label: 'loginPasswordLabel'.tr,
                                       icon: Icons.lock_outline_rounded,
                                       obscureText: _obscurePassword,
                                       textCapitalization: TextCapitalization.none,
@@ -308,10 +306,10 @@ class _RegisterPageState extends State<RegisterPage> {
                                       ),
                                       validator: (value) {
                                         if (value == null || value.isEmpty) {
-                                          return l10n.loginValidatorPasswordRequired;
+                                          return 'loginValidatorPasswordRequired'.tr;
                                         }
                                         if (value.length < 6) {
-                                          return l10n.loginValidatorPasswordTooShort;
+                                          return 'loginValidatorPasswordTooShort'.tr;
                                         }
                                         return null;
                                       },
@@ -321,7 +319,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
                                     AppTextField(
                                       controller: _confirmPasswordController,
-                                      label: l10n.registerConfirmPasswordLabel,
+                                      label: 'registerConfirmPasswordLabel'.tr,
                                       icon: Icons.lock_reset_rounded,
                                       obscureText: _obscureConfirmPassword,
                                       textCapitalization: TextCapitalization.none,
@@ -338,10 +336,10 @@ class _RegisterPageState extends State<RegisterPage> {
                                       ),
                                       validator: (value) {
                                         if (value == null || value.isEmpty) {
-                                          return l10n.loginValidatorPasswordRequired;
+                                          return 'loginValidatorPasswordRequired'.tr;
                                         }
                                         if (value != _passwordController.text) {
-                                          return l10n.registerValidatorPasswordsMismatch;
+                                          return 'registerValidatorPasswordsMismatch'.tr;
                                         }
                                         return null;
                                       },
@@ -377,7 +375,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                             const SizedBox(width: 10),
                                             Expanded(
                                               child: AppLabel(
-                                                text: l10n.registerAcceptTermsLabel,
+                                                text: 'registerAcceptTermsLabel'.tr,
                                                 fontSize: AppFontSize.value12,
                                                 color: theme.colorScheme.onSurfaceVariant,
                                               ),
@@ -392,7 +390,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                       Padding(
                                         padding: const EdgeInsets.only(left: 38),
                                         child: AppLabel(
-                                          text: l10n.registerValidatorAcceptTermsRequired,
+                                          text: 'registerValidatorAcceptTermsRequired'.tr,
                                           fontSize: AppFontSize.value12,
                                           color: theme.colorScheme.error,
                                         ),
@@ -415,7 +413,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                             borderRadius: BorderRadius.circular(AppRadii.md),
                                           ),
                                         ),
-                                        child: Text(l10n.registerSubmitAction),
+                                        child: Text('registerSubmitAction'.tr),
                                       ),
                                     ).animate().shimmer(delay: 2000.ms, duration: 1500.ms),
                                   ],
@@ -432,13 +430,13 @@ class _RegisterPageState extends State<RegisterPage> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             AppLabel(
-                              text: l10n.registerHaveAccountPrompt,
+                              text: 'registerHaveAccountPrompt'.tr,
                               fontSize: AppFontSize.value13,
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
                             TextButton(
                               onPressed: () => Navigator.of(context).maybePop(),
-                              child: Text(l10n.registerSignInAction),
+                              child: Text('registerSignInAction'.tr),
                             ),
                           ],
                         ).animate().fadeIn(delay: 600.ms),

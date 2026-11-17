@@ -1,13 +1,13 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:get/get.dart' show Trans;
 
 import '../../../core/theme/app_font_size.dart';
 import '../../../core/theme/app_label.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/widgets/dynamic_app_bar.dart';
 import '../../../core/widgets/dynamic_status_bar.dart';
-import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_background_gradient.dart';
 import '../repositories/preferences_repository.dart';
 import '../models/user_preferences.dart';
@@ -20,12 +20,11 @@ class NotificationPreferencesPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final repo = context.read<PreferencesRepository>();
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: l10n.notificationPrefsPageTitle,
+        title: 'notificationPrefsPageTitle'.tr,
         centerTitle: true,
       ),
       body: DynamicStatusBar(
@@ -48,7 +47,7 @@ class NotificationPreferencesPage extends StatelessWidget {
                   ),
                   children: [
                     AppLabel(
-                      text: l10n.notificationPrefsChannelsHeading,
+                      text: 'notificationPrefsChannelsHeading'.tr,
                       fontSize: AppFontSize.value11,
                       color: theme.colorScheme.primary,
                       fontWeight: FontWeight.w900,
@@ -111,7 +110,6 @@ class _ChannelCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
     final isSystem = pref.channel == NotificationChannel.systemAlerts;
 
     return Container(
@@ -153,13 +151,13 @@ class _ChannelCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     AppLabel(
-                      text: _label(pref.channel, l10n),
+                      text: _label(pref.channel),
                       fontSize: AppFontSize.value14,
                       fontWeight: FontWeight.bold,
                     ),
                     const SizedBox(height: 2),
                     AppLabel(
-                      text: _description(pref.channel, l10n),
+                      text: _description(pref.channel),
                       fontSize: AppFontSize.value12,
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -176,7 +174,7 @@ class _ChannelCard extends StatelessWidget {
             activeColor: theme.colorScheme.primary,
             contentPadding: const EdgeInsets.symmetric(horizontal: 4),
             title: AppLabel(
-              text: l10n.notificationPrefsPushTitle,
+              text: 'notificationPrefsPushTitle'.tr,
               fontSize: AppFontSize.value14,
               fontWeight: FontWeight.w500,
             ),
@@ -192,7 +190,7 @@ class _ChannelCard extends StatelessWidget {
             activeColor: theme.colorScheme.primary,
             contentPadding: const EdgeInsets.symmetric(horizontal: 4),
             title: AppLabel(
-              text: l10n.notificationPrefsEmailTitle,
+              text: 'notificationPrefsEmailTitle'.tr,
               fontSize: AppFontSize.value14,
               fontWeight: FontWeight.w500,
             ),
@@ -234,29 +232,29 @@ class _ChannelCard extends StatelessWidget {
     }
   }
 
-  String _label(NotificationChannel c, AppLocalizations l10n) {
+  String _label(NotificationChannel c) {
     switch (c) {
       case NotificationChannel.approvals:
-        return l10n.notificationPrefsChannelApprovals;
+        return 'notificationPrefsChannelApprovals'.tr;
       case NotificationChannel.mentions:
-        return l10n.notificationPrefsChannelMentions;
+        return 'notificationPrefsChannelMentions'.tr;
       case NotificationChannel.systemAlerts:
-        return l10n.notificationPrefsChannelSystemAlerts;
+        return 'notificationPrefsChannelSystemAlerts'.tr;
       case NotificationChannel.marketing:
-        return l10n.notificationPrefsChannelMarketing;
+        return 'notificationPrefsChannelMarketing'.tr;
     }
   }
 
-  String _description(NotificationChannel c, AppLocalizations l10n) {
+  String _description(NotificationChannel c) {
     switch (c) {
       case NotificationChannel.approvals:
-        return l10n.notificationPrefsChannelApprovalsDescription;
+        return 'notificationPrefsChannelApprovalsDescription'.tr;
       case NotificationChannel.mentions:
-        return l10n.notificationPrefsChannelMentionsDescription;
+        return 'notificationPrefsChannelMentionsDescription'.tr;
       case NotificationChannel.systemAlerts:
-        return l10n.notificationPrefsChannelSystemAlertsDescription;
+        return 'notificationPrefsChannelSystemAlertsDescription'.tr;
       case NotificationChannel.marketing:
-        return l10n.notificationPrefsChannelMarketingDescription;
+        return 'notificationPrefsChannelMarketingDescription'.tr;
     }
   }
 }

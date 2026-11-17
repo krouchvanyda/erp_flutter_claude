@@ -4,36 +4,38 @@ import 'package:erp_callkit/erp_callkit.dart';
 import 'package:erp_mobile/shared/firebase_services/firebase_notification_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:get/get.dart' show Trans;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/di/injection.dart';
 import 'core/di/ui_repository_providers.dart';
-import 'core/i18n/locale_service.dart';
+import 'core/i18n/locale_cubit.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'core/widgets/locale_rebuilder.dart';
 import 'features/chat/repositories/call_signaling_service.dart';
 import 'features/chat/repositories/conversations_repository.dart';
 import 'features/chat/widgets/incoming_call_overlay.dart';
 import 'features/settings/repositories/preferences_repository.dart';
 import 'features/settings/models/user_preferences.dart' as pref_entities;
-import 'l10n/app_localizations.dart';
+import 'localization/language.dart';
 
 /// Root application widget.
 ///
 /// Pulls the resolved [AppRouter] from DI, applies the global [AppTheme]
-/// dynamically watching [PreferencesRepository] to switch theme modes (light, dark, system),
-/// and rebuilds whenever preferences emit language or theme changes.
+/// dynamically watching [PreferencesRepository] to switch theme modes (light,
+/// dark, system). Language is owned by [LocaleCubit] (GetX `.tr` text);
+/// [LocaleRebuilder] redraws every screen when it changes.
 class ErpMobileApp extends StatefulWidget {
   const ErpMobileApp({
     super.key,
     AppRouter? router,
-    LocaleService? localeService,
-  })  : _injectedRouter = router,
-        _injectedLocaleService = localeService;
+  }) : _injectedRouter = router;
 
-  /// Test seams — production code constructs without these and lets DI
-  /// supply both.
+  /// Test seam — production code constructs without this and lets DI
+  /// supply it.
   final AppRouter? _injectedRouter;
-  final LocaleService? _injectedLocaleService;
 
   @override
   State<ErpMobileApp> createState() => _ErpMobileAppState();
@@ -215,35 +217,45 @@ class _ErpMobileAppState extends State<ErpMobileApp>
     // list lives in `buildUiRepositoryProviders()`.
     return MultiRepositoryProvider(
       providers: buildUiRepositoryProviders(),
-      child: StreamBuilder<pref_entities.UserPreferences>(
-      stream: prefRepo.watch(),
-      initialData: pref_entities.UserPreferences.initial,
-      builder: (context, snapshot) {
-        final prefs = snapshot.data ?? pref_entities.UserPreferences.initial;
+      child: BlocProvider<LocaleCubit>(
+        create: (_) => LocaleCubit(getIt<SharedPreferences>()),
+        // LocaleRebuilder redraws every screen when the language changes.
+        child: LocaleRebuilder(
+          child: BlocBuilder<LocaleCubit, Locale>(
+            builder: (context, locale) =>
+                StreamBuilder<pref_entities.UserPreferences>(
+              stream: prefRepo.watch(),
+              initialData: pref_entities.UserPreferences.initial,
+              builder: (context, snapshot) {
+                final prefs =
+                    snapshot.data ?? pref_entities.UserPreferences.initial;
 
-        // Map settings AppThemeMode to Flutter's ThemeMode
-        final themeMode = _mapThemeMode(prefs.themeMode);
-
-        // Map settings AppLanguage to language code
-        final langCode = prefs.language == pref_entities.AppLanguage.en ? 'en' : 'km';
-
-        return MaterialApp.router(
-          onGenerateTitle: (ctx) => AppLocalizations.of(ctx).appName,
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.light(),
-          darkTheme: AppTheme.dark(),
-          themeMode: themeMode,
-          locale: Locale(langCode),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          routerConfig: router.config,
-          // Slice 10.2.3 — wrap every route in [IncomingCallOverlay]
-          // so a peer-initiated call invite shows the full-screen
-          // accept/reject sheet regardless of which page is on top.
-          builder: (context, child) =>
-              IncomingCallOverlay(child: child ?? const SizedBox.shrink()),
-        );
-      },
+                return MaterialApp.router(
+                  onGenerateTitle: (_) => 'appName'.tr,
+                  debugShowCheckedModeBanner: false,
+                  theme: AppTheme.light(),
+                  darkTheme: AppTheme.dark(),
+                  themeMode: _mapThemeMode(prefs.themeMode),
+                  // Drives Material/Cupertino widget strings; app text
+                  // comes from GetX `.tr` (Get.locale set by LocaleCubit).
+                  locale: locale,
+                  localizationsDelegates: const [
+                    GlobalMaterialLocalizations.delegate,
+                    GlobalWidgetsLocalizations.delegate,
+                    GlobalCupertinoLocalizations.delegate,
+                  ],
+                  supportedLocales: Language.supportedLocales,
+                  routerConfig: router.config,
+                  // Slice 10.2.3 — wrap every route in [IncomingCallOverlay]
+                  // so a peer-initiated call invite shows the full-screen
+                  // accept/reject sheet regardless of which page is on top.
+                  builder: (context, child) => IncomingCallOverlay(
+                      child: child ?? const SizedBox.shrink()),
+                );
+              },
+            ),
+          ),
+        ),
       ),
     );
   }

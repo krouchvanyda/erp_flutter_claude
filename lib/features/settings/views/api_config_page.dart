@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:erp_mobile/shared/widgets/app_background_gradient.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:get/get.dart' show Trans;
 
 import '../../../core/error/failure.dart';
 import '../../../core/theme/app_font_size.dart';
@@ -9,7 +10,6 @@ import '../../../core/theme/app_label.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/widgets/dynamic_app_bar.dart';
 import '../../../core/widgets/dynamic_status_bar.dart';
-import '../../../l10n/app_localizations.dart';
 import '../repositories/admin_repositories.dart';
 import '../models/api_environment.dart';
 
@@ -21,12 +21,11 @@ class ApiConfigPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final repo = context.read<ApiEnvironmentsRepository>();
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: l10n.apiConfigPageTitle,
+        title: 'apiConfigPageTitle'.tr,
         centerTitle: true,
       ),
       body: DynamicStatusBar(
@@ -59,7 +58,7 @@ class ApiConfigPage extends StatelessWidget {
                             .slideY(begin: -0.05, end: 0),
                         const SizedBox(height: 16),
                         AppLabel(
-                          text: l10n.apiConfigClustersHeading,
+                          text: 'apiConfigClustersHeading'.tr,
                           fontSize: AppFontSize.value11,
                           color: theme.colorScheme.primary,
                           fontWeight: FontWeight.w900,
@@ -75,7 +74,7 @@ class ApiConfigPage extends StatelessWidget {
                               await repo.setCurrent(envs[idx].id);
                               messenger.showSnackBar(
                                 SnackBar(
-                                  content: Text(l10n.apiConfigSwitchedSnack(envs[idx].name)),
+                                  content: Text('apiConfigSwitchedSnack'.trParams({'name': envs[idx].name})),
                                   behavior: SnackBarBehavior.floating,
                                 ),
                               );
@@ -100,7 +99,7 @@ class ApiConfigPage extends StatelessWidget {
         elevation: 4,
         icon: const Icon(Icons.add),
         label: AppLabel(
-          text: l10n.apiConfigAddClusterAction,
+          text: 'apiConfigAddClusterAction'.tr,
           fontSize: AppFontSize.value14,
           fontWeight: FontWeight.bold,
         ),
@@ -113,7 +112,6 @@ class ApiConfigPage extends StatelessWidget {
     final urlCtrl = TextEditingController();
     Map<String, List<String>> errors = const {};
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
 
     await showModalBottomSheet<void>(
       context: context,
@@ -145,7 +143,7 @@ class ApiConfigPage extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               AppLabel(
-                text: l10n.apiConfigAddCustomClusterTitle,
+                text: 'apiConfigAddCustomClusterTitle'.tr,
                 fontSize: AppFontSize.value16,
                 fontWeight: FontWeight.bold,
               ),
@@ -153,8 +151,8 @@ class ApiConfigPage extends StatelessWidget {
               TextField(
                 controller: nameCtrl,
                 decoration: InputDecoration(
-                  labelText: l10n.apiConfigClusterNameLabel,
-                  hintText: l10n.apiConfigClusterNameHint,
+                  labelText: 'apiConfigClusterNameLabel'.tr,
+                  hintText: 'apiConfigClusterNameHint'.tr,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
                   errorText: errors['name']?.firstOrNull,
                 ),
@@ -163,8 +161,8 @@ class ApiConfigPage extends StatelessWidget {
               TextField(
                 controller: urlCtrl,
                 decoration: InputDecoration(
-                  labelText: l10n.apiConfigBaseUrlLabel,
-                  hintText: l10n.apiConfigBaseUrlHint,
+                  labelText: 'apiConfigBaseUrlLabel'.tr,
+                  hintText: 'apiConfigBaseUrlHint'.tr,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
                   errorText: errors['baseUrl']?.firstOrNull,
                 ),
@@ -185,7 +183,7 @@ class ApiConfigPage extends StatelessWidget {
                     }
                   },
                   child: AppLabel(
-                    text: l10n.apiConfigAddClusterAction,
+                    text: 'apiConfigAddClusterAction'.tr,
                     fontSize: AppFontSize.value14,
                     fontWeight: FontWeight.bold,
                   ),
@@ -205,7 +203,6 @@ class _Banner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -234,7 +231,7 @@ class _Banner extends StatelessWidget {
           const SizedBox(width: 14),
           Expanded(
             child: AppLabel(
-              text: l10n.apiConfigBannerWarning,
+              text: 'apiConfigBannerWarning'.tr,
               fontSize: AppFontSize.value12,
               fontWeight: FontWeight.w500,
               color: theme.colorScheme.onSurface,
@@ -260,7 +257,6 @@ class _EnvTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
     final isSelected = env.id == currentId;
 
     return InkWell(
@@ -335,7 +331,7 @@ class _EnvTile extends StatelessWidget {
                             borderRadius: BorderRadius.circular(AppRadii.pill),
                           ),
                           child: AppLabel(
-                            text: l10n.apiConfigBuiltInBadge,
+                            text: 'apiConfigBuiltInBadge'.tr,
                             fontSize: AppFontSize.value8,
                             fontWeight: FontWeight.bold,
                             color: theme.colorScheme.onSurfaceVariant,
@@ -401,7 +397,6 @@ class _EnvTile extends StatelessWidget {
 
   Future<void> _deleteEnv(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
-    final l10n = AppLocalizations.of(context);
     try {
       await context.read<ApiEnvironmentsRepository>().deleteGuarded(
         env: env,
@@ -409,14 +404,14 @@ class _EnvTile extends StatelessWidget {
       );
       messenger.showSnackBar(
         SnackBar(
-          content: Text(l10n.apiConfigDeletedSnack(env.name)),
+          content: Text('apiConfigDeletedSnack'.trParams({'name': env.name})),
           behavior: SnackBarBehavior.floating,
         ),
       );
     } on ConflictFailure catch (f) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text(f.message ?? l10n.apiConfigCannotDeleteFallback),
+          content: Text(f.message ?? 'apiConfigCannotDeleteFallback'.tr),
           behavior: SnackBarBehavior.floating,
         ),
       );

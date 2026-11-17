@@ -3,8 +3,9 @@
 /// `system` defers to OS-level light/dark.
 enum AppThemeMode { system, light, dark }
 
-/// Slice 9.1.2 — supported app languages. New locales must also be
-/// added to the ARB files under [`lib/l10n/`].
+/// Slice 9.1.2 — languages offered on the Language page. Enum names are
+/// the language codes `LocaleCubit` takes. A new language also needs a
+/// map in `lib/localization/` registered in `Language`.
 enum AppLanguage { en, km }
 
 /// Slice 9.1.3 — channels we surface push / in-app notifications on.
@@ -58,22 +59,18 @@ class NotificationChannelPref {
 class UserPreferences {
   const UserPreferences({
     required this.themeMode,
-    required this.language,
     required this.notificationChannels,
   });
 
   final AppThemeMode themeMode;
-  final AppLanguage language;
   final List<NotificationChannelPref> notificationChannels;
 
   UserPreferences copyWith({
     AppThemeMode? themeMode,
-    AppLanguage? language,
     List<NotificationChannelPref>? notificationChannels,
   }) =>
       UserPreferences(
         themeMode: themeMode ?? this.themeMode,
-        language: language ?? this.language,
         notificationChannels:
             notificationChannels ?? this.notificationChannels,
       );
@@ -82,7 +79,7 @@ class UserPreferences {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other is! UserPreferences) return false;
-    if (other.themeMode != themeMode || other.language != language) {
+    if (other.themeMode != themeMode) {
       return false;
     }
     if (other.notificationChannels.length != notificationChannels.length) {
@@ -99,7 +96,6 @@ class UserPreferences {
   @override
   int get hashCode => Object.hash(
         themeMode,
-        language,
         Object.hashAll(notificationChannels),
       );
 
@@ -108,7 +104,6 @@ class UserPreferences {
   /// they're operationally important (approvals, mentions, alerts).
   static const initial = UserPreferences(
     themeMode: AppThemeMode.system,
-    language: AppLanguage.en,
     notificationChannels: [
       NotificationChannelPref(
         channel: NotificationChannel.approvals,

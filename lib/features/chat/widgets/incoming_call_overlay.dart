@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:erp_mobile/core/di/service_locator.dart';
+import 'package:get/get.dart' show Trans;
 
 import '../../../core/router/app_router.dart';
 import '../../../core/widgets/app_images.dart' show ensureHttp;
@@ -359,7 +360,7 @@ class _IncomingCallSheetState extends State<_IncomingCallSheet>
                 // For direct calls it stays the caller's name.
                 AppLabel(
                   text: call.isGroup
-                      ? (call.conversationName ?? 'Group call')
+                      ? (call.conversationName ?? 'chatGroupCall'.tr)
                       : call.peerName,
                   fontSize: AppFontSize.value25,
                   color: Colors.white,
@@ -372,7 +373,7 @@ class _IncomingCallSheetState extends State<_IncomingCallSheet>
                 // that's the CALLER's wording. The callee is RECEIVING
                 // the call, so phrase it as the caller calling them.
                 AppLabel(
-                  text: '${call.peerName} is calling…',
+                  text: 'chatPeerIsCalling'.trParams({'name': call.peerName}),
                   fontSize: AppFontSize.value16,
                   color: Colors.white.withValues(alpha: 0.7),
                   fontWeight: FontWeight.w600,
@@ -384,7 +385,7 @@ class _IncomingCallSheetState extends State<_IncomingCallSheet>
                   children: [
                     _BigCircleButton(
                       icon: Icons.call_end_rounded,
-                      label: 'Decline',
+                      label: 'chatDecline'.tr,
                       color: Colors.red.shade600,
                       onTap: () {
                         GetIt.I<CallSignalingService>().rejectIncoming();
@@ -399,7 +400,7 @@ class _IncomingCallSheetState extends State<_IncomingCallSheet>
                       icon: call.callType == ChatCallType.video
                           ? Icons.videocam_rounded
                           : Icons.call_rounded,
-                      label: 'Accept',
+                      label: 'chatAccept'.tr,
                       color: Colors.green.shade600,
                       onTap: () async {
                         final signaling = GetIt.I<CallSignalingService>();
@@ -462,10 +463,10 @@ class _IncomingCallSheetState extends State<_IncomingCallSheet>
     final isVideo = call.callType == ChatCallType.video;
     if (call.isGroup) {
       return isVideo
-          ? 'INCOMING GROUP VIDEO CALL'
-          : 'INCOMING GROUP VOICE CALL';
+          ? 'chatIncomingGroupVideoCall'.tr
+          : 'chatIncomingGroupVoiceCall'.tr;
     }
-    return isVideo ? 'INCOMING VIDEO CALL' : 'INCOMING VOICE CALL';
+    return isVideo ? 'chatIncomingVideoCallHeader'.tr : 'chatIncomingVoiceCallHeader'.tr;
   }
 }
 

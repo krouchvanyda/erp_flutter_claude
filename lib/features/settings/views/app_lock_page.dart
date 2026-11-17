@@ -3,6 +3,7 @@ import 'package:erp_mobile/shared/widgets/app_background_gradient.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:get/get.dart' show Trans;
 
 import '../../../core/error/failure.dart';
 import '../../../core/theme/app_font_size.dart';
@@ -10,7 +11,6 @@ import '../../../core/theme/app_label.dart';
 import '../../../core/theme/app_radii.dart';
 import '../../../core/widgets/dynamic_app_bar.dart';
 import '../../../core/widgets/dynamic_status_bar.dart';
-import '../../../l10n/app_localizations.dart';
 import '../repositories/security_repositories.dart';
 import '../models/app_lock_settings.dart';
 
@@ -22,12 +22,11 @@ class AppLockPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final settingsRepo = context.read<AppLockSettingsRepository>();
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: DynamicAppBar(
-        title: l10n.appLockPageTitle,
+        title: 'appLockPageTitle'.tr,
         centerTitle: true,
       ),
       body: DynamicStatusBar(
@@ -58,7 +57,7 @@ class AppLockPage extends StatelessWidget {
                         .scale(begin: const Offset(0.96, 0.96), end: const Offset(1, 1)),
                     const SizedBox(height: 24),
                     AppLabel(
-                      text: l10n.appLockDeviceProtectionHeading,
+                      text: 'appLockDeviceProtectionHeading'.tr,
                       fontSize: AppFontSize.value11,
                       color: theme.colorScheme.primary,
                       fontWeight: FontWeight.w900,
@@ -93,12 +92,12 @@ class AppLockPage extends StatelessWidget {
                               child: Icon(Icons.password, color: theme.colorScheme.primary, size: 20),
                             ),
                             title: AppLabel(
-                              text: l10n.appLockPinTitle,
+                              text: 'appLockPinTitle'.tr,
                               fontSize: AppFontSize.value14,
                               fontWeight: FontWeight.bold,
                             ),
                             subtitle: AppLabel(
-                              text: l10n.appLockPinSubtitle,
+                              text: 'appLockPinSubtitle'.tr,
                               fontSize: AppFontSize.value12,
                             ),
                             value: settings.pinEnabled,
@@ -138,12 +137,12 @@ class AppLockPage extends StatelessWidget {
                               ),
                             ),
                             title: AppLabel(
-                              text: l10n.appLockBiometricTitle,
+                              text: 'appLockBiometricTitle'.tr,
                               fontSize: AppFontSize.value14,
                               fontWeight: FontWeight.bold,
                             ),
                             subtitle: AppLabel(
-                              text: l10n.appLockBiometricSubtitle,
+                              text: 'appLockBiometricSubtitle'.tr,
                               fontSize: AppFontSize.value12,
                             ),
                             value: settings.biometricEnabled,
@@ -158,7 +157,7 @@ class AppLockPage extends StatelessWidget {
                                     } on ConflictFailure catch (f) {
                                       messenger.showSnackBar(
                                         SnackBar(
-                                          content: Text(f.message ?? l10n.appLockCannotEnableFallback),
+                                          content: Text(f.message ?? 'appLockCannotEnableFallback'.tr),
                                           behavior: SnackBarBehavior.floating,
                                         ),
                                       );
@@ -171,7 +170,7 @@ class AppLockPage extends StatelessWidget {
                     ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.04, end: 0),
                     const SizedBox(height: 24),
                     AppLabel(
-                      text: l10n.appLockTimeoutHeading,
+                      text: 'appLockTimeoutHeading'.tr,
                       fontSize: AppFontSize.value11,
                       color: theme.colorScheme.primary,
                       fontWeight: FontWeight.w900,
@@ -213,7 +212,7 @@ class AppLockPage extends StatelessWidget {
                               ),
                             ),
                             title: AppLabel(
-                              text: l10n.appLockAutoLockDurationTitle,
+                              text: 'appLockAutoLockDurationTitle'.tr,
                               fontSize: AppFontSize.value14,
                               fontWeight: FontWeight.bold,
                               color: settings.pinEnabled
@@ -223,9 +222,9 @@ class AppLockPage extends StatelessWidget {
                             subtitle: AppLabel(
                               text: settings.pinEnabled
                                   ? (settings.autoLockMinutes == 0
-                                      ? l10n.appLockLockImmediatelySubtitle
-                                      : l10n.appLockMinutesAfterBackgroundSubtitle(settings.autoLockMinutes))
-                                  : l10n.appLockRequiresPinSubtitle,
+                                      ? 'appLockLockImmediatelySubtitle'.tr
+                                      : 'appLockMinutesAfterBackgroundSubtitle'.trParams({'count': '${settings.autoLockMinutes}'}))
+                                  : 'appLockRequiresPinSubtitle'.tr,
                               fontSize: AppFontSize.value12,
                               color: settings.pinEnabled
                                   ? theme.colorScheme.onSurfaceVariant
@@ -250,12 +249,12 @@ class AppLockPage extends StatelessWidget {
                                 child: Icon(Icons.lock_reset, color: theme.colorScheme.primary, size: 20),
                               ),
                               title: AppLabel(
-                                text: l10n.appLockChangePinTitle,
+                                text: 'appLockChangePinTitle'.tr,
                                 fontSize: AppFontSize.value14,
                                 fontWeight: FontWeight.bold,
                               ),
                               subtitle: AppLabel(
-                                text: l10n.appLockChangePinSubtitle,
+                                text: 'appLockChangePinSubtitle'.tr,
                                 fontSize: AppFontSize.value12,
                               ),
                               trailing: Icon(Icons.chevron_right, color: theme.colorScheme.primary),
@@ -266,7 +265,7 @@ class AppLockPage extends StatelessWidget {
                                 await context.read<InMemoryPinSecretStore>().setPin(pin);
                                 messenger.showSnackBar(
                                   SnackBar(
-                                    content: Text(l10n.appLockPinUpdatedSnack),
+                                    content: Text('appLockPinUpdatedSnack'.tr),
                                     behavior: SnackBarBehavior.floating,
                                   ),
                                 );
@@ -293,7 +292,7 @@ class AppLockPage extends StatelessWidget {
                           const SizedBox(width: 14),
                           Expanded(
                             child: AppLabel(
-                              text: l10n.appLockFootnote,
+                              text: 'appLockFootnote'.tr,
                               fontSize: AppFontSize.value12,
                               color: theme.colorScheme.onSurfaceVariant,
                               lineHeight: 1.3,
@@ -314,7 +313,6 @@ class AppLockPage extends StatelessWidget {
 
   Future<void> _pickAutoLock(BuildContext context, AppLockSettings settings) async {
     final messenger = ScaffoldMessenger.of(context);
-    final l10n = AppLocalizations.of(context);
     final repo = context.read<AppLockSettingsRepository>();
     final theme = Theme.of(context);
 
@@ -350,14 +348,14 @@ class AppLockPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 AppLabel(
-                  text: l10n.appLockAutoLockDurationTitle,
+                  text: 'appLockAutoLockDurationTitle'.tr,
                   fontSize: AppFontSize.value16,
                   fontWeight: FontWeight.bold,
                   color: theme.colorScheme.onSurface,
                 ),
                 const SizedBox(height: 8),
                 AppLabel(
-                  text: l10n.appLockAutoLockSheetSubtitle,
+                  text: 'appLockAutoLockSheetSubtitle'.tr,
                   fontSize: AppFontSize.value12,
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -405,14 +403,13 @@ class AppLockPage extends StatelessWidget {
     final confirmCtrl = TextEditingController();
     String? errorMsg;
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
 
     return showDialog<String>(
       context: context,
       builder: (dialogCtx) => StatefulBuilder(
         builder: (dialogCtx, setDialog) => AlertDialog(
           title: AppLabel(
-            text: l10n.appLockSetSecurePinAction,
+            text: 'appLockSetSecurePinAction'.tr,
             fontSize: AppFontSize.value18,
             fontWeight: FontWeight.bold,
           ),
@@ -429,7 +426,7 @@ class AppLockPage extends StatelessWidget {
                   LengthLimitingTextInputFormatter(8),
                 ],
                 decoration: InputDecoration(
-                  labelText: l10n.appLockPinFieldLabel,
+                  labelText: 'appLockPinFieldLabel'.tr,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
                   prefixIcon: const Icon(Icons.lock_outline),
                 ),
@@ -444,7 +441,7 @@ class AppLockPage extends StatelessWidget {
                   LengthLimitingTextInputFormatter(8),
                 ],
                 decoration: InputDecoration(
-                  labelText: l10n.appLockConfirmPinLabel,
+                  labelText: 'appLockConfirmPinLabel'.tr,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
                   prefixIcon: const Icon(Icons.lock_outline),
                 ),
@@ -472,7 +469,7 @@ class AppLockPage extends StatelessWidget {
             TextButton(
               onPressed: () => Navigator.pop(dialogCtx),
               child: AppLabel(
-                text: l10n.commonCancelAction,
+                text: 'commonCancelAction'.tr,
                 fontSize: AppFontSize.value14,
                 fontWeight: FontWeight.w600,
               ),
@@ -491,7 +488,7 @@ class AppLockPage extends StatelessWidget {
                 }
               },
               child: AppLabel(
-                text: l10n.appLockSavePinAction,
+                text: 'appLockSavePinAction'.tr,
                 fontSize: AppFontSize.value14,
                 fontWeight: FontWeight.bold,
               ),
@@ -510,7 +507,6 @@ class _SecurityHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -553,15 +549,15 @@ class _SecurityHeader extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           AppLabel(
-            text: isActive ? l10n.appLockHeaderEnabledTitle : l10n.appLockHeaderDisabledTitle,
+            text: isActive ? 'appLockHeaderEnabledTitle'.tr : 'appLockHeaderDisabledTitle'.tr,
             fontSize: AppFontSize.value16,
             fontWeight: FontWeight.bold,
           ),
           const SizedBox(height: 6),
           AppLabel(
             text: isActive
-                ? l10n.appLockHeaderEnabledSubtitle
-                : l10n.appLockHeaderDisabledSubtitle,
+                ? 'appLockHeaderEnabledSubtitle'.tr
+                : 'appLockHeaderDisabledSubtitle'.tr,
             fontSize: AppFontSize.value12,
             textAlign: TextAlign.center,
             color: theme.colorScheme.onSurfaceVariant,
@@ -586,15 +582,14 @@ class _AutoLockOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
     final String title = minutes == 0
-        ? l10n.appLockOptionImmediately
-        : (minutes == 1 ? l10n.appLockOptionMinute(minutes) : l10n.appLockOptionMinutes(minutes));
+        ? 'appLockOptionImmediately'.tr
+        : (minutes == 1 ? 'appLockOptionMinute'.trParams({'count': '$minutes'}) : 'appLockOptionMinutes'.trParams({'count': '$minutes'}));
     final String subtitle = minutes == 0
-        ? l10n.appLockOptionImmediatelySubtitle
+        ? 'appLockOptionImmediatelySubtitle'.tr
         : (minutes == 1
-            ? l10n.appLockOptionMinuteSubtitle(minutes)
-            : l10n.appLockOptionMinutesSubtitle(minutes));
+            ? 'appLockOptionMinuteSubtitle'.trParams({'count': '$minutes'})
+            : 'appLockOptionMinutesSubtitle'.trParams({'count': '$minutes'}));
 
     return InkWell(
       onTap: onTap,

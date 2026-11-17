@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../widgets/call_permission_gate.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:get/get.dart' show Trans;
 import 'package:stream_webrtc_flutter/stream_webrtc_flutter.dart' as rtc;
 
 import '../../../core/theme/app_font_size.dart';
@@ -243,8 +244,8 @@ class _VoiceCallPageState extends State<VoiceCallPage>
     if (granted || !mounted || _muted) return;
     setState(() => _muted = true);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Microphone is off — permission denied'),
+      SnackBar(
+        content: Text('chatMicOffPermissionDenied'.tr),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -306,15 +307,15 @@ class _VoiceCallPageState extends State<VoiceCallPage>
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final reason = switch (call.endReason) {
-          'busy' => '${call.peerName} is on another call.',
-          'declined' => '${call.peerName} declined the call.',
+          'busy' => 'chatPeerOnAnotherCall'.trParams({'name': call.peerName}),
+          'declined' => 'chatPeerDeclined'.trParams({'name': call.peerName}),
           // `already_in_call` can mean either side has a stale row.
           // Avoid claiming A is the one in another call when it might
           // actually be B — keep the message neutral.
           'already_in_call' =>
-            '${call.peerName} is in another call. Try again in a moment.',
-          'failed' => 'Could not start the call. Try again.',
-          'no_answer' => '${call.peerName} didn\'t answer.',
+            'chatPeerInAnotherCallRetry'.trParams({'name': call.peerName}),
+          'failed' => 'chatCallStartFailed'.tr,
+          'no_answer' => 'chatPeerNoAnswer'.trParams({'name': call.peerName}),
           _ => null,
         };
         if (reason != null) {
@@ -337,15 +338,15 @@ class _VoiceCallPageState extends State<VoiceCallPage>
   String get _statusLabel {
     switch (_stage) {
       case _CallStage.calling:
-        return _placedInvite ? 'Calling…' : 'Ringing…';
+        return _placedInvite ? 'chatCallCalling'.tr : 'chatCallRinging'.tr;
       case _CallStage.ringing:
-        return 'Ringing…';
+        return 'chatCallRinging'.tr;
       case _CallStage.connected:
         final m = (_elapsedSeconds ~/ 60).toString().padLeft(2, '0');
         final s = (_elapsedSeconds % 60).toString().padLeft(2, '0');
         return '$m:$s';
       case _CallStage.ended:
-        return 'Call ended';
+        return 'chatCallEnded'.tr;
     }
   }
 
@@ -368,7 +369,7 @@ class _VoiceCallPageState extends State<VoiceCallPage>
           final displayName = conv?.name ??
               active?.conversationName ??
               active?.peerName ??
-              'Unknown';
+              'chatUnknown'.tr;
           final avatarPath =
               conv?.avatarFilePath ?? active?.conversationAvatarFilePath;
           // Server-side photo (peer profile / uploaded group photo).
@@ -405,7 +406,7 @@ class _VoiceCallPageState extends State<VoiceCallPage>
                     const SizedBox(height: 8),
                     Center(
                       child: AppLabel(
-                        text: 'Voice Call',
+                        text: 'chatVoiceCallTitle'.tr,
                         fontSize: AppFontSize.value12,
                         color: Colors.white.withValues(alpha: 0.6),
                         fontWeight: FontWeight.w800,
@@ -458,8 +459,8 @@ class _VoiceCallPageState extends State<VoiceCallPage>
                       },
                       onKeypad: () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Keypad UI would open here.'),
+                          SnackBar(
+                            content: Text('chatKeypadStub'.tr),
                             behavior: SnackBarBehavior.floating,
                           ),
                         );
@@ -643,20 +644,20 @@ class _ControlsRow extends StatelessWidget {
           icon: muted ? Icons.mic_off_rounded : Icons.mic_rounded,
           active: muted,
           activeColor: Colors.red,
-          label: muted ? 'Muted' : 'Mute',
+          label: muted ? 'chatCallMuted'.tr : 'chatCallMute'.tr,
           onTap: onMute,
         ),
         _CircleButton(
           icon: Icons.volume_up_rounded,
           active: speaker,
           activeColor: const Color(0xFF6366F1),
-          label: speaker ? 'Speaker' : 'Earpiece',
+          label: speaker ? 'chatCallSpeaker'.tr : 'chatCallEarpiece'.tr,
           onTap: onSpeaker,
         ),
         _CircleButton(
           icon: Icons.dialpad_rounded,
           active: false,
-          label: 'Keypad',
+          label: 'chatCallKeypad'.tr,
           onTap: onKeypad,
         ),
       ],
@@ -741,7 +742,7 @@ class _EndButton extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         AppLabel(
-          text: 'End',
+          text: 'chatCallEnd'.tr,
           fontSize: AppFontSize.value12,
           color: Colors.white.withValues(alpha: 0.8),
           fontWeight: FontWeight.w700,
