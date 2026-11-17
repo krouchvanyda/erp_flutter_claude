@@ -5,9 +5,11 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:erp_mobile/core/di/service_locator.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/router/config_router.dart';
+import '../../../core/router/route_paths.dart';
 import '../../../core/theme/app_font_size.dart';
 import '../../../core/theme/app_label.dart';
 import '../../../core/theme/app_radii.dart';
@@ -23,7 +25,6 @@ import '../models/call_log.dart';
 import '../models/conversation.dart';
 import '../widgets/chat_avatar.dart';
 import 'chat_conversation_page.dart';
-import 'message_search_page.dart';
 import 'new_conversation_page.dart';
 import 'video_call_page.dart';
 import 'voice_call_page.dart';
@@ -66,16 +67,6 @@ class _ChatInboxPageState extends State<ChatInboxPage>
     super.dispose();
   }
 
-  Future<void> _showIdentitySheet(BuildContext context) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => const _IdentitySheet(),
-    );
-  }
-
   List<ChatConversation> _filter(List<ChatConversation> all, int tabIndex) {
     final q = _query.trim().toLowerCase();
     Iterable<ChatConversation> result = all;
@@ -112,14 +103,6 @@ class _ChatInboxPageState extends State<ChatInboxPage>
         centerTitle: false,
         actions: [
           IconButton(
-            tooltip: 'Search',
-            icon: const Icon(Icons.search_rounded),
-            onPressed: () => ConfigRouter.pushPageAnimation(
-              context,
-              const MessageSearchPage(),
-            ),
-          ),
-          IconButton(
             tooltip: 'New message',
             icon: const Icon(Icons.edit_note_rounded),
             onPressed: () => ConfigRouter.pushPageAnimation(
@@ -127,26 +110,13 @@ class _ChatInboxPageState extends State<ChatInboxPage>
               const NewConversationPage(),
             ),
           ),
-          PopupMenuButton<String>(
-            tooltip: 'Chat settings',
-            icon: const Icon(Icons.more_vert_rounded),
-            onSelected: (v) {
-              switch (v) {
-                case 'identity':
-                  _showIdentitySheet(context);
-              }
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem(
-                value: 'identity',
-                child: ListTile(
-                  leading: Icon(Icons.switch_account_rounded),
-                  title: Text('Sign in as…'),
-                  subtitle: Text('Switch demo identity'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-            ],
+          // Settings lives here now that the bottom nav is gone.
+          // pushNamed (not goNamed) keeps Chat underneath so back
+          // returns to the inbox.
+          IconButton(
+            tooltip: 'Settings',
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => context.pushNamed(RoutePaths.settingsName),
           ),
         ],
       ),
@@ -794,157 +764,6 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-
-// ── Identity picker ─────────────────────────────────────────────
-//
-// **Legacy dev sheet.** Pre-backend this was used to switch the
-// active demo identity. With real auth in place, signing in/out is
-// the canonical path and this sheet should be hidden in production.
-// It still works as a debug helper: it lists whatever users are in
-// the [UsersCache] (populated from `/users` for admins) plus the
-// currently signed-in user so you can switch back. Selecting a row
-// rewrites [ChatSettings] and the transport reconnects.
-
-class _IdentitySheet extends StatefulWidget {
-  const _IdentitySheet();
-
-  @override
-  State<_IdentitySheet> createState() => _IdentitySheetState();
-}
-
-class _IdentitySheetState extends State<_IdentitySheet> {
-  late String _selectedId;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedId = context.read<ChatSettings>().userId;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final settings = context.read<ChatSettings>();
-    // Build the picker list from whatever the UsersCache has — which
-    // gets seeded at boot (`/users/me`) and after the new-message
-    // picker fetches `/users`. For non-admin users whose cache only
-    // contains self, the picker will just show their own row; that's
-    // fine — there's no one else to switch to without admin rights.
-    final everyone = <ChatParticipantPreview>[];
-    if (settings.userId.isNotEmpty) {
-      everyone.add(ChatParticipantPreview(
-        employeeId: settings.userId,
-        name: UsersCache.instance.nameOf(settings.userId) ??
-            (settings.userName.isEmpty
-                ? 'User #${settings.userId}'
-                : settings.userName),
-        avatarUrl: UsersCache.instance.avatarOf(settings.userId),
-        presence: PresenceStatus.online,
-      ));
-    }
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.outlineVariant,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            AppLabel(
-              text: 'Sign in as…',
-              fontSize: AppFontSize.value16,
-              fontWeight: FontWeight.w800,
-            ),
-            const SizedBox(height: 4),
-            AppLabel(
-              text: 'Switch identity to test two-way chat as different '
-                  'signed-in users.',
-              fontSize: AppFontSize.value12,
-              color: theme.colorScheme.onSurfaceVariant,
-              maxLines: 3,
-            ),
-            const SizedBox(height: 12),
-            Flexible(
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemCount: everyone.length,
-                separatorBuilder: (_, __) => Divider(
-                  height: 1,
-                  indent: 64,
-                  color: theme.colorScheme.outlineVariant
-                      .withValues(alpha: 0.4),
-                ),
-                itemBuilder: (_, i) {
-                  final p = everyone[i];
-                  final isSel = p.employeeId == _selectedId;
-                  return Material(
-                    color: isSel
-                        ? theme.colorScheme.primaryContainer
-                            .withValues(alpha: 0.4)
-                        : Colors.transparent,
-                    child: InkWell(
-                      onTap: () async {
-                        setState(() => _selectedId = p.employeeId);
-                        await context.read<ChatSettings>().setIdentity(
-                          userId: p.employeeId,
-                          userName: p.name,
-                        );
-                        if (context.mounted) Navigator.pop(context);
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 4, vertical: 8),
-                        child: Row(
-                          children: [
-                            ChatAvatar(
-                              name: p.name,
-                              size: 40,
-                              avatarUrl: p.avatarUrl,
-                              // Live presence from PresenceRepository
-                              // rather than the (now-empty) seed
-                              // `p.presence`. The legacy demo sheet
-                              // still works, and the row's dot updates
-                              // with `/topic/presence` frames.
-                              userId: p.employeeId,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: AppLabel(
-                                text: p.name,
-                                fontSize: AppFontSize.value14,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            if (isSel)
-                              Icon(
-                                Icons.check_circle_rounded,
-                                color: theme.colorScheme.primary,
-                                size: 20,
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 // ── Slice 10.2.5 — Recent Calls tab ─────────────────────────────
 //

@@ -21,7 +21,6 @@ import '../../features/settings/views/role_editor_page.dart';
 import '../../features/settings/views/sessions_page.dart';
 import '../../features/settings/views/settings_home_page.dart';
 import '../../features/settings/views/user_management_page.dart';
-import 'app_shell.dart';
 import 'auth_redirect_policy.dart';
 import 'auth_session.dart';
 import 'forbidden_page.dart';
@@ -37,11 +36,10 @@ import 'route_paths.dart';
 /// **Route topology** (Slice 2.1.1):
 /// - Top-level (no nav chrome): `/splash`, `/login`, `/mfa/otp` — pre-auth
 ///   takeovers.
-/// - [StatefulShellRoute.indexedStack] hosting two sibling branches:
-///   - **Chat** branch: `/chat`, `/forbidden` — the forbidden page lives
-///     here so the bounce target keeps the shell chrome and the user can
-///     recover via bottom nav.
-///   - **Settings** branch: `/settings` and its sub-pages.
+/// - Authenticated, flat (no bottom nav / shell): `/chat` is the home
+///   screen; `/settings` (+ sub-pages) is pushed on top of it from the
+///   gear icon in the Chat app bar; `/forbidden` is the RBAC bounce
+///   target.
 ///
 /// The redirect rules live in [resolveAuthRedirect] (pure Dart) so they
 /// can be unit-tested without Flutter. Permission lookups go through
@@ -134,106 +132,91 @@ class AppRouter {
             builder: (_, __) => const ForgotPasswordPage(),
           ),
 
-          // ── Authenticated shell (bottom nav / rail / drawer) ─────
-          StatefulShellRoute.indexedStack(
-            builder: (context, state, navigationShell) =>
-                AppShell(navigationShell: navigationShell),
-            branches: [
-              // Branch 0 — Chat (Module 10). Landing tab after sign-in.
-              // Also hosts /forbidden so the bounce target keeps the
-              // shell chrome and the user can recover via bottom nav.
-              StatefulShellBranch(
-                routes: [
-                  GoRoute(
-                    path: RoutePaths.chat,
-                    name: RoutePaths.chatName,
-                    builder: (_, __) => const ChatInboxPage(),
-                  ),
-                  GoRoute(
-                    path: RoutePaths.forbidden,
-                    name: RoutePaths.forbiddenName,
-                    builder: (_, state) => ForbiddenPage(
-                      attemptedLocation: state.uri.queryParameters['from'],
-                    ),
-                  ),
-                ],
-              ),
-              // Branch 1 — Settings (Module 9). Hosts the settings hub
-              // and all 9 sub-pages so they all live under the Settings
-              // shell branch and the bottom nav stays on Settings while
-              // the user drills down.
-              StatefulShellBranch(
-                routes: [
-                  GoRoute(
-                    path: RoutePaths.settings,
-                    name: RoutePaths.settingsName,
-                    builder: (_, __) => SettingsHomePage(
-                      // Full sign-out via AuthRepository — revokes the
-                      // refresh token server-side, clears
-                      // flutter_secure_storage, wipes the cached user from
-                      // drift, then SessionSignal.invalidate() flips the
-                      // AuthSession bool and the router bounces to /login.
-                      // Using `session.signOut()` here would only flip the
-                      // stub's bool and leave tokens + cache on the device.
-                      onSignOut: () => getIt<AuthRepository>().signOut(),
-                    ),
-                  ),
-                  // Phase 9.1 — preferences.
-                  GoRoute(
-                    path: RoutePaths.settingsAppearance,
-                    name: RoutePaths.settingsAppearanceName,
-                    builder: (_, __) => const AppearancePage(),
-                  ),
-                  GoRoute(
-                    path: RoutePaths.settingsLanguage,
-                    name: RoutePaths.settingsLanguageName,
-                    builder: (_, __) => const LanguagePage(),
-                  ),
-                  GoRoute(
-                    path: RoutePaths.settingsNotifications,
-                    name: RoutePaths.settingsNotificationsName,
-                    builder: (_, __) => const NotificationPreferencesPage(),
-                  ),
-                  // Phase 9.2 — admin.
-                  GoRoute(
-                    path: RoutePaths.settingsUsers,
-                    name: RoutePaths.settingsUsersName,
-                    builder: (_, __) => const UserManagementPage(),
-                  ),
-                  GoRoute(
-                    path: RoutePaths.settingsRoles,
-                    name: RoutePaths.settingsRolesName,
-                    builder: (_, __) => const RoleEditorPage(),
-                  ),
-                  GoRoute(
-                    path: RoutePaths.settingsAssignments,
-                    name: RoutePaths.settingsAssignmentsName,
-                    builder: (_, __) => const AssignmentsPage(),
-                  ),
-                  GoRoute(
-                    path: RoutePaths.settingsApiConfig,
-                    name: RoutePaths.settingsApiConfigName,
-                    builder: (_, __) => const ApiConfigPage(),
-                  ),
-                  // Phase 9.3 — security.
-                  GoRoute(
-                    path: RoutePaths.settingsSessions,
-                    name: RoutePaths.settingsSessionsName,
-                    builder: (_, __) => const SessionsPage(),
-                  ),
-                  GoRoute(
-                    path: RoutePaths.settingsAuditLog,
-                    name: RoutePaths.settingsAuditLogName,
-                    builder: (_, __) => const AuditLogPage(),
-                  ),
-                  GoRoute(
-                    path: RoutePaths.settingsAppLock,
-                    name: RoutePaths.settingsAppLockName,
-                    builder: (_, __) => const AppLockPage(),
-                  ),
-                ],
-              ),
-            ],
+          // ── Authenticated ──────────────────────────────────────────
+          // No bottom nav: Chat is the home screen and Settings is
+          // pushed from the gear icon in the Chat app bar.
+          GoRoute(
+            path: RoutePaths.chat,
+            name: RoutePaths.chatName,
+            builder: (_, __) => const ChatInboxPage(),
+          ),
+          GoRoute(
+            path: RoutePaths.forbidden,
+            name: RoutePaths.forbiddenName,
+            builder: (_, state) => ForbiddenPage(
+              attemptedLocation: state.uri.queryParameters['from'],
+            ),
+          ),
+          // Settings (Module 9). Pushed on top of Chat (pushNamed), so
+          // the system back gesture / AppBar back returns to Chat. Sub-
+          // pages are opened from SettingsHomePage via ConfigRouter;
+          // the named routes below remain for deep links.
+          GoRoute(
+            path: RoutePaths.settings,
+            name: RoutePaths.settingsName,
+            builder: (_, __) => SettingsHomePage(
+              // Full sign-out via AuthRepository — revokes the
+              // refresh token server-side, clears
+              // flutter_secure_storage, wipes the cached user from
+              // drift, then SessionSignal.invalidate() flips the
+              // AuthSession bool and the router bounces to /login.
+              // Using `session.signOut()` here would only flip the
+              // stub's bool and leave tokens + cache on the device.
+              onSignOut: () => getIt<AuthRepository>().signOut(),
+            ),
+          ),
+          // Phase 9.1 — preferences.
+          GoRoute(
+            path: RoutePaths.settingsAppearance,
+            name: RoutePaths.settingsAppearanceName,
+            builder: (_, __) => const AppearancePage(),
+          ),
+          GoRoute(
+            path: RoutePaths.settingsLanguage,
+            name: RoutePaths.settingsLanguageName,
+            builder: (_, __) => const LanguagePage(),
+          ),
+          GoRoute(
+            path: RoutePaths.settingsNotifications,
+            name: RoutePaths.settingsNotificationsName,
+            builder: (_, __) => const NotificationPreferencesPage(),
+          ),
+          // Phase 9.2 — admin.
+          GoRoute(
+            path: RoutePaths.settingsUsers,
+            name: RoutePaths.settingsUsersName,
+            builder: (_, __) => const UserManagementPage(),
+          ),
+          GoRoute(
+            path: RoutePaths.settingsRoles,
+            name: RoutePaths.settingsRolesName,
+            builder: (_, __) => const RoleEditorPage(),
+          ),
+          GoRoute(
+            path: RoutePaths.settingsAssignments,
+            name: RoutePaths.settingsAssignmentsName,
+            builder: (_, __) => const AssignmentsPage(),
+          ),
+          GoRoute(
+            path: RoutePaths.settingsApiConfig,
+            name: RoutePaths.settingsApiConfigName,
+            builder: (_, __) => const ApiConfigPage(),
+          ),
+          // Phase 9.3 — security.
+          GoRoute(
+            path: RoutePaths.settingsSessions,
+            name: RoutePaths.settingsSessionsName,
+            builder: (_, __) => const SessionsPage(),
+          ),
+          GoRoute(
+            path: RoutePaths.settingsAuditLog,
+            name: RoutePaths.settingsAuditLogName,
+            builder: (_, __) => const AuditLogPage(),
+          ),
+          GoRoute(
+            path: RoutePaths.settingsAppLock,
+            name: RoutePaths.settingsAppLockName,
+            builder: (_, __) => const AppLockPage(),
           ),
         ],
       );
