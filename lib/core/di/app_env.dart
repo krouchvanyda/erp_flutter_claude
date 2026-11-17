@@ -1,4 +1,5 @@
 import '../config/environments.dart';
+import '../config/flavor.dart';
 
 /// Application-wide environment / build-time configuration.
 ///
@@ -17,18 +18,19 @@ class AppEnv {
     this.realtimeEnabled = false,
   });
 
-  /// Default profile used when no explicit environment is selected.
-  ///
-  /// Points at the local Spring backend by default. Swap to
-  /// [Environments.stagingApiBaseUrl] or [Environments.prodApiBaseUrl] for
-  /// build flavors. The URL must already include the `/api/v1` path
+  /// Profile for the running build flavor ([Flavor.current]):
+  /// dev → local, uat → staging, prod → production backend; network
+  /// logging off in prod. The URL must already include the `/api/v1` path
   /// prefix because dio resolves relative request paths (e.g.
   /// `/auth/login`) against it.
-  factory AppEnv.defaults() => const AppEnv(
-        apiBaseUrl: Environments.localApiBaseUrl,
+  factory AppEnv.defaults() => AppEnv.forFlavor(Flavor.current);
+
+  factory AppEnv.forFlavor(Flavor flavor) => AppEnv(
+        apiBaseUrl: flavor.apiBaseUrl,
+        realtimeUrl: flavor.realtimeUrl,
         connectTimeoutMs: Environments.defaultConnectTimeoutMs,
         receiveTimeoutMs: Environments.defaultReceiveTimeoutMs,
-        enableNetworkLogging: true,
+        enableNetworkLogging: flavor.enableNetworkLogging,
       );
 
   final String apiBaseUrl;

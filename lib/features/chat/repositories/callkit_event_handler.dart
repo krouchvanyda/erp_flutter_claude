@@ -12,7 +12,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:erp_mobile/core/di/service_locator.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import '../../../core/config/environments.dart';
 import '../../../core/router/app_router.dart';
 import '../models/call_log.dart';
 import '../views/video_call_page.dart';
@@ -20,6 +19,7 @@ import '../views/voice_call_page.dart';
 import 'call_signaling_service.dart';
 import 'conversations_repository.dart';
 import 'stream_call_engine.dart';
+import '../../../core/config/flavor.dart';
 
 /// Bridges `flutter_callkit_incoming` user actions (Accept / Reject)
 /// into the call ceremony. Subscribes once at app start and stays
@@ -1425,7 +1425,7 @@ class CallkitEventHandler {
         return;
       }
       final dio = Dio(BaseOptions(
-        baseUrl: Environments.prodApiBaseUrl,
+        baseUrl: Flavor.current.apiBaseUrl,
         headers: <String, dynamic>{
           'Authorization': 'Bearer $token',
           'Accept': 'application/json',

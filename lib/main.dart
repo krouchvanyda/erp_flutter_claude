@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'app.dart';
+import 'core/config/flavor.dart';
 import 'core/di/injection.dart';
 import 'core/error/crash_hooks.dart';
 import 'core/error/logging_crash_reporter.dart';
@@ -34,7 +35,14 @@ import 'features/settings/settings_di.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 
-Future <void> main() async {
+/// Plain `flutter run` / `-t lib/main.dart`: the flavor comes from the
+/// `--flavor` flag (dev when none). The `main_dev.dart` / `main_uat.dart`
+/// / `main_prod.dart` entry points pin it explicitly and call [bootstrap].
+Future<void> main() => bootstrap(Flavor.current);
+
+/// Shared start-up for every flavor entry point.
+Future<void> bootstrap(Flavor flavor) async {
+  Flavor.pin(flavor);
   // The app-root `RepositoryProvider`s expose getIt-owned singletons, some of
   // which are Listenable/Stream subtypes (AuthSession is a ChangeNotifier,
   // RealtimeService/CallSignalingService expose listenables, etc.). We provide

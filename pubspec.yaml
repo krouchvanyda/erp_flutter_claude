@@ -130,6 +130,9 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # Plain `flutter run` (no --flavor) builds the dev flavor. Flavors:
+  # dev / uat / prod — see README "Flutter flavors" and lib/core/config/flavor.dart.
+  default-flavor: dev
 
   assets:
     - assets/images/

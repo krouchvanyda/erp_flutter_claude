@@ -10,7 +10,7 @@ import 'package:flutter_callkit_incoming/entities/entities.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import '../../core/config/environments.dart';
+import '../../core/config/flavor.dart';
 import '../../features/auth/repositories/flutter_secure_storage_secret_store.dart';
 import '../../features/auth/repositories/secure_token_storage.dart';
 import '../../features/chat/repositories/callkit_call_id.dart';
@@ -296,11 +296,11 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   );
 }
 
-/// REST base the native Reject receiver POSTs to. Resolved from a
-/// compile-time const (the background isolate can't reach DI). All three
-/// `Environments` URLs point at the same host today; `prod` matches the
-/// `configureDependencies(environment: Environment.prod)` call in main().
-const String _callRejectBaseUrl = Environments.prodApiBaseUrl;
+/// REST base the native Reject receiver POSTs to. The background isolate
+/// can't reach DI, so it reads the build flavor directly ([Flavor.current]
+/// comes from the `--flavor` build flag, available in every isolate) —
+/// the same backend the app itself talks to.
+String get _callRejectBaseUrl => Flavor.current.apiBaseUrl;
 
 /// Reads the persisted JWTs from THIS (background) isolate so the native
 /// Reject path can authenticate without re-decrypting
