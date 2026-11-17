@@ -1,3 +1,4 @@
+branch feature/call -> 17-11-2026 -> get data from branch chat_conversation
 # erp_mobile
 Enterprise ERP Mobile — a Flutter app built on a lean, BLoC-centric stack.
 > **Source of truth for the plan & architecture:** [`CLAUDE.md`](./CLAUDE.md)
