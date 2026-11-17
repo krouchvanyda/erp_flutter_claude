@@ -14,7 +14,7 @@ import 'route_paths.dart';
 /// **Order of checks** matters:
 /// 1. Unauthenticated + non-public path → `/login` (auth wins; the
 ///    permission verdict is moot when there's no session).
-/// 2. Authenticated user landing on `/splash` or `/login` → `/dashboard`.
+/// 2. Authenticated user landing on `/splash` or `/login` → `/chat`.
 /// 3. Authenticated + lacks the route's required permission → `/forbidden`.
 /// 4. Otherwise → no redirect.
 String? resolveAuthRedirect({
@@ -30,7 +30,7 @@ String? resolveAuthRedirect({
   if (isAuthenticated &&
       (matchedLocation == RoutePaths.login ||
           matchedLocation == RoutePaths.splash)) {
-    return RoutePaths.dashboard;
+    return RoutePaths.chat;
   }
   // Permission gate — only meaningful for authenticated users on
   // non-public paths. The `/forbidden` page itself is exempt so the

@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'app_env.dart';
 import 'injection.dart';
 import '../network/token_storage.dart';
-import '../push/push_message_router.dart';
 import '../push/push_notification_service.dart';
 import '../realtime/realtime_service.dart';
 import '../router/app_router.dart';
@@ -22,7 +21,6 @@ import '../../features/chat/repositories/conversations_repository.dart';
 import '../../features/chat/repositories/messages_repository.dart';
 import '../../features/chat/repositories/presence_repository.dart';
 import '../../features/chat/repositories/stream_call_engine.dart';
-import '../../features/notifications/repositories/notifications_repository.dart';
 import '../../features/settings/repositories/admin_repositories.dart';
 import '../../features/settings/repositories/my_profile_repository.dart';
 import '../../features/settings/repositories/preferences_repository.dart';
@@ -50,8 +48,6 @@ List<RepositoryProvider> buildUiRepositoryProviders() => [
       RepositoryProvider<TokenStorage>(create: (_) => getIt<TokenStorage>()),
       RepositoryProvider<RealtimeService>(
           create: (_) => getIt<RealtimeService>()),
-      RepositoryProvider<PushMessageRouter>(
-          create: (_) => getIt<PushMessageRouter>()),
       RepositoryProvider<PushNotificationService>(
           create: (_) => getIt<PushNotificationService>()),
       // ── Auth ────────────────────────────────────────────────
@@ -61,9 +57,6 @@ List<RepositoryProvider> buildUiRepositoryProviders() => [
       RepositoryProvider<CachedUserDao>(create: (_) => getIt<CachedUserDao>()),
       RepositoryProvider<DemoSignInService>(
           create: (_) => getIt<DemoSignInService>()),
-      // ── Notifications ───────────────────────────────────────
-      RepositoryProvider<NotificationsRepository>(
-          create: (_) => getIt<NotificationsRepository>()),
       // ── Settings ────────────────────────────────────────────
       RepositoryProvider<PreferencesRepository>(
           create: (_) => getIt<PreferencesRepository>()),

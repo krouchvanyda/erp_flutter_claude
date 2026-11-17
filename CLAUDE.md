@@ -2194,3 +2194,14 @@ Screen complexity: [S / M / L]
 | Waiting for server before showing sent message | Optimistic insert → upgrade on ACK |
 | Starting call without checking permissions | `await Permission.microphone.request()` first |
 | Navigating back without checking unsaved form | Use `WillPopScope` / `PopScope` + discard dialog |
+
+## Discussion mode
+When my message starts with "/discussion" (or "discussion", "discustion", "/discustion"):
+- Only discuss. Do NOT change, create or delete any file, and do not run the build.
+- Answer in simple English (short sentences, easy words); Khmer words are fine.
+- Explain how it works now in the project.
+- Give 2–4 options, each with good points and bad points, and say which one you recommend and why.
+- Say if an option would affect other parts of the project.
+- Draw a small picture or an ASCII mockup when it helps me see the idea.
+- End with a short question: which option I want.
+- Start coding only after I say so (for example "do it", "do option 2", "ok build it").

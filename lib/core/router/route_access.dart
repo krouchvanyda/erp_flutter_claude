@@ -1,5 +1,4 @@
 import '../../features/auth/models/permission.dart';
-import 'route_paths.dart';
 
 /// Static permission requirements for permission-gated routes.
 ///
@@ -14,12 +13,10 @@ import 'route_paths.dart';
 abstract final class RouteAccess {
   /// Location → Permission required to enter.
   ///
-  /// Slice 1.3.2 seeds only the demo route so the "no access → /forbidden"
-  /// branch is exercised end-to-end; feature modules append their own
-  /// requirements as they ship.
-  static const Map<String, Permission> requirements = {
-    RoutePaths.adminDemo: Permission(token: 'admin'),
-  };
+  /// Empty for now — the permission-gated demo route was removed along
+  /// with the dashboard. Feature modules append their own requirements
+  /// (keyed by a [RoutePaths] constant) as they ship.
+  static const Map<String, Permission> requirements = {};
 
   /// Returns the permission required for [location], or `null` when the
   /// location has no permission gate (any authenticated user can enter).

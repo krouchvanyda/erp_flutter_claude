@@ -57,7 +57,7 @@ class _SplashPageState extends State<SplashPage> {
       // ignore: avoid_print
       print('🎬 SPLASH: calling markAuthenticated()');
       context.read<AuthSession>().markAuthenticated();
-      context.goNamed(RoutePaths.dashboardName);
+      context.goNamed(RoutePaths.chatName);
     } else {
       // ignore: avoid_print
       print('🎬 SPLASH: no tokens → routing to /login');

@@ -19,7 +19,6 @@ import '../push/device_id_storage.dart';
 import '../push/device_registrar.dart';
 import '../push/devices_remote_data_source.dart';
 import '../push/local_push_simulator.dart';
-import '../push/push_message_router.dart';
 import '../push/push_notification_service.dart';
 import '../push/push_token_storage.dart';
 import '../realtime/realtime_service.dart';
@@ -45,10 +44,6 @@ import '../../features/auth/repositories/oauth_flow_session.dart';
 import '../../features/auth/repositories/oauth_token_data_source.dart';
 import '../../features/auth/repositories/pkce_generator.dart';
 import '../../features/auth/repositories/secure_token_storage.dart';
-import '../../features/notifications/repositories/notifications_dao.dart';
-import '../../features/notifications/repositories/notifications_repository_impl.dart';
-import '../../features/notifications/repositories/notifications_repository.dart';
-import '../../features/notifications/bloc/notification_inbox_bloc.dart';
 import 'app_env.dart';
 
 /// Factory methods for the third-party / value objects that don't own their
@@ -86,17 +81,14 @@ class AppModule {
 
   // ── Local persistence (shared_preferences) ──────────────────
   // The drift/SQLite database was removed; structural data that used to
-  // live in local tables (cached user, RBAC permissions, biometric flag,
-  // notification inbox) now persists in SharedPreferences. The instance is
+  // live in local tables (cached user, RBAC permissions, biometric flag)
+  // now persists in SharedPreferences. The instance is
   // registered manually in `main()` before `configureDependencies()` so
   // it's available synchronously here.
   CachedUserDao cachedUserDao(SharedPreferences prefs) => CachedUserDao(prefs);
 
   BiometricSettingsDao biometricSettingsDao(SharedPreferences prefs) =>
       BiometricSettingsDao(prefs);
-
-  NotificationsDao notificationsDao(SharedPreferences prefs) =>
-      NotificationsDao(prefs);
 
   // ── Connectivity ─────────────────────────────────────────────
   Connectivity get connectivity => Connectivity();
@@ -105,10 +97,9 @@ class AppModule {
       ConnectivityPlusChecker(c);
 
   // ── Realtime (Slice 2.2.4) ───────────────────────────────────
-  /// App-scoped: one shared connection feeds the dashboard's KPI /
-  /// chart slots. Lifecycle is bracketed by `connect()` / `disconnect()`
-  /// from the dashboard mount; teardown happens via `getIt.reset()` at
-  /// app shutdown.
+  /// App-scoped generic realtime channel. It previously fed the (now
+  /// removed) dashboard's KPI / chart slots and is not connected by any
+  /// screen today; teardown happens via `getIt.reset()` at app shutdown.
   ///
   /// The channel factory is wired inline — it's a static reference, not
   /// something injectable can reflect on (function typedefs aren't class
@@ -170,28 +161,13 @@ class AppModule {
   /// tests can fake it without dragging Flutter in.
   BiometricService get biometricService => LocalAuthBiometricService();
 
-  // ── Notifications (Slice 2.3.1) ──────────────────────────────
-  NotificationsRepository notificationsRepository(NotificationsDao dao) =>
-      NotificationsRepositoryImpl(dao: dao);
-
-  /// `@injectable` (factory) so each `NotificationInboxPage` mount gets
-  /// a fresh bloc — ties the watch subscription's lifetime to the
-  /// page's lifetime.
-  NotificationInboxBloc notificationInboxBloc(
-    NotificationsRepository repo,
-  ) =>
-      NotificationInboxBloc(repository: repo);
-
   // ── Push (Slice 2.3.2) ───────────────────────────────────────
   /// **Default binding is the dev simulator** — see
   /// [LocalPushSimulator] for the rationale (firebase_messaging needs
   /// platform config + a backing Firebase project that isn't operational
   /// yet). Swap to `FirebaseMessagingPushService` here when both land.
   ///
-  /// Exposes the abstract [PushNotificationService] type. The dashboard's
-  /// "[dev] Simulate push" button does an `is LocalPushSimulator`
-  /// check to access `simulateNow()` — debug-only down-cast that
-  /// disappears with the simulator binding when real FCM ships.
+  /// Exposes the abstract [PushNotificationService] type.
   LocalPushSimulator localPushSimulator() => LocalPushSimulator();
 
   PushTokenStorage pushTokenStorage(SecretStore secrets) =>
@@ -224,19 +200,6 @@ class AppModule {
         tokenStorage: tokenStorage,
         deviceIdStorage: deviceIdStorage,
         logger: logger.child('devices'),
-      );
-
-  PushMessageRouter pushMessageRouter(
-    PushNotificationService service,
-    NotificationsRepository notifications,
-    PushTokenStorage tokenStorage,
-    AppLogger logger,
-  ) =>
-      PushMessageRouter(
-        service: service,
-        notifications: notifications,
-        tokenStorage: tokenStorage,
-        logger: logger.child('push'),
       );
 
   // ── OAuth2 PKCE datasources (Slice 1.2.2) ───────────────────
@@ -323,8 +286,6 @@ void registerCoreDependencies(GetIt getIt) {
         () => m.cachedUserDao(getIt<SharedPreferences>()))
     ..registerLazySingleton<BiometricSettingsDao>(
         () => m.biometricSettingsDao(getIt<SharedPreferences>()))
-    ..registerLazySingleton<NotificationsDao>(
-        () => m.notificationsDao(getIt<SharedPreferences>()))
     ..registerLazySingleton<AuthSession>(StubAuthSession.new)
     ..registerLazySingleton<DemoSignInService>(
         () => DemoSignInService(getIt<CachedUserDao>()))
@@ -351,16 +312,12 @@ void registerCoreDependencies(GetIt getIt) {
         () => m.pushTokenStorage(getIt<SecretStore>()))
     ..registerLazySingleton<DeviceIdStorage>(
         () => m.deviceIdStorage(getIt<SecretStore>()))
-    ..registerLazySingleton<NotificationsRepository>(
-        () => m.notificationsRepository(getIt<NotificationsDao>()))
     ..registerLazySingleton<TokenRefresher>(() => m.tokenRefresher(
           getIt<AppEnv>(),
           getIt<CachedUserDao>(),
           getIt<AppLogger>(),
           getIt<CrashReporter>(),
         ))
-    ..registerFactory<NotificationInboxBloc>(
-        () => m.notificationInboxBloc(getIt<NotificationsRepository>()))
     ..registerLazySingleton<SessionSignal>(
         () => m.sessionSignal(getIt<AuthSession>()))
     ..registerLazySingleton<AppRouter>(() => AppRouter(
@@ -371,12 +328,6 @@ void registerCoreDependencies(GetIt getIt) {
           getIt<TokenStorage>(),
           getIt<TokenRefresher>(),
           getIt<SessionSignal>(),
-        ))
-    ..registerLazySingleton<PushMessageRouter>(() => m.pushMessageRouter(
-          getIt<PushNotificationService>(),
-          getIt<NotificationsRepository>(),
-          getIt<PushTokenStorage>(),
-          getIt<AppLogger>(),
         ))
     ..registerLazySingleton<Dio>(() => m.dio(
           getIt<AppEnv>(),

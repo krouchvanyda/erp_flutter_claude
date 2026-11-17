@@ -27,7 +27,7 @@ void main() {
     test('is bounced from a protected route to /login', () {
       expect(
         resolveAuthRedirect(
-          matchedLocation: RoutePaths.dashboard,
+          matchedLocation: RoutePaths.chat,
           isAuthenticated: false,
         ),
         RoutePaths.login,
@@ -50,7 +50,7 @@ void main() {
         'meaningful permission verdict', () {
       expect(
         resolveAuthRedirect(
-          matchedLocation: RoutePaths.adminDemo,
+          matchedLocation: RoutePaths.settingsUsers,
           isAuthenticated: false,
           hasRouteAccess: false,
         ),
@@ -60,30 +60,30 @@ void main() {
   });
 
   group('resolveAuthRedirect — signed-in user', () {
-    test('hitting /splash is forwarded to /dashboard', () {
+    test('hitting /splash is forwarded to /chat', () {
       expect(
         resolveAuthRedirect(
           matchedLocation: RoutePaths.splash,
           isAuthenticated: true,
         ),
-        RoutePaths.dashboard,
+        RoutePaths.chat,
       );
     });
 
-    test('hitting /login is forwarded to /dashboard (no double-login)', () {
+    test('hitting /login is forwarded to /chat (no double-login)', () {
       expect(
         resolveAuthRedirect(
           matchedLocation: RoutePaths.login,
           isAuthenticated: true,
         ),
-        RoutePaths.dashboard,
+        RoutePaths.chat,
       );
     });
 
-    test('reaches /dashboard without redirect', () {
+    test('reaches /chat without redirect', () {
       expect(
         resolveAuthRedirect(
-          matchedLocation: RoutePaths.dashboard,
+          matchedLocation: RoutePaths.chat,
           isAuthenticated: true,
         ),
         isNull,
@@ -106,7 +106,7 @@ void main() {
       // Sanity — the default arg keeps every pre-1.3.2 call site working.
       expect(
         resolveAuthRedirect(
-          matchedLocation: RoutePaths.dashboard,
+          matchedLocation: RoutePaths.chat,
           isAuthenticated: true,
         ),
         isNull,
@@ -116,7 +116,7 @@ void main() {
     test('authenticated + has access → no redirect', () {
       expect(
         resolveAuthRedirect(
-          matchedLocation: RoutePaths.adminDemo,
+          matchedLocation: RoutePaths.settingsUsers,
           isAuthenticated: true,
           hasRouteAccess: true,
         ),
@@ -127,7 +127,7 @@ void main() {
     test('authenticated + lacks access → /forbidden', () {
       expect(
         resolveAuthRedirect(
-          matchedLocation: RoutePaths.adminDemo,
+          matchedLocation: RoutePaths.settingsUsers,
           isAuthenticated: true,
           hasRouteAccess: false,
         ),
@@ -158,7 +158,7 @@ void main() {
           isAuthenticated: true,
           hasRouteAccess: false,
         ),
-        RoutePaths.dashboard,
+        RoutePaths.chat,
       );
     });
 
@@ -171,7 +171,7 @@ void main() {
           isAuthenticated: true,
           hasRouteAccess: false,
         ),
-        RoutePaths.dashboard,
+        RoutePaths.chat,
       );
     });
   });

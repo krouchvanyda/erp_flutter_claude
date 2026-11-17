@@ -4,7 +4,7 @@ import 'push_message.dart';
 /// and the rest of the app (Slice 2.3.2).
 ///
 /// Implementations live in `data/` and own the SDK-specific bits;
-/// every consumer (the [PushMessageRouter], the dev simulator button,
+/// every consumer (the device registrar,
 /// tests) talks to this interface only.
 ///
 /// **Pure-Dart**: no Flutter, no firebase_messaging — keeps the routing

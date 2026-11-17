@@ -26,32 +26,16 @@ abstract final class RoutePaths {
   static const forgotPassword = '/forgot-password';
   static const forgotPasswordName = 'forgotPassword';
 
-  // Dashboard (Module 2) ─────────────────────────────────────────
-  static const dashboard = '/dashboard';
-  static const dashboardName = 'dashboard';
+  // Shell branch roots (Slice 2.1.1). Each is the root of a
+  // `StatefulShellRoute` branch — the bottom nav / rail switches between
+  // them while preserving each branch's own navigation stack.
 
-  static const search = '/search';
-  static const searchName = 'search';
-
-  // Shell siblings of the dashboard (Slice 2.1.1). Each is the root of
-  // a `StatefulShellRoute` branch — the bottom nav / rail / drawer
-  // switches between them while preserving each branch's own
-  // navigation stack.
-
-  // Chat (Module 10) — root of the middle shell branch (replaced the
-  // deleted Modules tile grid on the bottom nav).
+  // Chat (Module 10) — first shell branch and the post-sign-in landing.
   static const chat = '/chat';
   static const chatName = 'chat';
 
   static const settings = '/settings';
   static const settingsName = 'settings';
-
-  // Notification inbox (Slice 2.3.3) — full-screen list reached from
-  // the AppBar bell badge. Lives in the Home shell branch so the
-  // bottom nav / rail stays visible and the user can swap tabs
-  // without losing inbox state.
-  static const notificationInbox = '/notifications';
-  static const notificationInboxName = 'notificationInbox';
 
   // Finance — Chart of Accounts (Slice 3.1.1). Lives under /finance/*
   // so future Module 3 routes (account detail, GL, AP/AR) share the
@@ -309,12 +293,6 @@ abstract final class RoutePaths {
 
   static const settingsAppLock = '/settings/app-lock';
   static const settingsAppLockName = 'settingsAppLock';
-
-  // Permission-gated demo route (Slice 1.3.2 — exists so the route
-  // guard's "no access → /forbidden" branch is end-to-end demoable
-  // before feature modules add their own gated routes).
-  static const adminDemo = '/admin-demo';
-  static const adminDemoName = 'adminDemo';
 
   // Forbidden — landing for an authenticated user who lacks the
   // required permission for the route they tried to reach.

@@ -7,12 +7,9 @@ import '../../features/auth/views/forgot_password_page.dart';
 import '../../features/auth/views/login_page.dart';
 import '../../features/auth/views/otp_entry_page.dart';
 import '../../features/auth/views/splash_page.dart';
-import '../../features/dashboard/views/admin_demo_page.dart';
-import '../../features/dashboard/views/dashboard_page.dart';
 import '../../features/chat/views/chat_inbox_page.dart';
 import '../../features/auth/repositories/auth_repository.dart';
 import '../di/injection.dart';
-import '../../features/notifications/views/notification_inbox_page.dart';
 import '../../features/settings/views/api_config_page.dart';
 import '../../features/settings/views/app_lock_page.dart';
 import '../../features/settings/views/appearance_page.dart';
@@ -23,7 +20,6 @@ import '../../features/settings/views/notification_preferences_page.dart';
 import '../../features/settings/views/role_editor_page.dart';
 import '../../features/settings/views/sessions_page.dart';
 import '../../features/settings/views/settings_home_page.dart';
-import '../../features/search/views/global_search_page.dart';
 import '../../features/settings/views/user_management_page.dart';
 import 'app_shell.dart';
 import 'auth_redirect_policy.dart';
@@ -41,12 +37,11 @@ import 'route_paths.dart';
 /// **Route topology** (Slice 2.1.1):
 /// - Top-level (no nav chrome): `/splash`, `/login`, `/mfa/otp` — pre-auth
 ///   takeovers.
-/// - [StatefulShellRoute.indexedStack] hosting three sibling branches:
-///   - **Home** branch: `/dashboard`, `/admin-demo`, `/forbidden` — the
-///     forbidden page lives here so the bounce target keeps the shell
-///     chrome and the user can recover via bottom nav.
-///   - **Modules** branch: `/modules`.
-///   - **Settings** branch: `/settings`.
+/// - [StatefulShellRoute.indexedStack] hosting two sibling branches:
+///   - **Chat** branch: `/chat`, `/forbidden` — the forbidden page lives
+///     here so the bounce target keeps the shell chrome and the user can
+///     recover via bottom nav.
+///   - **Settings** branch: `/settings` and its sub-pages.
 ///
 /// The redirect rules live in [resolveAuthRedirect] (pure Dart) so they
 /// can be unit-tested without Flutter. Permission lookups go through
@@ -107,13 +102,13 @@ class AppRouter {
               // Placeholder wiring until the real AuthBloc lands: flipping
               // the stub auth session emits a listener notification, which
               // GoRouter picks up via `refreshListenable` and bounces to
-              // /dashboard via the redirect policy. No `context.go` here.
+              // /chat via the redirect policy. No `context.go` here.
               onSimulatedLogin: () async {
                 // AuthRepository.login()/register() has ALREADY cached the
                 // real authenticated user (id + merged roles + permissions)
                 // before this callback runs, so the permissions snapshot has
                 // a current user by the time the redirect bounces into the
-                // dashboard. Do NOT seed the demo user here — that overwrote
+                // chat tab. Do NOT seed the demo user here — that overwrote
                 // `current_user_id` with `user-demo` (demo roles), which hid
                 // the super-admin Settings section for real SUPER_ADMIN
                 // logins. Just flip the auth flag.
@@ -144,20 +139,15 @@ class AppRouter {
             builder: (context, state, navigationShell) =>
                 AppShell(navigationShell: navigationShell),
             branches: [
-              // Branch 0 — Home / Dashboard. Hosts /admin-demo and
-              // /forbidden so they keep the chrome and the user can
-              // recover via bottom nav after a permission bounce.
+              // Branch 0 — Chat (Module 10). Landing tab after sign-in.
+              // Also hosts /forbidden so the bounce target keeps the
+              // shell chrome and the user can recover via bottom nav.
               StatefulShellBranch(
                 routes: [
                   GoRoute(
-                    path: RoutePaths.dashboard,
-                    name: RoutePaths.dashboardName,
-                    builder: (_, __) => const DashboardPage(),
-                  ),
-                  GoRoute(
-                    path: RoutePaths.adminDemo,
-                    name: RoutePaths.adminDemoName,
-                    builder: (_, __) => const AdminDemoPage(),
+                    path: RoutePaths.chat,
+                    name: RoutePaths.chatName,
+                    builder: (_, __) => const ChatInboxPage(),
                   ),
                   GoRoute(
                     path: RoutePaths.forbidden,
@@ -166,31 +156,9 @@ class AppRouter {
                       attemptedLocation: state.uri.queryParameters['from'],
                     ),
                   ),
-                  GoRoute(
-                    path: RoutePaths.notificationInbox,
-                    name: RoutePaths.notificationInboxName,
-                    builder: (_, __) => const NotificationInboxPage(),
-                  ),
-                  GoRoute(
-                    path: RoutePaths.search,
-                    name: RoutePaths.searchName,
-                    builder: (_, __) => const GlobalSearchPage(),
-                  ),
                 ],
               ),
-              // Branch 1 — Modules. Hosts the permission-filtered shortcut
-              // grid (Slice 2.1.2) and the shared `/coming-soon/:label`
-              // landing for tiles whose feature module hasn't shipped.
-              StatefulShellBranch(
-                routes: [
-                  GoRoute(
-                    path: RoutePaths.chat,
-                    name: RoutePaths.chatName,
-                    builder: (_, __) => const ChatInboxPage(),
-                  ),
-                ],
-              ),
-              // Branch 2 — Settings (Module 9). Hosts the settings hub
+              // Branch 1 — Settings (Module 9). Hosts the settings hub
               // and all 9 sub-pages so they all live under the Settings
               // shell branch and the bottom nav stays on Settings while
               // the user drills down.

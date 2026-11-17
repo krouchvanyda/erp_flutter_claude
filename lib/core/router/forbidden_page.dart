@@ -45,7 +45,7 @@ class ForbiddenPage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             FilledButton(
-              onPressed: () => context.goNamed(RoutePaths.dashboardName),
+              onPressed: () => context.goNamed(RoutePaths.chatName),
               child: Text(l10n.goHome),
             ),
           ],

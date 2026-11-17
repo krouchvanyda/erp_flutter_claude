@@ -1,19 +1,11 @@
 import 'package:erp_mobile/core/router/route_access.dart';
 import 'package:erp_mobile/core/router/route_paths.dart';
-import 'package:erp_mobile/features/auth/models/permission.dart';
 import 'package:test/test.dart';
 
 void main() {
   group('RouteAccess.requiredFor', () {
-    test('returns the configured permission for /admin-demo', () {
-      expect(
-        RouteAccess.requiredFor(RoutePaths.adminDemo),
-        const Permission(token: 'admin'),
-      );
-    });
-
     test('returns null for an ungated location', () {
-      expect(RouteAccess.requiredFor(RoutePaths.dashboard), isNull);
+      expect(RouteAccess.requiredFor(RoutePaths.chat), isNull);
     });
 
     test('returns null for an unknown / future location', () {
@@ -27,8 +19,8 @@ void main() {
         RoutePaths.splash,
         RoutePaths.login,
         RoutePaths.otp,
-        RoutePaths.dashboard,
-        RoutePaths.adminDemo,
+        RoutePaths.chat,
+        RoutePaths.settings,
         RoutePaths.forbidden,
       };
       for (final location in RouteAccess.requirements.keys) {
