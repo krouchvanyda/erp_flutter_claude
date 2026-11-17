@@ -1,5 +1,4 @@
 # erp_mobile
-
 Enterprise ERP Mobile — a Flutter app built on a lean, BLoC-centric stack.
 
 > **Source of truth for the plan & architecture:** [`CLAUDE.md`](./CLAUDE.md)
