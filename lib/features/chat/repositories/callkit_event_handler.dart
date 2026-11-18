@@ -20,6 +20,7 @@ import 'call_signaling_service.dart';
 import 'conversations_repository.dart';
 import 'stream_call_engine.dart';
 import '../../../core/config/flavor.dart';
+import '../../../core/network/api_endpoints.dart';
 
 /// Bridges `flutter_callkit_incoming` user actions (Accept / Reject)
 /// into the call ceremony. Subscribes once at app start and stays
@@ -1434,7 +1435,7 @@ class CallkitEventHandler {
         receiveTimeout: const Duration(seconds: 10),
       ));
       await dio.post<dynamic>(
-        '/chats/calls/$n/reject',
+        ApiEndPoint.callReject(n),
         queryParameters: <String, dynamic>{'reason': 'declined'},
       );
       // ignore: avoid_print
@@ -1448,7 +1449,7 @@ class CallkitEventHandler {
       // Dio: the backend's `backgrounded` flag overrides the live STOMP session
       // in `statusOf()`, so the next call rings via apn again. Best-effort.
       try {
-        await dio.post<dynamic>('/chats/presence/background');
+        await dio.post<dynamic>(ApiEndPoint.presenceBackground);
         // ignore: avoid_print
         print('[CallkitEventHandler] _directRejectNoDi · POST '
             '/presence/background OK — next call will ring via apn');

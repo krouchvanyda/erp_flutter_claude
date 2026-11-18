@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 import 'package:dio/dio.dart';
 
 import '../network/api_envelope.dart';
+import '../network/api_endpoints.dart';
 
 /// REST surface for the device-token registry.
 ///
@@ -35,7 +36,7 @@ class DioDevicesRemoteDataSource implements DevicesRemoteDataSource {
 
   final Dio _dio;
 
-  static const String _basePath = '/me/devices';
+  static const String _basePath = ApiEndPoint.meDevices;
 
   @override
   Future<void> register({
@@ -62,7 +63,7 @@ class DioDevicesRemoteDataSource implements DevicesRemoteDataSource {
   @override
   Future<void> unregister({required String deviceId}) async {
     try {
-      await _dio.delete<Map<String, dynamic>>('$_basePath/$deviceId');
+      await _dio.delete<Map<String, dynamic>>(ApiEndPoint.meDevice(deviceId));
     } on DioException catch (e) {
       // 404 = already revoked (e.g. logout pressed twice, or backend
       // already pruned after token rotation). Treat as success — the

@@ -6,6 +6,7 @@ import '../../../core/network/auth_tokens.dart';
 import '../../../core/network/token_refresher.dart';
 import '../../../core/utils/logger/app_logger.dart';
 import 'cached_user_dao.dart';
+import '../../../core/network/api_endpoints.dart';
 
 /// Production [TokenRefresher] — replaces `UnimplementedTokenRefresher`.
 ///
@@ -40,7 +41,7 @@ class DioTokenRefresher implements TokenRefresher {
         _crash = crashReporter;
 
   /// Refresh endpoint path. Resolved against `dio.options.baseUrl`.
-  static const String endpointPath = '/auth/refresh';
+  static const String endpointPath = ApiEndPoint.refresh;
 
   // Body key: tell the server which refresh token to rotate.
   static const String _bodyRefreshToken = 'refresh_token';

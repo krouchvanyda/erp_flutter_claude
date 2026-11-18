@@ -5,6 +5,7 @@ import '../../../core/network/auth_interceptor.dart';
 import '../../../core/network/dio_client.dart' show HttpHeaders;
 import '../models/auth_requests.dart';
 import '../models/auth_response.dart';
+import '../../../core/network/api_endpoints.dart';
 
 /// Auth-server data source surface.
 ///
@@ -50,10 +51,10 @@ class DioAuthRemoteDataSource implements AuthRemoteDataSource {
   DioAuthRemoteDataSource({required Dio dio}) : _dio = dio;
 
   // ── Endpoint paths (relative to baseUrl `…/api/v1`) ──────────
-  static const String loginPath = '/auth/login';
-  static const String registerPath = '/auth/register';
-  static const String refreshPath = '/auth/refresh';
-  static const String revokePath = '/auth/logout';
+  static const String loginPath = ApiEndPoint.login;
+  static const String registerPath = ApiEndPoint.register;
+  static const String refreshPath = ApiEndPoint.refresh;
+  static const String revokePath = ApiEndPoint.logout;
 
   final Dio _dio;
 

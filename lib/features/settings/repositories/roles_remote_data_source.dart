@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../../../core/network/api_envelope.dart';
 import '../models/role_dto.dart';
 import '../models/role_requests.dart';
+import '../../../core/network/api_endpoints.dart';
 
 /// Surface over the Spring `RoleController` at `/api/v1/roles*`.
 ///
@@ -32,8 +33,8 @@ class DioRolesRemoteDataSource implements RolesRemoteDataSource {
   DioRolesRemoteDataSource({required Dio dio}) : _dio = dio;
 
   // ── Endpoint paths (relative to baseUrl `…/api/v1`) ──────────
-  static const String basePath = '/roles';
-  static const String permissionsPath = '/roles/permissions';
+  static const String basePath = ApiEndPoint.roles;
+  static const String permissionsPath = ApiEndPoint.rolesPermissions;
 
   final Dio _dio;
 
@@ -45,7 +46,7 @@ class DioRolesRemoteDataSource implements RolesRemoteDataSource {
 
   @override
   Future<RoleDto> getRole(String id) async {
-    final res = await _dio.get<Map<String, dynamic>>('$basePath/$id');
+    final res = await _dio.get<Map<String, dynamic>>(ApiEndPoint.role(id));
     return ApiEnvelope.parse(res.data!, RoleDto.fromJson);
   }
 
@@ -61,7 +62,7 @@ class DioRolesRemoteDataSource implements RolesRemoteDataSource {
   @override
   Future<RoleDto> updateRole(String id, UpdateRoleRequest body) async {
     final res = await _dio.patch<Map<String, dynamic>>(
-      '$basePath/$id',
+      ApiEndPoint.role(id),
       data: body.toJson(),
     );
     return ApiEnvelope.parse(res.data!, RoleDto.fromJson);
@@ -69,7 +70,7 @@ class DioRolesRemoteDataSource implements RolesRemoteDataSource {
 
   @override
   Future<void> deleteRole(String id) async {
-    await _dio.delete<dynamic>('$basePath/$id');
+    await _dio.delete<dynamic>(ApiEndPoint.role(id));
   }
 
   @override

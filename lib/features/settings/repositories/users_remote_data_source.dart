@@ -5,6 +5,7 @@ import '../models/assign_roles_request.dart';
 import '../models/page_response.dart';
 import '../models/user_dto.dart';
 import '../models/user_requests.dart';
+import '../../../core/network/api_endpoints.dart';
 
 /// Surface over the Spring `UserController` at `/api/v1/users*`.
 ///
@@ -53,8 +54,8 @@ abstract class UsersRemoteDataSource {
 class DioUsersRemoteDataSource implements UsersRemoteDataSource {
   DioUsersRemoteDataSource({required Dio dio}) : _dio = dio;
 
-  static const String basePath = '/users';
-  static const String mePath = '/users/me';
+  static const String basePath = ApiEndPoint.users;
+  static const String mePath = ApiEndPoint.usersMe;
 
   final Dio _dio;
 
@@ -91,7 +92,7 @@ class DioUsersRemoteDataSource implements UsersRemoteDataSource {
 
   @override
   Future<UserDto> getUser(String id) async {
-    final res = await _dio.get<Map<String, dynamic>>('$basePath/$id');
+    final res = await _dio.get<Map<String, dynamic>>(ApiEndPoint.user(id));
     return ApiEnvelope.parse(res.data!, UserDto.fromJson);
   }
 
@@ -107,7 +108,7 @@ class DioUsersRemoteDataSource implements UsersRemoteDataSource {
   @override
   Future<UserDto> updateUser(String id, UpdateUserRequest body) async {
     final res = await _dio.patch<Map<String, dynamic>>(
-      '$basePath/$id',
+      ApiEndPoint.user(id),
       data: body.toJson(),
     );
     return ApiEnvelope.parse(res.data!, UserDto.fromJson);
@@ -115,13 +116,13 @@ class DioUsersRemoteDataSource implements UsersRemoteDataSource {
 
   @override
   Future<void> deleteUser(String id) async {
-    await _dio.delete<dynamic>('$basePath/$id');
+    await _dio.delete<dynamic>(ApiEndPoint.user(id));
   }
 
   @override
   Future<List<UserDto>> assignRoles(AssignRolesRequest body) async {
     final res = await _dio.post<Map<String, dynamic>>(
-      '$basePath/assign-roles',
+      ApiEndPoint.usersAssignRoles,
       data: body.toJson(),
     );
     return ApiEnvelope.parseList(res.data!, UserDto.fromJson);

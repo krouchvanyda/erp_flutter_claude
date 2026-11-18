@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../../../core/network/api_envelope.dart';
 import '../models/employee_dto.dart';
 import '../models/employee_requests.dart';
+import '../../../core/network/api_endpoints.dart';
 
 /// Surface over the Spring `EmployeeController` at `/api/v1/employees*`.
 ///
@@ -39,9 +40,9 @@ abstract class EmployeesRemoteDataSource {
 class DioEmployeesRemoteDataSource implements EmployeesRemoteDataSource {
   DioEmployeesRemoteDataSource({required Dio dio}) : _dio = dio;
 
-  static const String basePath = '/employees';
-  static const String mePath = '/employees/me';
-  static const String meAvatarPath = '/employees/me/avatar';
+  static const String basePath = ApiEndPoint.employees;
+  static const String mePath = ApiEndPoint.employeesMe;
+  static const String meAvatarPath = ApiEndPoint.employeesMeAvatar;
 
   final Dio _dio;
 
@@ -63,7 +64,7 @@ class DioEmployeesRemoteDataSource implements EmployeesRemoteDataSource {
   @override
   Future<EmployeeDto> update(String id, UpdateEmployeeRequest body) async {
     final res = await _dio.patch<Map<String, dynamic>>(
-      '$basePath/$id',
+      ApiEndPoint.employee(id),
       data: body.toJson(),
     );
     return _parse(res.data!);

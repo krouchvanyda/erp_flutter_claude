@@ -16,6 +16,7 @@ import '../../features/auth/repositories/secure_token_storage.dart';
 import '../../features/chat/repositories/callkit_call_id.dart';
 import 'local_notification_provider.dart';
 import '../../features/chat/widgets/chat_notification_router.dart';
+import '../../core/network/api_endpoints.dart';
 
 /// Top-level background message handler. **Must be a top-level (or
 /// static) function annotated with `@pragma('vm:entry-point')`** so
@@ -342,7 +343,7 @@ Future<({bool? isVideo, String? avatarUrl})> _fetchCallMetaFromBackend(
   try {
     client = HttpClient()..connectionTimeout = const Duration(seconds: 4);
     final req =
-        await client.getUrl(Uri.parse('$_callRejectBaseUrl/chats/calls/$n'));
+        await client.getUrl(Uri.parse('$_callRejectBaseUrl${ApiEndPoint.call(n)}'));
     req.headers.set(HttpHeaders.authorizationHeader, 'Bearer $accessToken');
     final res = await req.close();
     if (res.statusCode != 200) return empty;

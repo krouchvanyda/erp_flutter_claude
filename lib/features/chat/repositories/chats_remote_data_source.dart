@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../../core/network/api_envelope.dart';
+import '../../../core/network/api_endpoints.dart';
 
 /// Wire enum for `SendMessageRequest.type` — values match the Spring
 /// `MessageType` enum exactly (TEXT / IMAGE / VOICE / FILE / SYSTEM).
@@ -153,12 +154,8 @@ abstract class ChatsRemoteDataSource {
 class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
   DioChatsRemoteDataSource({required Dio dio}) : _dio = dio;
 
-  // Path constants kept in one place so future renames are one edit.
+  // Paths live in `ApiEndPoint` (core/network/api_endpoints.dart); the
   // `/api/v1` prefix is part of `dio.options.baseUrl`.
-  static const String _conversationsPath = '/chats/conversations';
-  static const String _messagesPath = '/chats/messages';
-  static const String _callsPath = '/chats/calls';
-  static const String _presencePath = '/chats/presence';
 
   final Dio _dio;
 
@@ -170,7 +167,7 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
     int pageSize = 50,
   }) async {
     final res = await _dio.get<Map<String, dynamic>>(
-      _conversationsPath,
+      ApiEndPoint.conversations,
       queryParameters: {'page': page, 'pageSize': pageSize},
     );
     return ApiEnvelope.parse<Map<String, dynamic>>(res.data!, (d) => d);
@@ -178,7 +175,7 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
 
   @override
   Future<Map<String, dynamic>> getConversation(int id) async {
-    final res = await _dio.get<Map<String, dynamic>>('$_conversationsPath/$id');
+    final res = await _dio.get<Map<String, dynamic>>(ApiEndPoint.conversation(id));
     return ApiEnvelope.parse<Map<String, dynamic>>(res.data!, (d) => d);
   }
 
@@ -199,7 +196,7 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
         'avatarUrl': avatarUrl.trim(),
     };
     final res = await _dio.post<Map<String, dynamic>>(
-      _conversationsPath,
+      ApiEndPoint.conversations,
       data: body,
     );
     return ApiEnvelope.parse<Map<String, dynamic>>(res.data!, (d) => d);
@@ -218,7 +215,7 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
     if (name != null && name.trim().isNotEmpty) body['name'] = name.trim();
     if (avatarUrl != null) body['avatarUrl'] = avatarUrl.trim();
     final res = await _dio.patch<Map<String, dynamic>>(
-      '$_conversationsPath/$id',
+      ApiEndPoint.conversation(id),
       data: body,
     );
     return ApiEnvelope.parse<Map<String, dynamic>>(res.data!, (d) => d);
@@ -228,14 +225,14 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
   Future<void> deleteConversation(int id) async {
     // Backend enforces auth: group → admin only; direct → either party.
     // 403 surfaces through Dio as a `DioException`.
-    await _dio.delete<dynamic>('$_conversationsPath/$id');
+    await _dio.delete<dynamic>(ApiEndPoint.conversation(id));
   }
 
   @override
   Future<void> addMembers(int conversationId, Set<int> memberIds) async {
     // Body mirrors AddMembersRequest.java: { memberIds: [Long, ...] }.
     await _dio.post<dynamic>(
-      '$_conversationsPath/$conversationId/members',
+      ApiEndPoint.conversationMembers(conversationId),
       data: {'memberIds': memberIds.toList()},
     );
   }
@@ -243,7 +240,7 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
   @override
   Future<void> removeMember(int conversationId, int userId) async {
     await _dio.delete<dynamic>(
-      '$_conversationsPath/$conversationId/members/$userId',
+      ApiEndPoint.conversationMember(conversationId, userId),
     );
   }
 
@@ -254,7 +251,7 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
   ) async {
     // Body mirrors MarkReadRequest.java: { lastReadMessageId: Long }.
     final res = await _dio.post<Map<String, dynamic>>(
-      '$_conversationsPath/$conversationId/read',
+      ApiEndPoint.conversationRead(conversationId),
       data: {'lastReadMessageId': lastReadMessageId},
     );
     return ApiEnvelope.parse<Map<String, dynamic>>(res.data!, (d) => d);
@@ -269,7 +266,7 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
     int pageSize = 30,
   }) async {
     final res = await _dio.get<Map<String, dynamic>>(
-      '$_conversationsPath/$conversationId/messages',
+      ApiEndPoint.conversationMessages(conversationId),
       queryParameters: {'page': page, 'pageSize': pageSize},
     );
     return ApiEnvelope.parse<Map<String, dynamic>>(res.data!, (d) => d);
@@ -283,7 +280,7 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
     int pageSize = 30,
   }) async {
     final res = await _dio.get<Map<String, dynamic>>(
-      '$_conversationsPath/$conversationId/messages/search',
+      ApiEndPoint.conversationMessagesSearch(conversationId),
       queryParameters: <String, dynamic>{
         'q': query,
         'page': page,
@@ -319,7 +316,7 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
       if (replyToMessageId != null) 'replyToMessageId': replyToMessageId,
     };
     final res = await _dio.post<Map<String, dynamic>>(
-      '$_conversationsPath/$conversationId/messages',
+      ApiEndPoint.conversationMessages(conversationId),
       data: reqBody,
     );
     return ApiEnvelope.parse<Map<String, dynamic>>(res.data!, (d) => d);
@@ -342,7 +339,7 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
       ),
     });
     final res = await _dio.post<Map<String, dynamic>>(
-      '/chats/attachments',
+      ApiEndPoint.attachments,
       data: form,
     );
     final dto = ApiEnvelope.parse<Map<String, dynamic>>(res.data!, (d) => d);
@@ -420,7 +417,7 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
     // Body mirrors EditMessageRequest.java: { body: String (NotBlank) }.
     // Server enforces the 15-min edit window — returns 400 if past it.
     final res = await _dio.patch<Map<String, dynamic>>(
-      '$_messagesPath/$messageId',
+      ApiEndPoint.message(messageId),
       data: {'body': body},
     );
     return ApiEnvelope.parse<Map<String, dynamic>>(res.data!, (d) => d);
@@ -428,7 +425,7 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
 
   @override
   Future<void> deleteMessage(int messageId) async {
-    await _dio.delete<dynamic>('$_messagesPath/$messageId');
+    await _dio.delete<dynamic>(ApiEndPoint.message(messageId));
   }
 
   @override
@@ -436,7 +433,7 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
     // Body mirrors ToggleReactionRequest.java: { emoji: String }.
     // Response is the updated `List<ReactionDto>` for the message.
     final res = await _dio.post<Map<String, dynamic>>(
-      '$_messagesPath/$messageId/reactions',
+      ApiEndPoint.messageReactions(messageId),
       data: {'emoji': emoji},
     );
     return ApiEnvelope.parseList<dynamic>(res.data!, (d) => d);
@@ -451,7 +448,7 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
   }) async {
     // Body mirrors StartCallRequest.java: { type: "VOICE"|"VIDEO" }.
     final res = await _dio.post<Map<String, dynamic>>(
-      '$_conversationsPath/$conversationId/calls',
+      ApiEndPoint.conversationCalls(conversationId),
       data: {'type': type.wireValue},
     );
     return ApiEnvelope.parse<Map<String, dynamic>>(res.data!, (d) => d);
@@ -460,7 +457,7 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
   @override
   Future<Map<String, dynamic>> acceptCall(int callId) async {
     final res = await _dio.post<Map<String, dynamic>>(
-      '$_callsPath/$callId/accept',
+      ApiEndPoint.callAccept(callId),
     );
     return ApiEnvelope.parse<Map<String, dynamic>>(res.data!, (d) => d);
   }
@@ -468,7 +465,7 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
   @override
   Future<Map<String, dynamic>> rejectCall(int callId, {String? reason}) async {
     final res = await _dio.post<Map<String, dynamic>>(
-      '$_callsPath/$callId/reject',
+      ApiEndPoint.callReject(callId),
       queryParameters: <String, dynamic>{
         if (reason != null && reason.isNotEmpty) 'reason': reason,
       },
@@ -479,7 +476,7 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
   @override
   Future<Map<String, dynamic>> endCall(int callId) async {
     final res = await _dio.post<Map<String, dynamic>>(
-      '$_callsPath/$callId/end',
+      ApiEndPoint.callEnd(callId),
     );
     return ApiEnvelope.parse<Map<String, dynamic>>(res.data!, (d) => d);
   }
@@ -487,7 +484,7 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
   @override
   Future<Map<String, dynamic>> getStreamToken() async {
     final res = await _dio.get<Map<String, dynamic>>(
-      '$_callsPath/stream-token',
+      ApiEndPoint.streamToken,
     );
     return ApiEnvelope.parse<Map<String, dynamic>>(res.data!, (d) => d);
   }
@@ -496,7 +493,7 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
   Future<Map<String, dynamic>> getCall(int callId) async {
     // Used to reconcile a call's state after a missed STOMP event
     // (network blip mid-call, cold start while a call is in flight).
-    final res = await _dio.get<Map<String, dynamic>>('$_callsPath/$callId');
+    final res = await _dio.get<Map<String, dynamic>>(ApiEndPoint.call(callId));
     return ApiEnvelope.parse<Map<String, dynamic>>(res.data!, (d) => d);
   }
 
@@ -506,7 +503,7 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
     int pageSize = 50,
   }) async {
     final res = await _dio.get<Map<String, dynamic>>(
-      _callsPath,
+      ApiEndPoint.calls,
       queryParameters: {'page': page, 'pageSize': pageSize},
     );
     return ApiEnvelope.parse<Map<String, dynamic>>(res.data!, (d) => d);
@@ -519,7 +516,7 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
     int pageSize = 6,
   }) async {
     final res = await _dio.get<Map<String, dynamic>>(
-      '$_conversationsPath/$conversationId/calls',
+      ApiEndPoint.conversationCalls(conversationId),
       queryParameters: {'page': page, 'pageSize': pageSize},
     );
     return ApiEnvelope.parse<Map<String, dynamic>>(res.data!, (d) => d);
@@ -534,7 +531,7 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
     //   `[...]`                      — bare array (rare; some
     //                                    presence endpoints skip the
     //                                    wrapper for cache reasons)
-    final res = await _dio.get<dynamic>(_presencePath);
+    final res = await _dio.get<dynamic>(ApiEndPoint.presence);
     final body = res.data;
     if (body is List) return body;
     if (body is Map<String, dynamic>) {
@@ -547,7 +544,7 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
   Future<List<dynamic>> listPresenceForIds(Iterable<int> userIds) async {
     if (userIds.isEmpty) return const <dynamic>[];
     final res = await _dio.get<dynamic>(
-      _presencePath,
+      ApiEndPoint.presence,
       queryParameters: {'ids': userIds.join(',')},
     );
     final body = res.data;
@@ -560,11 +557,11 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
 
   @override
   Future<void> reportBackground() async {
-    await _dio.post<dynamic>('$_presencePath/background');
+    await _dio.post<dynamic>(ApiEndPoint.presenceBackground);
   }
 
   @override
   Future<void> reportForeground() async {
-    await _dio.post<dynamic>('$_presencePath/foreground');
+    await _dio.post<dynamic>(ApiEndPoint.presenceForeground);
   }
 }

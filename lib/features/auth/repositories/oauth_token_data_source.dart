@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../../../core/network/auth_interceptor.dart';
 import '../../../core/network/auth_tokens.dart';
+import '../../../core/network/api_endpoints.dart';
 
 /// OAuth `/token` surface — exchanges an authorization code for tokens.
 ///
@@ -34,7 +35,7 @@ class DioOAuthTokenDataSource implements OAuthTokenDataSource {
   /// Path resolved against `dio.options.baseUrl`. Standard OAuth 2.0
   /// metadata convention; configurable later if a vendor uses a
   /// non-standard endpoint.
-  static const String tokenPath = '/oauth/token';
+  static const String tokenPath = ApiEndPoint.oauthToken;
 
   // Body keys.
   static const String _grantType = 'authorization_code';
