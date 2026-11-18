@@ -17,6 +17,7 @@ import '../repositories/stream_call_engine.dart';
 import '../models/call_log.dart';
 import '../models/conversation.dart';
 import '../widgets/chat_avatar.dart';
+import '../repositories/call_network.dart';
 
 /// Slice 10.2.1 (state machine) + Slice 10.2.3 (wire signalling).
 ///
@@ -71,6 +72,10 @@ class _VoiceCallPageState extends State<VoiceCallPage>
     _signaling = context.read<CallSignalingService>();
     _streamEngine = context.read<StreamCallEngine>();
     _signaling.activeCallListenable.addListener(_onActiveCallChanged);
+    _signaling.network.addListener(_onNetworkChanged);
+    _signaling.mediaConnected.addListener(_onNetworkChanged);
+    // Opened on a call whose voice is already up → keep its timer.
+    _mediaSeen = _signaling.mediaConnected.value;
     WidgetsBinding.instance.addObserver(this);
     final existing = _signaling.current;
     // ignore: avoid_print
@@ -129,6 +134,8 @@ class _VoiceCallPageState extends State<VoiceCallPage>
     _ticker?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _signaling.activeCallListenable.removeListener(_onActiveCallChanged);
+    _signaling.network.removeListener(_onNetworkChanged);
+    _signaling.mediaConnected.removeListener(_onNetworkChanged);
     // If this call was answered over the lock screen, drop the app back
     // behind the keyguard now that it's over — instead of revealing the
     // unlocked dashboard. No-op for calls started inside the unlocked app.
@@ -316,6 +323,7 @@ class _VoiceCallPageState extends State<VoiceCallPage>
             'chatPeerInAnotherCallRetry'.trParams({'name': call.peerName}),
           'failed' => 'chatCallStartFailed'.tr,
           'no_answer' => 'chatPeerNoAnswer'.trParams({'name': call.peerName}),
+          'network' => 'chatCallConnectionLost'.tr,
           _ => null,
         };
         if (reason != null) {
@@ -335,6 +343,20 @@ class _VoiceCallPageState extends State<VoiceCallPage>
     await _signaling.hangup();
   }
 
+  /// Whether the voice has been up at least once on this page.
+  bool _mediaSeen = false;
+
+  void _onNetworkChanged() {
+    if (!mounted) return;
+    setState(() {
+      // The call time starts when both people are really in the call.
+      if (!_mediaSeen && _signaling.mediaConnected.value) {
+        _mediaSeen = true;
+        _elapsedSeconds = 0;
+      }
+    });
+  }
+
   String get _statusLabel {
     switch (_stage) {
       case _CallStage.calling:
@@ -346,6 +368,21 @@ class _VoiceCallPageState extends State<VoiceCallPage>
       case _CallStage.ringing:
         return 'chatCallRinging'.tr;
       case _CallStage.connected:
+        // Accepted, but the voice isn't up yet (the other phone is still
+        // joining) — don't run the timer.
+        if (!_mediaSeen) return 'chatCallConnecting'.tr;
+        // Scenario 8 — bad network.
+        switch (_signaling.network.value) {
+          case CallNetwork.reconnecting:
+            return 'chatCallReconnecting'.tr;
+          case CallNetwork.weak:
+            return 'chatCallMyNetworkWeak'.tr;
+          case CallNetwork.peerWeak:
+            return 'chatCallPeerNetworkWeak'
+                .trParams({'name': _signaling.current?.peerName ?? ''});
+          case CallNetwork.good:
+            break;
+        }
         final m = (_elapsedSeconds ~/ 60).toString().padLeft(2, '0');
         final s = (_elapsedSeconds % 60).toString().padLeft(2, '0');
         return '$m:$s';

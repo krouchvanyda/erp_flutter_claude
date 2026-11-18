@@ -6,8 +6,9 @@ import 'dart:io';
 import 'package:erp_callkit/erp_callkit.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_callkit_incoming/entities/entities.dart';
-import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
+import 'package:stream_video_push_notification/stream_video_push_notification.dart';
+
+import '../../features/chat/repositories/callkit.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/config/flavor.dart';
@@ -172,7 +173,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       // iOS / flutter_callkit_incoming ringer is keyed on the CID-derived
       // CallKit id (see _showStreamCallkitRinger). Best-effort end it too.
       try {
-        await FlutterCallkitIncoming.endCall(callkitIdForCid(callCid));
+        await CallKit.endCall(callkitIdForCid(callCid));
       } catch (_) {/* swallow — entry may already be gone */}
     }
     return;
@@ -221,11 +222,11 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
           '';
       try {
         if (callCid.isNotEmpty) {
-          await FlutterCallkitIncoming.endCall(callkitIdForCid(callCid));
+          await CallKit.endCall(callkitIdForCid(callCid));
         }
       } catch (_) {/* swallow — entry may already be gone */}
       try {
-        await FlutterCallkitIncoming.endAllCalls();
+        await CallKit.endAllCalls();
       } catch (_) {/* swallow */}
     }
     return;
@@ -473,11 +474,9 @@ Future<void> _showStreamCallkitRinger(RemoteMessage message) async {
           ? data['created_by_image'].toString().trim()
           : null);
 
-  final params = CallKitParams(
+  final params = StreamVideoPushParams(
     id: id,
-    nameCaller: callerName,
-    appName: 'ERP',
-    avatar: callerAvatar,
+    callerName: callerName,
     handle: callerHandle,
     type: isVideo ? 1 : 0,
     // Persist the whole Stream payload so the accept/decline handler
@@ -488,14 +487,15 @@ Future<void> _showStreamCallkitRinger(RemoteMessage message) async {
       'caller_name': callerName,
       'type': data['type']?.toString() ?? '',
     },
-    android: const AndroidParams(
-      isCustomNotification: true,
-      isShowLogo: false,
+    android: AndroidParams(
+      avatar: callerAvatar,
       ringtonePath: 'system_ringtone_default',
-      backgroundColor: '#0955fa',
-      actionColor: '#4CAF50',
       incomingCallNotificationChannelName: 'Incoming Calls',
       missedCallNotificationChannelName: 'Missed Calls',
+      incomingCallNotification: const IncomingCallNotificationParams(
+        fullScreenShowLogo: false,
+        fullScreenBackgroundColor: '#0955fa',
+      ),
     ),
     ios: const IOSParams(
       iconName: 'CallKitLogo',
@@ -515,7 +515,7 @@ Future<void> _showStreamCallkitRinger(RemoteMessage message) async {
     ),
   );
   try {
-    await FlutterCallkitIncoming.showCallkitIncoming(params);
+    await CallKit.showCallkitIncoming(params);
     if (kDebugMode) {
       log('📞 [stream.call.ring] CallKit shown · id=$id · caller=$callerName');
     }
@@ -786,7 +786,7 @@ class FirebaseNotificationProvider {
                 unawaited(ErpCallKit.dismiss(dismissId)
                     .catchError((Object _) {}));
               }
-              FlutterCallkitIncoming.endCall(callkitIdForCid(callCid))
+              CallKit.endCall(callkitIdForCid(callCid))
                   .catchError((Object _) {});
             }
           }

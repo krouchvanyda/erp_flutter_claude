@@ -15,7 +15,7 @@ will go in `REAL_DEVICE_TESTS.md` (not created yet).
 | 5 | Background + locked | Rings on the lock screen → Accept → call screen at once (no chats flash) | ✅ |
 | 6 | Killed + locked | Rings on the lock screen → call screen straight away | ✅ |
 | 7 | Call sounds | "Calling…" is silent → "Ringing…" plays the ringback → beep on connect → beep on end (see [Call sounds](#call-sounds)) | ✅ done 2026-11-18 |
-| 8 | Bad network | "Reconnecting…" → voice comes back; ends after 30 s if the network doesn't return | ❌ no "Reconnecting…" label, no 30 s end |
+| 8 | Bad network | After Accept: "Connecting…" until both people are really in the call, then the timer starts at 00:00. My network drops: "Reconnecting…" → voice comes back and the timer returns; after 30 s without network Stream gives up → "Couldn't connect the call". Weak network: "Your network is weak" / "@name's network is weak"; the note clears right after a reconnect | ✅ done 2026-11-18, same approach as flutter-chat (CALL_CODE_TRACE.md scenario 8); not tested on a phone yet |
 | 9 | Other side ends while I'm in the background | My call stops, no stuck call screen | ✅ |
 | 10 | Callee offline | Silent "Calling…" only (never "Ringing…") → "No answer" at 60 s + "Missed voice call" | ✅ backend saved call 8 (2026-11-18) as `MISSED / no_answer` at 60 s |
 | 11 | Busy (already in a call) | The second caller gets "Busy in another call" | ✅ |

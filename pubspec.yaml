@@ -34,7 +34,7 @@ dependencies:
 
   # ── Networking ──────────────────────────────────────────────────
   dio: ^5.7.0
-  connectivity_plus: ^6.1.0
+  connectivity_plus: ^7.0.0
   pretty_dio_logger: ^1.4.0
   web_socket_channel: ^3.0.1
   # STOMP client for the chat module's real-backend integration
@@ -49,16 +49,15 @@ dependencies:
   # `stream_video_flutter` opens the media leg once both sides have
   # accepted, using a per-call CID + JWT issued by our backend at
   # `GET /api/v1/chats/calls/stream-token`.
-  stream_video_flutter: ^0.10.0
+  stream_video_flutter: ^1.7.2
   # Native incoming-call ringer for Stream Video. Provides the
   # `PushNotificationManager` impl that StreamVideo() needs to actually
   # display a proper ring screen (vs the silent grouped notification
   # the SDK fires by default when no PN manager is configured). Talks
   # to `flutter_callkit_incoming` natively on Android / iOS — no Dart
   # render path needed for the heads-up itself.
-  # Pin to the same minor as stream_video_flutter — newer pn versions
-  # require stream_video_flutter ^1.x.
-  stream_video_push_notification: ^0.10.4
+  # Keep on the same version as stream_video_flutter.
+  stream_video_push_notification: ^1.7.2
 
   # ── Local persistence ───────────────────────────────────────────
   # SQLite/drift removed — structural cache now lives in shared_preferences.
@@ -95,8 +94,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   google_fonts: ^6.2.1
   flutter_animate: ^4.5.2
-  firebase_core: ^3.13.0
-  firebase_messaging: ^15.2.5
+  firebase_core: ^4.1.1
+  firebase_messaging: ^16.0.2
   permission_handler: ^12.0.1
   flutter_local_notifications: ^19.1.0
 
@@ -127,6 +126,7 @@ dev_dependencies:
   bloc_test: ^9.1.7
   mocktail: ^1.0.4
   test: ^1.25.0
+
 
 flutter:
   uses-material-design: true

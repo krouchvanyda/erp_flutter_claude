@@ -3,7 +3,7 @@ import 'dart:io' show Platform;
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
+import 'callkit.dart';
 import 'package:permission_handler/permission_handler.dart';
 // ignore: depend_on_referenced_packages — pulled in transitively by
 // stream_video_flutter; we touch it directly only to pre-configure the
@@ -15,6 +15,7 @@ import 'package:stream_video_push_notification/stream_video_push_notification.da
 
 import 'chats_remote_data_source.dart';
 import 'users_cache.dart';
+import 'call_network.dart';
 
 /// Why Stream signalled that the active call ended. Lets the consumer
 /// distinguish DEFINITIVE ends (which must always tear the call down)
@@ -158,6 +159,13 @@ class StreamCallEngine {
   /// to join as (rare: sign-out → sign-in mid-session).
   String? _clientUserId;
 
+  /// When the Stream WebSocket last connected. A ring Stream sends while
+  /// the socket is up reaches [_pendingIncomingCall] within a moment, so
+  /// once the socket has been up a few seconds and no ring arrived, Stream
+  /// didn't ring this call (all callees online → the backend creates it
+  /// with `ring:false`) and there is nothing to wait for on accept.
+  DateTime? _clientConnectedAt;
+
   /// Live handle to the currently-joined Stream [Call] (or null when
   /// idle). The voice/video pages listen to this so they can mount a
   /// [StreamCallParticipants] / video renderer the instant Stream
@@ -238,6 +246,52 @@ class StreamCallEngine {
   final StreamController<StreamCallEndReason> _callEndedController =
       StreamController<StreamCallEndReason>.broadcast();
   StreamSubscription<CallState>? _activeStateSub;
+
+  /// Scenario 8 — what the call screen shows about the network:
+  /// "Reconnecting…", "Your network is weak", "@name's network is weak",
+  /// or the timer ([CallNetwork.good]). See `call_network.dart`.
+  final ValueNotifier<CallNetwork> network =
+      ValueNotifier<CallNetwork>(CallNetwork.good);
+  NetworkRatings _ratings = NetworkRatings();
+
+  /// True once the voice is really up: I'm connected AND the other person
+  /// has joined. Until then the call screen shows "Connecting…" and the
+  /// timer doesn't run (flutter-chat `snapshotForStream`: "the call time
+  /// starts only when both are in").
+  final ValueNotifier<bool> mediaConnected = ValueNotifier<bool>(false);
+
+  /// The other phone's custom events (`reconnected`) for the active call.
+  StreamSubscription<StreamCallCustomEvent>? _customEventSub;
+
+  /// Ratings → [network]; when back from "Reconnecting…" tell the other
+  /// phone (custom `reconnected`) so it drops my old "poor" rating.
+  void _updateNetwork(Call call, CallState s) {
+    final reconnecting = s.status is CallStatusReconnecting ||
+        s.status is CallStatusMigrating;
+    final rated = _ratings.update(
+      reconnecting: reconnecting,
+      me: s.localParticipant?.connectionQuality,
+      others: [for (final p in s.otherParticipants) p.connectionQuality],
+    );
+    if (_ratings.takeBackFromReconnect()) {
+      unawaited(call
+          .sendCustomEvent(
+            eventType: reconnectedEventKind,
+            custom: const {'kind': reconnectedEventKind},
+          )
+          .then((r) => debugPrint('[StreamCallEngine] told the other side '
+              '"reconnected" ${r.isSuccess ? 'ok' : r}'))
+          .catchError((Object e) =>
+              debugPrint('[StreamCallEngine] reconnected event failed: $e')));
+    }
+    final next = reconnecting ? CallNetwork.reconnecting : rated;
+    if (network.value != next) {
+      // ignore: avoid_print
+      print('[StreamCallEngine] network ${network.value.name} → ${next.name} '
+          '(status=${s.status})');
+      network.value = next;
+    }
+  }
 
   /// Fires on the CALLER's side the first time a remote participant
   /// joins the Stream call — i.e. our peer accepted on their device.
@@ -373,7 +427,7 @@ class StreamCallEngine {
   Future<void> _reassertIosAudioRoute() async {
     if (!Platform.isIOS) return;
     try {
-      await rtc.Helper.ensureAudioSession();
+      await rtc.Helper.ensureiOSAudioSession();
       await rtc.Helper.setSpeakerphoneOn(true);
       // ignore: avoid_print
       print('[StreamCallEngine] iOS post-join audio re-assert · '
@@ -878,7 +932,15 @@ class StreamCallEngine {
         await leave();
       }
       if (mySeq != _callSeq) return true; // superseded — caller stops too
-      await _ensureClient();
+      if (_client == null) {
+        await _ensureClient();
+      } else {
+        // Already connected: don't hold the accept for the /stream-token
+        // round-trip (~1 s). It still runs to catch a changed user; if
+        // that rebuilds the client, this join fails and the retry uses
+        // the new client.
+        unawaited(_ensureClient());
+      }
       if (mySeq != _callSeq) return true;
       final client = _client;
       if (client == null) return false;
@@ -899,8 +961,11 @@ class StreamCallEngine {
       // and use it if it does. Falls through to the makeCall path only
       // if Stream still hasn't surfaced the call after 3 s (in which
       // case the accept WILL fail, but we tried).
+      final connectedAt = _clientConnectedAt;
+      final justConnected = connectedAt == null ||
+          DateTime.now().difference(connectedAt) < const Duration(seconds: 5);
       final waited = await _waitForPendingIncoming(callCid,
-          timeout: const Duration(seconds: 3));
+          timeout: justConnected ? const Duration(seconds: 3) : Duration.zero);
       if (mySeq != _callSeq) return true;
       if (waited != null) {
         // ignore: avoid_print
@@ -909,6 +974,23 @@ class StreamCallEngine {
             'instead of fresh makeCall — accept will succeed');
         return _acceptOnCallRef(waited, isVideo: isVideo, mySeq: mySeq,
             attemptLabel: 'attempt $attempt');
+      }
+      if (!justConnected) {
+        // The socket was up and no ring came → Stream didn't ring this
+        // call (all callees were online). Nothing to accept on Stream's
+        // side: join with a plain ref (saves ~3 s of waiting + a failed
+        // accept → "Connecting…" is much shorter).
+        // ignore: avoid_print
+        print('[StreamCallEngine] acceptByCid attempt $attempt: Stream '
+            'did not ring this call — joining directly');
+        final call = client.makeCall(
+          callType: StreamCallType.fromString(callType),
+          id: callId,
+        );
+        _inFlightCall = call;
+        return _acceptOnCallRef(call,
+            isVideo: isVideo, mySeq: mySeq,
+            attemptLabel: 'attempt $attempt (direct)');
       }
       // No pending incoming — Stream's WS connected after the ring
       // already happened via FCM, and the coordinator doesn't replay
@@ -988,19 +1070,37 @@ class StreamCallEngine {
   /// accept + join + settle-wait + listener attachment so the retry
   /// loop in acceptByCid doesn't need two near-identical code paths.
   Future<bool> _acceptOnCallRef(
-    Call call, {
+    Call incoming, {
     required bool isVideo,
     required int mySeq,
     required String attemptLabel,
   }) async {
+    var call = incoming;
     try {
-      final acceptResult = await call.accept();
-      if (acceptResult.isFailure) {
+      // Our backend already accepted the call (POST /calls/{id}/accept).
+      // Stream's accept only answers a call STREAM rang; when all callees
+      // were online the backend created it with `ring:false`, and Stream
+      // refuses the accept ("Only members can reject or accept a call")
+      // even though we are a member. The voice comes from join(), so a
+      // failed accept must not stop it (same as flutter-chat's join()).
+      if (call.state.value.status is CallStatusIncoming) {
+        final acceptResult = await call.accept();
         // ignore: avoid_print
-        print('[StreamCallEngine] $attemptLabel: call.accept on '
-            'Stream-provided ref FAILED: $acceptResult');
-        try { await call.leave(); } catch (_) {}
-        return false;
+        print('[StreamCallEngine] $attemptLabel: call.accept '
+            '${acceptResult.isSuccess ? 'ok' : 'FAILED: $acceptResult — joining with a plain call ref'}');
+        // The "incoming" ref Stream refused to accept also never joins
+        // (call 34: join hung 19 s → "connect cancelled"). Join with a
+        // plain ref instead — the same makeCall + join the caller uses.
+        final client = _client;
+        if (acceptResult.isFailure && client != null) {
+          final cid = call.callCid;
+          call = client.makeCall(callType: cid.type, id: cid.id);
+          _inFlightCall = call;
+        }
+      } else {
+        // ignore: avoid_print
+        print('[StreamCallEngine] $attemptLabel: Stream did not ring this '
+            'call (status=${call.state.value.status}) — skip accept, join');
       }
       if (mySeq != _callSeq) {
         try { await call.leave(); } catch (_) {}
@@ -1033,6 +1133,7 @@ class StreamCallEngine {
         return false;
       }
       _activeCall = call;
+      if (identical(_inFlightCall, call)) _inFlightCall = null;
       callNotifier.value = call;
       _pendingIncomingCall = null;
       _attachEndListener(call);
@@ -1199,6 +1300,7 @@ class StreamCallEngine {
         return false;
       }
       _activeCall = call;
+      if (identical(_inFlightCall, call)) _inFlightCall = null;
       callNotifier.value = call;
       _pendingIncomingCall = null;
       _attachEndListener(call);
@@ -1260,6 +1362,20 @@ class StreamCallEngine {
     // time). Watching the participant list works purely off the media
     // layer we DID join, so it survives all of that.
     var sawRemoteParticipant = false;
+    // Scenario 8 — fresh network state for this call, and listen for the
+    // other phone's `reconnected` event.
+    network.value = CallNetwork.good;
+    _ratings = NetworkRatings();
+    mediaConnected.value = false;
+    _customEventSub?.cancel();
+    _customEventSub = call.callEvents.on<StreamCallCustomEvent>((e) {
+      if (e.senderUserId == call.state.value.currentUserId) return;
+      if (e.custom?['kind'] != reconnectedEventKind) return;
+      // Their old "poor" rating is from the outage — stop showing
+      // "@name's network is weak".
+      _ratings.othersReconnected();
+      if (_activeCall == call) _updateNetwork(call, call.state.value);
+    });
     _activeStateSub = call.state.valueStream.listen((s) {
       // Defence-in-depth: only fire `onStreamCallEnded` when the
       // disconnect is for our CURRENT active call. If `_activeCall`
@@ -1271,6 +1387,15 @@ class StreamCallEngine {
       if (_activeCall != call) return;
 
       final status = s.status;
+
+      _updateNetwork(call, s);
+      if (!mediaConnected.value &&
+          s.otherParticipants.isNotEmpty &&
+          (status is CallStatusConnected || status is CallStatusJoined)) {
+        // ignore: avoid_print
+        print('[StreamCallEngine] voice connected (both in the call)');
+        mediaConnected.value = true;
+      }
 
       // Remote-participant-left detection (peer hung up / left the call).
       // Fires only AFTER a remote was seen, so the transient "no remote
@@ -1448,6 +1573,7 @@ class StreamCallEngine {
     // incoming-call listener). One extra HTTP per resume — acceptable.
     _client = null;
     _clientUserId = null;
+    _clientConnectedAt = null;
     _pendingIncomingCall = null;
   }
 
@@ -1558,6 +1684,10 @@ class StreamCallEngine {
     // into onStreamCallEnded and kills the brand-new call's state.
     await _activeStateSub?.cancel();
     _activeStateSub = null;
+    await _customEventSub?.cancel();
+    _customEventSub = null;
+    network.value = CallNetwork.good;
+    mediaConnected.value = false;
     if (call == null) {
       // ignore: avoid_print
       print('[StreamCallEngine] leave() · no active call ref to leave — '
@@ -1696,6 +1826,15 @@ class StreamCallEngine {
         image: avatarUrl,
       ),
       userToken: token,
+      // Scenario 8 — a phone call should not hang on "Reconnecting…" for
+      // minutes (Stream's defaults: forever / 5 min). After this, Stream
+      // reports ReconnectionFailed and the call ends.
+      options: StreamVideoOptions(
+        defaultCallPreferences: DefaultCallPreferences(
+          reconnectTimeout: callReconnectTimeout,
+          networkAvailabilityTimeout: callReconnectTimeout,
+        ),
+      ),
       // Native incoming-call ring screen. Without a PN manager the
       // SDK falls back to a silent grouped notification (the one that
       // was spamming `notify(...)` in the receiver logs). With this
@@ -1759,6 +1898,7 @@ class StreamCallEngine {
     });
     try {
       await _client!.connect();
+      _clientConnectedAt = DateTime.now();
       // ignore: avoid_print
       print('[StreamCallEngine] connected as userId=$userId');
       // iOS-only push diagnostic — answers "does APN work?" without a
@@ -1803,7 +1943,7 @@ class StreamCallEngine {
     // CALL push. Separate from the APNs token above; delivered async by
     // PushKit, so it may be empty for a beat right after launch.
     try {
-      final voip = await FlutterCallkitIncoming.getDevicePushTokenVoIP();
+      final voip = await CallKit.getDevicePushTokenVoIP();
       // ignore: avoid_print
       print(voip == null || voip.isEmpty
           ? '[PushDiag] ⏳ VoIP (PushKit) token EMPTY so far — PushKit not yet '
@@ -1938,7 +2078,7 @@ class StreamCallEngine {
       //                     is the Stream-dashboard side (provider/cert), not us.
       try {
         lastVoip =
-            (await FlutterCallkitIncoming.getDevicePushTokenVoIP())?.toString() ??
+            (await CallKit.getDevicePushTokenVoIP())?.toString() ??
                 '';
       } catch (_) {
         lastVoip = '';
@@ -2028,6 +2168,7 @@ class StreamCallEngine {
     } catch (_) {}
     _client = null;
     _clientUserId = null;
+    _clientConnectedAt = null;
     _pendingIncomingCall = null;
   }
 }

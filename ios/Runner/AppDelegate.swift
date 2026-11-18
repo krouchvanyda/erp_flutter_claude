@@ -3,7 +3,6 @@ import UIKit
 import Firebase
 import flutter_local_notifications
 import stream_video_push_notification
-import flutter_callkit_incoming
 import CallKit
 
 @main
@@ -112,18 +111,15 @@ import CallKit
           // the only call UI the user can see there. Read-only.
           result(self.isAppForeground)
         case "dismissIncoming":
-          if let plugin = SwiftFlutterCallkitIncomingPlugin.sharedInstance {
-            let calls = plugin.activeCalls()
-            for c in calls {
-              if let uuid = (c["id"] as? String) ?? (c["uuid"] as? String),
-                 !uuid.isEmpty {
-                plugin.saveEndCall(uuid, 6) // remoteEnded → reportCall(endedAt:)
-              }
+          let callkit = StreamVideoCallkitManager.shared
+          let calls = callkit.activeCalls()
+          for c in calls {
+            if let uuid = (c["id"] as? String) ?? (c["uuid"] as? String),
+               !uuid.isEmpty {
+              callkit.saveEndCall(uuid, 6) // remoteEnded → reportCall(endedAt:)
             }
-            result(calls.count)
-          } else {
-            result(0)
           }
+          result(calls.count)
         default:
           result(FlutterMethodNotImplemented)
         }
@@ -201,42 +197,46 @@ import CallKit
     // removes the activeCalls() entry before `notifyIncomingCallEnded` runs, so
     // this is the only way Dart can still learn the backend call id to POST the
     // reject and stop the caller ringing.
-    if !isAppForeground,
-       let plugin = SwiftFlutterCallkitIncomingPlugin.sharedInstance {
+    if !isAppForeground {
       let ringingUuid = call.uuid.uuidString
-      for c in plugin.activeCalls() {
-        let entryId = (c["id"] as? String) ?? (c["uuid"] as? String) ?? ""
-        if entryId == ringingUuid {
-          lastIncomingCallByUuid[ringingUuid] = c
-          break
-        }
+      if let c = activeCallEntry(uuid: ringingUuid) {
+        lastIncomingCallByUuid[ringingUuid] = c
       }
     }
     // Suppress ONLY when the app is genuinely on screen. Background/killed must
     // keep the native ring — that's the entire point of CallKit there.
     guard isAppForeground else { return }
-    guard let plugin = SwiftFlutterCallkitIncomingPlugin.sharedInstance else { return }
     // reason 6 → remoteEnded → CXProvider.reportCall(endedAt:) dismisses the
     // incoming UI (CXEndCallAction does not).
-    plugin.saveEndCall(call.uuid.uuidString, 6)
+    StreamVideoCallkitManager.shared.saveEndCall(call.uuid.uuidString, 6)
+  }
+
+  /// The native CallKit entry for [uuid] (carries `extra.callCid`), or nil.
+  /// Stream's push plugin (1.x) names the caller `callerName`; the Dart side
+  /// reads `nameCaller` (the old flutter_callkit_incoming key), so add it.
+  private func activeCallEntry(uuid: String) -> [String: Any]? {
+    for c in StreamVideoCallkitManager.shared.activeCalls() {
+      let entryId = (c["id"] as? String) ?? (c["uuid"] as? String) ?? ""
+      if entryId == uuid {
+        var entry = c
+        if entry["nameCaller"] == nil, let name = c["callerName"] {
+          entry["nameCaller"] = name
+        }
+        return entry
+      }
+    }
+    return nil
   }
 
   /// Push a native→Dart `incomingCallAnswered` event for a CallKit call the
-  /// user just answered. Looks up the matching flutter_callkit_incoming
+  /// user just answered. Looks up the matching native CallKit
   /// entry (which carries the Stream cid under `extra.callCid`) so the Dart
   /// side has everything `_handleAccept` needs; falls back to the bare UUID
   /// if the entry isn't found. Runs on the observer's main queue.
   private func notifyIncomingCallAnswered(uuid: String) {
     var payload: [String: Any] = ["uuid": uuid]
-    if let plugin = SwiftFlutterCallkitIncomingPlugin.sharedInstance {
-      let calls = plugin.activeCalls()
-      for c in calls {
-        let entryId = (c["id"] as? String) ?? (c["uuid"] as? String) ?? ""
-        if entryId == uuid {
-          payload["call"] = c
-          break
-        }
-      }
+    if let c = activeCallEntry(uuid: uuid) {
+      payload["call"] = c
     }
     lastIncomingCallByUuid.removeValue(forKey: uuid)
     callkitChannel?.invokeMethod("incomingCallAnswered", arguments: payload)
@@ -245,21 +245,14 @@ import CallKit
   /// Push a native→Dart `incomingCallEnded` event for a CallKit call the
   /// user just ended on the native screen while backgrounded/locked. Mirror
   /// of `notifyIncomingCallAnswered` — looks up the matching
-  /// flutter_callkit_incoming entry (carrying the Stream cid under
+  /// native CallKit entry (carrying the Stream cid under
   /// `extra.callCid`) if it's still listed, falling back to the bare UUID.
   /// The Dart side routes it to `_handleHangup`, which POSTs the hang-up so
   /// the caller stops being "in call".
   private func notifyIncomingCallEnded(uuid: String) {
     var payload: [String: Any] = ["uuid": uuid]
-    if let plugin = SwiftFlutterCallkitIncomingPlugin.sharedInstance {
-      let calls = plugin.activeCalls()
-      for c in calls {
-        let entryId = (c["id"] as? String) ?? (c["uuid"] as? String) ?? ""
-        if entryId == uuid {
-          payload["call"] = c
-          break
-        }
-      }
+    if let c = activeCallEntry(uuid: uuid) {
+      payload["call"] = c
     }
     // Fallback: the decline usually removes the entry from activeCalls() before
     // this runs, so attach the entry we stashed when the call first rang — it's

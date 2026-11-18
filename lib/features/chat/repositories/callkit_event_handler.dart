@@ -6,8 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show MethodCall, MethodChannel;
 import 'package:erp_callkit/erp_callkit.dart';
-import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
-import 'package:flutter_callkit_incoming/entities/entities.dart';
+import 'callkit.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:erp_mobile/core/di/service_locator.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -218,7 +217,7 @@ class CallkitEventHandler {
     // `requestFullIntentPermission` opens the matching system
     // Settings page so the user can grant it with one tap.
     try {
-      final canUse = await FlutterCallkitIncoming.canUseFullScreenIntent();
+      final canUse = await CallKit.canUseFullScreenIntent();
       // ignore: avoid_print
       print('[CallkitEventHandler] canUseFullScreenIntent=$canUse');
       if (canUse == false) {
@@ -227,7 +226,7 @@ class CallkitEventHandler {
           '[CallkitEventHandler] opening Settings page for '
           'full-screen intent grant — user must toggle it on',
         );
-        await FlutterCallkitIncoming.requestFullIntentPermission();
+        await CallKit.requestFullIntentPermission();
       }
     } catch (e) {
       // ignore: avoid_print
@@ -242,9 +241,9 @@ class CallkitEventHandler {
     _sub?.cancel();
     // ignore: avoid_print
     print(
-      '[CallkitEventHandler] (re)subscribing to FlutterCallkitIncoming.onEvent',
+      '[CallkitEventHandler] (re)subscribing to CallKit.onEvent',
     );
-    _sub = FlutterCallkitIncoming.onEvent.listen(
+    _sub = CallKit.onEvent.listen(
       (event) {
         // Trace EVERY event hitting the subscription so we can confirm
         // delivery. Print is unconditional so it fires in release too
@@ -270,7 +269,7 @@ class CallkitEventHandler {
 
   /// Called from `ChatLifecycleBridge` when the app comes back to
   /// foreground. The fix for the minimize→accept dead-event problem:
-  /// `FlutterCallkitIncoming.onEvent` events fired while the app was
+  /// `CallKit.onEvent` events fired while the app was
   /// backgrounded may not be delivered to our previous subscription.
   /// We:
   ///   1. Re-subscribe so a fresh stream handler is in place for any
@@ -358,7 +357,7 @@ class CallkitEventHandler {
   /// are no calls — we just want to silently no-op on that.
   Future<void> _maybeAcceptStaleCallkit() async {
     try {
-      final calls = await FlutterCallkitIncoming.activeCalls();
+      final calls = await CallKit.activeCalls();
       // ignore: avoid_print
       print(
         '[CallkitEventHandler] activeCalls() returned: '
@@ -634,8 +633,8 @@ class CallkitEventHandler {
       // End by the specific uuid AND sweep all — Stream's native push may
       // have reported the call under a uuid we don't see here, so endAll is
       // the reliable hammer.
-      if (uuid.isNotEmpty) await FlutterCallkitIncoming.endCall(uuid);
-      await FlutterCallkitIncoming.endAllCalls();
+      if (uuid.isNotEmpty) await CallKit.endCall(uuid);
+      await CallKit.endAllCalls();
     } catch (_) {
       /* best-effort */
     }

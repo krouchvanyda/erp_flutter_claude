@@ -16,6 +16,7 @@ import '../repositories/stream_call_engine.dart';
 import '../models/call_log.dart';
 import '../models/conversation.dart';
 import '../widgets/chat_avatar.dart';
+import '../repositories/call_network.dart';
 
 /// Slice 10.2.2 (UI shell) + Slice 10.2.3 (wire signalling).
 ///
@@ -66,6 +67,10 @@ class _VideoCallPageState extends State<VideoCallPage>
     _signaling = context.read<CallSignalingService>();
     _engine = context.read<StreamCallEngine>();
     _signaling.activeCallListenable.addListener(_onActiveCallChanged);
+    _signaling.network.addListener(_onNetworkChanged);
+    _signaling.mediaConnected.addListener(_onNetworkChanged);
+    // Opened on a call whose voice is already up → keep its timer.
+    _mediaSeen = _signaling.mediaConnected.value;
     WidgetsBinding.instance.addObserver(this);
     final existing = _signaling.current;
     if (existing != null &&
@@ -166,6 +171,8 @@ class _VideoCallPageState extends State<VideoCallPage>
     _ticker?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _signaling.activeCallListenable.removeListener(_onActiveCallChanged);
+    _signaling.network.removeListener(_onNetworkChanged);
+    _signaling.mediaConnected.removeListener(_onNetworkChanged);
     // If this call was answered over the lock screen, drop the app back
     // behind the keyguard now that it's over — instead of revealing the
     // unlocked dashboard. No-op for calls started inside the unlocked app.
@@ -234,6 +241,7 @@ class _VideoCallPageState extends State<VideoCallPage>
             'busy' => 'chatCallBusy'.tr,
             'declined' => 'chatCallDeclined'.tr,
             'no_answer' => 'chatCallNoAnswer'.tr,
+            'network' => 'chatCallConnectionLost'.tr,
             _ => 'chatCallEnded'.tr,
           };
         case CallSignalState.idle:
@@ -253,6 +261,7 @@ class _VideoCallPageState extends State<VideoCallPage>
             'chatPeerInAnotherCallRetry'.trParams({'name': call.peerName}),
           'failed' => 'chatCallStartFailed'.tr,
           'no_answer' => 'chatPeerNoAnswer'.trParams({'name': call.peerName}),
+          'network' => 'chatCallConnectionLost'.tr,
           _ => null,
         };
         if (reason != null) {
@@ -316,6 +325,40 @@ class _VideoCallPageState extends State<VideoCallPage>
     // Stream routes speakerphone via setAudioOutputDevice with a
     // speaker-capable RtcMediaDevice. We keep the UI toggle for now;
     // the audio routing helper is wired in a follow-up.
+  }
+
+  /// Whether the voice has been up at least once on this page.
+  bool _mediaSeen = false;
+
+  void _onNetworkChanged() {
+    if (!mounted) return;
+    setState(() {
+      // The call time starts when both people are really in the call.
+      if (!_mediaSeen && _signaling.mediaConnected.value) {
+        _mediaSeen = true;
+        _elapsedSeconds = 0;
+      }
+    });
+  }
+
+  /// Timer, or the scenario 8 network note while the network is bad.
+  String get _connectedLabel {
+        // Accepted, but the voice isn't up yet (the other phone is still
+        // joining) — don't run the timer.
+        if (!_mediaSeen) return 'chatCallConnecting'.tr;
+        // Scenario 8 — bad network.
+        switch (_signaling.network.value) {
+          case CallNetwork.reconnecting:
+            return 'chatCallReconnecting'.tr;
+          case CallNetwork.weak:
+            return 'chatCallMyNetworkWeak'.tr;
+          case CallNetwork.peerWeak:
+            return 'chatCallPeerNetworkWeak'
+                .trParams({'name': _signaling.current?.peerName ?? ''});
+          case CallNetwork.good:
+            break;
+        }
+    return _timerLabel;
   }
 
   String get _timerLabel {
@@ -425,7 +468,7 @@ class _VideoCallPageState extends State<VideoCallPage>
                           // once connected the elapsed-time timer
                           // takes over.
                           AppLabel(
-                            text: _connected ? _timerLabel : _status,
+                            text: _connected ? _connectedLabel : _status,
                             fontSize: AppFontSize.value13,
                             color: Colors.white.withValues(alpha: 0.85),
                             fontWeight: FontWeight.w700,

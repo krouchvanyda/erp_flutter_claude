@@ -5,7 +5,7 @@ import 'package:erp_callkit/erp_callkit.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show MethodChannel;
 import 'package:flutter/widgets.dart' show WidgetsBinding, AppLifecycleState;
-import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
+import 'callkit.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart' show Call;
 
 import 'users_cache.dart';
@@ -19,6 +19,7 @@ import 'chats_remote_data_source.dart';
 import 'call_log_repository.dart';
 import 'conversations_repository.dart';
 import 'stream_call_engine.dart';
+import 'call_network.dart';
 
 /// Slice 10.2.3 — local state of an active or incoming call.
 enum CallSignalState {
@@ -269,6 +270,12 @@ class CallSignalingService {
   /// restart the heartbeat whenever this changes.
   String? _ringingHeartbeatCallId;
 
+  /// Scenario 8 — what the call screen shows about the network.
+  ValueListenable<CallNetwork> get network => streamEngine.network;
+
+  /// True once the voice is really up (both people in the Stream call).
+  ValueListenable<bool> get mediaConnected => streamEngine.mediaConnected;
+
   Future<void> dispose() async {
     await _sub?.cancel();
     await _streamIncomingSub?.cancel();
@@ -384,7 +391,7 @@ class CallSignalingService {
         // ignore: avoid_print
         print('[CallSignaling] dismissing CallKit notification id=$id '
             '(callkitId=$callkitId)');
-        await FlutterCallkitIncoming.endCall(callkitId);
+        await CallKit.endCall(callkitId);
       } catch (e) {
         // ignore: avoid_print
         print('[CallSignaling] endCall($id) failed (likely already '
@@ -395,7 +402,7 @@ class CallSignalingService {
     // entries for this app. Cheap and reliable; the user can only
     // ever be in one call at a time in our flow.
     try {
-      await FlutterCallkitIncoming.endAllCalls();
+      await CallKit.endAllCalls();
     } catch (_) {/* swallow */}
   }
 
@@ -815,7 +822,11 @@ class CallSignalingService {
     // already watch this transition (Slice 10.2.4 — endReason).
     _setActive(active.copyWith(
       state: CallSignalState.ended,
-      endReason: 'hangup',
+      // Scenario 8 — Stream gave up reconnecting (30 s, see
+      // `callReconnectTimeout`): "Couldn't connect the call".
+      endReason: reason == StreamCallEndReason.reconnectFailed
+          ? 'network'
+          : 'hangup',
     ));
     // Clear after a short delay so the snackbar / page-pop animation
     // gets a chance to run, same pattern as the local hangup path.
@@ -1282,7 +1293,7 @@ class CallSignalingService {
     }
     unawaited(Future(() async {
       try {
-        await FlutterCallkitIncoming.endAllCalls();
+        await CallKit.endAllCalls();
       } catch (_) {/* swallow */}
     }));
     // iOS: endAllCalls (CXEndCallAction) can't dismiss a PushKit incoming
@@ -1532,7 +1543,7 @@ class CallSignalingService {
     unawaited(ErpCallKit.dismissAllCalls().catchError((Object _) {}));
     unawaited(Future(() async {
       try {
-        await FlutterCallkitIncoming.endAllCalls();
+        await CallKit.endAllCalls();
       } catch (_) {/* swallow */}
     }));
   }
@@ -1548,7 +1559,7 @@ class CallSignalingService {
     if (!Platform.isIOS) return;
     unawaited(Future(() async {
       try {
-        final calls = await FlutterCallkitIncoming.activeCalls();
+        final calls = await CallKit.activeCalls();
         final list = calls is List ? calls : const <dynamic>[];
         final ids = list.map((c) {
           if (c is Map) {
