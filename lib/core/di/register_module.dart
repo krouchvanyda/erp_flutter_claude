@@ -24,8 +24,6 @@ import '../push/push_token_storage.dart';
 import '../realtime/realtime_service.dart';
 import '../realtime/web_socket_realtime_channel.dart';
 import '../router/auth_session.dart';
-import '../analytics/analytics_service.dart';
-import '../analytics/noop_analytics_service.dart';
 import '../error/crash_reporter.dart';
 import '../error/logging_crash_reporter.dart';
 import '../utils/logger/app_logger.dart';
@@ -65,12 +63,6 @@ class AppModule {
   /// initialisation throws.
   CrashReporter crashReporter(AppLogger logger) =>
       LoggingCrashReporter(logger);
-
-  // ── Analytics ────────────────────────────────────────────────
-  /// Default is the no-op sink — feature code can call `track`/`screen`
-  /// from day one without a vendor SDK. Replace this binding to plug in
-  /// Firebase / Segment / Mixpanel later.
-  AnalyticsService get analyticsService => const NoopAnalyticsService();
 
 
   // ── Local persistence (shared_preferences) ──────────────────
@@ -268,7 +260,6 @@ void registerCoreDependencies(GetIt getIt) {
   getIt
     ..registerLazySingleton<AppEnv>(() => m.appEnv)
     ..registerLazySingleton<AppLogger>(() => m.appLogger)
-    ..registerLazySingleton<AnalyticsService>(() => m.analyticsService)
     ..registerLazySingleton<Connectivity>(() => m.connectivity)
     ..registerLazySingleton<SecretStore>(() => m.secretStore)
     ..registerLazySingleton<BiometricService>(() => m.biometricService)
