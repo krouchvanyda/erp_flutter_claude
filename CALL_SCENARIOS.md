@@ -1,7 +1,7 @@
-# Call scenarios (18)
+# Call scenarios (19)
 
-What each call scenario is and what you should see. Full test steps and results:
-[REAL_DEVICE_TESTS.md](REAL_DEVICE_TESTS.md).
+What each call scenario is and what you should see. Full test steps and results
+will go in `REAL_DEVICE_TESTS.md` (not created yet).
 
 **Status** comes from reading the code on 2026-11-18, not from phone tests:
 ✅ in the code · ⚠️ partly there, or not checked · ❌ missing.
@@ -17,7 +17,7 @@ What each call scenario is and what you should see. Full test steps and results:
 | 7 | Call sounds | "Calling…" is silent → "Ringing…" plays the ringback → beep on connect → beep on end (see [Call sounds](#call-sounds)) | ✅ done 2026-11-18 |
 | 8 | Bad network | "Reconnecting…" → voice comes back; ends after 30 s if the network doesn't return | ❌ no "Reconnecting…" label, no 30 s end |
 | 9 | Other side ends while I'm in the background | My call stops, no stuck call screen | ✅ |
-| 10 | Callee offline | "Calling…" only → "No answer" at 30 s + "Missed voice call" | ⚠️ timeout is 60 s, not 30 s; unanswered call saved as "Declined" (bug) |
+| 10 | Callee offline | Silent "Calling…" only (never "Ringing…") → "No answer" at 60 s + "Missed voice call" | ✅ backend saved call 8 (2026-11-18) as `MISSED / no_answer` at 60 s |
 | 11 | Busy (already in a call) | The second caller gets "Busy in another call" | ✅ |
 | 12 | Video call | Camera full screen; Camera / Flip / Mute / Speaker work | ✅ |
 | 13 | Caller cancels while it rings | Ringing stops at once; caller sees "Cancelled call", callee sees "Missed voice call" | ⚠️ no "Cancelled call" text for the caller |
@@ -26,6 +26,7 @@ What each call scenario is and what you should see. Full test steps and results:
 | 16 | Switch voice → video | My camera turns on; the other side switches to video with its camera off | ❌ not built |
 | 17 | Group call | Everyone rings; Accept joins; grid of people; the banner count updates | ✅ |
 | 18 | Two users call each other at once | Both see "Busy in another call"; nothing gets stuck; the next call works | ⚠️ only general busy handling |
+| 19 | Callee doesn't answer (60 s: `StreamRingSettings` in `stream_call_engine.dart`; backend `ring-timeout-seconds` is also 60) | A: "Calling…" → "Ringing…" + ringback for 60 s → "No answer", ended beep; B: rings 60 s then stops; both call lists show "Missed voice call" | ⚠️ bug: B's app rejects at 60 s with reason "declined", so it's saved as "Declined voice call" |
 
 ## Call sounds
 
