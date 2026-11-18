@@ -28,6 +28,7 @@ void main() {
     expect(ApiEndPoint.call(9), '/chats/calls/9');
     expect(ApiEndPoint.callAccept(9), '/chats/calls/9/accept');
     expect(ApiEndPoint.callReject(9), '/chats/calls/9/reject');
+    expect(ApiEndPoint.callRinging(9), '/chats/calls/9/ringing');
     expect(ApiEndPoint.callEnd(9), '/chats/calls/9/end');
   });
 

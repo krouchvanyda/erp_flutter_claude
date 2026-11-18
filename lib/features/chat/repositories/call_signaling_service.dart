@@ -55,7 +55,13 @@ class ActiveCall {
     this.conversationAvatarFilePath,
     this.conversationAvatarUrl,
     this.streamCallCid,
+    this.peerRinging = false,
   });
+
+  /// Outgoing call only: the callee's phone is ringing (backend sent
+  /// `call.ringing`). The call page shows "Ringing…" instead of
+  /// "Calling…".
+  final bool peerRinging;
 
   final String callId;
   final String conversationId;
@@ -123,6 +129,7 @@ class ActiveCall {
     DateTime? connectedAt,
     String? endReason,
     String? streamCallCid,
+    bool? peerRinging,
   }) =>
       ActiveCall(
         callId: callId ?? this.callId,
@@ -140,6 +147,7 @@ class ActiveCall {
         conversationAvatarFilePath: conversationAvatarFilePath,
         conversationAvatarUrl: conversationAvatarUrl,
         streamCallCid: streamCallCid ?? this.streamCallCid,
+        peerRinging: peerRinging ?? this.peerRinging,
       );
 }
 
@@ -2015,6 +2023,7 @@ class CallSignalingService {
     if (event is CallInviteEvent ||
         event is CallAcceptEvent ||
         event is CallRejectEvent ||
+        event is CallRingingEvent ||
         event is CallHangupEvent) {
       // ignore: avoid_print
       print('[CallSignaling] inbound transport event: '
@@ -2136,6 +2145,19 @@ class CallSignalingService {
           state: CallSignalState.connected,
           connectedAt: connectedAt,
         ));
+      case CallRingingEvent(:final callId, :final userId):
+        // Our outgoing call reached the callee's phone → "Ringing…".
+        // Ignored on the callee side (also subscribed to the call topic)
+        // and for stale / other calls.
+        final active = _active;
+        if (active == null ||
+            active.callId != callId ||
+            active.state != CallSignalState.outgoingRinging ||
+            active.peerRinging ||
+            userId == settings.userId) {
+          return;
+        }
+        _setActive(active.copyWith(peerRinging: true));
       case CallRejectEvent(:final callId, :final reason):
         final active = _active;
         if (active == null || active.callId != callId) {
@@ -2463,6 +2485,22 @@ class CallSignalingService {
     _ringingHeartbeatCallId = null;
   }
 
+  /// Call ids already reported as ringing (`POST /calls/{id}/ringing`).
+  final Set<String> _ringingReported = <String>{};
+
+  /// Best-effort: a failed report must never affect the call itself.
+  void _reportRinging(String callId) {
+    final id = int.tryParse(callId);
+    if (id == null || !_ringingReported.add(callId)) return;
+    unawaited(remote.markCallRinging(id).then((notified) {
+      // ignore: avoid_print
+      print('[CallSignaling] ringing reported callId=$callId notified=$notified');
+    }).catchError((Object e) {
+      // ignore: avoid_print
+      print('[CallSignaling] ringing report failed callId=$callId: $e');
+    }));
+  }
+
   void _setActive(ActiveCall? next) {
     final prev = _active;
     _active = next;
@@ -2485,6 +2523,14 @@ class CallSignalingService {
       _startConnectedHeartbeat(next.callId);
     } else {
       _stopConnectedHeartbeat();
+    }
+    // Callee: tell the backend our phone is ringing so the caller's
+    // screen switches "Calling…" → "Ringing…". Once per call.
+    if (next != null &&
+        next.state == CallSignalState.incomingRinging &&
+        (prev?.callId != next.callId ||
+            prev?.state != CallSignalState.incomingRinging)) {
+      _reportRinging(next.callId);
     }
     // Caller-side ring heartbeat (iOS): run ONLY while outgoingRinging.
     // Polls the backend so the caller connects the moment the callee's

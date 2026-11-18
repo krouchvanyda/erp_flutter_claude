@@ -1,6 +1,5 @@
 import 'package:erp_mobile/core/di/service_locator.dart';
 
-import '../../core/analytics/analytics_service.dart';
 import '../../core/di/app_env.dart';
 import '../../core/error/crash_reporter.dart';
 import '../../core/network/session_signal.dart';
@@ -50,7 +49,6 @@ void registerAuthModule(GetIt getIt) {
         oauthTokenDataSource: getIt<OAuthTokenDataSource>(),
         env: getIt<AppEnv>(),
         sessionSignal: getIt<SessionSignal>(),
-        analytics: getIt<AnalyticsService>(),
         logger: getIt<AppLogger>(),
         crashReporter: getIt<CrashReporter>(),
         deviceRegistrar: getIt<DeviceRegistrar>(),

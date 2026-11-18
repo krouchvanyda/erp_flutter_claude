@@ -49,6 +49,10 @@ class ApiEndPoint {
   static String call(Object id) => '$calls/$id';
   static String callAccept(Object id) => '$calls/$id/accept';
   static String callReject(Object id) => '$calls/$id/reject';
+
+  /// POST by the callee once the incoming call is shown — tells the caller
+  /// "my phone is ringing" (caller's screen: Calling… → Ringing…).
+  static String callRinging(Object id) => '$calls/$id/ringing';
   static String callEnd(Object id) => '$calls/$id/end';
 
   // ── Presence ────────────────────────────────────────────────────

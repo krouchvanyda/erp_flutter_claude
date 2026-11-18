@@ -10,6 +10,7 @@ import '../../core/network/token_storage.dart';
 import '../settings/repositories/users_remote_data_source.dart';
 import 'repositories/active_conversation_tracker.dart';
 import 'repositories/call_signaling_service.dart';
+import 'repositories/call_sound_player.dart';
 import 'repositories/chat_lifecycle_bridge.dart';
 import 'repositories/chat_settings.dart';
 import 'repositories/chat_transport.dart';
@@ -298,7 +299,10 @@ Future<void> bootChatTransport(GetIt getIt) async {
   // listener is wired before any peer can place a call. Without this,
   // the first incoming invite would arrive before anyone reads the
   // lazy singleton.
-  getIt<CallSignalingService>();
+  final signaling = getIt<CallSignalingService>();
+
+  // In-app call sounds: ringback / ringtone / connected / ended.
+  CallSoundPlayer.instance.attach(signaling.activeCallListenable);
 
   // Keep a CALL-topic subscription alive for every conversation the
   // user belongs to, refreshed whenever the inbox changes. An incoming

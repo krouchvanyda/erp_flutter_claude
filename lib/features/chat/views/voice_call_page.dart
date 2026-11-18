@@ -338,7 +338,11 @@ class _VoiceCallPageState extends State<VoiceCallPage>
   String get _statusLabel {
     switch (_stage) {
       case _CallStage.calling:
-        return _placedInvite ? 'chatCallCalling'.tr : 'chatCallRinging'.tr;
+        if (!_placedInvite) return 'chatCallRinging'.tr;
+        // Caller: "Calling…" until the callee's phone reports ringing.
+        return _signaling.activeCallListenable.value?.peerRinging == true
+            ? 'chatCallRinging'.tr
+            : 'chatCallCalling'.tr;
       case _CallStage.ringing:
         return 'chatCallRinging'.tr;
       case _CallStage.connected:

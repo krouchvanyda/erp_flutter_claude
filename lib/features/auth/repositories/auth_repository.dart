@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
 
-import '../../../core/analytics/analytics_service.dart';
 import '../../../core/di/app_env.dart';
 import '../../../core/error/crash_reporter.dart';
 import '../../../core/error/either.dart';
@@ -46,7 +45,6 @@ class AuthRepository {
     required OAuthTokenDataSource oauthTokenDataSource,
     required AppEnv env,
     required SessionSignal sessionSignal,
-    required AnalyticsService analytics,
     required AppLogger logger,
     required CrashReporter crashReporter,
     required DeviceRegistrar deviceRegistrar,
@@ -59,7 +57,6 @@ class AuthRepository {
         _oauthTokenDataSource = oauthTokenDataSource,
         _env = env,
         _sessionSignal = sessionSignal,
-        _analytics = analytics,
         _logger = logger.child('auth.repository'),
         _crash = crashReporter,
         _deviceRegistrar = deviceRegistrar;
@@ -73,7 +70,6 @@ class AuthRepository {
   final OAuthTokenDataSource _oauthTokenDataSource;
   final AppEnv _env;
   final SessionSignal _sessionSignal;
-  final AnalyticsService _analytics;
   final AppLogger _logger;
   final CrashReporter _crash;
   final DeviceRegistrar _deviceRegistrar;
@@ -86,8 +82,6 @@ class AuthRepository {
   ///      never drift.
   ///   2. The returned [User] is cached in drift via [CachedUserDao.cacheUser]
   ///      so the splash probe / route guard can answer offline.
-  ///   3. [AnalyticsService.identify] tags the session with the user id
-  ///      so subsequent events carry their identity.
   ///
   /// On failure, no tokens or user data are persisted — the caller gets
   /// back a typed [Failure] mapped via `failureFromDioException` (the
@@ -103,9 +97,6 @@ class AuthRepository {
       final user = response.user.toDomain();
       await _tokenStorage.write(response.toAuthTokens());
       await _cache.cacheUser(user);
-      await _analytics.identify(user.id, traits: <String, Object?>{
-        'email': user.email,
-      });
       // Ship the device's FCM token to the backend so it can target
       // this device with `call.invite` pushes. Fire-and-forget — a
       // missing device row only means we won't get call notifications
@@ -148,9 +139,6 @@ class AuthRepository {
       final user = response.user.toDomain();
       await _tokenStorage.write(response.toAuthTokens());
       await _cache.cacheUser(user);
-      await _analytics.identify(user.id, traits: <String, Object?>{
-        'email': user.email,
-      });
       // Same FCM device registration as login — register-account is
       // login's twin, the user is signed in immediately afterward.
       unawaited(_deviceRegistrar.register());
@@ -255,8 +243,6 @@ class AuthRepository {
   ///    the Flutter-free `SessionSignal` interface rather than the
   ///    Flutter-bearing `AuthSession` so the call site itself stays in
   ///    pure-Dart territory.
-  /// 3. [AnalyticsService.reset] — clears the identified user so the next
-  ///    session starts anonymous and previous traits aren't carried over.
   ///
   /// The revoke step **must** run first so the data-layer state is
   /// clean before the router re-renders, otherwise the splash probe
@@ -265,7 +251,6 @@ class AuthRepository {
   Future<void> signOut() async {
     await revokeAndWipe();
     await _sessionSignal.invalidate();
-    await _analytics.reset();
   }
 
   /// "OAuth callback received → trade the code for tokens" (Slice 1.2.2).

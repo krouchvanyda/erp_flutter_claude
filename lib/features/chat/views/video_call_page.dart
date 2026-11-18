@@ -218,7 +218,10 @@ class _VideoCallPageState extends State<VideoCallPage>
     setState(() {
       switch (call.state) {
         case CallSignalState.outgoingRinging:
-          _status = 'chatCallCalling'.tr;
+          // "Calling…" until the callee's phone reports ringing.
+          _status = call.peerRinging
+              ? 'chatCallRinging'.tr
+              : 'chatCallCalling'.tr;
         case CallSignalState.incomingRinging:
           _status = 'chatCallRinging'.tr;
         case CallSignalState.connected:

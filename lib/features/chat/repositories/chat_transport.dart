@@ -139,6 +139,16 @@ class CallRejectEvent extends ChatTransportEvent {
   final String? reason;
 }
 
+/// Callee's phone is now ringing (backend relays the callee's
+/// `POST /chats/calls/{id}/ringing`). Caller shows "Ringing…".
+class CallRingingEvent extends ChatTransportEvent {
+  const CallRingingEvent({required this.callId, this.userId});
+  final String callId;
+
+  /// The callee whose phone is ringing.
+  final String? userId;
+}
+
 class CallHangupEvent extends ChatTransportEvent {
   const CallHangupEvent({required this.callId, this.hangerUpperId});
   final String callId;
@@ -635,6 +645,11 @@ class ChatTransport {
         return CallRejectEvent(
           callId: (payload['id'] ?? payload['callId']).toString(),
           reason: (payload['reason'] ?? payload['endReason']) as String?,
+        );
+      case 'call.ringing':
+        return CallRingingEvent(
+          callId: (payload['id'] ?? payload['callId']).toString(),
+          userId: payload['userId']?.toString(),
         );
       case 'call.hangup':
       case 'call.end':

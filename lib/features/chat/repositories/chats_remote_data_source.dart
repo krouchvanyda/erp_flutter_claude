@@ -108,6 +108,12 @@ abstract class ChatsRemoteDataSource {
   Future<Map<String, dynamic>> acceptCall(int callId);
   Future<Map<String, dynamic>> rejectCall(int callId, {String? reason});
   Future<Map<String, dynamic>> endCall(int callId);
+
+  /// `POST /chats/calls/{id}/ringing` — callee reports the incoming call is
+  /// now ringing on this device. The backend relays `call.ringing` to the
+  /// caller. Returns `true` when the caller was told, `false` when the
+  /// report came too late (call answered / ended).
+  Future<bool> markCallRinging(int callId);
   /// `GET /chats/calls/{id}` — reconcile a call's state after a STOMP
   /// dropout or a cold start. Returns the canonical [ChatCallDto].
   Future<Map<String, dynamic>> getCall(int callId);
@@ -471,6 +477,16 @@ class DioChatsRemoteDataSource implements ChatsRemoteDataSource {
       },
     );
     return ApiEnvelope.parse<Map<String, dynamic>>(res.data!, (d) => d);
+  }
+
+  @override
+  Future<bool> markCallRinging(int callId) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      ApiEndPoint.callRinging(callId),
+    );
+    final data =
+        ApiEnvelope.parse<Map<String, dynamic>>(res.data!, (d) => d);
+    return data['notified'] == true;
   }
 
   @override

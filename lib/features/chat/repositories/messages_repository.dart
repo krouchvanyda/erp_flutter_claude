@@ -235,6 +235,7 @@ class MessagesRepository {
       case CallInviteEvent():
       case CallAcceptEvent():
       case CallRejectEvent():
+      case CallRingingEvent():
       case CallHangupEvent():
       // Group-creation + rename + user-profile + avatar + remove
       // envelopes are routed through bootChatTransport into
