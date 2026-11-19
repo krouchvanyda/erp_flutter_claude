@@ -218,8 +218,16 @@ Login response
   `UnauthorizedError`, `UnknownError`. Texts/codes live in `core/utils/constants.dart`.
 - Paths live in `ApiEndPoint`; methods in `HttpMethods` (lowerCamelCase + `patch`).
   The base URL is the server ROOT; `/api/v1` is part of each endpoint.
-- No `getToken()` from SharedPreferences: tokens are in secure storage and the
-  auth interceptor (Step 2.2) attaches them.
+- No `getToken()` from SharedPreferences: tokens (`AuthTokens`, one JSON key)
+  live in `TokenStorage` (`flutter_secure_storage`, iOS `first_unlock` so the
+  background isolate can read them). `AuthInterceptor` (a `QueuedInterceptor`)
+  attaches `Bearer` to every non-public request; on 401 it refreshes ONCE via a
+  separate refresh Dio (no auth interceptor → no loop), saves the rotated pair
+  and retries. Refresh REJECTED (400/401/403) → `TokenStorage.clear()` +
+  `AuthSession.markLoggedOut()`. Refresh FAILED (offline/timeout/5xx) → keep
+  tokens. Public endpoints (`ApiEndPoint.publicEndpoints`: health, login,
+  register, refresh) never get a token or a refresh — a wrong password on
+  login is also 401.
 - Never log the `Authorization` header or request bodies outside dev/uat.
 
 ### Chat & call (Steps 5–7): lessons from the old app

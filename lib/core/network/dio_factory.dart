@@ -3,11 +3,13 @@ import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
 import '../config/flavor.dart';
 
-/// Builds the ONE [Dio] the whole app shares (registered in DI).
+/// Builds a [Dio] with our base URL, timeouts and logger.
 ///
-/// One Dio = one place for base URL, timeouts and interceptors. Step 2.2
-/// adds the auth interceptor here.
-Dio createDio(Flavor flavor) {
+/// DI builds TWO:
+/// - the app Dio: `createDio(flavor, interceptors: [AuthInterceptor(...)])`
+/// - the refresh Dio: `createDio(flavor)` — no auth interceptor, used only for
+///   the refresh call + retry, so they can never loop.
+Dio createDio(Flavor flavor, {List<Interceptor> interceptors = const []}) {
   final dio = Dio(
     BaseOptions(
       baseUrl: flavor.apiBaseUrl,
@@ -18,6 +20,9 @@ Dio createDio(Flavor flavor) {
       contentType: Headers.jsonContentType,
     ),
   );
+
+  // Ours first (auth adds the token), then the logger.
+  dio.interceptors.addAll(interceptors);
 
   if (flavor.enableNetworkLogging) {
     dio.interceptors.add(

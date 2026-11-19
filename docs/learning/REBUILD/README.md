@@ -88,8 +88,8 @@ flowchart TD
         S3["3 auth"] --> S4["4 profile"] --> S5["5 chat"] --> S6["6 call (in app)"]
     end
     FEATS --> S7["7 call when the app is killed<br/>(FCM / CallKit)"] --> S8["8 translations + tests + polish"]
-    class S0,S11,S12,S13,S14,S21 ok
-    class S22,S3,S4,S5,S6,S7,S8 wait
+    class S0,S11,S12,S13,S14,S21,S22 ok
+    class S3,S4,S5,S6,S7,S8 wait
     classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
     classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
     classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
@@ -110,7 +110,7 @@ current one works.
 | 1.3 | DI (service locator) | [03-di.md](03-di.md) | ✅ |
 | 1.4 | Navigation (ConfigRouter + AuthGate) | [04-router.md](04-router.md) | ✅ |
 | 2.1 | Network: AppService (template style), envelope, NetworkErrorModel | [05-network.md](05-network.md) | ✅ |
-| 2.2 | Network: tokens + auth interceptor (refresh) | — | ⏳ |
+| 2.2 | Network: tokens + auth interceptor (refresh) | [06-auth-interceptor.md](06-auth-interceptor.md) | ✅ |
 | 3 | Auth | — | ⏳ |
 | 4 | Profile | — | ⏳ |
 | 5 | Chat | — | ⏳ |

@@ -46,6 +46,30 @@ class HomePlaceholderPage extends StatelessWidget {
     messenger.showSnackBar(SnackBar(content: Text(text)));
   }
 
+  /// Step 2.2 demo: GET /users/me needs a token. The demo login stores NO
+  /// tokens, so: 401 → interceptor finds no tokens → session expired →
+  /// AuthGate shows Login. (Step 3's real login stores tokens → it works.)
+  Future<void> _callMe(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context); // read BEFORE the await
+    final result = await appService.send<String>(
+      httpMethods: HttpMethods.get,
+      endPoint: ApiEndPoint.me,
+      parse: (data) => (data as Map<String, dynamic>)['email'] as String,
+    );
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          result.fold(
+            (error) =>
+                '❌ ${error.statusCode} ${error.title}: '
+                '${error.description}',
+            (email) => '✅ Signed in as $email',
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -87,6 +111,15 @@ class HomePlaceholderPage extends StatelessWidget {
             onPressed: () => _checkServer(context),
             child: const AppLabel(
               text: 'Check server (GET /health)',
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          OutlinedButton(
+            onPressed: () => _callMe(context),
+            child: const AppLabel(
+              text: 'Call GET /users/me (needs a token)',
               fontSize: AppFontSize.value14,
               fontWeight: FontWeight.w600,
             ),
