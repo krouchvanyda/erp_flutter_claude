@@ -11,35 +11,46 @@ We have 3 backends:
 We want **one codebase** that builds 3 apps. Each app knows its own backend
 URL and its own name. That is called a **flavor**.
 
-```
-                        ┌──────────────────┐
-                        │  one codebase    │
-                        │  (lib/ + native) │
-                        └────────┬─────────┘
-           --flavor dev          │ --flavor uat         --flavor prod
-          ┌──────────────────────┼──────────────────────┐
-          ▼                      ▼                      ▼
-   ┌─────────────┐        ┌─────────────┐        ┌─────────────┐
-   │  📱 ERP Dev │        │  📱 ERP UAT │        │  📱 ERP     │
-   │  logs: ON   │        │  logs: ON   │        │  logs: OFF  │
-   └──────┬──────┘        └──────┬──────┘        └──────┬──────┘
-          ▼                      ▼                      ▼
-   💻 laptop backend      🧪 test server         🌍 real server
+```mermaid
+flowchart TD
+    C["one codebase<br/>(lib/ + native)"]
+    C -->|"--flavor dev"| D["📱 ERP Dev<br/>logs: ON"] --> DS["💻 laptop backend"]
+    C -->|"--flavor uat"| U["📱 ERP UAT<br/>logs: ON"] --> US["🧪 test server"]
+    C -->|"--flavor prod"| P["📱 ERP<br/>logs: OFF"] --> PS["🌍 real server"]
+    class C none
+    class D,U,P app
+    class DS,US,PS ok
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
 ```
 
 ## 2. Picture
 
-```
-flutter run --flavor dev -t lib/main_dev.dart
-        │                     │
-        │                     └─► main_dev.dart ──► bootstrap(Flavor.dev)
-        │                                                  │
-        ▼                                                  ▼
- Android: productFlavors "dev"                      Flavor.pin(dev)
-   → launcher name "ERP Dev"                               │
- iOS: scheme "dev"                                         ▼
-   → Debug-dev.xcconfig                   Flavor.current.apiBaseUrl
-                                          = Environments.localApiBaseUrl
+```mermaid
+flowchart LR
+    RUN["flutter run<br/>--flavor dev<br/>-t lib/main_dev.dart"]
+    RUN -->|"--flavor dev"| NAT
+    RUN -->|"-t main_dev.dart"| DART
+    subgraph NAT["Native half (android/ · ios/)"]
+        direction TB
+        N1["Android: productFlavors 'dev'"] --> N2["launcher name 'ERP Dev'"]
+        N3["iOS: scheme 'dev'"] --> N4["Debug-dev.xcconfig"]
+    end
+    subgraph DART["Dart half (lib/)"]
+        direction TB
+        D1["main_dev.dart"] --> D2["bootstrap(Flavor.dev)"] --> D3["Flavor.pin(dev)"] --> D4["Flavor.current.apiBaseUrl<br/>= Environments.localApiBaseUrl"]
+    end
+    class RUN none
+    class N1,N2,N3,N4 wait
+    class D1,D2,D3,D4 app
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
 ```
 
 There are **two halves**:
@@ -92,37 +103,43 @@ A Dart **enhanced enum**: an enum that can also have fields and getters.
 2. `appFlavor`: a constant Flutter fills in from `--flavor dev` at build time.
 3. `dev`: the fallback for a plain `flutter run`.
 
-```
-                 Flavor.current
-                       │
-                       ▼
-            ┌─────────────────────┐   yes
-            │ _pinned set?        │──────────► use _pinned
-            │ (main_<x>.dart ran) │
-            └──────────┬──────────┘
-                       │ no
-                       ▼
-            ┌─────────────────────┐   yes
-            │ appFlavor set?      │──────────► use appFlavor
-            │ (--flavor at build) │
-            └──────────┬──────────┘
-                       │ no
-                       ▼
-                   use dev
+```mermaid
+flowchart TD
+    Q["Flavor.current"] --> P{"_pinned set?<br/>(main_x.dart ran)"}
+    P -->|"yes"| UP["use _pinned"]
+    P -->|"no"| A{"appFlavor set?<br/>(--flavor at build)"}
+    A -->|"yes"| UA["use appFlavor"]
+    A -->|"no"| UD["use dev"]
+    class Q none
+    class UP,UA ok
+    class UD wait
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
 ```
 
 **Who goes down which path:**
 
-```
- Normal app start            Background isolate (Step 7)
- ────────────────            ───────────────────────────
- main_dev.dart runs          main() NEVER runs
-       │                           │
-       ▼                           ▼
- _pinned = dev  ✅            _pinned = null
-                                   │
-                                   ▼
-                             appFlavor = "dev"  ✅  (baked into the build)
+```mermaid
+flowchart LR
+    subgraph NORMAL["Normal app start"]
+        direction TB
+        N1["main_dev.dart runs"] --> N2["_pinned = dev ✅"]
+    end
+    subgraph BG["Background isolate (Step 7)"]
+        direction TB
+        B1["main() NEVER runs"] --> B2["_pinned = null"] --> B3["appFlavor = 'dev' ✅<br/>(baked into the build)"]
+    end
+    class N1,B1 none
+    class N2,B3 ok
+    class B2 wait
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
 ```
 
 > 💡 **Why do we need #2 when we already have #1?** Later (Step 7), when a
@@ -185,11 +202,20 @@ two cases:
 
 `pin` has one danger: the two halves can **disagree** without anyone noticing.
 
-```
- --flavor dev  ──► native: app name "ERP Dev", appFlavor = "dev"
- -t main_prod  ──► Dart:   pin(prod) → Flavor.current = prod
-                                 ▲
-                   "ERP Dev" app talking to the PROD server 😱
+```mermaid
+flowchart LR
+    F["--flavor dev"] --> NAT["native: app name 'ERP Dev'<br/>appFlavor = 'dev'"]
+    T["-t main_prod.dart"] --> DART["Dart: pin(prod)<br/>Flavor.current = prod"]
+    NAT --> BAD["😱 'ERP Dev' app talking<br/>to the PROD server"]
+    DART --> BAD
+    class F,T none
+    class NAT,DART wait
+    class BAD err
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
 ```
 
 The `assert` stops this:
@@ -208,17 +234,23 @@ The `assert` stops this:
 
 **Start-up order (it grows every step):**
 
-```
- main_dev.dart
-     │  main()
-     ▼
- bootstrap(Flavor.dev)
-     │
-     ├─ 1. Flavor.pin(dev)                      ← Step 1.1 (now)
-     ├─ 2. WidgetsFlutterBinding.ensureInitialized()
-     │     ┄┄ later: DI setup                   ← Step 1.3 ✅
-     │     ┄┄ later: Firebase + push            ← Step 7
-     └─ 3. runApp(...)                          ← the UI appears
+```mermaid
+flowchart TD
+    M["main_dev.dart → main()"] --> B["bootstrap(Flavor.dev)"]
+    B --> S1["1 · Flavor.pin(dev)<br/>Step 1.1"]
+    S1 --> S2["2 · WidgetsFlutterBinding<br/>.ensureInitialized()"]
+    S2 -.-> L1["later: DI setup<br/>Step 1.3 ✅"]
+    S2 -.-> L2["later: Firebase + push<br/>Step 7"]
+    S2 --> S3["3 · runApp(...)<br/>the UI appears"]
+    class M,B none
+    class S1,S2,S3 app
+    class L1 ok
+    class L2 wait
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
 ```
 
 ### `lib/main_dev.dart` (uat / prod are the same)
@@ -246,14 +278,25 @@ Every choice above had other options. Here is why we picked these.
 | `pin` + mismatch `assert` | Remove `pin`, trust only `appFlavor` | Simplest and mismatch-proof, **but** tests couldn't switch flavor and forgetting `--flavor` would silently give dev. The `assert` keeps `pin`'s benefits and removes its one danger. |
 | `pin` + mismatch `assert` | Keep `pin` with no check | A mismatch (`--flavor dev -t main_prod.dart`) would be silent: a "dev" app on the prod server. |
 
-```
-   String + if/else                    enum + switch
-   ────────────────                    ─────────────
-   flavor = 'dve'   ← typo             Flavor.dve      ← ❌ compile error
-       │                                   (you fix it before running)
-       ▼
-   if (flavor == 'dev') …   ✗ no match
-   else → prod URL!  😱  (found at runtime, maybe in production)
+```mermaid
+flowchart LR
+    subgraph STR["❌ String + if/else"]
+        direction TB
+        S1["flavor = 'dve'  (typo)"] --> S2["if (flavor == 'dev') …<br/>no match"] --> S3["else → prod URL 😱<br/>found at RUNTIME"]
+    end
+    subgraph ENUM["✅ enum + switch"]
+        direction TB
+        E1["Flavor.dve  (typo)"] --> E2["compile error<br/>fixed BEFORE running"]
+    end
+    class S1,S2 wait
+    class S3 err
+    class E1 wait
+    class E2 ok
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
 ```
 
 ## 5. Try it

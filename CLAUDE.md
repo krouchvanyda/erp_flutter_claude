@@ -24,7 +24,18 @@ PLAN → BUILD (small) → EXPLAIN (what + WHY + other ways) → DOC → USER CH
   could be written, and why they weren't picked.
 - **One lesson doc per step** in `docs/learning/REBUILD/NN-topic.md`, with
   6 parts: Why · Picture · Code · 🤔 Why like this? · Try it · Check yourself.
-  Use ASCII diagrams (they render everywhere).
+- **Diagrams = Mermaid**, in the same style as `~/Documents/flutter-chat/docs`:
+  `flowchart LR/TD` (labels `["text<br/>more"]`, edge labels `-->|"…"|`,
+  `subgraph … direction LR`), `sequenceDiagram` with `autonumber` / `Note` /
+  `alt` for step-by-step flows, `classDiagram` for sealed families,
+  `stateDiagram-v2` for state machines. Colours via `classDef`: app
+  `fill:#dbe9ff,stroke:#3b6fd8,color:#123` · ok
+  `fill:#d9f7e6,stroke:#00a86b,color:#063` · wait/plan
+  `fill:#fff4d6,stroke:#d4a017,color:#5a4300` · none
+  `fill:#eeeeee,stroke:#999,color:#555` · error
+  `fill:#fde2e2,stroke:#d64545,color:#611`. Plain text blocks only for file
+  trees and code. In labels write `<` `>` as `#60;` `#62;` (e.g.
+  `getIt#60;Dio#62;`); never `&lt;` or a raw `<Dio>`.
 - After each step, update the roadmap table in
   `docs/learning/REBUILD/README.md` (⏳ → ✅) and the progress table in
   `README.md`.

@@ -13,12 +13,21 @@ Text('Hi', style: TextStyle(fontSize: 16, color: Color(0xFF1A1D23)))
 Text('Hi', style: TextStyle(fontSize: 15, color: Color(0xFF1B1D22)))
 ```
 
-```
- screen A ──► 16 · #1A1D23 · system font ─┐
- screen B ──► 15 · #1B1D22 · system font ─┼─► nothing matches 😕
- screen C ──► 16 · black   · system font ─┘   dark mode: black text on black ❌
-                                              Khmer: random font per phone ❌
-                                              new brand color: edit 200 files ❌
+```mermaid
+flowchart LR
+    A["screen A<br/>16 · #1A1D23 · system font"] --> X["😕 nothing matches"]
+    B["screen B<br/>15 · #1B1D22 · system font"] --> X
+    C["screen C<br/>16 · black · system font"] --> X
+    X --> P1["dark mode: black text on black ❌"]
+    X --> P2["Khmer: random font per phone ❌"]
+    X --> P3["new brand color: edit 200 files ❌"]
+    class A,B,C wait
+    class X,P1,P2,P3 err
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
 ```
 
 ### ✅ After: every screen uses `AppLabel` + tokens (what we do)
@@ -38,21 +47,27 @@ AppLabel(
 ),
 ```
 
-```
- ┌──────────────────────────────┐
- │ Welcome back                 │ ← AppLabel #1: 24 bold, NO color
- │ http://172.26.17.118:8080/…  │ ← AppLabel #2: 14, grey (onSurfaceVariant)
- └──────────────────────────────┘
-
- AppLabel ─► AppFontSize.value24 / value14 ─► 24 / 14     (one size scale)
-    │
-    ├──► AppTextStyle.build ─► Inter + Khmer              (one font)
-    │
-    └──► color?
-           #1  null ───────────────► theme text color      (light ✅ dark ✅)
-           #2  colors.onSurfaceVariant ─► grey from theme  (light ✅ dark ✅)
-
- change one token ──► every screen follows ✅
+```mermaid
+flowchart LR
+    subgraph SCREEN["📱 What you see"]
+        direction TB
+        W1["Welcome back<br/>(AppLabel #1: 24 bold, NO color)"]
+        W2["http://172.26.17.118:8080/…<br/>(AppLabel #2: 14, grey)"]
+    end
+    AL["AppLabel"] --> FS["AppFontSize.value24 / value14<br/>one size scale"]
+    AL --> TS["AppTextStyle.build<br/>Inter + Khmer — one font"]
+    AL --> COL{"color?"}
+    COL -->|"#1 null"| C1["theme text color<br/>light ✅ dark ✅"]
+    COL -->|"#2 colors.onSurfaceVariant"| C2["grey from the theme<br/>light ✅ dark ✅"]
+    SCREEN ~~~ AL
+    class W1,W2 none
+    class AL,FS,TS app
+    class C1,C2 ok
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
 ```
 
 **Two things to notice:**
@@ -66,13 +81,26 @@ AppLabel(
 
 **2. Why #1 is `const` but #2 is not.**
 
-```
- #1  text: 'Welcome back'        ← fixed text        ┐ all known at
-     fontSize: AppFontSize.value24 ← static const     │ compile time
-     fontWeight: FontWeight.w700 ← const              ┘ → const ✅
-
- #2  text: flavor.apiBaseUrl     ← known only when the app runs  ┐ → can't
-     color: colors.onSurfaceVariant ← read from context at runtime ┘   be const
+```mermaid
+flowchart LR
+    subgraph ONE["#1 → const ✅"]
+        direction TB
+        O1["text: 'Welcome back'<br/>fixed text"]
+        O2["fontSize: AppFontSize.value24<br/>static const"]
+        O3["fontWeight: FontWeight.w700<br/>const"]
+    end
+    subgraph TWO["#2 → can't be const"]
+        direction TB
+        T1["text: flavor.apiBaseUrl<br/>known only when the app runs"]
+        T2["color: colors.onSurfaceVariant<br/>read from context at runtime"]
+    end
+    class O1,O2,O3 ok
+    class T1,T2 wait
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
 ```
 
 `const` means Flutter builds the widget **once** and reuses it on every
@@ -93,32 +121,31 @@ every widget uses the name.
 
 ## 2. Picture
 
-```
- ERP_MOBILE_DESIGN_GUIDE.md  (the designer's spec)
-            │  copied once into code
-            ▼
- ┌──────────────── lib/core/theme/ ─────────────────┐
- │  app_colors.dart   raw palette (#3B4FE8 …)       │
- │  app_spacing.dart  4 · 8 · 16 · 24 · 32 · 48     │   TOKENS
- │  app_radius.dart   8 · 12 · 16 · 24 · 999        │   (names for values)
- │  app_shadow.dart   card · modal                  │
- │  app_font_size.dart   11 · 12 · 14 · … · 32      │
- │  app_text_style.dart  15 theme styles + build()  │
- │  app_label.dart    AppLabel widget               │
- └───────────────────────┬──────────────────────────┘
-                         │ mapped ONCE
-                         ▼
- ┌──────────── app_theme.dart ──────────────┐
- │ light() ─► ThemeData(colorScheme, text…) │   THEME
- │ dark()  ─► ThemeData(colorScheme, text…) │   (Flutter's format)
- └───────────────────────┬──────────────────┘
-                         │ MaterialApp(theme:, darkTheme:, themeMode:)
-                         ▼
- ┌──────────── every widget ──────────────────────────────────────┐
- │ AppLabel(text: 'Welcome back', fontSize: AppFontSize.value24)  │   USE
- │ Theme.of(context).colorScheme.onSurfaceVariant                 │
- │ AppSpacing.md · AppRadius.lg                                   │
- └────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    G["📄 ERP_MOBILE_DESIGN_GUIDE.md<br/>(the designer's spec)"] -->|"copied once into code"| TOK
+    subgraph TOK["lib/core/theme/ — TOKENS (names for values)"]
+        direction LR
+        T1["app_colors<br/>#3B4FE8 …"] ~~~ T2["app_spacing<br/>4 · 8 · 16 · 24 · 32 · 48"] ~~~ T3["app_radius<br/>8 · 12 · 16 · 24 · 999"]
+        T4["app_shadow<br/>card · modal"] ~~~ T5["app_font_size<br/>11 … 32"] ~~~ T6["app_text_style<br/>15 styles + build()"] ~~~ T7["app_label<br/>AppLabel widget"]
+    end
+    TOK -->|"mapped ONCE"| TH["app_theme.dart — THEME<br/>light() / dark() → ThemeData"]
+    TH -->|"MaterialApp(theme, darkTheme, themeMode)"| USE
+    subgraph USE["every widget — USE"]
+        direction TB
+        U1["AppLabel(text: 'Welcome back', fontSize: AppFontSize.value24)"]
+        U2["Theme.of(context).colorScheme.onSurfaceVariant"]
+        U3["AppSpacing.md · AppRadius.lg"]
+    end
+    class G none
+    class T1,T2,T3,T4,T5,T6,T7 wait
+    class TH app
+    class U1,U2,U3 ok
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
 ```
 
 **Two kinds of tokens:**
@@ -165,17 +192,21 @@ Plain numbers. Spacing is always a multiple of 4, so layouts line up.
 
 ### Text: 3 files, 2 ways to style text
 
-```
- app_font_size.dart   ── AppFontSize.value11 … value32   one size scale
-        │
-        ▼
- app_text_style.dart  ── AppTextStyle.build(...)  ◄── the ONE place that makes a TextStyle
-        │                AppTextStyle.titleMedium …   (Inter + Khmer fallback)
-        │                      │
-        │                      └──► AppTheme.textTheme ──► AppBar, buttons, TextField,
-        │                                                  Dialog, SnackBar, TabBar…
-        ▼
- app_label.dart ────────── AppLabel(text:, fontSize: AppFontSize.value24)  your text
+```mermaid
+flowchart TD
+    FS["app_font_size.dart<br/>AppFontSize.value11 … value32<br/>one size scale"] --> TS
+    TS["app_text_style.dart<br/>AppTextStyle.build(...)<br/>the ONE place that makes a TextStyle<br/>(Inter + Khmer fallback)"]
+    TS --> TT["AppTextStyle.titleMedium …<br/>→ AppTheme.textTheme"]
+    TT --> MW["text Flutter draws itself<br/>AppBar · buttons · TextField · Dialog · SnackBar · TabBar"]
+    TS --> AL["app_label.dart<br/>AppLabel(text:, fontSize:)<br/>YOUR text"]
+    class FS wait
+    class TS,TT app
+    class MW,AL ok
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
 ```
 
 | You want… | Use |
@@ -198,10 +229,19 @@ static TextStyle build({required double fontSize, String fontFamily = 'Inter', C
 - **`fontFamilyFallback`**: Inter has no Khmer letters. When Flutter meets `ស`,
   it tries the next font in the list → Noto Sans Khmer.
 
-```
- "Hello សួស្តី"
-   H e l l o   → Inter            ✅
-   ស ួ ស ្ ត ី → not in Inter → fallback → Noto Sans Khmer ✅
+```mermaid
+flowchart LR
+    T["'Hello សួស្តី'"] --> L["H e l l o"] --> I["Inter ✅"]
+    T --> K["ស ួ ស ្ ត ី"] --> Q{"in Inter?"}
+    Q -->|"no"| F["fallback →<br/>Noto Sans Khmer ✅"]
+    class T none
+    class I,F ok
+    class L,K app
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
 ```
 
 - The **15** named styles fill **every** Material `TextTheme` slot. If one slot
@@ -224,11 +264,19 @@ static TextStyle build({required double fontSize, String fontFamily = 'Inter', C
 - **`color` is optional, and we pass it straight through (`color: color`).**
   When null, `Text` takes the color from the widget around it:
 
-```
- on a page            → theme text color (dark / light per mode)
- inside FilledButton  → white (onPrimary)
- inside OutlinedButton→ primary blue
- inside AppBar        → AppBar foreground
+```mermaid
+flowchart LR
+    AL["AppLabel<br/>color: null"] --> P["on a page<br/>→ theme text color<br/>(dark / light per mode)"]
+    AL --> FB["inside FilledButton<br/>→ white (onPrimary)"]
+    AL --> OB["inside OutlinedButton<br/>→ primary blue"]
+    AL --> AB["inside AppBar<br/>→ AppBar foreground"]
+    class AL app
+    class P,FB,OB,AB ok
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
 ```
 
 - ⚠️ **Don't** write `color: color ?? Theme.of(context).textTheme.bodyMedium?.color`.
@@ -282,10 +330,16 @@ The **mapping** from the design guide names to Material 3 names:
 | `onPrimary` | white | `#0F1117` | White on the light `#7B8BFF` = 3.0:1 ❌, dark text = 6.3:1 ✅ |
 | `errorContainer` | `#FEE2E2` | `#3B1518` | A light pink box would glow in dark mode. |
 
-```
- contrast ratio:  1:1 ── 3:1 ──── 4.5:1 ─────── 7:1 ── 21:1
-                  same    big text   normal text   great   black/white
-                  color   only       minimum ✅
+```mermaid
+flowchart LR
+    R1["1:1<br/>same color"] --- R3["3:1<br/>big text only"] --- R45["4.5:1<br/>normal text<br/>MINIMUM"] --- R7["7:1<br/>great"] --- R21["21:1<br/>black / white"]
+    class R1,R3 err
+    class R45,R7,R21 ok
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
 ```
 
 ```dart
@@ -323,10 +377,18 @@ MaterialApp(
 `MaterialApp` picks `theme` or `darkTheme` based on `themeMode`, and every
 widget below rebuilds with the new colors.
 
-```
- themeMode = light ──► uses theme      ──► AppTheme.light()
- themeMode = dark  ──► uses darkTheme  ──► AppTheme.dark()
- themeMode = system ─► follows the phone setting
+```mermaid
+flowchart LR
+    M{"themeMode"} -->|"light"| L["uses theme<br/>AppTheme.light()"]
+    M -->|"dark"| D["uses darkTheme<br/>AppTheme.dark()"]
+    M -->|"system"| S["follows the<br/>phone setting"]
+    class L,D app
+    class S ok
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
 ```
 
 The demo screen (`_ThemePreviewPage`) is **temporary**. It shows a title,

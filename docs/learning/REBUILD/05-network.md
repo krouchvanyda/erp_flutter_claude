@@ -10,19 +10,37 @@ This step follows **your MVVM template's network folder**
 same calling style. A few parts are changed because they would break later
 steps — each one is explained in **4. Why like this?**.
 
+> 🖼 Diagrams are **Mermaid** (same style as `flutter-chat/docs`). They render
+> on GitHub. In VS Code, install a Mermaid preview extension (e.g.
+> *Markdown Preview Mermaid Support*) to see them in the Markdown preview.
+
 ## 1. Why
 
 Every feature (auth, profile, chat, call) talks to the same Spring backend.
 Without one shared network layer, each repository would repeat the same work:
 
-```
- ❌ every repository by itself              ✅ one AppService
- ┌─────────────────────────────────┐        ┌────────────────────────────┐
- │ Dio() + baseUrl + timeouts       │        │ ONE Dio (from DI)           │
- │ json['data'] … json['success']   │        │ unwrap envelope ONCE        │
- │ try/catch DioException …         │        │ every error → NetworkErrorModel
- │ "401? 500? offline? server down?"│        │ never throws                │
- └─────────────────────────────────┘        └────────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph BAD["❌ Without: every repository by itself"]
+        direction TB
+        B1["Dio() + baseUrl + timeouts"]
+        B2["json['data'] … json['success']"]
+        B3["try / catch DioException"]
+        B4["401? 500? offline? server down?"]
+    end
+    subgraph GOOD["✅ With: one AppService"]
+        direction TB
+        G1["ONE Dio (from DI)"]
+        G2["unwrap the envelope ONCE"]
+        G3["every error → NetworkErrorModel"]
+        G4["never throws"]
+    end
+    BAD -.->|"move all this<br/>into one place"| GOOD
+
+    classDef bad fill:#fde2e2,stroke:#d64545,color:#611
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    class B1,B2,B3,B4 bad
+    class G1,G2,G3,G4 ok
 ```
 
 Your backend (`API_LIST_BACKEND.md`) wraps **every** response:
@@ -52,146 +70,152 @@ So we unwrap it in **one** place, and repositories only see `data`.
 
 ### A request, end to end
 
-```
- Repository (Step 3)
-   │ appService.send(httpMethods: get, endPoint: ApiEndPoint.me, parse: …)
-   ▼
- AppService.send ──► Dio ──► PrettyDioLogger (dev/uat) ──► server
-                                                             │
-   ┌─────────────────────────────────────────────────────────┘
-   ▼
- response / DioException
-   ├─ 2xx + success:true  ─► parse(envelope.data) ─► Right(UserModel)
-   ├─ 2xx + success:false ─────────────────────────► Left(ServerError)
-   ├─ 401 ─────────────────────────────────────────► Left(UnauthorizedError)
-   ├─ 4xx/5xx ─────────────────────────────────────► Left(ServerError + fieldErrors)
-   ├─ timeout ─────────────────────────────────────► Left(NoInternetError "Timeout")
-   ├─ can't connect ─► CheckInternetService
-   │     phone offline ────────────────────────────► Left(NoInternetError "No Internet")
-   │     phone online  ────────────────────────────► Left(NoInternetError "Server unreachable")
-   └─ parser crashed ──────────────────────────────► Left(UnknownError)
+```mermaid
+flowchart TD
+    R["Repository (Step 3)"] -->|"appService.send(get, ApiEndPoint.me, parse)"| A["AppService.send"]
+    A --> D["Dio + logger (dev/uat)"] --> S["🛠 Spring server"]
+    S --> Q{"What came back?"}
+
+    Q -->|"2xx + success: true"| P["parse(envelope.data)"] --> OK["Right(UserModel)"]
+    Q -->|"2xx + success: false"| E1["Left(ServerError)"]
+    Q -->|"401"| E2["Left(UnauthorizedError)"]
+    Q -->|"4xx / 5xx"| E3["Left(ServerError + fieldErrors)"]
+    Q -->|"timeout"| E4["Left(NoInternetError 'Timeout')"]
+    Q -->|"can't connect"| C{"CheckInternetService:<br/>is the PHONE online?"}
+    C -->|"no"| E5["Left(NoInternetError 'No Internet')"]
+    C -->|"yes"| E6["Left(NoInternetError 'Server unreachable')"]
+    P -.->|"parser crashed"| E7["Left(UnknownError)"]
+
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
+    class R,A,D,P app
+    class OK ok
+    class E1,E2,E3,E4,E5,E6,E7 err
 ```
 
-### A request, end to end — step by step through every layer ✅ success
+### A request, step by step through every layer ✅ success
 
-The same request, but now following **time** from top to bottom, across
-**every layer** (the BLoC + Repository parts arrive in Step 3). Read it like a
-comic strip: each arrow is one call, `◄─` is the answer coming back.
+The same request through **every layer** (the BLoC + Repository parts arrive
+in Step 3). Follow the numbers.
 
-```
-  View          BLoC            Repository        AppService            Dio            Server
- (Page)     (ViewModel)                         (core/network)     (+ interceptors)  (Spring)
-   │              │                   │                 │                  │               │
- 1 │ tap "Load"   │                   │                 │                  │               │
-   │─add(event)──►│                   │                 │                  │               │
-   │              │ 2 emit(Loading)   │                 │                  │               │
-   │◄─ spinner ───│                   │                 │                  │               │
-   │              │ 3 getMe()         │                 │                  │               │
-   │              │──────────────────►│ 4 send(get,     │                  │               │
-   │              │                   │   ApiEndPoint.me│                  │               │
-   │              │                   │   parse: …)     │                  │               │
-   │              │                   │────────────────►│ 5 _dio.get(...)  │               │
-   │              │                   │                 │─────────────────►│ 6 logger (dev)│
-   │              │                   │                 │                  │ 7 + token(2.2)│
-   │              │                   │                 │                  │──GET /me─────►│
-   │              │                   │                 │                  │               │ 8 check
-   │              │                   │                 │                  │◄─200 + JSON───│  token,
-   │              │                   │                 │◄─ Response ──────│               │  load user
-   │              │                   │                 │ 9 tryParse       │               │
-   │              │                   │                 │   envelope       │               │
-   │              │                   │                 │   success:true   │               │
-   │              │                   │                 │10 parse(data)    │               │
-   │              │                   │◄─Right(User)────│                  │               │
-   │              │◄─ Right(User) ────│                 │                  │               │
-   │              │11 fold → emit(Loaded(user))         │                  │               │
-   │◄─ show name ─│                   │                 │                  │               │
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as User
+    participant V as View (Page)
+    participant B as BLoC (ViewModel)
+    participant R as Repository
+    participant A as AppService
+    participant D as Dio + interceptors
+    participant S as 🛠 Server
+
+    U->>V: tap "Load"
+    V->>B: add(LoadMeEvent())
+    B-->>V: emit(Loading) → spinner
+    B->>R: getMe()
+    R->>A: send(get, ApiEndPoint.me, parse: UserModel.fromData)
+    A->>D: switch (httpMethods) → _dio.get(endPoint)
+    Note over D: logger prints (dev/uat)<br/>+ Bearer token (Step 2.2)
+    D->>S: GET /api/v1/users/me
+    Note over S: checks the token,<br/>loads the user
+    S-->>D: 200 + envelope (success: true, data: user)
+    D-->>A: Response
+    Note over A: tryParse(envelope)<br/>success true → parse(data)
+    A-->>R: Right(User)
+    R-->>B: Right(User) — nothing to decode
+    B-->>V: fold → emit(Loaded(user))
+    V-->>U: shows "Vanyda"
 ```
 
 | # | Who | What happens |
 |---|---|---|
-| 1 | View | User taps. The page only **sends an event** — no network code in widgets. |
-| 2 | BLoC | Emits `Loading` → the page shows a spinner/shimmer. |
-| 3 | BLoC | Calls the repository (never `AppService` directly — CLAUDE.md rule). |
-| 4 | Repository | Calls `appService.send(...)` with the endpoint and **how to parse**. |
-| 5 | AppService | Picks the Dio method from `HttpMethods` (`switch`). |
-| 6 | Dio | Logger interceptor prints the request (dev/uat only, no headers). |
-| 7 | Dio | Auth interceptor adds `Authorization: Bearer …` (**Step 2.2**). |
-| 8 | Server | Checks the token, answers `{ success: true, data: {…} }`. |
-| 9 | AppService | Unwraps the envelope, checks `success`. |
-| 10 | AppService | Runs `parse(envelope.data)` → a `User` model. |
-| 11 | BLoC | `result.fold(...)` → emits `Loaded(user)` → the page shows it. |
+| 1–2 | View | User taps. The page only **sends an event** — no network code in widgets. |
+| 3 | BLoC | Emits `Loading` → the page shows a spinner/shimmer. |
+| 4 | BLoC | Calls the repository (never `AppService` directly — CLAUDE.md rule). |
+| 5 | Repository | Calls `appService.send(...)` with the endpoint and **how to parse**. |
+| 6 | AppService | Picks the Dio method from `HttpMethods` (`switch`). Logger + token interceptors run. |
+| 7 | Dio | Sends `GET /api/v1/users/me`. |
+| 8 | Server | Checks the token, answers the envelope. |
+| 9–10 | AppService | Unwraps the envelope, checks `success`, runs `parse(data)` → `Right(User)`. |
+| 11 | Repository | Passes `Right(User)` up — nothing to decode. |
+| 12–13 | BLoC → View | `result.fold(...)` → emits `Loaded(user)` → the page shows the name. |
 
-**Who knows what** (each layer only knows the one below it):
+**Who knows what** — each layer only knows the one below it:
 
-```
- View        knows: events + states              never: Dio, JSON, URLs
- BLoC        knows: the repository               never: Dio, JSON, URLs
- Repository  knows: AppService + ApiEndPoint     never: widgets, BuildContext
- AppService  knows: Dio + the envelope           never: models (parse is passed in)
- Dio         knows: HTTP                         never: our envelope
-```
+| Layer | Knows | Never knows |
+|---|---|---|
+| View | events + states | Dio, JSON, URLs |
+| BLoC | the repository | Dio, JSON, URLs |
+| Repository | `AppService` + `ApiEndPoint` | widgets, `BuildContext` |
+| AppService | `Dio` + the envelope | your models (`parse` is passed in) |
+| Dio | HTTP | our envelope |
 
-### A request, end to end — step by step ❌ error (can't reach the server)
+### A request, step by step ❌ error (can't reach the server)
 
-Same path, but the connection fails. Watch where the error is **turned into a
-`NetworkErrorModel`** — only once, inside `AppService`. Everything above just
-receives a `Left`.
+Same layers, but the connection fails. Watch where the error is **turned into
+a `NetworkErrorModel`** — only once, inside `AppService`. Every layer above just
+passes a `Left` up.
 
-```
-  View          BLoC            Repository        AppService            Dio            Server
-   │              │                   │                 │                  │               ✕
-   │─add(event)──►│                   │                 │                  │               ✕ (down /
-   │◄─ spinner ───│ emit(Loading)     │                 │                  │               ✕  wrong IP)
-   │              │── getMe() ───────►│── send(...) ───►│── _dio.get ─────►│──GET /me──► ✕
-   │              │                   │                 │                  │
-   │              │                   │                 │◄─ throws ────────│ DioException
-   │              │                   │                 │   (connectionError)
-   │              │                   │                 │
-   │              │                   │                 │ catch → _fromDio(e)
-   │              │                   │                 │   │
-   │              │                   │                 │   └─► CheckInternetService
-   │              │                   │                 │         .checkDataConnection()
-   │              │                   │                 │         DNS lookup google.com
-   │              │                   │                 │            │
-   │              │                   │                 │   ┌────────┴─────────┐
-   │              │                   │                 │ offline           online
-   │              │                   │                 │ "No Internet"     "Server unreachable"
-   │              │                   │                 │   └────────┬─────────┘
-   │              │                   │◄─Left(NoInternetError)───────┘
-   │              │◄─ Left(error) ────│
-   │              │ fold → emit(Error(error))
-   │◄─ error.title / error.description + Retry
+```mermaid
+sequenceDiagram
+    autonumber
+    participant V as View (Page)
+    participant B as BLoC
+    participant R as Repository
+    participant A as AppService
+    participant D as Dio
+    participant S as 🛠 Server
+
+    V->>B: add(LoadMeEvent())
+    B-->>V: emit(Loading)
+    B->>R: getMe()
+    R->>A: send(...)
+    A->>D: _dio.get(endPoint)
+    D-xS: GET /api/v1/users/me
+    Note over S: ❌ down / wrong IP / no Wi-Fi
+    D-->>A: throws DioException (connectionError)
+    Note over A: catch → _fromDio(e)<br/>→ CheckInternetService
+    alt phone is OFFLINE
+        Note over A: NoInternetError("No Internet")
+    else phone is ONLINE
+        Note over A: NoInternetError("Server unreachable")
+    end
+    A-->>R: Left(NoInternetError)
+    R-->>B: Left — no try/catch needed
+    B-->>V: fold → emit(Error(error))
+    Note over V: shows error.title,<br/>error.description + Retry
 ```
 
 - **Nothing throws past `AppService`.** The BLoC never needs `try/catch`.
 - The BLoC can show `error.title` / `error.description` directly (template
-  style), or `switch` on the kind (e.g. show a Retry button only for
-  `NoInternetError`).
+  style), or `switch` on the kind (e.g. show Retry only for `NoInternetError`).
 
-### The template's request, end to end (for comparison)
+### The template's request, step by step (for comparison)
 
-Your MVVM template does the same job like this. Compare the **shaded** steps
-with ours above:
+Your MVVM template does the same job like this. The **⚠** notes are the steps
+we changed (see the table below):
 
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as BLoC (DemoViewModelBloc)
+    participant R as Repository (ProductRepository)
+    participant A as AppService (template)
+    participant S as 🛠 Server
+
+    B->>R: getProducts()
+    R->>A: AppService(GET, ApiEndPoint.product).send()
+    Note over A: ⚠ Dio dio = Dio() — NEW every call<br/>⚠ getToken() from SharedPrefs<br/>⚠ log(url, params, data) always
+    A->>S: GET products
+    S-->>A: 200 + JSON
+    Note over A: ⚠ success only if statusCode == 200
+    A-->>R: Right(HttpResponse)
+    Note over R: ⚠ jsonDecode(response.toString())<br/>⚠ Model.fromJson(data)
+    R-->>B: Right(model)
 ```
-  BLoC            Repository              AppService (template)              Server
-   │                  │                          │                              │
-   │── getProducts ──►│                          │                              │
-   │                  │── AppService(            │                              │
-   │                  │     httpMethods: GET,    │                              │
-   │                  │     endPoint: …).send() ►│ ░ Dio dio = Dio();  NEW Dio  │
-   │                  │                          │ ░ getToken() ← SharedPrefs   │
-   │                  │                          │ ░ log(url, params, data)     │
-   │                  │                          │──── GET ────────────────────►│
-   │                  │                          │◄─── 200 ─────────────────────│
-   │                  │                          │ ░ if statusCode == 200 only  │
-   │                  │◄─ Right(HttpResponse) ───│                              │
-   │                  │ ░ jsonDecode(response.toString())                       │
-   │                  │ ░ Model.fromJson(data)   │                              │
-   │◄─ Right(model) ──│                          │                              │
-```
 
-| ░ Template step | Ours |
+| ⚠ Template step | Ours |
 |---|---|
 | `Dio()` new each call | ONE shared Dio from DI (interceptors live there) |
 | `getToken()` from SharedPreferences | auth interceptor reads secure storage (Step 2.2) |
@@ -201,13 +225,21 @@ with ours above:
 
 ### `Either<NetworkErrorModel, T>`: two boxes, exactly one is full
 
+```mermaid
+flowchart LR
+    RES["Either<br/>Left: NetworkErrorModel<br/>Right: User"] --> FOLD{"result.fold(…)"}
+    FOLD -->|"Left — something went wrong"| L["NetworkErrorModel<br/>error.title<br/>error.description"]
+    FOLD -->|"Right — it worked"| RI["your model<br/>UserModel"]
+    L --> LS["emit(ErrorState)"]
+    RI --> RS["emit(LoadedState)"]
+
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
+    class RI,RS ok
+    class L,LS err
 ```
- ┌──────────── Left ────────────┐ ┌──────────── Right ───────────┐
- │ NetworkErrorModel            │ │ your model (UserModel…)       │
- │ error.title / description    │ │                               │
- └──────────────────────────────┘ └──────────────────────────────┘
- result.fold((error) => …, (user) => …)   ← you MUST handle both
-```
+
+`fold` makes you handle **both** boxes — you can't forget the error case.
 
 ### Files
 
@@ -237,6 +269,12 @@ static const String localApiBaseUrl = 'http://172.26.17.118:8080';   // server r
 `/health` lives **outside** `/api/v1`, so the base URL is the server root and
 the version prefix goes into each endpoint.
 
+| baseUrl (Flavor) | + endPoint (`ApiEndPoint`) | = full URL Dio calls |
+|---|---|---|
+| `http://172.26.17.118:8080` | `/health` | `…:8080/health` ✅ |
+| `http://172.26.17.118:8080` | `/api/v1/users/me` | `…:8080/api/v1/users/me` ✅ |
+| ❌ `http://…:8080/api/v1` | `/health` | `…:8080/api/v1/health` → **404** |
+
 ### `api_endpoints.dart`: `ApiEndPoint`
 
 ```dart
@@ -253,6 +291,21 @@ abstract final class ApiEndPoint {
 Same as the template's `ApiEndPoint`. `'$_v1/auth/login'` is interpolation
 inside a `const` — allowed because `_v1` is `const` too.
 
+```mermaid
+flowchart LR
+    V1["_v1 = '/api/v1'"] --> L["login<br/>/api/v1/auth/login"]
+    V1 --> RF["refresh<br/>/api/v1/auth/refresh"]
+    V1 --> ME["me<br/>/api/v1/users/me"]
+    H["health = '/health'<br/>(outside the version)"]
+
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    class V1,L,RF,ME app
+    class H none
+```
+
+Backend moves to `/api/v2` one day? Change **one** line: `_v1 = '/api/v2'`.
+
 ### `helper_service.dart`: `HttpMethods`
 
 ```dart
@@ -265,6 +318,14 @@ enum HttpMethods { get, post, put, patch, delete }
 - The template's `HttpResponse` wrapper and `getToken()` are **not** here —
   see **4. Why like this?**.
 
+| `HttpMethods` | Dio method | HTTP verb | Typical use (our backend) |
+|---|---|---|---|
+| `.get` | `_dio.get` | GET | read: `GET /users/me` |
+| `.post` | `_dio.post` | POST | create: `POST /auth/login`, send a message |
+| `.put` | `_dio.put` | PUT | replace a whole thing |
+| `.patch` | `_dio.patch` | PATCH | update some fields: `PATCH /users/{id}` |
+| `.delete` | `_dio.delete` | DELETE | remove: `DELETE /chats/messages/{id}` |
+
 ### `utils/constants.dart`: `Constants`
 
 ```dart
@@ -276,9 +337,25 @@ static const String pleaseCheckInternet = 'Please check internet connection.';
 ```
 
 - Same idea as the template: all error texts and our invented codes in **one**
-  file. Real HTTP codes are 100–599, so `-1` and `0` can't be confused with them.
-- One place = easy to turn into translation keys in Step 8.
+  file. One place = easy to turn into translation keys in Step 8.
 - Fixed a typo from the template: `somethingWhenWrong` → `somethingWentWrong`.
+
+```mermaid
+flowchart LR
+    N1["-1<br/>codeNetwork"] --- N0["0<br/>codeUnknown"] --- H1["100 … 599<br/>real HTTP codes<br/>from the server"]
+    N1 -.- T1["we never REACHED<br/>the server"]
+    N0 -.- T0["we got no answer<br/>we understood"]
+    H1 -.- T2["200 ok · 401 login<br/>404 not found · 500 crash"]
+
+    classDef ours fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef http fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    class N1,N0 ours
+    class H1 http
+    class T1,T0,T2 none
+```
+
+Real HTTP codes are 100–599, so our `-1` and `0` can never be confused with them.
 
 ### `network_error_model.dart`: `NetworkErrorModel`
 
@@ -301,6 +378,46 @@ final class ServerError extends NetworkErrorModel {           // 4xx / 5xx / suc
 final class UnauthorizedError extends NetworkErrorModel { … } // 401
 final class UnknownError extends NetworkErrorModel { … }      // bad JSON, a bug
 ```
+
+```mermaid
+classDiagram
+    direction TB
+    class NetworkErrorModel {
+        <<sealed>>
+        +String title
+        +String description
+        +int statusCode
+    }
+    class NoInternetError {
+        statusCode = -1
+        offline · timeout · server down
+    }
+    class ServerError {
+        statusCode = 4xx / 5xx
+        +String? errorCode
+        +Map~String,String~ fieldErrors
+        +String? traceId
+    }
+    class UnauthorizedError {
+        statusCode = 401
+        token dead after refresh failed
+    }
+    class UnknownError {
+        statusCode = 0
+        bad JSON · a bug
+    }
+    NetworkErrorModel <|-- NoInternetError
+    NetworkErrorModel <|-- ServerError
+    NetworkErrorModel <|-- UnauthorizedError
+    NetworkErrorModel <|-- UnknownError
+```
+
+| Kind | When | What the UI does |
+|---|---|---|
+| `NoInternetError` | offline, timeout, server down | message + **Retry** |
+| `ServerError` | server said NO (400, 404, 500, `success:false`) | message; forms → red text under each field |
+| `UnauthorizedError` | token dead (after refresh failed, Step 2.2) | nothing — `AuthGate` shows Login |
+| `UnknownError` | bad JSON, a bug | "Something went wrong" |
 
 **Two ways to use it:**
 
@@ -340,11 +457,19 @@ static Future<bool> checkDataConnection() async {
 Same name and job as the template. Used **only after** a request failed to
 connect, to choose the right message:
 
-```
- can't reach our server
-   ├─ phone offline? → "No Internet — please check internet connection."
-   └─ phone online?  → "Server unreachable — please try again later."
-                        (our server is down, or wrong IP in environments.dart)
+```mermaid
+flowchart TD
+    F["❌ can't reach OUR server"] --> C{"DNS lookup google.com<br/>(5 s max)"}
+    C -->|"no answer"| OFF["📵 phone is OFFLINE<br/>'No Internet — please check<br/>internet connection.'"]
+    C -->|"answer"| ON["📶 phone is ONLINE<br/>'Server unreachable — please<br/>try again later.'"]
+    ON -.- WHY["our server is down,<br/>or wrong IP in environments.dart"]
+
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    class F err
+    class OFF,ON wait
+    class WHY none
 ```
 
 Template: full `http.get('https://www.google.com')`. Ours: a **DNS lookup** —
@@ -378,6 +503,45 @@ class AppService {
   by Dart (like `Future<T?>` in ConfigRouter).
 - **`formData`** — like the template: for **file uploads** (avatar, chat
   images). `body = formData ?? data`.
+
+**`parse` is a function you hand over** — `AppService` doesn't know your
+model, so you tell it *how* to build it:
+
+```mermaid
+sequenceDiagram
+    participant R as Repository
+    participant A as AppService
+    participant P as UserModel.fromData
+
+    R->>A: send(…, parse: UserModel.fromData)
+    Note over A: keeps the function,<br/>does the request…
+    Note over A: data = envelope.data<br/>id 1, name Vanyda
+    A->>P: parse(data)
+    P-->>A: UserModel(id: 1, name: Vanyda)
+    A-->>R: Right(UserModel)
+```
+
+Like giving a chef your recipe: the chef (`AppService`) cooks, but the recipe
+(`parse`) decides the dish.
+
+**`data` vs `formData`** — two kinds of body:
+
+```mermaid
+flowchart LR
+    subgraph JSON["data: Map"]
+        direction TB
+        J1["email + password"] --> J2["Content-Type:<br/>application/json"] --> J3["login · send message ·<br/>update profile"]
+    end
+    subgraph MP["formData: FormData"]
+        direction TB
+        M1["file: MultipartFile(photo.jpg)"] --> M2["Content-Type:<br/>multipart/form-data"] --> M3["avatar upload ·<br/>chat image / file"]
+    end
+
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef plan fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    class J1,J2,J3 app
+    class M1,M2,M3 plan
+```
 
 ```dart
 final response = switch (httpMethods) {
@@ -414,6 +578,34 @@ A **switch expression** over the enum (template: a `switch` statement with
 
 ### `api_envelope.dart` (ours — the template has no envelope)
 
+**The envelope is like a parcel:** the server always sends a box with labels;
+our model is inside `data`. `AppService` opens the box once.
+
+```mermaid
+flowchart LR
+    subgraph ENV["📦 What the server sends"]
+        direction TB
+        S["success: true"]
+        M["message: 'Success'"]
+        EC["errorCode: null"]
+        TR["traceId: 'b749…'"]
+        D["data: id 1, name Vanyda"]
+    end
+    S --> Q{"success?"}
+    Q -->|"false"| ERR["Left(ServerError(message))"]
+    Q -->|"true"| PD["parse(data)"]
+    D --> PD --> OK["Right(UserModel)<br/>the repository only<br/>ever sees this"]
+
+    classDef label fill:#eeeeee,stroke:#999,color:#555
+    classDef inside fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
+    class S,M,EC,TR label
+    class D,PD inside
+    class OK ok
+    class ERR err
+```
+
 ```dart
 static ApiEnvelope? tryParse(Object? json) {
   if (json is! Map<String, dynamic> || json['success'] is! bool) return null;
@@ -423,7 +615,21 @@ static ApiEnvelope? tryParse(Object? json) {
 
 - Returns `null` for anything that isn't an envelope. `is!` = "is not".
 - **`fieldErrors`** accepts both shapes a Spring backend may send (a map, or a
-  list of `{field, message}`) and always gives `Map<String, String>`.
+  list of `{field, message}`) and always gives `Map<String, String>`:
+
+```mermaid
+flowchart TD
+    A["Shape A — a map<br/>email: 'must be a valid email'<br/>password: 'too short'"] --> N["fieldErrors<br/>Map of String to String"]
+    B["Shape B — a list<br/>field: email, message: …<br/>field: password, message: …"] --> N
+    N --> UI["Login form (Step 3)<br/>⚠ red text under the<br/>right field"]
+
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    class A,B none
+    class N app
+    class UI ok
+```
 
 > 🔎 **Doc vs reality:** `API_LIST_BACKEND.md` says `/health` returns a plain
 > `{ "status": "UP" }`. The real server **wraps** it in the envelope. Because
@@ -447,11 +653,30 @@ Dio createDio(Flavor flavor) {
 ```
 
 - Template timeouts (15 / 30 / 15) — set **once** here instead of per request.
-- An **interceptor** = code that runs on **every** request/response:
 
+```mermaid
+flowchart LR
+    P["📱 phone"] -->|"connectTimeout 15 s<br/>open the connection"| C["connected"]
+    C -->|"sendTimeout 15 s<br/>upload the request"| SENT["request sent"]
+    SENT -->|"receiveTimeout 30 s<br/>wait + download the answer"| DONE["✅ response"]
+    C -.->|"any one runs out"| T["NoInternetError('Timeout')"]
+
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
+    class DONE ok
+    class T err
 ```
- request  ──► [ logger ] ──► [ auth (2.2) ] ──► server
- response ◄── [ logger ] ◄── [ auth (2.2) ] ◄──
+
+- An **interceptor** = code that runs on **every** request/response, like a
+  checkpoint:
+
+```mermaid
+flowchart LR
+    A["AppService"] -->|"request"| LG["🖨 logger<br/>(dev/uat)"] --> AU["🔑 auth<br/>(Step 2.2)"] --> S["🛠 server"]
+    S -->|"response"| AU2["🔑 auth<br/>401 → refresh"] --> LG2["🖨 logger"] --> A2["AppService"]
+
+    classDef todo fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    class AU,AU2 todo
 ```
 
 ### DI: `injection.dart`
@@ -460,6 +685,25 @@ Dio createDio(Flavor flavor) {
 getIt.registerLazySingleton<Dio>(() => createDio(Flavor.current));
 getIt.registerLazySingleton<AppService>(() => AppService(getIt<Dio>()));
 ```
+
+```mermaid
+flowchart TD
+    subgraph BOX["📦 getIt (the box)"]
+        direction LR
+        F["Flavor.current"] --> CD["createDio(flavor)"] --> D["Dio<br/>+ logger · + auth (2.2)"] --> AS["AppService(dio)"]
+    end
+    AS -->|"constructor injection"| AR["AuthRepository (3)"]
+    AS --> PR["ProfileRepository (4)"]
+    AS --> CR["ChatRepository (5)"]
+
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef todo fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    class F,CD,D,AS app
+    class AR,PR,CR todo
+```
+
+All repositories share the **same** `AppService` → the **same** `Dio` → the
+**same** interceptors.
 
 ### The demo: "Check server" on the home page
 
@@ -485,14 +729,63 @@ appService = AppService(dio, hasInternet: () async => phoneOnline);
 ```
 
 Dio sends bytes through an **adapter**; the fake returns whatever the test
-sets. This only works because `Dio` is **injected** — with the template's
-`Dio()` inside `AppService`, there is no way to put a fake in.
+sets.
+
+```mermaid
+flowchart LR
+    subgraph REAL["Real app"]
+        direction LR
+        A1["AppService"] --> D1["Dio"] --> H1["HttpClientAdapter<br/>(real network)"] --> S1["🛠 Spring server"]
+    end
+    subgraph TEST["Test"]
+        direction LR
+        A2["AppService"] --> D2["Dio"] --> H2["_FakeAdapter"] --> R2["returns what the test set<br/>status 400 + fieldErrors"]
+    end
+
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef fake fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    class A1,D1,A2,D2 app
+    class H2,R2 fake
+```
+
+Same `AppService` code in both — only the adapter at the bottom is swapped.
+This only works because `Dio` is **injected**: with the template's `Dio()`
+inside `AppService`, there's no way to put a fake in.
 
 12 tests: success, **201**, every `HttpMethods` → right verb, plain JSON,
 `success:false`, 400 + `fieldErrors`, 401, 500, offline, server unreachable,
 timeout, parser crash.
 
 ## 4. 🤔 Why like this? (template vs ours)
+
+```mermaid
+flowchart LR
+    subgraph KEPT["✅ Kept from the template"]
+        direction TB
+        K1["AppService.send(…)"]
+        K2["HttpMethods enum"]
+        K3["ApiEndPoint"]
+        K4["NetworkErrorModel<br/>title · description · statusCode"]
+        K5["CheckInternetService"]
+        K6["Constants"]
+        K7["Either + fold"]
+    end
+    subgraph CHANGED["✏️ Changed"]
+        direction TB
+        C1["Dio: new per call → ONE shared (DI)"]
+        C2["token: SharedPrefs → secure storage<br/>+ interceptor (2.2)"]
+        C3["success: == 200 → any 2xx<br/>+ envelope.success"]
+        C4["raw HttpResponse → parse: unwraps"]
+        C5["one error class → sealed, 4 kinds"]
+        C6["http.get(google) → DNS lookup"]
+        C7["log() everything → dev/uat, no headers"]
+    end
+
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef plan fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    class K1,K2,K3,K4,K5,K6,K7 ok
+    class C1,C2,C3,C4,C5,C6,C7 plan
+```
 
 | Template | Ours | Why |
 |---|---|---|

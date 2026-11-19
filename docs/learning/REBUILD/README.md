@@ -23,28 +23,46 @@ lib/
 
 ## 🏛️ The big picture (where every step fits)
 
+```mermaid
+flowchart TD
+    M["▶ main.dart · main_dev / uat / prod<br/>bootstrap(flavor) — the one start-up function"]
+    subgraph APP["lib/app/ — top layer, may import features"]
+        A["App (MaterialApp) + AuthGate"]
+    end
+    subgraph FEAT["lib/features/ — Steps 3–7"]
+        direction LR
+        F1["auth"] ~~~ F2["profile"] ~~~ F3["chat"] ~~~ F4["call"]
+    end
+    subgraph CORE["lib/core/ — shared, never imports features"]
+        direction LR
+        C1["config<br/>1.1"] ~~~ C2["theme<br/>1.2"] ~~~ C3["di<br/>1.3"] ~~~ C4["router<br/>1.4"] ~~~ C5["network<br/>2"] ~~~ C6["realtime<br/>5"] ~~~ C7["push<br/>7"]
+    end
+    M --> APP
+    APP -->|"imports"| FEAT
+    FEAT -->|"imports"| CORE
+    APP -->|"imports"| CORE
+    class M none
+    class A app
+    class F1,F2,F3,F4 wait
+    class C1,C2,C3,C4,C5,C6,C7 ok
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
 ```
-┌──────────────────────────── lib/features/ ─────────────────────────────┐
-│                                                                        │
-│   ┌────────┐    ┌──────────┐    ┌────────┐    ┌────────┐               │
-│   │  auth  │    │ profile  │    │  chat  │    │  call  │   Steps 3–7   │
-│   └───┬────┘    └────┬─────┘    └───┬────┘    └───┬────┘               │
-│       │  each one:   View ─► BLoC ─► Repository ─► DataSource          │
-└───────┼──────────────┼──────────────┼─────────────┼────────────────────┘
-        │              │              │             │
-        ▼              ▼              ▼             ▼
-┌───────────────────────────── lib/core/ ────────────────────────────────┐
-│  config/   theme/    di/     router/    network/    realtime/   push/  │
-│  Step 1.1  1.2       1.3     1.4        Step 2      Step 5      Step 7 │
-└────────────────────────────────────────────────────────────────────────┘
-        ▲
-        │ started by
-┌───────┴────────────┐
-│ lib/app/           │  App (MaterialApp) + AuthGate — may import features
-├────────────────────┤
-│ main.dart          │  bootstrap(flavor) — the one start-up function
-│ main_<flavor>.dart │
-└────────────────────┘
+
+Inside **each** feature, the same 4 layers:
+
+```mermaid
+flowchart LR
+    V["View<br/>(page)"] --> B["BLoC<br/>(ViewModel)"] --> R["Repository"] --> D["DataSource<br/>AppService · STOMP · storage"]
+    class V,B,R,D app
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
 ```
 
 **Rule:** `features/` may use `core/`, but `core/` never imports from
@@ -52,19 +70,34 @@ lib/
 
 ## 🗺️ Roadmap
 
+```mermaid
+flowchart TD
+    S0["0 · clean slate"] --> STEP1
+    subgraph STEP1["Step 1 — setup"]
+        direction LR
+        S11["1.1 flavor"] --> S12["1.2 theme"] --> S13["1.3 DI"] --> S14["1.4 navigation"]
+    end
+    STEP1 --> STEP2
+    subgraph STEP2["Step 2 — network"]
+        direction LR
+        S21["2.1 AppService"] --> S22["2.2 tokens +<br/>auth interceptor"]
+    end
+    STEP2 --> FEATS
+    subgraph FEATS["Steps 3–6 — features"]
+        direction LR
+        S3["3 auth"] --> S4["4 profile"] --> S5["5 chat"] --> S6["6 call (in app)"]
+    end
+    FEATS --> S7["7 call when the app is killed<br/>(FCM / CallKit)"] --> S8["8 translations + tests + polish"]
+    class S0,S11,S12,S13,S14,S21 ok
+    class S22,S3,S4,S5,S6,S7,S8 wait
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
 ```
- Step 0      Step 1 (setup)                      Step 2     Step 3   Step 4
- ┌─────┐   ┌────────┬───────┬──────┬────────┐   ┌───────┐   ┌──────┐ ┌─────────┐
- │clean│──►│ flavor │ theme │  DI  │ router │──►│network│──►│ auth │►│ profile │
- └─────┘   └────────┴───────┴──────┴────────┘   └───────┘   └──────┘ └────┬────┘
-   ✅         ✅       ✅      ✅      ✅                                    │
-                                                                          ▼
-                       Step 8           Step 7              Step 6      Step 5
-                    ┌──────────┐   ┌────────────────┐   ┌──────────┐ ┌──────┐
-                    │ i18n +   │◄──│ call when app  │◄──│ call (in │◄│ chat │
-                    │ tests    │   │ is killed (FCM)│   │   app)   │ └──────┘
-                    └──────────┘   └────────────────┘   └──────────┘
-```
+
+🟩 done · 🟨 to do
 
 Each step ends with an app that **runs**. Don't start the next step until the
 current one works.

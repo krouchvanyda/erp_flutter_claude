@@ -9,14 +9,28 @@ An app has many pages. We need 2 things:
 2. **Never show private pages to a logged-out user** — and when the user logs
    out (or the token expires in Step 2), **close everything** and show Login.
 
-```
- ❌ Raw Navigator.push everywhere          ✅ ConfigRouter + AuthGate
- ┌──────────────────────────────┐          ┌──────────────────────────────┐
- │ Navigator.push(MaterialPage…)│          │ ConfigRouter.pushPageAnimation│ one helper,
- │ Navigator.push(PageRoute…)   │          │   (context, page)            │ same animation
- │ each page: "am I logged in?" │          ├──────────────────────────────┤
- │ logout: who closes the pages?│          │ AuthGate: session → screen   │ one place decides
- └──────────────────────────────┘          └──────────────────────────────┘ Login / Home
+```mermaid
+flowchart LR
+    subgraph RAW["❌ Raw Navigator.push everywhere"]
+        direction TB
+        R1["Navigator.push(MaterialPageRoute…)"]
+        R2["Navigator.push(PageRoute…)"]
+        R3["each page: am I logged in?"]
+        R4["logout: who closes the pages?"]
+    end
+    subgraph GOOD["✅ ConfigRouter + AuthGate"]
+        direction TB
+        G1["ConfigRouter.pushPageAnimation(context, page)<br/>one helper, same animation"]
+        G2["AuthGate: session → screen<br/>one place decides Login / Home"]
+    end
+    RAW -.-> GOOD
+    class R1,R2,R3,R4 err
+    class G1,G2 ok
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
 ```
 
 We chose **`ConfigRouter`** (your helper class — familiar and simple) and
@@ -27,36 +41,74 @@ small widget: **`AuthGate`**.
 
 ### Two jobs, two tools
 
-```
- AuthGate  ─── "WHICH big screen?"          ConfigRouter ─── "HOW does the next page come in?"
-   splash not done → SplashPage               pushPageAnimation       slide right→left
-   logged out      → LoginPage                pushPageOverlay         dim + fade over current
-   logged in       → Home                     pushPageDialog          full-screen modal
-                                              pushPageOverlayBottomSheet  sheet from bottom
-                                              pushPageAndRemoveUntil… replace the whole stack
+```mermaid
+flowchart LR
+    subgraph GATE["AuthGate — WHICH big screen?"]
+        direction TB
+        A1["splash not done → SplashPage"]
+        A2["logged out → LoginPage"]
+        A3["logged in → Home"]
+    end
+    subgraph CR["ConfigRouter — HOW does the next page come in?"]
+        direction TB
+        C1["pushPageAnimation → slide right to left"]
+        C2["pushPageOverlay → dim + fade over current"]
+        C3["pushPageDialog → full-screen modal"]
+        C4["pushPageOverlayBottomSheet → sheet from bottom"]
+        C5["pushPageAndRemoveUntil… → replace the whole stack"]
+    end
+    class A1,A2,A3 app
+    class C1,C2,C3,C4,C5 wait
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
 ```
 
 ### The navigator stack
 
-```
- Logged in, user opened a detail page:        User taps Log out (on ANY page):
-
- ┌───────────────────┐ ← top                  session.markLoggedOut()
- │ DetailPage        │  ConfigRouter push        │ notifyListeners()
- ├───────────────────┤                           ▼
- │ AuthGate → Home   │  ← first route         AuthGate._onSessionChanged
- └───────────────────┘                          ├─ popUntil(isFirst)  → DetailPage closed
-                                                └─ setState           → Home ⇢ Login (fade)
+```mermaid
+flowchart LR
+    subgraph STACK["Navigator stack (logged in)"]
+        direction TB
+        TOP["DetailPage<br/>(ConfigRouter push) ← top"]
+        FIRST["AuthGate → Home<br/>← first route"]
+        TOP --- FIRST
+    end
+    OUT["User taps Log out<br/>(on ANY page)"] --> MS["session.markLoggedOut()<br/>notifyListeners()"]
+    MS --> ON["AuthGate._onSessionChanged"]
+    ON --> POP["popUntil(isFirst)<br/>→ DetailPage closed"]
+    ON --> SET["setState<br/>→ Home fades to Login"]
+    POP -.->|"removes"| TOP
+    class TOP wait
+    class FIRST app
+    class OUT none
+    class MS,ON app
+    class POP,SET ok
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
 ```
 
 ### Pages flip the session, AuthGate swaps the screen
 
-```
- LoginPage                AuthSession                AuthGate
- [Sign in] ─────────────► markAuthenticated()
-                          isAuthenticated = true
-                          notifyListeners() ───────► _onSessionChanged()
-                                                     setState → builds Home
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as User
+    participant L as LoginPage
+    participant S as AuthSession
+    participant G as AuthGate
+
+    U->>L: tap [Sign in]
+    L->>S: markAuthenticated()
+    Note over S: isAuthenticated = true
+    S-->>G: notifyListeners()
+    G->>G: _onSessionChanged() → setState
+    Note over G: builds Home (fade)
 ```
 
 `LoginPage` never pushes Home. Logout works the same way the other direction.
@@ -80,9 +132,18 @@ lib/
     └── login_page.dart       placeholder until Step 3
 ```
 
-```
- app/ ──imports──► features/ ──imports──► core/
- AuthGate imports the pages, so it lives in app/. core/ never imports features/.
+```mermaid
+flowchart LR
+    A["app/<br/>AuthGate imports the pages"] -->|"imports"| F["features/"] -->|"imports"| C["core/"]
+    C -.->|"never imports ❌"| F
+    class A none
+    class F wait
+    class C ok
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
 ```
 
 ## 3. Code
@@ -110,10 +171,10 @@ Which one to use:
 
 **`opaque`** (the long comments in the file):
 
-```
- opaque: true   → Flutter stops painting the page below (faster). Normal pages.
- opaque: false  → the page below keeps painting → can show through. Overlays.
-```
+| `opaque` | What Flutter does | Use for |
+|---|---|---|
+| `true` | stops painting the page below (faster) | normal pages |
+| `false` | keeps painting the page below → it can show through | overlays |
 
 `PageTransition` defaults to `opaque: false`, which is why `pushPageAnimation`
 sets `opaque: true` explicitly.
@@ -250,13 +311,20 @@ await configureDependencies();
 runApp(App(session: getIt<AuthSession>()));   // edge: take from the box, pass in
 ```
 
-```
- bootstrap(Flavor.dev)
-   ├─ 1. assert + Flavor.pin(dev)                 Step 1.1
-   ├─ 2. WidgetsFlutterBinding.ensureInitialized()
-   ├─ 3. await configureDependencies()            Step 1.3
-   │        └─ SharedPreferences, AuthSession
-   └─ 4. runApp(App(session: getIt<AuthSession>()))   Step 1.4
+```mermaid
+flowchart TD
+    B["bootstrap(Flavor.dev)"] --> S1["1 · assert + Flavor.pin(dev)<br/>Step 1.1"]
+    S1 --> S2["2 · WidgetsFlutterBinding<br/>.ensureInitialized()"]
+    S2 --> S3["3 · await configureDependencies()<br/>Step 1.3 — SharedPreferences, AuthSession"]
+    S3 --> S4["4 · runApp(App(session: getIt#60;AuthSession#62;()))<br/>Step 1.4"]
+    class B none
+    class S1,S2,S3 app
+    class S4 ok
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
 ```
 
 ## 4. 🤔 Why like this? (other ways)
