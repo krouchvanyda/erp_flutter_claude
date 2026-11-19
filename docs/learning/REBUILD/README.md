@@ -76,7 +76,8 @@ current one works.
 | 1.2 | Theme (design tokens) | [02-theme.md](02-theme.md) | ✅ |
 | 1.3 | DI (service locator) | [03-di.md](03-di.md) | ✅ |
 | 1.4 | Navigation (ConfigRouter + AuthGate) | [04-router.md](04-router.md) | ✅ |
-| 2 | Network (dio, interceptors, errors) | — | ⏳ |
+| 2.1 | Network: AppService (template style), envelope, NetworkErrorModel | [05-network.md](05-network.md) | ✅ |
+| 2.2 | Network: tokens + auth interceptor (refresh) | — | ⏳ |
 | 3 | Auth | — | ⏳ |
 | 4 | Profile | — | ⏳ |
 | 5 | Chat | — | ⏳ |

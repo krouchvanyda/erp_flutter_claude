@@ -59,7 +59,7 @@ In this step we wrote the Dart half.
 ```dart
 class Environments {
   Environments._();
-  static const String localApiBaseUrl = 'http://…/api/v1';
+  static const String localApiBaseUrl = 'http://…:8080';   // server root
   …
 }
 ```

@@ -36,7 +36,8 @@ View ─► BLoC ─► Repository ─► DataSource (dio / STOMP / shared_prefe
 | 1.2 | Theme | ✅ |
 | 1.3 | DI | ✅ |
 | 1.4 | Navigation (ConfigRouter + AuthGate) | ✅ |
-| 2 | Network | ⏳ |
+| 2.1 | Network: AppService (template style), envelope, NetworkErrorModel | ✅ |
+| 2.2 | Network: tokens + auth interceptor | ⏳ |
 | 3 – 4 | Auth, Profile | ⏳ |
 | 5 – 7 | Chat, Call, Call when the app is killed | ⏳ |
 | 8 | Translations, tests, polish | ⏳ |

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/network/app_service.dart';
 import '../core/router/app_navigator.dart';
 import '../core/router/auth_session.dart';
 import '../features/auth/views/login_page.dart';
@@ -18,9 +19,12 @@ import 'home_placeholder_page.dart';
 /// login/logout — they flip [AuthSession], and this gate swaps the screen.
 /// Normal page-to-page moves use `ConfigRouter`.
 class AuthGate extends StatefulWidget {
-  const AuthGate({super.key, required this.session});
+  const AuthGate({super.key, required this.session, required this.appService});
 
   final AuthSession session;
+
+  /// Only for the temporary home's "Check server" demo (Step 2.1).
+  final AppService appService;
 
   @override
   State<AuthGate> createState() => _AuthGateState();
@@ -60,7 +64,10 @@ class _AuthGateState extends State<AuthGate> {
         onFinished: () => setState(() => _splashDone = true),
       );
     } else if (widget.session.isAuthenticated) {
-      screen = HomePlaceholderPage(session: widget.session);
+      screen = HomePlaceholderPage(
+        session: widget.session,
+        appService: widget.appService,
+      );
     } else {
       screen = LoginPage(session: widget.session);
     }

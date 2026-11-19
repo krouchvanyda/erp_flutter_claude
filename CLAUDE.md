@@ -144,7 +144,7 @@ lib/
 │   ├── di/        service locator                 (Step 1.3)
 │   ├── router/    ConfigRouter, AppNavigator,     (Step 1.4)
 │   │              AuthSession
-│   ├── network/   dio + interceptors + Failure    (Step 2)
+│   ├── network/   AppService + Dio + interceptors (Step 2)
 │   ├── realtime/  STOMP client                    (Step 5)
 │   └── push/      FCM / VoIP                      (Step 7)
 ├── shared/widgets/                 reusable UI, no feature logic
@@ -190,6 +190,26 @@ Login response
   on the stack).
 - Every other page move uses `ConfigRouter` (`pushPageAnimation` for normal
   pages). Code without a context navigates via `AppNavigator.rootKey`.
+
+### Network (Step 2) — MVVM-template style
+
+- Every request goes through `AppService.send(httpMethods:, endPoint:,
+  parse:, data:, queryParameters:, formData:)` (`core/network/app_service.dart`).
+  `AppService` wraps the ONE shared `Dio` from DI; repositories never create
+  `Dio` (the template's `Dio()`-per-call is NOT used).
+- The backend wraps every response in `{ success, message, data, errorCode,
+  traceId }`. `AppService` unwraps it; `parse` only gets `data`. Any 2xx is
+  success.
+- `send` never throws: it returns `Either<NetworkErrorModel, T>` (dartz,
+  imported with `show Either, Left, Right`). `NetworkErrorModel` keeps the
+  template fields (`title`, `description`, `statusCode`) and is sealed:
+  `NoInternetError`, `ServerError` (+ errorCode, fieldErrors, traceId),
+  `UnauthorizedError`, `UnknownError`. Texts/codes live in `core/utils/constants.dart`.
+- Paths live in `ApiEndPoint`; methods in `HttpMethods` (lowerCamelCase + `patch`).
+  The base URL is the server ROOT; `/api/v1` is part of each endpoint.
+- No `getToken()` from SharedPreferences: tokens are in secure storage and the
+  auth interceptor (Step 2.2) attaches them.
+- Never log the `Authorization` header or request bodies outside dev/uat.
 
 ### Chat & call (Steps 5–7): lessons from the old app
 

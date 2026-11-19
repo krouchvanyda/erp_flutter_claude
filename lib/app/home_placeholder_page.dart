@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../core/config/flavor.dart';
+import '../core/network/api_endpoints.dart';
+import '../core/network/app_service.dart';
+import '../core/network/helper_service.dart';
+import '../core/network/network_error_model.dart';
 import '../core/router/auth_session.dart';
 import '../core/router/config_router.dart';
 import '../core/theme/app_font_size.dart';
@@ -10,9 +14,37 @@ import '../core/theme/app_spacing.dart';
 /// Temporary page after login (Step 5 replaces it with the chat inbox).
 /// Also keeps the theme preview from Step 1.2.
 class HomePlaceholderPage extends StatelessWidget {
-  const HomePlaceholderPage({super.key, required this.session});
+  const HomePlaceholderPage({
+    super.key,
+    required this.session,
+    required this.appService,
+  });
 
   final AuthSession session;
+  final AppService appService;
+
+  /// Step 2.1 demo: GET /health through AppService, show the result.
+  /// (Real screens do this in a BLoC → Repository, from Step 3.)
+  Future<void> _checkServer(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context); // read BEFORE the await
+    final result = await appService.send<String>(
+      httpMethods: HttpMethods.get,
+      endPoint: ApiEndPoint.health,
+      parse: (data) => (data as Map<String, dynamic>)['status'] as String,
+    );
+    final text = result.fold(
+      (error) => switch (error) {
+        ServerError(:final statusCode) =>
+          '❌ $statusCode ${error.title}: '
+              '${error.description}',
+        NoInternetError() ||
+        UnauthorizedError() ||
+        UnknownError() => '❌ ${error.title}: ${error.description}',
+      },
+      (status) => '✅ Server is $status',
+    );
+    messenger.showSnackBar(SnackBar(content: Text(text)));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,6 +83,15 @@ class HomePlaceholderPage extends StatelessWidget {
           const SizedBox(height: AppSpacing.lg),
           const _DemoCard(),
           const SizedBox(height: AppSpacing.lg),
+          OutlinedButton(
+            onPressed: () => _checkServer(context),
+            child: const AppLabel(
+              text: 'Check server (GET /health)',
+              fontSize: AppFontSize.value14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
           FilledButton(
             // ConfigRouter demo: slide right → left.
             onPressed: () => ConfigRouter.pushPageAnimation(
