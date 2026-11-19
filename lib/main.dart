@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show appFlavor;
 
 import 'core/config/flavor.dart';
+import 'core/di/injection.dart';
 import 'core/theme/app_font_size.dart';
 import 'core/theme/app_label.dart';
 import 'core/theme/app_spacing.dart';
@@ -20,7 +21,8 @@ Future<void> bootstrap(Flavor flavor) async {
     'Flavor mismatch: --flavor $appFlavor but entry point is ${flavor.name}',
   );
   Flavor.pin(flavor);
-  WidgetsFlutterBinding.ensureInitialized();
+  WidgetsFlutterBinding.ensureInitialized(); // plugins need the bridge first
+  await configureDependencies(); // fill the DI box (SharedPreferences = plugin)
   runApp(const HelloApp());
 }
 

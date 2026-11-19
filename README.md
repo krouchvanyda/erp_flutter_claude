@@ -34,7 +34,8 @@ View ─► BLoC ─► Repository ─► DataSource (dio / STOMP / shared_prefe
 | 0 | Clean slate | ✅ |
 | 1.1 | Flavor (dev / uat / prod) | ✅ |
 | 1.2 | Theme | ✅ |
-| 1.3 – 1.4 | DI, Router | ⏳ |
+| 1.3 | DI | ✅ |
+| 1.4 | Router | ⏳ |
 | 2 | Network | ⏳ |
 | 3 – 4 | Auth, Profile | ⏳ |
 | 5 – 7 | Chat, Call, Call when the app is killed | ⏳ |

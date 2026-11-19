@@ -216,7 +216,7 @@ The `assert` stops this:
      │
      ├─ 1. Flavor.pin(dev)                      ← Step 1.1 (now)
      ├─ 2. WidgetsFlutterBinding.ensureInitialized()
-     │     ┄┄ later: DI setup                   ← Step 1.3
+     │     ┄┄ later: DI setup                   ← Step 1.3 ✅
      │     ┄┄ later: Firebase + push            ← Step 7
      └─ 3. runApp(...)                          ← the UI appears
 ```
