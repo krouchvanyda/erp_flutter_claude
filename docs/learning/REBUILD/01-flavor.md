@@ -155,6 +155,10 @@ We use this in Step 2: print HTTP traffic in dev/uat, never in prod
 Future<void> main() => bootstrap(Flavor.current);
 
 Future<void> bootstrap(Flavor flavor) async {
+  assert(
+    appFlavor == null || appFlavor == flavor.name,
+    'Flavor mismatch: --flavor $appFlavor but entry point is ${flavor.name}',
+  );
   Flavor.pin(flavor);
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const HelloApp());
@@ -165,6 +169,42 @@ Future<void> bootstrap(Flavor flavor) async {
   setup here (DI, Firebase…), once.
 - `Flavor.pin(flavor)` runs **first**, so everything after it can read
   `Flavor.current`.
+
+#### Why `pin` at all? (`appFlavor` already exists)
+
+In the normal case (`--flavor dev -t lib/main_dev.dart`), `appFlavor` is
+already `"dev"` and `pin` only says the same thing again. `pin` matters in
+two cases:
+
+| Case | Without `pin` | With `pin` |
+|---|---|---|
+| `flutter run -t lib/main_uat.dart` (forgot `--flavor`) | `appFlavor` is null, so **dev** 😕 | **uat** ✅ |
+| Unit tests need prod behaviour | Impossible: `appFlavor` is a build-time constant | `Flavor.pin(Flavor.prod)` ✅ |
+
+#### The `assert`: catch a mismatch
+
+`pin` has one danger: the two halves can **disagree** without anyone noticing.
+
+```
+ --flavor dev  ──► native: app name "ERP Dev", appFlavor = "dev"
+ -t main_prod  ──► Dart:   pin(prod) → Flavor.current = prod
+                                 ▲
+                   "ERP Dev" app talking to the PROD server 😱
+```
+
+The `assert` stops this:
+
+| `appFlavor` | entry point | result |
+|---|---|---|
+| `null` (no `--flavor`) | any | ✅ OK, the entry point wins |
+| `"dev"` | `dev` | ✅ OK, they agree |
+| `"dev"` | `prod` | 💥 crash in debug: *"Flavor mismatch…"* |
+
+- `assert` only runs in **debug** builds. In release it is removed, so it
+  costs nothing. That's fine: mismatches happen while you develop, when you
+  type the run command.
+- **Crash loudly early > fail silently later.** A red error on your screen
+  is much cheaper than test users hitting the prod server.
 
 **Start-up order (it grows every step):**
 
@@ -203,6 +243,8 @@ Every choice above had other options. Here is why we picked these.
 | Fallback to `appFlavor` | Only `_pinned` | The background isolate (calls when the app is killed) never runs `main()`, so `_pinned` would be empty and we'd silently use dev. |
 | Same app ID for all flavors | A different ID per flavor (`com.x.erp.dev`) | Then you could install all 3 at once, **but** each one needs its own Firebase app, push certificate and CallKit setup. That's 3× the setup. |
 | One `bootstrap()` function | Setup code copied into each `main_*.dart` | With 3 copies, one gets forgotten. One function means one place to change. |
+| `pin` + mismatch `assert` | Remove `pin`, trust only `appFlavor` | Simplest and mismatch-proof, **but** tests couldn't switch flavor and forgetting `--flavor` would silently give dev. The `assert` keeps `pin`'s benefits and removes its one danger. |
+| `pin` + mismatch `assert` | Keep `pin` with no check | A mismatch (`--flavor dev -t main_prod.dart`) would be silent: a "dev" app on the prod server. |
 
 ```
    String + if/else                    enum + switch
@@ -223,6 +265,13 @@ flutter run --flavor uat  -t lib/main_uat.dart    # shows "ERP UAT" + URL
 
 On your phone's home screen, the app is named **ERP Dev** / **ERP UAT**.
 
+Now try a **mismatch** on purpose, to see the guard work:
+
+```bash
+flutter run --flavor dev -t lib/main_prod.dart
+# 💥 Failed assertion: 'Flavor mismatch: --flavor dev but entry point is prod'
+```
+
 > ⚠️ All 3 flavors use the **same app ID**, so only one can be installed at a
 > time. Installing uat replaces dev. That is on purpose: they share one
 > Firebase/push/CallKit setup.
@@ -233,6 +282,8 @@ On your phone's home screen, the app is named **ERP Dev** / **ERP UAT**.
 2. Why does `Flavor.current` fall back to `appFlavor` and not only use `_pinned`?
 3. What happens at compile time if you add `Flavor.demo` but don't update
    `apiBaseUrl`?
+4. Why do we keep `pin` when `appFlavor` already gives the flavor? And why
+   does the `assert` allow `appFlavor == null`?
 
 <details><summary>Answers</summary>
 
@@ -240,5 +291,8 @@ On your phone's home screen, the app is named **ERP Dev** / **ERP UAT**.
 2. A background isolate (a call while the app is killed) never runs `main()`,
    so nothing pins it. `appFlavor` is baked in at build time.
 3. A compile error: the `switch` expression is not exhaustive.
+4. For tests (they can't change the `appFlavor` constant) and for runs
+   without `--flavor`. `null` means "no `--flavor` given", so there is nothing
+   to disagree with, and the entry point decides.
 
 </details>
