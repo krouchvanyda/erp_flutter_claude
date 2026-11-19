@@ -72,6 +72,133 @@ So we unwrap it in **one** place, and repositories only see `data`.
    └─ parser crashed ──────────────────────────────► Left(UnknownError)
 ```
 
+### A request, end to end — step by step through every layer ✅ success
+
+The same request, but now following **time** from top to bottom, across
+**every layer** (the BLoC + Repository parts arrive in Step 3). Read it like a
+comic strip: each arrow is one call, `◄─` is the answer coming back.
+
+```
+  View          BLoC            Repository        AppService            Dio            Server
+ (Page)     (ViewModel)                         (core/network)     (+ interceptors)  (Spring)
+   │              │                   │                 │                  │               │
+ 1 │ tap "Load"   │                   │                 │                  │               │
+   │─add(event)──►│                   │                 │                  │               │
+   │              │ 2 emit(Loading)   │                 │                  │               │
+   │◄─ spinner ───│                   │                 │                  │               │
+   │              │ 3 getMe()         │                 │                  │               │
+   │              │──────────────────►│ 4 send(get,     │                  │               │
+   │              │                   │   ApiEndPoint.me│                  │               │
+   │              │                   │   parse: …)     │                  │               │
+   │              │                   │────────────────►│ 5 _dio.get(...)  │               │
+   │              │                   │                 │─────────────────►│ 6 logger (dev)│
+   │              │                   │                 │                  │ 7 + token(2.2)│
+   │              │                   │                 │                  │──GET /me─────►│
+   │              │                   │                 │                  │               │ 8 check
+   │              │                   │                 │                  │◄─200 + JSON───│  token,
+   │              │                   │                 │◄─ Response ──────│               │  load user
+   │              │                   │                 │ 9 tryParse       │               │
+   │              │                   │                 │   envelope       │               │
+   │              │                   │                 │   success:true   │               │
+   │              │                   │                 │10 parse(data)    │               │
+   │              │                   │◄─Right(User)────│                  │               │
+   │              │◄─ Right(User) ────│                 │                  │               │
+   │              │11 fold → emit(Loaded(user))         │                  │               │
+   │◄─ show name ─│                   │                 │                  │               │
+```
+
+| # | Who | What happens |
+|---|---|---|
+| 1 | View | User taps. The page only **sends an event** — no network code in widgets. |
+| 2 | BLoC | Emits `Loading` → the page shows a spinner/shimmer. |
+| 3 | BLoC | Calls the repository (never `AppService` directly — CLAUDE.md rule). |
+| 4 | Repository | Calls `appService.send(...)` with the endpoint and **how to parse**. |
+| 5 | AppService | Picks the Dio method from `HttpMethods` (`switch`). |
+| 6 | Dio | Logger interceptor prints the request (dev/uat only, no headers). |
+| 7 | Dio | Auth interceptor adds `Authorization: Bearer …` (**Step 2.2**). |
+| 8 | Server | Checks the token, answers `{ success: true, data: {…} }`. |
+| 9 | AppService | Unwraps the envelope, checks `success`. |
+| 10 | AppService | Runs `parse(envelope.data)` → a `User` model. |
+| 11 | BLoC | `result.fold(...)` → emits `Loaded(user)` → the page shows it. |
+
+**Who knows what** (each layer only knows the one below it):
+
+```
+ View        knows: events + states              never: Dio, JSON, URLs
+ BLoC        knows: the repository               never: Dio, JSON, URLs
+ Repository  knows: AppService + ApiEndPoint     never: widgets, BuildContext
+ AppService  knows: Dio + the envelope           never: models (parse is passed in)
+ Dio         knows: HTTP                         never: our envelope
+```
+
+### A request, end to end — step by step ❌ error (can't reach the server)
+
+Same path, but the connection fails. Watch where the error is **turned into a
+`NetworkErrorModel`** — only once, inside `AppService`. Everything above just
+receives a `Left`.
+
+```
+  View          BLoC            Repository        AppService            Dio            Server
+   │              │                   │                 │                  │               ✕
+   │─add(event)──►│                   │                 │                  │               ✕ (down /
+   │◄─ spinner ───│ emit(Loading)     │                 │                  │               ✕  wrong IP)
+   │              │── getMe() ───────►│── send(...) ───►│── _dio.get ─────►│──GET /me──► ✕
+   │              │                   │                 │                  │
+   │              │                   │                 │◄─ throws ────────│ DioException
+   │              │                   │                 │   (connectionError)
+   │              │                   │                 │
+   │              │                   │                 │ catch → _fromDio(e)
+   │              │                   │                 │   │
+   │              │                   │                 │   └─► CheckInternetService
+   │              │                   │                 │         .checkDataConnection()
+   │              │                   │                 │         DNS lookup google.com
+   │              │                   │                 │            │
+   │              │                   │                 │   ┌────────┴─────────┐
+   │              │                   │                 │ offline           online
+   │              │                   │                 │ "No Internet"     "Server unreachable"
+   │              │                   │                 │   └────────┬─────────┘
+   │              │                   │◄─Left(NoInternetError)───────┘
+   │              │◄─ Left(error) ────│
+   │              │ fold → emit(Error(error))
+   │◄─ error.title / error.description + Retry
+```
+
+- **Nothing throws past `AppService`.** The BLoC never needs `try/catch`.
+- The BLoC can show `error.title` / `error.description` directly (template
+  style), or `switch` on the kind (e.g. show a Retry button only for
+  `NoInternetError`).
+
+### The template's request, end to end (for comparison)
+
+Your MVVM template does the same job like this. Compare the **shaded** steps
+with ours above:
+
+```
+  BLoC            Repository              AppService (template)              Server
+   │                  │                          │                              │
+   │── getProducts ──►│                          │                              │
+   │                  │── AppService(            │                              │
+   │                  │     httpMethods: GET,    │                              │
+   │                  │     endPoint: …).send() ►│ ░ Dio dio = Dio();  NEW Dio  │
+   │                  │                          │ ░ getToken() ← SharedPrefs   │
+   │                  │                          │ ░ log(url, params, data)     │
+   │                  │                          │──── GET ────────────────────►│
+   │                  │                          │◄─── 200 ─────────────────────│
+   │                  │                          │ ░ if statusCode == 200 only  │
+   │                  │◄─ Right(HttpResponse) ───│                              │
+   │                  │ ░ jsonDecode(response.toString())                       │
+   │                  │ ░ Model.fromJson(data)   │                              │
+   │◄─ Right(model) ──│                          │                              │
+```
+
+| ░ Template step | Ours |
+|---|---|
+| `Dio()` new each call | ONE shared Dio from DI (interceptors live there) |
+| `getToken()` from SharedPreferences | auth interceptor reads secure storage (Step 2.2) |
+| `log(url, params, data)` always | logger in dev/uat only, no headers |
+| `if statusCode == 200` | any 2xx + check `envelope.success` |
+| Repo `jsonDecode` + `fromJson` | `AppService` unwraps; repo only passes `parse:` |
+
 ### `Either<NetworkErrorModel, T>`: two boxes, exactly one is full
 
 ```
