@@ -115,6 +115,8 @@ flowchart TD
     class PASS none
 ```
 
+<a id="pic-rejected"></a>
+
 ### Rejected vs failed: why the difference matters
 
 ```mermaid
@@ -132,6 +134,8 @@ flowchart LR
 
 Imagine walking into a lift with no signal while the token expires. Without
 this rule, you'd be **logged out** just for losing the internet for 5 seconds.
+
+<a id="pic-queued"></a>
 
 ### 3 requests get 401 at the same time
 
@@ -205,6 +209,8 @@ test/core/network/
 
 ## 3. Code
 
+<a id="code-tokens"></a>
+
 ### `auth_tokens.dart`
 
 ```dart
@@ -227,6 +233,8 @@ class AuthTokens {
   shows `***`, not a working token.
 - `DateTime.tryParse(...)` returns `null` instead of crashing on a missing or
   bad date.
+
+<a id="code-storage"></a>
 
 ### `token_storage.dart`
 
@@ -265,12 +273,20 @@ flowchart LR
 - **`FlutterSecureStorage` is injected** → tests use
   `FlutterSecureStorage.setMockInitialValues({})`, an in-memory fake.
 
+➡ Why not SharedPreferences, Hive, or memory? [All options compared](#why-secure-storage)
+
+<a id="code-first-unlock"></a>
+
 **The options (in `TokenStorage.secureStorage`):**
 
 | Option | Why |
 |---|---|
 | Android `encryptedSharedPreferences: true` | values encrypted with a Keystore key |
 | iOS `KeychainAccessibility.first_unlock` | readable after the **first** unlock since boot — even while the phone is **locked**. Step 7: a call arrives at a killed app in your pocket → the background code must read the token to talk to the server. The default (`unlocked`) would fail there. |
+
+➡ What do the other Keychain levels do? [All options compared](#why-first-unlock)
+
+<a id="code-public"></a>
 
 ### `api_endpoints.dart`: public endpoints
 
@@ -281,6 +297,8 @@ static bool isPublic(String path) => publicEndpoints.contains(path);
 
 Matches the backend doc's "Public endpoints" list. **One** place decides
 "no token, no refresh" — not each repository.
+
+<a id="code-interceptor"></a>
 
 ### `auth_interceptor.dart`
 
@@ -318,6 +336,8 @@ handler.next(options);
 `handler.next(options)` = "continue to the next interceptor / the server".
 Forget it and the request hangs forever.
 
+<a id="code-onerror"></a>
+
 #### `onError`: the 3 handler choices
 
 | Call | Meaning |
@@ -325,6 +345,8 @@ Forget it and the request hangs forever.
 | `handler.next(err)` | "I can't fix it" → the error continues → `AppService` turns it into a `NetworkErrorModel` |
 | `handler.resolve(response)` | "I fixed it" → the caller gets this response as if no error happened |
 | (`handler.reject(err)`) | stop with an error (we don't need it) |
+
+<a id="code-refresh-result"></a>
 
 #### `RefreshResult`: a sealed family (again)
 
@@ -345,6 +367,8 @@ Same idea as `NetworkErrorModel` and `_Registration` in DI: the compiler checks
 the `switch` covers all 3. A `bool?` (`true` / `false` / `null`) could say the
 same thing, but nobody remembers what `null` means six months later.
 
+<a id="code-retried"></a>
+
 #### `_retriedKey`: no endless loop
 
 ```dart
@@ -363,6 +387,8 @@ headers: {...request.headers, _header: 'Bearer ${tokens.accessToken}'},
 
 `...map` copies all entries into a **new** map, then we override one key. The
 original request is not changed.
+
+<a id="code-two-dio"></a>
 
 ### `dio_factory.dart` + DI
 
@@ -435,19 +461,106 @@ In Step 3 the **real** login saves tokens → the same button shows
 
 ## 4. 🤔 Why like this? (other ways)
 
+Each **Choice we made** links back to where it is explained.
+
 | Choice we made | Other way | Why we didn't pick the other way |
 |---|---|---|
-| An interceptor adds the token | The template's `getToken()` inside `AppService` / each repo | One place, automatic, and it can also **fix** a 401. `getToken()` only adds. |
-| `flutter_secure_storage` | `SharedPreferences` (the template) | SharedPreferences is a plain file — readable on rooted phones and in backups. Tokens = your identity. |
-| One JSON key for the pair | Two keys | A crash between two writes could leave a mismatched pair. |
-| iOS `first_unlock` | The default (`when unlocked`) | Step 7: background code must read the token while the phone is locked. |
-| `QueuedInterceptor` | `Interceptor` | Parallel 401s would refresh in parallel; our refresh token is rotated → 2 of 3 fail → logout. |
-| A separate refresh Dio | Refresh through the app Dio | A 401 on refresh would re-enter the interceptor → loop. |
-| Rejected vs Failed | "Any refresh error → logout" | Losing signal for 5 s would log the user out. |
-| Public endpoints skip auth | Treat every 401 the same | Wrong password on login is 401 → would refresh + log out. |
-| `_retriedKey` mark | No mark | A server that always says 401 would loop forever. |
-| Refresh **after** a 401 | Refresh **before** expiry using `accessTokenExpiresAt` (flutter-chat does this) | Simpler and always correct (phone clock may be wrong). We store the expiry, so a "refresh 60 s early" step can be added later without changing callers. |
-| `onSessionExpired` as a function | Pass `AuthSession` | The interceptor needs *one* action, not the whole session. Tests count calls. |
+| [An interceptor adds the token](#code-interceptor) | The template's `getToken()` inside `AppService` / each repo | One place, automatic, and it can also **fix** a 401. `getToken()` only adds. |
+| [`flutter_secure_storage`](#code-storage) | `SharedPreferences` (the template) | SharedPreferences is a plain file — readable on rooted phones and in backups. Tokens = your identity. **All options compared below** ↓ |
+| [One JSON key for the pair](#code-storage) | Two keys | A crash between two writes could leave a mismatched pair. |
+| [iOS `first_unlock`](#code-first-unlock) | The default (`unlocked`) | Step 7: background code must read the token while the phone is locked. **All options compared below** ↓ |
+| [`QueuedInterceptor`](#pic-queued) | `Interceptor` | Parallel 401s would refresh in parallel; our refresh token is rotated → 2 of 3 fail → logout. |
+| [A separate refresh Dio](#code-two-dio) | Refresh through the app Dio | A 401 on refresh would re-enter the interceptor → loop. |
+| [Rejected vs Failed](#pic-rejected) | "Any refresh error → logout" | Losing signal for 5 s would log the user out. |
+| [Public endpoints skip auth](#code-public) | Treat every 401 the same | Wrong password on login is 401 → would refresh + log out. |
+| [`_retriedKey` mark](#code-retried) | No mark | A server that always says 401 would loop forever. |
+| [Refresh **after** a 401](#code-onerror) | Refresh **before** expiry using `accessTokenExpiresAt` (flutter-chat does this) | Simpler and always correct (phone clock may be wrong). We store the expiry, so a "refresh 60 s early" step can be added later without changing callers. |
+| [`onSessionExpired` as a function](#code-interceptor) | Pass `AuthSession` | The interceptor needs *one* action, not the whole session. Tests count calls. |
+
+<a id="why-secure-storage"></a>
+
+### 🔐 Where can tokens live? All options
+
+[← back to the code](#code-storage)
+
+```mermaid
+flowchart TD
+    Q{"Where do we keep<br/>the token pair?"}
+    Q --> M["Memory only<br/>(a variable)"]
+    Q --> SP["SharedPreferences"]
+    Q --> HV["Hive / SQLite<br/>(+ our own encryption)"]
+    Q --> FSS["flutter_secure_storage"]
+
+    M --> M1["❌ lost when the app is killed<br/>→ log in on EVERY start"]
+    SP --> SP1["❌ plain text file on disk<br/>rooted phone / backup can read it"]
+    HV --> HV1["⚠ we must store the encryption KEY<br/>somewhere safe… → Keychain anyway"]
+    FSS --> FSS1["✅ the OS vault does the encryption<br/>iOS Keychain · Android Keystore"]
+
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    class Q none
+    class M,M1,SP,SP1 err
+    class HV,HV1 wait
+    class FSS,FSS1 ok
+```
+
+| Option | Survives app kill? | Encrypted? | Who holds the key? | Verdict |
+|---|---|---|---|---|
+| Memory (a variable) | ❌ no | — | — | ❌ no auto-login (Step 3 needs it) |
+| `SharedPreferences` | ✅ | ❌ plain text | nobody | ❌ the template's choice — not for secrets |
+| Hive / SQLite + our own encryption | ✅ | ✅ | **we** must hide it… in the Keychain | ⚠ more code, same Keychain in the end |
+| **`flutter_secure_storage`** | ✅ | ✅ by the OS | the **OS** (Secure Enclave / TEE) | ✅ **our choice** |
+
+**Rule of thumb** (also in CLAUDE.md):
+
+| Data | Where |
+|---|---|
+| Tokens, passwords, keys (secrets) | `flutter_secure_storage` |
+| Cached user name, theme, language (not secret) | `shared_preferences` |
+
+<a id="why-first-unlock"></a>
+
+### 🍎 iOS Keychain: when can the app read the token? All options
+
+[← back to the code](#code-first-unlock)
+
+The iOS Keychain lets each item choose **when** it can be read. Our token
+must be readable when a call arrives and the app is **killed** and the phone
+is **locked** in your pocket (Step 7).
+
+```mermaid
+flowchart LR
+    BOOT["📱 phone turned on"] --> L1["🔒 locked<br/>(never unlocked yet)"]
+    L1 -->|"first unlock"| U["🔓 unlocked"]
+    U -->|"screen off"| L2["🔒 locked again<br/>(in your pocket)"]
+    L2 -->|"unlock"| U
+    L2 -.->|"📞 call arrives,<br/>app killed"| BG["background code<br/>must read the token"]
+
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
+    class U ok
+    class L2,BG wait
+    class L1 err
+```
+
+| `KeychainAccessibility` | 🔒 never unlocked since boot | 🔓 unlocked | 🔒 locked again (pocket) | Fits us? |
+|---|---|---|---|---|
+| `unlocked` (default) | ❌ | ✅ | ❌ | ❌ a call to a locked phone can't read the token |
+| `unlocked_this_device` | ❌ | ✅ | ❌ | ❌ same, and not in backups |
+| **`first_unlock`** | ❌ | ✅ | ✅ | ✅ **our choice** |
+| `first_unlock_this_device` | ❌ | ✅ | ✅ | ✅ also OK — but not restored to a new iPhone from backup |
+| `passcode` | ❌ | ✅ only if a passcode is set | ❌ | ❌ too strict |
+
+- **`first_unlock`** = "after the user unlocked the phone **once** since it was
+  turned on". That covers the pocket case, and it's what Apple recommends for
+  background tasks.
+- The only time it can't read: right after a reboot, before the first unlock.
+  Then the user isn't using the phone anyway.
+- **Android** has no such levels: `encryptedSharedPreferences: true` stores the
+  values encrypted with a Keystore key, readable whenever the app runs.
 
 ## 5. Try it
 
