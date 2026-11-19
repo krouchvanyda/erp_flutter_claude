@@ -224,7 +224,10 @@ Deep call docs: `docs/learning/IOS_CALL/`, `docs/learning/ANDROID_CALL/`,
 - Register cross-cutting services in `core/di/`, and feature services in
   `<feature>_di.dart`.
 - Add `buildWhen` on every `BlocBuilder`.
-- Use design tokens (`AppColors`, `AppSpacing`, `AppRadius`, `AppLabel`).
+- Use design tokens (`AppSpacing`, `AppRadius`, `AppFontSize`) and theme
+  colors (`Theme.of(context).colorScheme`). Text: the `AppLabel` widget
+  (built on `AppTextStyle.build`, so Inter + Khmer fallback load). Leave its
+  `color` null unless you need a special color, so it inherits from the parent.
   Never hard-code colors, sizes or text styles.
 - Forms use a dedicated form BLoC with field-level validation.
 - Write tests for each step's BLoC and repository.
