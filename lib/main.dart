@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show appFlavor;
 
 import 'app/app.dart';
+import 'app/app_di.dart';
 import 'core/config/flavor.dart';
-import 'core/di/injection.dart';
 import 'core/di/service_locator.dart';
 import 'core/network/app_service.dart';
 import 'core/router/auth_session.dart';
@@ -22,7 +22,7 @@ Future<void> bootstrap(Flavor flavor) async {
   );
   Flavor.pin(flavor);
   WidgetsFlutterBinding.ensureInitialized(); // plugins need the bridge first
-  await configureDependencies(); // fill the DI box (SharedPreferences = plugin)
+  await configureAppDependencies(); // fill the DI box: core + features
 
   // Edge: take services from the box, pass them in by constructor.
   runApp(App(session: getIt<AuthSession>(), appService: getIt<AppService>()));

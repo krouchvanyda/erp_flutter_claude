@@ -10,10 +10,11 @@ import '../network/token_storage.dart';
 import '../router/auth_session.dart';
 import 'service_locator.dart';
 
-/// Fills the box. Called ONCE from `bootstrap()` before `runApp()`.
+/// Fills the box with CORE services. Called by `configureAppDependencies()`
+/// (lib/app/app_di.dart), which then adds each feature module — `core/` never
+/// imports `features/`.
 ///
 /// Order matters: register a thing before anything that needs it.
-/// Each feature will add its own `registerXModule(getIt)` here later:
 ///
 /// ```
 /// configureDependencies()

@@ -34,7 +34,7 @@ PLAN → BUILD (small) → EXPLAIN (what + WHY + other ways) → DOC → USER CH
   `fill:#fff4d6,stroke:#d4a017,color:#5a4300` · none
   `fill:#eeeeee,stroke:#999,color:#555` · error
   `fill:#fde2e2,stroke:#d64545,color:#611`. Plain text blocks only for file
-  trees and code. In labels write `<` `>` as `#60;` `#62;` (e.g.
+  trees, code and screen mockups. In labels write `<` `>` as `#60;` `#62;` (e.g.
   `getIt#60;Dio#62;`); never `&lt;` or a raw `<Dio>`.
 - After each step, update the roadmap table in
   `docs/learning/REBUILD/README.md` (⏳ → ✅) and the progress table in
@@ -148,7 +148,7 @@ DataSource  Remote: dio / STOMP   ·   Local: shared_preferences / secure storag
 lib/
 ├── main.dart, main_<flavor>.dart   bootstrap(flavor) — the one start-up function
 ├── app/                            top layer: App (MaterialApp) + AuthGate
-│                                   (session → Splash/Login/Home). MAY import features/
+│                                   + app_di.dart (core + feature DI). MAY import features/
 ├── core/                           shared infrastructure, never imports features/
 │   ├── config/    flavor + environments           (Step 1.1)
 │   ├── theme/     design tokens + ThemeData       (Step 1.2)
@@ -161,13 +161,13 @@ lib/
 ├── shared/widgets/                 reusable UI, no feature logic
 ├── localization/                   english.dart / khmer.dart  (Step 8)
 └── features/
-    └── <feature>/
-        ├── models/        immutable data classes
-        ├── repositories/  concrete repository + data sources
-        ├── bloc/          *_bloc.dart, *_event.dart, *_state.dart
-        ├── views/         pages
+    └── <feature>/                  (MVVM-template folder names)
+        ├── model/         immutable data classes (fromJson / fromData)
+        ├── repository/    concrete repository (uses AppService)
+        ├── viewmodel/     <x>_view_model_bloc.dart + part _event / _state
+        ├── view/          pages
         ├── widgets/       feature-only widgets
-        └── <feature>_di.dart   registerXModule(getIt)
+        └── <feature>_di.dart   registerXModule(getIt), called from app/app_di.dart
 ```
 
 **Rule:** `app/` may import everything. `features/` may import `core/` and
@@ -304,7 +304,17 @@ Deep call docs: `docs/learning/IOS_CALL/`, `docs/learning/ANDROID_CALL/`,
               color: AppColors / Color(…) ─► ❌ never (breaks dark mode)
   ```
   Use `const` when every value is fixed (text, `AppFontSize`, `FontWeight`).
-- Forms use a dedicated form BLoC with field-level validation.
+- BLoCs follow the template: `<X>ViewModelBloc` with `part` event/state files,
+  `@immutable sealed` bases, events `On…Event`, states `…LoadingState` /
+  `…ErrorState(error)` / `…SuccessState` or `…LoadedState`.
+- Forms: phone-side field rules via `Form` + `FormValidators`
+  (`core/utils/validators/`); the BLoC handles submit, loading, server errors
+  (`ServerError.fieldErrors` → `AppInputText(errorText:)`) and success.
+- Reusable widgets in `core/widgets/` (`AppInputText` with optional `label`,
+  `AppButton` with `isLoading`) take colors from the theme, never hard-coded.
+- Every screen is responsive: decide with `LayoutBuilder` on available width
+  (wide ≥ 720), cap form/content width (forms ≤ 420), keep it scrollable for
+  the keyboard, and check light + dark.
 - Write tests for each step's BLoC and repository.
 
 ### Don't

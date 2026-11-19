@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../core/network/app_service.dart';
 import '../core/router/app_navigator.dart';
 import '../core/router/auth_session.dart';
-import '../features/auth/views/login_page.dart';
-import '../features/auth/views/splash_page.dart';
+import '../features/auth/view/login_page.dart';
+import '../features/auth/view/splash_page.dart';
 import 'home_placeholder_page.dart';
 
 /// The app's first screen. Decides the BIG screen from the session:
@@ -69,7 +69,7 @@ class _AuthGateState extends State<AuthGate> {
         appService: widget.appService,
       );
     } else {
-      screen = LoginPage(session: widget.session);
+      screen = const LoginPage();
     }
 
     // Fade between the big screens (design guide: no bounce, no spin).
