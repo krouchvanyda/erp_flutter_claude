@@ -79,7 +79,7 @@ flowchart TD
     F -->|"ok"| REQ["request to the server"]
     REQ --> R{"server answer"}
     R -->|"400 + fieldErrors"| SE["red text under the field<br/>(from the SERVER)"]
-    R -->|"401 wrong password ·<br/>offline · 500"| CARD["error card<br/>error.title + error.description"]
+    R -->|"401 wrong password ·<br/>offline · 500"| CARD["AppSnackBar.error<br/>error.title + error.description"]
     R -->|"200"| OK["tokens saved → Home"]
 
     classDef err fill:#fde2e2,stroke:#d64545,color:#611
@@ -94,7 +94,53 @@ flowchart TD
 |---|---|---|
 | Empty field, bad email, password under 6 | the **phone** (`FormValidators`) | under the field, **before** any request |
 | `400 VALIDATION_ERROR` + `fieldErrors` | the **server** | under the field (`errorText`) |
-| `401` wrong password, offline, server down | the **server** / `AppService` | the red error card |
+| `401` wrong password, offline, server down | the **server** / `AppService` | a red **`AppSnackBar`** at the **top** |
+
+#### Bug we hit: "Session expired" on a wrong password
+
+```
+POST /api/v1/auth/login  → 401
+{ "success": false, "message": "Invalid email or password", "errorCode": "UNAUTHORIZED" }
+```
+
+The card said **"Session expired · Please sign in again."** because
+`AppService` turned **every** 401 into `UnauthorizedError` and threw the
+server's `message` away. But on login, 401 means *wrong email or password*,
+not *your session ended*.
+
+```dart
+// core/network/app_service.dart → _fromDio, case badResponse
+if (status == 401) {
+  if (ApiEndPoint.isPublic(e.requestOptions.path) && envelope != null) {
+    return _serverError(envelope, status, title: Constants.error);   // "Error: Invalid email or password"
+  }
+  return const UnauthorizedError();                                   // "Session expired"
+}
+```
+
+```mermaid
+flowchart TD
+    R["401 from the server"] --> P{"ApiEndPoint.isPublic(path)?<br/>login · register · refresh · health"}
+    P -->|"yes"| SE["ServerError<br/>title: 'Error'<br/>description: server message"]
+    P -->|"no (private)"| UE["UnauthorizedError<br/>'Session expired'"]
+    SE --> CARD["login card:<br/>Error · Invalid email or password ✅"]
+
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    class R,P app
+    class SE,UE err
+    class CARD ok
+```
+
+- **Same list as the interceptor.** `ApiEndPoint.isPublic` is the list Step
+  2.2 uses to skip refresh. One list, two places that agree: "a 401 on a
+  public endpoint is not about the session".
+- **Show the server's words.** The backend knows *why* it said no ("Invalid
+  email or password", later maybe "Account disabled"). The app shouldn't
+  replace that with a guess.
+- Test: `app_service_test.dart` → *401 on LOGIN → ServerError with the server
+  message*.
 
 ### The BLoC's states
 
@@ -117,6 +163,10 @@ elegant, works on phone **and** tablet*).
 ```
  PHONE (< 720 wide)                      TABLET / LANDSCAPE (≥ 720 wide)
  ┌──────────────────────────┐            ┌───────────────────┬──────────────────────────┐
+ │┌────────────────────────┐│  ◄ AppSnackBar at the TOP (only on errors)
+ ││ ⓘ Error             ✕  ││     slides down · tablet: 420 wide, centred
+ ││   Invalid email or ... ││
+ │└────────────────────────┘│
  │                    [DEV] │            │                   │                    [DEV] │
  │  [icon]  ERP Dev         │            │      [icon]       │   Welcome back           │
  │                          │            │     ERP Dev       │   Sign in to your account│
@@ -129,7 +179,7 @@ elegant, works on phone **and** tablet*).
  │  [ ••••••••         👁 ] │            │  (primary colour) │   [      Sign in       ] │
  │                          │            │                   │     Secured connection   │
  │  [       Sign in       ] │            │                   │                          │
- │  ⚠ error card (if any)   │            └───────────────────┴──────────────────────────┘
+ │                          │            └───────────────────┴──────────────────────────┘
  │     Secured connection   │              the form column is never wider than 420
  └──────────────────────────┘
 ```
@@ -142,7 +192,7 @@ flowchart TD
     ONE --> FC["_FormColumn<br/>max 420 · scroll · fade+slide in"]
     TWO --> FC
     FC --> T["_Titles"]
-    FC --> F["_LoginForm<br/>labels · validation · button · error card"]
+    FC --> F["_LoginForm<br/>labels · validation · button<br/>errors → AppSnackBar"]
     FC --> N["_SecureNote"]
     FC --> BADGE["_FlavorBadge<br/>DEV / UAT · hidden in prod"]
 
@@ -161,7 +211,7 @@ flowchart TD
 | **`_FlavorBadge` (DEV / UAT), hidden in prod** | Testers always know which server they're on. |
 | **Fade + 16 px slide in, 300 ms** (`TweenAnimationBuilder`) | Design guide motion rules: calm, no bounce. `child:` is passed in so the form isn't rebuilt every frame. |
 | **Tap anywhere → hide keyboard** (`GestureDetector`) | Expected on mobile; the button is never hidden behind the keyboard. |
-| **`AnimatedSize` around the error card** | The card slides open instead of making the page jump. |
+| **Errors in an `AppSnackBar`**, not a card in the form | The form never jumps or grows. The message slides down at the **top** (the keyboard can't hide it), can be swiped up or closed (✕), and goes away by itself after 4 s. One widget for the whole app. |
 | **"Secured connection" note** | Quiet reassurance — no marketing copy (design guide). |
 | **All colours from `colorScheme`** | Dark mode works with zero extra code. |
 
@@ -173,7 +223,8 @@ lib/
 ├── core/
 │   ├── widgets/
 │   │   ├── app_input_text.dart      AppInputText (template, themed)              NEW
-│   │   └── app_button.dart          AppButton + isLoading (template, themed)     NEW
+│   │   ├── app_button.dart          AppButton + isLoading (template, themed)     NEW
+│   │   └── app_snack_bar.dart       AppSnackBar.error / success / info / hide    NEW
 │   └── utils/validators/
 │       ├── validators.dart          Validators.email / password / phone         NEW
 │       ├── form_validators.dart     FormValidators.loginEmail / loginPassword    NEW
@@ -514,17 +565,17 @@ return BlocProvider(
 ```mermaid
 flowchart TD
     LP["LoginPage<br/>BlocProvider(create: getIt)"] --> LF["_LoginForm (StatefulWidget)<br/>controllers · _obscure"]
-    LF --> BB["BlocBuilder<br/>buildWhen: not Success"]
-    BB --> H["_Header"]
+    LF --> BB["BlocConsumer<br/>listenWhen: error, no fieldErrors<br/>buildWhen: not Success"]
+    BB -.->|"listener"| SNACK["AppSnackBar.error"]
+    BB --> H["_Titles"]
     BB --> E["AppInputText email<br/>validator + errorText"]
     BB --> P["AppInputText password<br/>👁 toggle"]
     BB --> BTN["AppButton<br/>isLoading"]
-    BB --> CARD["AnimatedSwitcher<br/>_ErrorCard"]
 
     classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
     classDef feat fill:#fff4d6,stroke:#d4a017,color:#5a4300
     class LP,LF,BB app
-    class H,E,P,BTN,CARD feat
+    class H,E,P,BTN,SNACK feat
 ```
 
 | Piece | Why |
@@ -536,7 +587,9 @@ flowchart TD
 | `errorText: fieldErrors['email']` | the SERVER's message under the field (`forceErrorText`). |
 | `AutofillGroup` + `autofillHints` | iOS/Android password managers can fill the form. |
 | `FocusScope.of(context).unfocus()` | hides the keyboard on submit. |
-| `ValueKey(state)` on the error card | a **new** error → a new key → `AnimatedSwitcher` animates again. |
+| `BlocConsumer` = **listener** + **builder** | The **builder** draws the form (loading, field errors). The **listener** does **one-time actions** (show a snackbar). A snackbar in the builder would show again on every rebuild. |
+| `listenWhen: current is LoginErrorState && current.fieldErrors.isEmpty` | Field errors are already **under the fields** → no snackbar for them. Only "card-type" errors (401, offline, 500) pop up. |
+| `AppSnackBar.hide()` in `_submit` | Tap **Sign in** again → the old error goes away at once. |
 
 ### `core/widgets/`: the template's widgets, themed
 
@@ -546,6 +599,84 @@ flowchart TD
 | no server errors | `errorText` → `forceErrorText` | show `fieldErrors` from the server |
 | `AppButton(backgroundColor: Colors.blue, height: 48…)` | `FilledButton` + theme (52px, primary) | tokens, dark mode |
 | no loading | `isLoading` → spinner, taps ignored | design guide 1.1; no double submit |
+| `SnackBarHelper.show(context, msg)` → plain `SnackBar(Text)` at the bottom | `AppSnackBar.error / success / info(context, title:, message:)` | type → colour + icon, `AppLabel` text, **top** of the screen, ✕ close, 420 wide on tablet, replaces the old one |
+
+#### `AppSnackBar` (at the top)
+
+```dart
+AppSnackBar.error(context, title: state.error.title, message: state.error.description);
+AppSnackBar.success(context, message: 'Profile saved');   // Step 4
+AppSnackBar.hide();                                       // slide it away
+```
+
+Flutter's own `SnackBar` can **only** sit at the bottom. To put it on top we
+draw it ourselves in the **Overlay**: the layer that floats above every page
+(the same layer dialogs and tooltips use).
+
+```mermaid
+flowchart TD
+    E["AppSnackBar.error(context, ...)"] --> R["_removeNow()<br/>old bar gone (no queue)"]
+    R --> I["Overlay.of(context, rootOverlay: true)<br/>.insert(OverlayEntry)"]
+    I --> T["_TopBar<br/>slides down 250 ms"]
+    T --> W{"what happens first?"}
+    W -->|"4 s timer"| D["dismiss()<br/>slide up → remove"]
+    W -->|"tap ✕"| D
+    W -->|"swipe up"| G["Dismissible → remove"]
+    W -->|"AppSnackBar.hide()"| D
+
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    class E,R,I,T,W app
+    class D,G ok
+```
+
+```dart
+static void show(BuildContext context, {...}) {
+  _removeNow();                                          // replace, don't queue
+  final key = GlobalKey<_TopBarState>();
+  final entry = OverlayEntry(builder: (_) => _TopBar(key: key, ..., onGone: _removeNow));
+  _key = key;
+  _entry = entry;
+  Overlay.of(context, rootOverlay: true).insert(entry);  // above every page
+}
+
+static void hide() => _key?.currentState?.dismiss();     // animated
+
+// _TopBarState
+late final _controller = AnimationController(vsync: this, duration: 250ms)..forward();
+late final _slide = Tween(begin: Offset(0, -1.2), end: Offset.zero)
+    .animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+_timer = Timer(widget.duration, dismiss);                // auto-hide after 4 s
+
+Future<void> dismiss() async {
+  if (_dismissing || !mounted) return;                   // only once
+  _dismissing = true;
+  _timer?.cancel();
+  await _controller.reverse();                           // slide up
+  widget.onGone();                                       // then remove
+}
+```
+
+| Piece | Why |
+|---|---|
+| `OverlayEntry` + `Overlay.of(context, rootOverlay: true)` | The only way to float **anywhere** (top). `rootOverlay` = the app's top layer, so it stays above every page. |
+| `static _entry` / `_key` | Remember the **one** bar on screen, so a new one can replace it and `hide()` can find it — no `context` needed. |
+| `_removeNow()` first | 3 wrong tries → **one** bar, not 3 stacked. |
+| `SafeArea` + `Align(topCenter)` | Below the notch / status bar, centred. |
+| `ConstrainedBox(maxWidth: 420)` | Tablet: not stretched across the screen. Phone: full width minus 16 each side. |
+| `SlideTransition` from `Offset(0, -1.2)` | Starts just above the screen and slides down; `easeOutCubic`, 250 ms = calm (design-guide motion rules). |
+| `Timer(duration, dismiss)` | Goes away by itself after 4 s. Cancelled in `dispose()` → no timer firing after the widget is gone. |
+| `_dismissing` flag | Timer + ✕ at the same moment → `reverse()` and removal run only once. |
+| `Dismissible(direction: up)` | Swipe up to close, like iOS notifications. |
+| `Material(color: …, elevation: 6)` | Gives the bar its colour, shadow and round corners, and text/icon styles work inside the Overlay. |
+| `colors.error` / `colors.onError` | From the theme: light = red + white text, dark = soft red + dark text. |
+| `(background, foreground, icon) = switch …` | A Dart 3 **record**: one `switch` gives 3 values. Add a type → the compiler makes you add its colours. |
+
+| Other way | Why not |
+|---|---|
+| `SnackBar` + a big bottom `margin` to push it up | A hack: the height changes with the keyboard and screen size, and Flutter warns when the margin is too big. |
+| `MaterialBanner` (`showMaterialBanner`) | It's at the top, but it **pushes the page down**, has no auto-hide and needs action buttons. |
+| A package (`another_flushbar`, `toastification`) | Works, but one more dependency for ~150 lines we can read and own. |
 
 ### `core/utils/validators/`: the template's validators
 
@@ -573,12 +704,16 @@ Three layers, like the template: **messages** (texts) → **validators**
 | `UserModel.id` as `String` | `int` | Backend sends a number today; chat/call ids are compared as strings later. One type everywhere. |
 | `UserModel` = exactly the 5 documented fields | Keep `roles` / `permissions` and "tolerant" name guesses | The backend doc is now exact and doesn't send them to `/me` or login. Fields that are always empty only confuse. |
 | Explicit `==` / `hashCode` / `toString` in `UserModel` | Leave them out (Dart's implicit default), or `equatable` / `freezed` | The default compares memory, not data → quiet bugs in profile (Save button) and chat (duplicate members). The packages were removed (CLAUDE.md). 10 hand-written lines are cheaper. |
+| 401 on a public endpoint → `ServerError` with the server message | Every 401 → `UnauthorizedError` | On login, 401 = wrong password. "Session expired" would be wrong and confusing. |
+| Server errors → `AppSnackBar` (via `BlocConsumer.listener`) | An inline error card in the form (our first version) | You asked for it, and it keeps the form still. The snackbar is one shared widget, so every screen shows errors the same way. |
+| `AppSnackBar` = static methods (`AppSnackBar.error(context, …)`) | The template's `context.showSnackBar(msg)` extension | Same one-line call, but with a type (error / success / info), a title, theme colours and tablet width. |
+| `AppSnackBar` at the **top**, drawn in the `Overlay` | Flutter's `SnackBar` (bottom only) | You asked for the top: the keyboard never covers it, and it's where the eye looks after tapping Sign in. |
 | `bloc_test` + `mocktail` | Real repository in BLoC tests | The BLoC test checks only the BLoC: state order. The repository has its own tests. |
 
 ## 5. Try it
 
 ```bash
-flutter test                                    # 47 tests → All tests passed!
+flutter test                                    # 48 tests → All tests passed!
 flutter run --flavor dev -t lib/main_dev.dart
 ```
 
@@ -594,7 +729,7 @@ You need a **real account** on the backend (create one with
 1. Tap **Sign in** with empty fields → red text under both fields, **no**
    request in the console log.
 2. Type `abc` as email → "Invalid email address".
-3. Wrong password → spinner → red card **"Error: Invalid email or password"**.
+3. Wrong password → spinner → red bar slides down at the **top**: **"Error · Invalid email or password"** (tap ✕, swipe up, or wait 4 s).
 4. Airplane mode → **"No Internet"** card.
 5. Correct email + password → spinner → **Home** fades in.
 6. On Home, tap **Call GET /users/me** → **✅ Signed in as your@email** —

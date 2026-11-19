@@ -78,7 +78,8 @@ flowchart TD
 
     Q -->|"2xx + success: true"| P["parse(envelope.data)"] --> OK["Right(UserModel)"]
     Q -->|"2xx + success: false"| E1["Left(ServerError)"]
-    Q -->|"401"| E2["Left(UnauthorizedError)"]
+    Q -->|"401 private endpoint"| E2["Left(UnauthorizedError)<br/>'Session expired'"]
+    Q -->|"401 public endpoint<br/>(login · register)"| E7["Left(ServerError)<br/>server message, e.g.<br/>'Invalid email or password'"]
     Q -->|"4xx / 5xx"| E3["Left(ServerError + fieldErrors)"]
     Q -->|"timeout"| E4["Left(NoInternetError 'Timeout')"]
     Q -->|"can't connect"| C{"CheckInternetService:<br/>is the PHONE online?"}

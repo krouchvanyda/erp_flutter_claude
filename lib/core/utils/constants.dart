@@ -8,6 +8,7 @@ abstract final class Constants {
 
   // ── Titles / descriptions ──
   static const String unKnownError = 'Error';
+  static const String error = 'Error';
   static const String somethingWentWrong = 'Something went wrong.';
   static const String noInternet = 'No Internet';
   static const String pleaseCheckInternet = 'Please check internet connection.';

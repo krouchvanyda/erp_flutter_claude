@@ -237,6 +237,11 @@ Login response
   tokens. Public endpoints (`ApiEndPoint.publicEndpoints`: health, login,
   register, refresh) never get a token or a refresh — a wrong password on
   login is also 401.
+- In `AppService`, a 401 on a **public** endpoint becomes a `ServerError`
+  with the server's `message` (e.g. "Invalid email or password"). Only a 401
+  on a **private** endpoint is `UnauthorizedError` ("Session expired"). Always
+  show the server's message when the envelope has one; don't replace it with
+  a guess.
 - Never log the `Authorization` header or request bodies outside dev/uat.
 
 ### Chat & call (Steps 5–7): lessons from the old app
@@ -332,7 +337,14 @@ Deep call docs: `docs/learning/IOS_CALL/`, `docs/learning/ANDROID_CALL/`,
   (`core/utils/validators/`); the BLoC handles submit, loading, server errors
   (`ServerError.fieldErrors` → `AppInputText(errorText:)`) and success.
 - Reusable widgets in `core/widgets/` (`AppInputText` with optional `label`,
-  `AppButton` with `isLoading`) take colors from the theme, never hard-coded.
+  `AppButton` with `isLoading`, `AppSnackBar`) take colors from the theme,
+  never hard-coded.
+- Server / network errors (and success messages) are shown with
+  `AppSnackBar.error / success / info(context, title:, message:)` (a bar at
+  the **top**, drawn in the root `Overlay`; `AppSnackBar.hide()` slides it
+  away), never a raw `SnackBar` or an inline error card. Call it from a `BlocConsumer` /
+  `BlocListener` **listener** (one-time action), never from a builder. Field
+  errors (`fieldErrors`) stay under the fields, so `listenWhen` skips them.
 - Every screen is responsive: decide with `LayoutBuilder` on available width
   (wide ≥ 720), cap form/content width (forms ≤ 420), keep it scrollable for
   the keyboard, and check light + dark.

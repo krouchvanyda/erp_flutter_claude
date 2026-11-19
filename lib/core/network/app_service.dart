@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart' show Either, Left, Right;
 import 'package:dio/dio.dart';
 
 import '../utils/constants.dart';
+import 'api_endpoints.dart';
 import 'api_envelope.dart';
 import 'check_internet_service.dart';
 import 'helper_service.dart';
@@ -119,8 +120,17 @@ class AppService {
             : const NoInternetError();
       case DioExceptionType.badResponse:
         final status = e.response?.statusCode ?? Constants.codeUnknown;
-        if (status == 401) return const UnauthorizedError();
         final envelope = ApiEnvelope.tryParse(e.response?.data);
+        if (status == 401) {
+          // 401 on a PUBLIC endpoint (login, register…) = "wrong email or
+          // password", NOT "session expired". Show the server's message.
+          if (ApiEndPoint.isPublic(e.requestOptions.path) && envelope != null) {
+            return _serverError(envelope, status, title: Constants.error);
+          }
+          // 401 on a private endpoint = the session is really over (the
+          // auth interceptor already tried to refresh).
+          return const UnauthorizedError();
+        }
         if (envelope != null) return _serverError(envelope, status);
         return ServerError(
           description: '${Constants.serverError} ($status).',
@@ -136,8 +146,13 @@ class AppService {
     }
   }
 
-  ServerError _serverError(ApiEnvelope envelope, int? statusCode) {
+  ServerError _serverError(
+    ApiEnvelope envelope,
+    int? statusCode, {
+    String title = Constants.serverError,
+  }) {
     return ServerError(
+      title: title,
       description: envelope.message.isEmpty
           ? Constants.somethingWentWrong
           : envelope.message,

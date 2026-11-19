@@ -10,6 +10,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/validators/form_validators.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_input_text.dart';
+import '../../../core/widgets/app_snack_bar.dart';
 import '../viewmodel/login_view_model_bloc.dart';
 
 /// Screen 1.1 — Login (design guide): calm, single column, no card on phone.
@@ -132,6 +133,7 @@ class _LoginFormState extends State<_LoginForm> {
 
   void _submit() {
     FocusScope.of(context).unfocus(); // hide the keyboard
+    AppSnackBar.hide(); // trying again → old error goes away
     if (!_formKey.currentState!.validate()) return; // phone-side checks
     context.read<LoginViewModelBloc>().add(
       OnLoginSubmittedEvent(email: _email.text, password: _password.text),
@@ -140,7 +142,21 @@ class _LoginFormState extends State<_LoginForm> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<LoginViewModelBloc, LoginViewModelState>(
+    return BlocConsumer<LoginViewModelBloc, LoginViewModelState>(
+      // LISTENER = one-time actions (snackbar). Field errors are shown
+      // under the fields instead, so no snackbar for them.
+      listenWhen: (previous, current) =>
+          current is LoginErrorState && current.fieldErrors.isEmpty,
+      listener: (context, state) {
+        if (state is LoginErrorState) {
+          AppSnackBar.error(
+            context,
+            title: state.error.title,
+            message: state.error.description,
+          );
+        }
+      },
+      // BUILDER = what the form looks like (loading, field errors).
       buildWhen: (previous, current) => current is! LoginSuccessState,
       builder: (context, state) {
         final loading = state is LoginLoadingState;
@@ -194,24 +210,6 @@ class _LoginFormState extends State<_LoginForm> {
                   text: 'Sign in',
                   isLoading: loading,
                   onPressed: _submit,
-                ),
-                // Design guide: ErrorCard in an AnimatedSwitcher.
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOut,
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 200),
-                    child: state is LoginErrorState
-                        ? Padding(
-                            key: ValueKey(state),
-                            padding: const EdgeInsets.only(top: AppSpacing.md),
-                            child: _ErrorCard(
-                              title: state.error.title,
-                              message: state.error.description,
-                            ),
-                          )
-                        : const SizedBox(width: double.infinity),
-                  ),
                 ),
               ],
             ),
@@ -324,52 +322,6 @@ class _BrandPanel extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _ErrorCard extends StatelessWidget {
-  const _ErrorCard({required this.title, required this.message});
-
-  final String title;
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: colors.errorContainer,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: colors.error.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.error_outline, color: colors.onErrorContainer, size: 20),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                AppLabel(
-                  text: title,
-                  fontSize: AppFontSize.value14,
-                  fontWeight: FontWeight.w600,
-                  color: colors.onErrorContainer,
-                ),
-                const SizedBox(height: 2),
-                AppLabel(
-                  text: message,
-                  fontSize: AppFontSize.value14,
-                  color: colors.onErrorContainer,
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

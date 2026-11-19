@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:erp_mobile/core/network/api_endpoints.dart';
 import 'package:erp_mobile/core/network/app_service.dart';
 import 'package:erp_mobile/core/network/helper_service.dart';
 import 'package:erp_mobile/core/network/network_error_model.dart';
@@ -165,6 +166,30 @@ void main() {
       ..body = envelope(success: false, message: 'Unauthorized');
 
     expect(await errorOf(HttpMethods.get), isA<UnauthorizedError>());
+  });
+
+  test('401 on LOGIN → ServerError with the server message '
+      '(not "Session expired")', () async {
+    server
+      ..status = 401
+      ..body = envelope(
+        success: false,
+        message: 'Invalid email or password',
+        errorCode: 'UNAUTHORIZED',
+      );
+
+    final result = await appService.send(
+      httpMethods: HttpMethods.post,
+      endPoint: ApiEndPoint.login,
+      parse: parseName,
+    );
+    final error = result.fold((e) => e, (_) => throw StateError('Left'));
+
+    expect(error, isA<ServerError>());
+    expect(error.title, Constants.error);
+    expect(error.description, 'Invalid email or password');
+    expect(error.statusCode, 401);
+    expect((error as ServerError).errorCode, 'UNAUTHORIZED');
   });
 
   test('500 without envelope → ServerError(500)', () async {

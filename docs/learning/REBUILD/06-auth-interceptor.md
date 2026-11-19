@@ -54,6 +54,13 @@ design (see "3 requests at once" below).
 interceptor treated it like "token expired", a typo in the password would
 trigger a refresh and log you out. So **public endpoints never refresh**.
 
+The same trap exists in `AppService` (Step 2.1): it used to turn **every** 401
+into `UnauthorizedError` → the login card said **"Session expired · Please
+sign in again"** for a wrong password. Fixed: a 401 on a **public** endpoint
+becomes a `ServerError` with the server's own message
+(`"Invalid email or password"`). Only a 401 on a **private** endpoint (after
+the interceptor's refresh also failed) is `UnauthorizedError`.
+
 ## 2. Picture
 
 ### The happy path: token expired → fixed by itself
