@@ -2,18 +2,94 @@
 
 ## 1. Why
 
-Our app has many screens. If every screen writes its own colors and sizes:
+Our app has many screens. Look at the same title written two ways.
+
+### ❌ Before: every screen writes its own values (we do NOT do this)
 
 ```dart
-Text('Hi', style: TextStyle(fontSize: 16, color: Color(0xFF1A1D23)))  // screen A
-Text('Hi', style: TextStyle(fontSize: 15, color: Color(0xFF1B1D22)))  // screen B 😕
+// screen A
+Text('Hi', style: TextStyle(fontSize: 16, color: Color(0xFF1A1D23)))
+// screen B — someone typed 15 and a slightly different color 😕
+Text('Hi', style: TextStyle(fontSize: 15, color: Color(0xFF1B1D22)))
 ```
 
-…then nothing matches, dark mode is impossible, and a brand color change
-means editing 200 files.
+```
+ screen A ──► 16 · #1A1D23 · system font ─┐
+ screen B ──► 15 · #1B1D22 · system font ─┼─► nothing matches 😕
+ screen C ──► 16 · black   · system font ─┘   dark mode: black text on black ❌
+                                              Khmer: random font per phone ❌
+                                              new brand color: edit 200 files ❌
+```
 
-**Design tokens** fix this: we name every color, size and text style **once**,
-and every widget uses the names.
+### ✅ After: every screen uses `AppLabel` + tokens (what we do)
+
+This is the real code from our demo page in `lib/main.dart`:
+
+```dart
+const AppLabel(
+  text: 'Welcome back',
+  fontSize: AppFontSize.value24,
+  fontWeight: FontWeight.w700,
+),
+AppLabel(
+  text: flavor.apiBaseUrl,
+  fontSize: AppFontSize.value14,
+  color: colors.onSurfaceVariant,
+),
+```
+
+```
+ ┌──────────────────────────────┐
+ │ Welcome back                 │ ← AppLabel #1: 24 bold, NO color
+ │ http://172.26.17.118:8080/…  │ ← AppLabel #2: 14, grey (onSurfaceVariant)
+ └──────────────────────────────┘
+
+ AppLabel ─► AppFontSize.value24 / value14 ─► 24 / 14     (one size scale)
+    │
+    ├──► AppTextStyle.build ─► Inter + Khmer              (one font)
+    │
+    └──► color?
+           #1  null ───────────────► theme text color      (light ✅ dark ✅)
+           #2  colors.onSurfaceVariant ─► grey from theme  (light ✅ dark ✅)
+
+ change one token ──► every screen follows ✅
+```
+
+**Two things to notice:**
+
+**1. When to pass `color`.**
+
+| | `color` | Why |
+|---|---|---|
+| #1 "Welcome back" | *(none)* | Normal text → let the theme decide. |
+| #2 the URL | `colors.onSurfaceVariant` | Secondary text must be **grey**. We take the grey from the **theme** (`colors` = `Theme.of(context).colorScheme`), never `AppColors` or `Color(0x…)`, so it flips in dark mode. |
+
+**2. Why #1 is `const` but #2 is not.**
+
+```
+ #1  text: 'Welcome back'        ← fixed text        ┐ all known at
+     fontSize: AppFontSize.value24 ← static const     │ compile time
+     fontWeight: FontWeight.w700 ← const              ┘ → const ✅
+
+ #2  text: flavor.apiBaseUrl     ← known only when the app runs  ┐ → can't
+     color: colors.onSurfaceVariant ← read from context at runtime ┘   be const
+```
+
+`const` means Flutter builds the widget **once** and reuses it on every
+rebuild. Use `const` whenever every value is fixed. The analyzer will remind
+you (`prefer_const_constructors`).
+
+| Problem | ❌ Raw `Text` + `TextStyle` | ✅ `AppLabel` + tokens |
+|---|---|---|
+| Sizes match? | each screen picks a number | one scale: `AppFontSize` |
+| Dark mode | hard-coded black → invisible | color comes from the theme |
+| Khmer | system font, different per phone | Noto Sans Khmer fallback |
+| Inter font | not loaded | loaded by `google_fonts` |
+| Brand change | edit every file | edit one token |
+
+**Design tokens** are names for values (`AppFontSize.value16`,
+`AppSpacing.md`, `colorScheme.primary`). We define each value **once**, and
+every widget uses the name.
 
 ## 2. Picture
 
@@ -38,11 +114,11 @@ and every widget uses the names.
  └───────────────────────┬──────────────────┘
                          │ MaterialApp(theme:, darkTheme:, themeMode:)
                          ▼
- ┌──────────── every widget ────────────────┐
- │ Theme.of(context).colorScheme.primary    │   USE
- │ Theme.of(context).textTheme.titleMedium  │
- │ AppSpacing.md · AppRadius.lg             │
- └──────────────────────────────────────────┘
+ ┌──────────── every widget ──────────────────────────────────────┐
+ │ AppLabel(text: 'Welcome back', fontSize: AppFontSize.value24)  │   USE
+ │ Theme.of(context).colorScheme.onSurfaceVariant                 │
+ │ AppSpacing.md · AppRadius.lg                                   │
+ └────────────────────────────────────────────────────────────────┘
 ```
 
 **Two kinds of tokens:**
@@ -141,13 +217,7 @@ static TextStyle build({required double fontSize, String fontFamily = 'Inter', C
 
 #### `app_label.dart`: the widget
 
-```dart
-const AppLabel(
-  text: 'Welcome back',
-  fontSize: AppFontSize.value24,
-  fontWeight: FontWeight.w700,
-)
-```
+(Usage example: see the "Welcome back" + URL code in **1. Why** above.)
 
 - It's `Text` + `AppTextStyle.build(...)`, with handy defaults
   (`lineHeight 1.3`, `overflow: fade`, `softWrap: true`).
@@ -220,12 +290,12 @@ The **mapping** from the design guide names to Material 3 names:
 
 ```dart
 final textTheme = TextTheme(
-  titleMedium: AppLabel.titleMedium,
-  ...
+  titleMedium: AppTextStyle.titleMedium,
+  ...   // all 15 slots
 ).apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface);
 ```
 
-`AppLabel` styles go into Flutter's `TextTheme` and get their color here.
+`AppTextStyle` styles go into Flutter's `TextTheme` and get their color here.
 Now `Theme.of(context).textTheme.titleMedium` = the right font, size, weight
 **and** color for the current mode.
 
@@ -313,6 +383,8 @@ is the power of tokens. (Change it back after.)
 2. Why does `AppLabel` pass `color: color` instead of `color ?? bodyMedium.color`?
 3. Why is `AppTextStyle.titleMedium` `static final` and not `static const`?
 4. What happens to Khmer text if we remove `fontFamilyFallback`?
+5. Why can `AppLabel(text: 'Welcome back', …)` be `const`, but
+   `AppLabel(text: flavor.apiBaseUrl, color: colors.onSurfaceVariant)` can't?
 
 <details><summary>Answers</summary>
 
@@ -325,5 +397,8 @@ is the power of tokens. (Change it back after.)
    allows values known at compile time.
 4. Inter has no Khmer glyphs, so Flutter falls back to whatever the system
    picks — it may look different on each phone, or show boxes (☐).
+5. Every value in the first one is fixed at compile time. In the second,
+   `flavor.apiBaseUrl` and `colors` (from `Theme.of(context)`) are only known
+   when the app runs.
 
 </details>
