@@ -43,8 +43,8 @@ chat + call app (Khmer and English).
 - Flutter: clear widgets, state and project structure (MVVM + BLoC)
 - Realtime & backend: REST with dio, STOMP WebSocket (Spring backend)
 - Calls & push: Stream Video, CallKit, Firebase Cloud Messaging (FCM) / iOS VoIP
-- Animation: smooth, well-timed transitions (go_router page transitions,
-  implicit animations)
+- Animation: smooth, well-timed transitions (`ConfigRouter` page
+  transitions, implicit animations)
 
 ## Discussion mode
 
@@ -97,7 +97,7 @@ Live status: [`docs/learning/REBUILD/README.md`](docs/learning/REBUILD/README.md
 | Realtime | `stomp_dart_client` | Chat, presence, call signalling |
 | Local cache | `shared_preferences` | Cached user, settings |
 | Secrets | `flutter_secure_storage` | Tokens only |
-| Navigation | `go_router` | Auth-aware redirect |
+| Navigation | `ConfigRouter` (`Navigator` + `page_transition`) + `AuthGate` | No go_router. `AuthGate` swaps Splash / Login / Home from `AuthSession` |
 | Models | Hand-written immutable + Dart 3 `sealed class` | `json_serializable` for JSON models only |
 | Calls | `stream_video_flutter` + `packages/erp_callkit` | |
 | Push | `firebase_messaging` (+ VoIP on iOS) | Step 7 |
@@ -136,11 +136,14 @@ DataSource  Remote: dio / STOMP   ·   Local: shared_preferences / secure storag
 ```
 lib/
 ├── main.dart, main_<flavor>.dart   bootstrap(flavor) — the one start-up function
+├── app/                            top layer: App (MaterialApp) + AuthGate
+│                                   (session → Splash/Login/Home). MAY import features/
 ├── core/                           shared infrastructure, never imports features/
 │   ├── config/    flavor + environments           (Step 1.1)
 │   ├── theme/     design tokens + ThemeData       (Step 1.2)
 │   ├── di/        service locator                 (Step 1.3)
-│   ├── router/    go_router + auth redirect       (Step 1.4)
+│   ├── router/    ConfigRouter, AppNavigator,     (Step 1.4)
+│   │              AuthSession
 │   ├── network/   dio + interceptors + Failure    (Step 2)
 │   ├── realtime/  STOMP client                    (Step 5)
 │   └── push/      FCM / VoIP                      (Step 7)
@@ -156,8 +159,9 @@ lib/
         └── <feature>_di.dart   registerXModule(getIt)
 ```
 
-**Rule:** `features/` may import `core/` and `shared/`. `core/` never imports
-`features/`. Features don't import each other's internals (talk through
+**Rule:** `app/` may import everything. `features/` may import `core/` and
+`shared/`. `core/` never imports `features/` (that's why `AuthGate` lives in
+`app/`). Features don't import each other's internals (talk through
 `core/` or a small public API).
 
 ---
@@ -180,6 +184,12 @@ Login response
 - Logout and any failed refresh **must** call `TokenStorage.clear()`.
   Skipping it re-enables auto-login, which is a security bug.
 - The "should I auto-login?" decision lives in the splash only.
+- Pages never navigate after login/logout: they call
+  `AuthSession.markAuthenticated()` / `markLoggedOut()`, and `AuthGate` swaps
+  the screen (on logout it also `popUntil(isFirst)` so no private page stays
+  on the stack).
+- Every other page move uses `ConfigRouter` (`pushPageAnimation` for normal
+  pages). Code without a context navigates via `AppNavigator.rootKey`.
 
 ### Chat & call (Steps 5–7): lessons from the old app
 
@@ -192,8 +202,8 @@ start:
   conversation by the other person's id, not by the sender's conversation id.
 - **Inbox preview:** store the raw body, and add the "You: " prefix in **one**
   place (the tile).
-- **Accept from the incoming overlay:** push the call page with a
-  **root `GlobalKey<NavigatorState>`**. The overlay sits beside the
+- **Accept from the incoming overlay:** push the call page with the
+  **root `GlobalKey<NavigatorState>`** (`AppNavigator.rootKey`). The overlay sits beside the
   navigator, not under it, so `Navigator.of(context)` finds nothing.
 - **Push the call page first, then accept.** Accepting changes state and
   unmounts the overlay, and its `context` dies with it.

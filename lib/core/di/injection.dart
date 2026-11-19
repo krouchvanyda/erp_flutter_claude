@@ -1,5 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../router/auth_session.dart';
 import 'service_locator.dart';
 
 /// Fills the box. Called ONCE from `bootstrap()` before `runApp()`.
@@ -9,7 +10,8 @@ import 'service_locator.dart';
 ///
 /// ```
 /// configureDependencies()
-///   ├── _registerCore()        SharedPreferences  (Step 1.3, now)
+///   ├── _registerCore()        SharedPreferences  (Step 1.3)
+///   │                          AuthSession         (Step 1.4)
 ///   │                          Dio, TokenStorage   (Step 2)
 ///   ├── registerAuthModule()   (Step 3)
 ///   ├── registerProfileModule()(Step 4)
@@ -24,4 +26,8 @@ Future<void> _registerCore() async {
   // async setup → build it first, then registerSingleton the ready object.
   final prefs = await SharedPreferences.getInstance();
   getIt.registerSingleton<SharedPreferences>(prefs);
+
+  // One session for the whole app: router, splash, login, logout, and
+  // later the token interceptor (Step 2) all share it.
+  getIt.registerLazySingleton<AuthSession>(AuthSession.new);
 }

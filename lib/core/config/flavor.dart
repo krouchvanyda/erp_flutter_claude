@@ -29,22 +29,22 @@ enum Flavor {
   }
 
   String get appName => switch (this) {
-        dev => 'ERP Dev',
-        uat => 'ERP UAT',
-        prod => 'ERP',
-      };
+    dev => 'ERP Dev',
+    uat => 'ERP UAT',
+    prod => 'ERP',
+  };
 
   String get apiBaseUrl => switch (this) {
-        dev => Environments.localApiBaseUrl,
-        uat => Environments.stagingApiBaseUrl,
-        prod => Environments.prodApiBaseUrl,
-      };
+    dev => Environments.localApiBaseUrl,
+    uat => Environments.stagingApiBaseUrl,
+    prod => Environments.prodApiBaseUrl,
+  };
 
   String get realtimeUrl => switch (this) {
-        dev => Environments.localRealtimeUrl,
-        uat => Environments.stagingRealtimeUrl,
-        prod => Environments.prodRealtimeUrl,
-      };
+    dev => Environments.localRealtimeUrl,
+    uat => Environments.stagingRealtimeUrl,
+    prod => Environments.prodRealtimeUrl,
+  };
 
   /// Print HTTP requests/responses — never in prod.
   bool get enableNetworkLogging => this != prod;

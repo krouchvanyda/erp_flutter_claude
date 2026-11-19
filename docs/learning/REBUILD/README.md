@@ -40,6 +40,8 @@ lib/
         ▲
         │ started by
 ┌───────┴────────────┐
+│ lib/app/           │  App (MaterialApp) + AuthGate — may import features
+├────────────────────┤
 │ main.dart          │  bootstrap(flavor) — the one start-up function
 │ main_<flavor>.dart │
 └────────────────────┘
@@ -55,7 +57,7 @@ lib/
  ┌─────┐   ┌────────┬───────┬──────┬────────┐   ┌───────┐   ┌──────┐ ┌─────────┐
  │clean│──►│ flavor │ theme │  DI  │ router │──►│network│──►│ auth │►│ profile │
  └─────┘   └────────┴───────┴──────┴────────┘   └───────┘   └──────┘ └────┬────┘
-   ✅         ✅       ✅      ✅                                           │
+   ✅         ✅       ✅      ✅      ✅                                    │
                                                                           ▼
                        Step 8           Step 7              Step 6      Step 5
                     ┌──────────┐   ┌────────────────┐   ┌──────────┐ ┌──────┐
@@ -73,7 +75,7 @@ current one works.
 | 1.1 | Flavor (dev / uat / prod) | [01-flavor.md](01-flavor.md) | ✅ |
 | 1.2 | Theme (design tokens) | [02-theme.md](02-theme.md) | ✅ |
 | 1.3 | DI (service locator) | [03-di.md](03-di.md) | ✅ |
-| 1.4 | Router (go_router) | 04-router.md | ⏳ |
+| 1.4 | Navigation (ConfigRouter + AuthGate) | [04-router.md](04-router.md) | ✅ |
 | 2 | Network (dio, interceptors, errors) | — | ⏳ |
 | 3 | Auth | — | ⏳ |
 | 4 | Profile | — | ⏳ |
