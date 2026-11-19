@@ -1,4 +1,7 @@
-branch feature/call -> 17-11-2026 -> get data from branch chat_conversation
+I create branch feature/rebuild for leaning
+branch feature/rebuild -> 19-11-2026 -> get data from branch feature/call
+> (project rebuild guardrails) and [`README.md`](././docs/learning/REBUILD/README.md)
+
 # erp_mobile
 Enterprise ERP Mobile — a Flutter app built on a lean, BLoC-centric stack.
 > **Source of truth for the plan & architecture:** [`CLAUDE.md`](./CLAUDE.md)
