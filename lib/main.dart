@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
-/// Plain `flutter run`.
-Future<void> main() => bootstrap();
+import 'core/config/flavor.dart';
+
+/// Plain `flutter run`: flavor comes from `--flavor` (dev when none).
+Future<void> main() => bootstrap(Flavor.current);
 
 /// Shared start-up for every entry point (main_dev / main_uat / main_prod).
-/// Step 1 will add flavor, DI, theme and router here.
-Future<void> bootstrap() async {
+Future<void> bootstrap(Flavor flavor) async {
+  Flavor.pin(flavor);
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const HelloApp());
 }
@@ -15,10 +17,17 @@ class HelloApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    final flavor = Flavor.current;
+    return MaterialApp(
+      title: flavor.appName,
       debugShowCheckedModeBanner: false,
       home: Scaffold(
-        body: Center(child: Text('Hello — clean slate')),
+        body: Center(
+          child: Text(
+            '${flavor.appName}\n${flavor.apiBaseUrl}',
+            textAlign: TextAlign.center,
+          ),
+        ),
       ),
     );
   }
