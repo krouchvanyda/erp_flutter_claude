@@ -3,6 +3,8 @@
 Base URL: `http://<host>:8080` (port from `SERVER_PORT`, default `8080`).
 All REST endpoints are versioned under `/api/v1` except `/health`.
 
+**Postman:** import [postman/ERP_API.postman_collection.json](postman/ERP_API.postman_collection.json) and [postman/ERP_Local.postman_environment.json](postman/ERP_Local.postman_environment.json). Then run **Auth → Login**; it saves the access token that every other request uses.
+
 ---
 
 ## Conventions
@@ -152,7 +154,7 @@ Exchange email and password for an access and refresh token pair.
   "accessTokenExpiresAt": "2026-11-19T10:00:00Z",
   "refreshToken": "...",
   "refreshTokenExpiresAt": "2026-12-19T10:00:00Z",
-  "user": { "...": "UserDto" }
+  "user": { "id": 1, "email": "user@example.com", "fullName": "Jane Doe", "phone": "012345678", "avatarUrl": null }
 }
 ```
 
@@ -185,7 +187,7 @@ Revoke a refresh token. Succeeds even if the token is unknown. Needs an access t
 ## 3. Users — `/api/v1/users`
 
 ### `GET /me`
-The current user, with roles and their flattened permissions.
+The current user's own profile: `id`, `email`, `fullName`, `phone`, `avatarUrl`. This and the auth `user` object don't include `enabled`, `roles` or `permissions`; the admin user endpoints below still return them.
 
 ### `GET /`
 Paged user list. Any logged-in user can call it, so the chat module can pick people to message.

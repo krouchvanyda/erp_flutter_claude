@@ -1,52 +1,54 @@
-import 'package:collection/collection.dart';
-
-/// The signed-in user (`UserDto` on the backend).
+/// The signed-in user, as the backend sends it in the login `user` object
+/// and from `GET /api/v1/users/me`:
 ///
-/// Parsing is tolerant: `id` may be a number or a string, the name may come
-/// as `fullName` / `name` / `displayName` (learned from the old app).
+/// ```json
+/// { "id": 1, "email": "user@example.com", "fullName": "Jane Doe",
+///   "phone": "012345678", "avatarUrl": null }
+/// ```
+///
+/// No `roles` / `permissions` here: the backend only sends them on the admin
+/// user endpoints, which this app doesn't use.
 class UserModel {
   const UserModel({
     required this.id,
     required this.email,
     required this.fullName,
     this.phone,
-    this.roles = const [],
-    this.permissions = const [],
+    this.avatarUrl,
   });
 
   final String id;
   final String email;
   final String fullName;
   final String? phone;
-  final List<String> roles;
-  final List<String> permissions;
+
+  /// A server path like `/uploads/...` (or null). Step 4 turns it into a full
+  /// URL for the avatar image.
+  final String? avatarUrl;
 
   /// Fallback for the UI: never show an empty name.
   String get displayName => fullName.trim().isEmpty ? email : fullName;
 
-  factory UserModel.fromJson(Map<String, dynamic> json) {
-    List<String> strings(String key) => switch (json[key]) {
-      final List<dynamic> list => [
-        for (final e in list)
-          // roles may be "ADMIN" or {"code": "ADMIN", ...}
-          if (e is Map) '${e['code'] ?? e['name'] ?? ''}' else '$e',
-      ],
-      _ => const [],
-    };
+  factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
+    id: '${json['id'] ?? ''}', // the backend sends a number: 1 → "1"
+    email: json['email'] as String? ?? '',
+    fullName: json['fullName'] as String? ?? '',
+    phone: json['phone'] as String?,
+    avatarUrl: json['avatarUrl'] as String?,
+  );
 
-    return UserModel(
-      id: '${json['id'] ?? ''}',
-      email: json['email'] as String? ?? '',
-      fullName:
-          (json['fullName'] ?? json['name'] ?? json['displayName'] ?? '')
-              as String,
-      phone: json['phone'] as String?,
-      roles: strings('roles'),
-      permissions: strings('permissions'),
-    );
-  }
-
-  static const _list = ListEquality<String>();
+  /// Profile edit (Step 4) changes one field and keeps the rest.
+  UserModel copyWith({
+    String? fullName,
+    String? phone,
+    String? avatarUrl,
+  }) => UserModel(
+    id: id,
+    email: email,
+    fullName: fullName ?? this.fullName,
+    phone: phone ?? this.phone,
+    avatarUrl: avatarUrl ?? this.avatarUrl,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -55,18 +57,10 @@ class UserModel {
       other.email == email &&
       other.fullName == fullName &&
       other.phone == phone &&
-      _list.equals(other.roles, roles) &&
-      _list.equals(other.permissions, permissions);
+      other.avatarUrl == avatarUrl;
 
   @override
-  int get hashCode => Object.hash(
-    id,
-    email,
-    fullName,
-    phone,
-    _list.hash(roles),
-    _list.hash(permissions),
-  );
+  int get hashCode => Object.hash(id, email, fullName, phone, avatarUrl);
 
   @override
   String toString() => 'UserModel($id, $email)';

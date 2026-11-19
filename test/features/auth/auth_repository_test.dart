@@ -73,7 +73,8 @@ void main() {
         'id': 7,
         'email': 'v@x.com',
         'fullName': 'Vanyda',
-        'roles': ['STAFF'],
+        'phone': '012345678',
+        'avatarUrl': null,
       },
     });
 
@@ -82,7 +83,8 @@ void main() {
     final user = result.getOrElse(() => throw StateError('expected Right'));
     expect(user.id, '7'); // number → string
     expect(user.displayName, 'Vanyda');
-    expect(user.roles, ['STAFF']);
+    expect(user.phone, '012345678');
+    expect(user.avatarUrl, isNull);
     expect((await storage.read())!.accessToken, 'a1');
     expect(session.isAuthenticated, isTrue);
     expect(server.last!.data, {'email': 'v@x.com', 'password': 'secret'});

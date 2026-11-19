@@ -27,6 +27,11 @@ Architecture: **MVVM + BLoC**, flat.
 View ─► BLoC ─► Repository ─► DataSource (dio / STOMP / shared_preferences)
 ```
 
+Models are hand-written (no `freezed` / `equatable`). Every model writes its
+own `==`, `hashCode`, `copyWith` and a safe `toString`, so two objects with
+the same data count as equal. Why, and what breaks without them:
+[`07-login.md`](docs/learning/REBUILD/07-login.md#-hashcode-tostring-line-by-line).
+
 ## Progress
 
 | Step | Topic | Status |
@@ -61,6 +66,9 @@ git diff feature/call -- lib/core/config/               # compare old vs new
 - Use a **real device** for call and push features (they don't work on a
   simulator or emulator).
 - Backend URLs: `lib/core/config/environments.dart`.
+- Backend API: [`API_LIST_BACKEND.md`](./API_LIST_BACKEND.md). To try the
+  server without the app, import the Postman collection and environment it
+  names, then run **Auth → Login** (it saves the token for the other requests).
 
 ## Flavors
 

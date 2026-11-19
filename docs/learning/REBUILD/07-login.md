@@ -180,7 +180,7 @@ lib/
 │       └── validation_messages.dart                                              NEW
 └── features/auth/
     ├── model/
-    │   ├── user_model.dart          UserModel (UserDto)
+    │   ├── user_model.dart          UserModel: id · email · fullName · phone · avatarUrl
     │   └── auth_response_model.dart tokens + user
     ├── repository/auth_repository.dart   login → save tokens → open session
     ├── viewmodel/
@@ -210,24 +210,145 @@ test/
 
 ### `model/user_model.dart`
 
-```dart
-factory UserModel.fromJson(Map<String, dynamic> json) {
-  ...
-  return UserModel(
-    id: '${json['id'] ?? ''}',                                       // 7 or "7" → "7"
-    fullName: (json['fullName'] ?? json['name'] ?? json['displayName'] ?? '') as String,
-    roles: strings('roles'),                                          // ["STAFF"] or [{"code":"STAFF"}]
-    ...
+The backend doc (`API_LIST_BACKEND.md`, updated 2026-11-19) now gives the
+**exact** `user` shape. Login and `GET /users/me` send the same 5 fields:
+
+```json
+{ "id": 1, "email": "user@example.com", "fullName": "Jane Doe", "phone": "012345678", "avatarUrl": null }
 ```
 
-- **Tolerant parsing**, learned from the old app on `feature/call`: the
-  backend doc doesn't list `UserDto`'s fields, so we accept the shapes we've
-  seen.
-- `'${json['id'] ?? ''}'` — **string interpolation** turns a number or a
-  string into a string. One type (`String id`) everywhere in the app.
+```dart
+factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
+  id: '${json['id'] ?? ''}',                   // 1 → "1"
+  email: json['email'] as String? ?? '',
+  fullName: json['fullName'] as String? ?? '',
+  phone: json['phone'] as String?,             // may be null
+  avatarUrl: json['avatarUrl'] as String?,     // "/uploads/..." or null
+);
+```
+
+```mermaid
+flowchart LR
+    J["JSON user<br/>id · email · fullName<br/>phone · avatarUrl"] -->|"fromJson"| U["UserModel"]
+    U --> D["displayName<br/>fullName, or email if empty"]
+    U --> C["copyWith(...)<br/>profile edit (Step 4)"]
+    X["roles · permissions"] -.->|"NOT sent any more"| U
+
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    class J,U app
+    class D,C ok
+    class X none
+```
+
+- **Match the contract, no guessing.** Our first version guessed (`fullName`
+  *or* `name` *or* `displayName`, roles as strings *or* objects) because the
+  old doc only said `UserDto`. Now the doc is exact, so the guesses are gone.
+  Less code = fewer places for bugs.
+- **No `roles` / `permissions`.** The backend only returns them on the
+  **admin** user endpoints, which this app doesn't use. A field we never get
+  would always be empty, so it would lie.
+- `'${json['id'] ?? ''}'` — **string interpolation** turns the number `1`
+  into `"1"`. One type (`String id`) everywhere in the app (chat and call ids
+  get compared as strings later).
+- `phone` and `avatarUrl` are **nullable** (`String?`): the doc shows
+  `"avatarUrl": null`.
 - `displayName` — a **getter**: never show an empty name (falls back to email).
-- Hand-written `==` with `ListEquality` from `package:collection` (CLAUDE.md
-  rule: list fields need deep equality, `[1] == [1]` is `false` in Dart).
+- `copyWith` — CLAUDE.md rule for value types. Profile edit (Step 4) will
+  change one field and keep the rest.
+- Hand-written `==` / `hashCode` over all 5 fields. No list fields any more,
+  so no `ListEquality` needed. Explained line by line below.
+
+### `==`, `hashCode`, `toString`: line by line
+
+```dart
+@override
+bool operator ==(Object other) =>
+    other is UserModel &&
+    other.id == id &&
+    other.email == email &&
+    other.fullName == fullName &&
+    other.phone == phone &&
+    other.avatarUrl == avatarUrl;
+
+@override
+int get hashCode => Object.hash(id, email, fullName, phone, avatarUrl);
+
+@override
+String toString() => 'UserModel($id, $email)';
+```
+
+**Without them**, Dart uses the default from `Object` (it's **implicit**): `==`
+asks "is this the **same box in memory**?", not "is this the **same data**?".
+
+```dart
+final a = UserModel(id: '1', email: 'v@x.com', fullName: 'Vanyda');
+final b = UserModel(id: '1', email: 'v@x.com', fullName: 'Vanyda');
+a == b   // default (implicit) → false ❌    ours (explicit) → true ✅
+```
+
+**Explicit** = written by you, visible in the file (សរសេរឲ្យឃើញច្បាស់).
+CLAUDE.md asks for explicit `==` / `hashCode` / `copyWith` because we removed
+`freezed` / `equatable`, so nothing generates them for us.
+
+| Line | Meaning |
+|---|---|
+| `@override` | "I'm replacing a method my parent (`Object`) already has." A typo in the name → analyzer warning. |
+| `bool operator ==(Object other) =>` | Defines what the `==` sign means. `a == b` calls it with `this = a`, `other = b`. The parameter is `Object` (Dart's rule): `user == 5` is allowed, it's just `false`. `=>` = return this one expression. |
+| `other is UserModel &&` | Check 1: same type? No → `false`, stop. After this, Dart **knows** `other` is a `UserModel` (**type promotion**), so `other.id` works. |
+| `other.id == id && …` | Checks 2–6: every field equal? `&&` stops at the first `false` (**short-circuit**). `null == null` is `true`, so two users with no phone are still equal. |
+| `int get hashCode => Object.hash(…)` | A number made from the **same 5 fields**. `Set` / `Map` jump to a "shelf" by `hashCode` first, then use `==` on that shelf. |
+| `String toString() => 'UserModel($id, $email)'` | What `print(user)` shows. Only id + email — never the phone — so logs don't leak private data (same idea as `AuthTokens.toString`). |
+
+```mermaid
+flowchart TD
+    Q["a == b ?"] --> C1{"b is UserModel?"}
+    C1 -->|"no"| F["false"]
+    C1 -->|"yes"| C2{"id, email, fullName,<br/>phone, avatarUrl<br/>all equal?"}
+    C2 -->|"any one differs"| F
+    C2 -->|"all same"| T["true"]
+    T -.->|"rule"| H["a.hashCode == b.hashCode<br/>(same 5 fields)"]
+
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef err fill:#fde2e2,stroke:#d64545,color:#611
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    class T,H ok
+    class F err
+    class Q,C1,C2 app
+```
+
+> ⚠ **Two rules.** (1) `==` and `hashCode` always go **together** and use
+> the **same fields**. Keeping `==` but dropping `hashCode` is worse than
+> dropping both: `a == b` is true, but a `Set` still keeps both.
+> (2) Add a field → update the constructor, `fromJson`, `==`, `hashCode`
+> (and `copyWith` if it can change).
+
+#### Keep vs remove
+
+| | **Keep** ✅ | **Remove** ❌ |
+|---|---|---|
+| Code | +10 lines | 10 fewer lines |
+| Today (login) | works | works — all tests still pass (they use one `const user`) |
+| Compare two users | by **data** | by **memory box**: same data still "different" |
+| `Set` / `Map` of users | each person once | duplicates |
+| BLoC rebuilds | skips when nothing changed | rebuilds and animates for nothing |
+| Tests | one `expect(user, UserModel(...))` | check each field by hand |
+| Logs | `UserModel(7, v@x.com)` | `Instance of 'UserModel'` |
+| Bugs | none | **quiet**: no error, just wrong behaviour — hard to find |
+
+#### What we'll use them for
+
+| Method | Step | Use |
+|---|---|---|
+| `==` | 3.2 auto-login | cached user vs fresh `/users/me`: same → don't touch the screen |
+| `==` | 4 profile edit | `draft != original` → **Save** on/off; nothing changed → no `PATCH` |
+| `==` | 4 profile | `buildWhen: (p, c) => p.user != c.user` → no useless rebuilds |
+| `==` | every step | `expect(result, UserModel(...))` in one line |
+| `hashCode` | 5 chat, new group | member picker `Set<UserModel>`: tap twice → still one person |
+| `hashCode` | 5 chat, presence | `Map<UserModel, PresenceStatus>` → find a person's online dot |
+| `hashCode` | 6 call | set of callees still ringing in a group call |
+| `toString` | every step | readable logs and readable test failures |
 
 ### `model/auth_response_model.dart`
 
@@ -449,7 +570,9 @@ Three layers, like the template: **messages** (texts) → **validators**
 | Page doesn't navigate | `pushReplacement(Home)` on success | `AuthGate` owns Login ↔ Home (Step 1.4). |
 | BLoC from `getIt` via `BlocProvider(create:)` | Pass the repository down the constructor chain | `BlocProvider.create` is an "edge" (Step 1.3); no long constructor chain. |
 | `app/app_di.dart` registers features | `core/di/injection.dart` does | `core/` must never import `features/`. |
-| `UserModel.id` as `String` | `int` | Backend may send a number or a string; one type everywhere. |
+| `UserModel.id` as `String` | `int` | Backend sends a number today; chat/call ids are compared as strings later. One type everywhere. |
+| `UserModel` = exactly the 5 documented fields | Keep `roles` / `permissions` and "tolerant" name guesses | The backend doc is now exact and doesn't send them to `/me` or login. Fields that are always empty only confuse. |
+| Explicit `==` / `hashCode` / `toString` in `UserModel` | Leave them out (Dart's implicit default), or `equatable` / `freezed` | The default compares memory, not data → quiet bugs in profile (Save button) and chat (duplicate members). The packages were removed (CLAUDE.md). 10 hand-written lines are cheaper. |
 | `bloc_test` + `mocktail` | Real repository in BLoC tests | The BLoC test checks only the BLoC: state order. The repository has its own tests. |
 
 ## 5. Try it
@@ -461,6 +584,12 @@ flutter run --flavor dev -t lib/main_dev.dart
 
 You need a **real account** on the backend (create one with
 `POST /api/v1/auth/register`, or ask the backend team).
+
+> 💡 To test the server **without** the app, the backend now ships a Postman
+> collection (see `API_LIST_BACKEND.md`): import
+> `ERP_API.postman_collection.json` + `ERP_Local.postman_environment.json`,
+> run **Auth → Login**, and every other request uses that token. Handy to
+> check "is it the app or the server?".
 
 1. Tap **Sign in** with empty fields → red text under both fields, **no**
    request in the console log.
@@ -487,6 +616,9 @@ You need a **real account** on the backend (create one with
    repository with `registerLazySingleton`?
 5. Why does `registerAuthModule` get called from `app/app_di.dart` and not
    from `core/di/injection.dart`?
+6. We remove `==` and `hashCode` from `UserModel`. All tests still pass. Name
+   one bug that shows up later.
+7. We add `final String? department;` to `UserModel`. Which places must change?
 
 <details><summary>Answers</summary>
 
@@ -501,5 +633,11 @@ You need a **real account** on the backend (create one with
    repository has no per-screen state, so one shared instance is enough.
 5. `core/` must never import `features/`. `app/` is the top layer, allowed to
    import both.
+6. Any of: the profile **Save** button never turns off (`draft != original`
+   is always true); the same person shows twice in the chat member `Set`;
+   screens rebuild when nothing changed. Tests pass only because they reuse
+   one `const user` (same memory box).
+7. The constructor, `fromJson`, `==`, `hashCode` — and `copyWith` if the user
+   can edit it.
 
 </details>

@@ -183,9 +183,18 @@ lib/
 
 ```
 Login response
-  ├── access_token + refresh_token ──► flutter_secure_storage
-  └── user profile                 ──► shared_preferences (cache)
+  ├── accessToken + refreshToken (+ expiresAt) ──► flutter_secure_storage
+  └── user { id, email, fullName, phone, avatarUrl } ──► shared_preferences (cache)
 ```
+
+- The backend contract is [`API_LIST_BACKEND.md`](./API_LIST_BACKEND.md)
+  (its Postman collection lives in the backend repo's `postman/`). Models follow it **exactly**; don't
+  guess extra field names.
+- `UserModel` = the 5 fields above, the same for the login `user` and
+  `GET /api/v1/users/me`. They have **no** `roles` / `permissions` (only the
+  admin user endpoints do, and this app doesn't use them), so don't build
+  permission checks in the app. `id` is a number on the wire → `String` in
+  the app. `avatarUrl` is a server path (`/uploads/...`) or null.
 
 - **Auto-login:** the splash reads tokens from secure storage. If tokens exist,
   call `AuthSession.markAuthenticated()` **before** going to the home route,
@@ -266,8 +275,20 @@ Deep call docs: `docs/learning/IOS_CALL/`, `docs/learning/ANDROID_CALL/`,
 ### Do
 - BLoC events and states are **immutable**. Unions are Dart 3 `sealed class`
   with `factory` redirects.
-- Give every value type explicit `==` / `hashCode` / `copyWith`. Use
+- Give every value type **explicit** (hand-written, visible in the file)
+  `==` / `hashCode` / `copyWith`, plus a safe `toString`. Use
   `package:collection` equality for list and map fields.
+  - Why: Dart's implicit default `==` compares the **memory box**, not the
+    data. Leaving it out breaks quietly later (profile Save button never
+    turns off, duplicate members in a chat `Set`, useless rebuilds), even
+    though tests pass today.
+  - `==` and `hashCode` always go together and use the **same fields**.
+    Adding a field → update constructor, `fromJson`, `==`, `hashCode`
+    (and `copyWith`).
+  - `toString` prints only ids / non-private fields (e.g.
+    `UserModel($id, $email)`), never phone numbers or tokens.
+  - Explained line by line in
+    [`07-login.md`](docs/learning/REBUILD/07-login.md#-hashcode-tostring-line-by-line).
 - Business rules go in the Repository (or the BLoC when they are stateful),
   never in widgets.
 - Register cross-cutting services in `core/di/`, and feature services in
