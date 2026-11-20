@@ -9,6 +9,7 @@ import '../../../core/router/config_router.dart';
 import '../../../core/widgets/app_error_banner.dart';
 import '../../../core/widgets/app_realtime_title.dart';
 import '../../../core/widgets/app_error_view.dart';
+import '../model/chat_call_launcher.dart';
 import '../model/conversation_model.dart';
 import '../repository/presence_store.dart';
 import '../viewmodel/inbox/inbox_view_model_bloc.dart';
@@ -35,9 +36,12 @@ import '../widgets/inbox_new_chat_button.dart';
 /// [onOpenProfile] comes from the app layer: the chat feature doesn't import
 /// the profile feature (CLAUDE.md: features don't use each other's insides).
 class InboxPage extends StatelessWidget {
-  const InboxPage({super.key, required this.onOpenProfile});
+  const InboxPage({super.key, required this.onOpenProfile, this.calls});
 
   final void Function(BuildContext context) onOpenProfile;
+
+  /// 📞 / 🎥 in each chat (Step 6) — from `app/`; null → no call buttons.
+  final ChatCallLauncher? calls;
 
   @override
   Widget build(BuildContext context) {
@@ -139,7 +143,7 @@ class InboxPage extends StatelessWidget {
 
   /// Open one conversation. While it's open, the inbox treats its messages
   /// as read; back → "nothing open". (Live updates keep the list fresh.)
-  static Future<void> _open(
+  Future<void> _open(
     BuildContext context,
     ConversationModel conversation,
   ) async {
@@ -147,14 +151,18 @@ class InboxPage extends StatelessWidget {
     bloc.add(OnInboxConversationOpenedEvent(conversation.id));
     await ConfigRouter.pushPageAnimation<void>(
       context,
-      ConversationPage(conversation: conversation, myId: bloc.state.data?.myId),
+      ConversationPage(
+        conversation: conversation,
+        myId: bloc.state.data?.myId,
+        calls: calls,
+      ),
     );
     if (!bloc.isClosed) bloc.add(OnInboxConversationOpenedEvent(null));
   }
 
   /// ✎ → the picker → it closes with the chat (new or existing) → open it.
   /// (The inbox row itself arrives by the live `conversation.create`.)
-  static Future<void> _startNewChat(BuildContext context) async {
+  Future<void> _startNewChat(BuildContext context) async {
     final conversation =
         await ConfigRouter.pushPageAnimation<ConversationModel>(
           context,

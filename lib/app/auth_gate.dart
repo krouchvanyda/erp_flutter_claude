@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 
 import '../core/di/service_locator.dart';
+import '../core/network/api_endpoints.dart';
 import '../core/router/app_navigator.dart';
 import '../core/router/auth_session.dart';
 import '../core/router/config_router.dart';
 import '../features/auth/repository/auth_repository.dart';
 import '../features/auth/view/login_page.dart';
 import '../features/auth/view/splash_page.dart';
+import '../features/call/model/call_enums.dart';
+import '../features/call/model/call_peer.dart';
+import '../features/call/viewmodel/call/call_view_model_bloc.dart';
+import '../features/chat/model/chat_call_launcher.dart';
 import '../features/chat/view/inbox_page.dart';
 import '../features/profile/view/profile_page.dart';
 
@@ -55,6 +60,26 @@ class _AuthGateState extends State<AuthGate> {
     setState(() {}); // rebuild → show Login or Home
   }
 
+  /// Chat's 📞 / 🎥 → the call bloc. app/ may import both features; chat
+  /// and call never import each other.
+  static ChatCallLauncher _callLauncher() {
+    final calls = getIt<CallViewModelBloc>();
+    return ChatCallLauncher(
+      inCall: calls.inCall,
+      start: (conversation, {required myId, required video}) => calls.add(
+        OnCallStartEvent(
+          conversationId: conversation.id,
+          peer: CallPeer(
+            name: conversation.title(myId),
+            avatarUrl: ApiEndPoint.fileUrl(conversation.avatarUrlFor(myId)),
+            isGroup: conversation.isGroup,
+          ),
+          type: video ? CallType.video : CallType.voice,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final Widget screen;
@@ -70,6 +95,7 @@ class _AuthGateState extends State<AuthGate> {
           // Real logout: server revoke → clear tokens → close session.
           ProfilePage(onLogout: getIt<AuthRepository>().logout),
         ),
+        calls: _callLauncher(),
       );
     } else {
       screen = const LoginPage();

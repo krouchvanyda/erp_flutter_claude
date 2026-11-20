@@ -406,6 +406,36 @@ Login response
   answers for an old query, paged. Match highlighted with `Text.rich`. No
   jump-to-message yet.
 
+### Call (Step 6)
+
+- **6.1 signalling** (no media): our backend does ring / accept / reject /
+  end (`POST /chats/conversations/{id}/calls`, `/chats/calls/{id}/ringing ·
+  accept · reject[?reason=busy] · end`, `GET /chats/calls/{id}`); STOMP
+  `/user/queue/calls` (invites, ringing) + `/topic/conversations/{id}/call`
+  (invite · ringing · accept · reject · hangup). Stream Video is ONLY the
+  media (`streamCallCid`, Step 6.2).
+- ONE app-wide `CallViewModelBloc` (lazy singleton, `BlocProvider.value`
+  above `MaterialApp`): sealed states Idle · Outgoing · Incoming · InCall ·
+  Ended(`CallEndReason`) → Idle after `CallConfig.endedScreen`. All call
+  timings live in `CallConfig`.
+- `CallRouteListener` (in `MaterialApp.builder`) pushes ONE `CallPage` with
+  `AppNavigator.rootKey` on Idle → Outgoing / Incoming; the page follows
+  every phase (Accept never pushes a page) and closes itself on Idle.
+- Chat ↔ call never import each other: chat gets a `ChatCallLauncher`
+  (`start` + `inCall`) from `app/auth_gate.dart`; the call feature gets
+  `loadPeer` (conversation → `CallPeer` name / photo) from `app/app_di.dart`.
+- Rules (CALL_SCENARIOS.md): busy → auto `reject(reason: busy)`, no screen;
+  subscribe the call topic BEFORE `POST /calls`; hang up before the POST
+  answers → `end(id)` when the id arrives; the callee's backstop only CLOSES
+  (never `reject`, or the server saves "declined" instead of MISSED); the
+  server's 60 s `call.hangup reason=no_answer` decides "No answer";
+  `reconnected` → `GET /calls/{id}`. Every end has its own words
+  (`CallEndReason.label`).
+- Stuck calls: the backend hangs up for a user whose socket is gone 30 s
+  during an ANSWERED call (`answered-disconnect-grace-seconds`, backend
+  `CallDisconnectHandler`). The raw "Caller is already in an active call"
+  is shown as `CallEndReason.stillInCall`.
+
 ### Chat & call (Steps 5–7): lessons from the old app
 
 These bugs cost many rounds of fixes on `feature/call`. Build them in from the

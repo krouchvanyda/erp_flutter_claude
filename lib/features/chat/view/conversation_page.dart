@@ -11,6 +11,7 @@ import '../../../core/widgets/app_error_banner.dart';
 import '../../../core/widgets/app_error_view.dart';
 import '../../../core/widgets/app_confirm_dialog.dart';
 import '../../../core/widgets/app_snack_bar.dart';
+import '../model/chat_call_launcher.dart';
 import '../model/chat_enums.dart';
 import '../model/conversation_model.dart';
 import '../model/message_model.dart';
@@ -21,6 +22,7 @@ import '../viewmodel/conversation_info/conversation_info_view_model_bloc.dart';
 import '../viewmodel/typing/typing_view_model_bloc.dart';
 import '../widgets/chat_composer.dart';
 import '../widgets/conversation_app_bar_title.dart';
+import '../widgets/conversation_call_buttons.dart';
 import '../widgets/conversation_empty_view.dart';
 import '../widgets/message_actions_sheet.dart';
 import '../widgets/message_list.dart';
@@ -45,10 +47,14 @@ class ConversationPage extends StatelessWidget {
     super.key,
     required this.conversation,
     required this.myId,
+    this.calls,
   });
 
   final ConversationModel conversation;
   final String? myId;
+
+  /// 📞 / 🎥 (Step 6) — from `app/` through the inbox; null → hidden.
+  final ChatCallLauncher? calls;
 
   @override
   Widget build(BuildContext context) {
@@ -112,6 +118,19 @@ class ConversationPage extends StatelessWidget {
             appBar: AppBar(
               titleSpacing: 0,
               actions: [
+                // 📞 🎥 call (6.1) — the CURRENT conversation (name, members)
+                if (calls case final calls?)
+                  Builder(
+                    builder: (context) => ConversationCallButtons(
+                      calls: calls,
+                      conversation: context
+                          .select<
+                            ConversationInfoViewModelBloc,
+                            ConversationModel
+                          >((b) => b.state.conversation),
+                      myId: myId,
+                    ),
+                  ),
                 // 🔍 search this chat (5.6)
                 Builder(
                   builder: (context) => IconButton(

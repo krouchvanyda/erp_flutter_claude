@@ -85,7 +85,7 @@ flowchart TD
     STEP2 --> FEATS
     subgraph FEATS["Steps 3–6 — features"]
         direction LR
-        S3["3 auth<br/>3.1 login ✅<br/>3.2 auto-login + logout ✅"] --> S4["4 profile<br/>4.1 view ✅<br/>4.2 avatar ✅"] --> S5["5 chat<br/>5.1 inbox ✅<br/>5.2 conversation ✅<br/>5.3 realtime ✅<br/>5.4 groups ✅<br/>5.5 attachments ✅<br/>5.6 typing · actions · presence · search ✅"] --> S6["6 call (in app)"]
+        S3["3 auth<br/>3.1 login ✅<br/>3.2 auto-login + logout ✅"] --> S4["4 profile<br/>4.1 view ✅<br/>4.2 avatar ✅"] --> S5["5 chat<br/>5.1 inbox ✅<br/>5.2 conversation ✅<br/>5.3 realtime ✅<br/>5.4 groups ✅<br/>5.5 attachments ✅<br/>5.6 typing · actions · presence · search ✅"] --> S6["6 call (in app)<br/>6.1 signalling ✅<br/>6.2 voice + video<br/>6.3 polish"]
     end
     FEATS --> S7["7 call when the app is killed<br/>(FCM / CallKit)"] --> S8["8 translations + tests + polish"]
     class S0,S11,S12,S13,S14,S21,S22 ok
@@ -123,7 +123,9 @@ current one works.
 | 5.5 | Chat: attachments (photo · PDF · voice: upload with progress, smart retry, player) | [15-chat-attachments.md](15-chat-attachments.md) | ✅ |
 | 5.6 | Chat: typing (backend `TypingController` + app) | [16-chat-typing.md](16-chat-typing.md) | ✅ |
 | 5.6 | Chat: message actions (edit / delete / reactions / seen by) · presence (online, last seen, beacons) · search | [17-chat-extras.md](17-chat-extras.md) | ✅ |
-| 6 | Call (in app) | — | ⏳ |
+| 6.1 | Call: signalling (📞 / 🎥 → Calling… / Ringing… → Accept / Decline → in call → ended; busy, cancel, timeouts) — no sound yet | [18-call-signalling.md](18-call-signalling.md) | ✅ |
+| 6.2 | Call: voice + video (Stream Video: token, join, mute, speaker, camera) | — | ⏳ |
+| 6.3 | Call: polish (sounds, call line in the chat, group calls, reconnecting) | — | ⏳ |
 | 7 | Call in background / killed app | see `../IOS_CALL`, `../ANDROID_CALL` | ⏳ |
 | 8 | Translations, tests, polish | — | ⏳ |
 

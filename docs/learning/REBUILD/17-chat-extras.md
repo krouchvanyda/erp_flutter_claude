@@ -1,6 +1,6 @@
 # Step 5.6 — Chat extras: message actions · online status · search
 
-> ← Previous: [16-chat-typing.md](16-chat-typing.md) · Roadmap: [README.md](README.md)
+> ← Previous: [16-chat-typing.md](16-chat-typing.md) · Next: [18-call-signalling.md](18-call-signalling.md) → · Roadmap: [README.md](README.md)
 
 ```
 5.6 typing ✅ (16)

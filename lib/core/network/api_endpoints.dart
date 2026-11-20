@@ -67,6 +67,21 @@ abstract final class ApiEndPoint {
   static const String presenceBackground = '$_v1/chats/presence/background';
   static const String presenceForeground = '$_v1/chats/presence/foreground';
 
+  // ── Calls (Step 6) ──
+  /// POST `{type: VOICE|VIDEO}` → start a call in this conversation.
+  static String conversationCalls(String conversationId) =>
+      '$conversations/$conversationId/calls';
+
+  /// GET one call (resync after a reconnect).
+  static String call(String callId) => '$_v1/chats/calls/$callId';
+
+  /// POST: my phone shows the call · I accept · I decline (`?reason=busy`)
+  /// · I hang up.
+  static String callRinging(String callId) => '${call(callId)}/ringing';
+  static String callAccept(String callId) => '${call(callId)}/accept';
+  static String callReject(String callId) => '${call(callId)}/reject';
+  static String callEnd(String callId) => '${call(callId)}/end';
+
   // ── Realtime (Step 5.3) ──
   /// STOMP over WebSocket, per flavor (`Environments.*RealtimeUrl`, the
   /// backend's `/ws`). The token goes in the CONNECT frame, not the URL.
@@ -83,6 +98,13 @@ abstract final class ApiEndPoint {
       '/app/conversations/$conversationId/typing';
   static String conversationTopic(String conversationId) =>
       '/topic/conversations/$conversationId';
+
+  /// `call.invite` (to callees) and `call.ringing` (to the caller) — mine only.
+  static const String callsQueue = '/user/queue/calls';
+
+  /// One conversation's call events: invite · ringing · accept · reject · hangup.
+  static String callTopic(String conversationId) =>
+      '/topic/conversations/$conversationId/call';
 
   /// Endpoints that never carry a token and never trigger a refresh.
   /// (The backend answers 401 for a WRONG PASSWORD on login — that must not

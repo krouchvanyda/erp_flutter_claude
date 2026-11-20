@@ -1,0 +1,57 @@
+part of 'call_view_model_bloc.dart';
+
+@immutable
+sealed class CallViewModelEvent {}
+
+/// I tap 📞 / 🎥 in a chat.
+final class OnCallStartEvent extends CallViewModelEvent {
+  OnCallStartEvent({
+    required this.conversationId,
+    required this.peer,
+    required this.type,
+  });
+
+  final String conversationId;
+  final CallPeer peer;
+  final CallType type;
+}
+
+/// Incoming call → Accept.
+final class OnCallAcceptEvent extends CallViewModelEvent {}
+
+/// Incoming call → Decline.
+final class OnCallDeclineEvent extends CallViewModelEvent {}
+
+/// The red button: cancel (still ringing) or hang up (connected).
+final class OnCallHangUpEvent extends CallViewModelEvent {}
+
+/// A live event from the server (internal).
+final class OnCallLiveUpdateEvent extends CallViewModelEvent {
+  OnCallLiveUpdateEvent(this.update);
+
+  final CallUpdate update;
+}
+
+/// The caller's name / photo arrived for an incoming call (internal).
+final class OnCallPeerLoadedEvent extends CallViewModelEvent {
+  OnCallPeerLoadedEvent(this.callId, this.peer);
+
+  final String callId;
+  final CallPeer peer;
+}
+
+/// Our ring backstop ran out for [callId] (internal).
+final class OnCallBackstopEvent extends CallViewModelEvent {
+  OnCallBackstopEvent(this.callId);
+
+  final String callId;
+}
+
+/// The "ended" screen time is over → Idle (internal).
+final class OnCallClosedEvent extends CallViewModelEvent {}
+
+/// The socket came back → ask the server where the call is (internal).
+final class OnCallResyncEvent extends CallViewModelEvent {}
+
+/// Logged out → forget everything (internal).
+final class OnCallResetEvent extends CallViewModelEvent {}
