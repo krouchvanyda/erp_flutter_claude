@@ -272,6 +272,98 @@ Future<void> _onLoadMore(...) async {
 | Errors keep the list (`lastData: current`) | Same rule as the profile: never take data away because of a hiccup. |
 | `state.data` getter on the base state | Loaded → itself, Error → the last list. The page checks one thing. |
 
+### Pull-to-refresh: wait for "finished", not for a new state 🐞
+
+The first version had a bug: **pull down → the spinner turned forever**.
+
+```dart
+// ❌ the first version
+onRefresh: () {
+  bloc.add(OnInboxLoadEvent());
+  return bloc.stream.firstWhere((s) => s is InboxLoadedState || s is InboxErrorState);
+},
+```
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant P as RefreshIndicator
+    participant B as InboxViewModelBloc
+    P->>B: OnInboxLoadEvent
+    B->>B: loadInbox() → the SAME 20 chats
+    Note over B: new Loaded == old Loaded<br/>(hand-written ==)<br/>→ Bloc does NOT emit
+    P--xP: firstWhere(...) waits forever 🔄
+```
+
+`InboxLoadedState` has a hand-written `==` (that's good: it stops useless
+rebuilds). But **Bloc never emits a state that is `==` the current one**. When
+nothing changed on the server, no state comes, so `firstWhere` never finishes.
+
+The fix: the event carries a `Completer`, and the BLoC completes it in
+`finally`, after **any** ending (success, error, unchanged, early return).
+
+```dart
+// page
+final done = Completer<void>();
+bloc.add(OnInboxLoadEvent(done: done));
+return done.future;
+
+// BLoC
+try { ... } finally {
+  if (event.done?.isCompleted == false) event.done!.complete();
+}
+```
+
+| Other way | Why not |
+|---|---|
+| Remove `==` from the state | Breaks `buildWhen` (rebuilds every time) and breaks our CLAUDE.md rule. |
+| Add a `refreshedAt` counter to the state | Puts a fake field in the state only to force an emit. |
+| `firstWhere(...).timeout(5 s)` | Still spins 5 s for nothing, and hides real slowness. |
+| **`Completer` in the event** ✅ | Says exactly what the page needs: "tell me when you're done". |
+
+Test: `refresh with an unchanged list emits nothing but completes done`
+(`test/features/chat/inbox_view_model_bloc_test.dart`).
+
+### A failed load with chats on screen: `AppErrorBanner`
+
+When the **first** load fails, there's nothing to show, so the page shows the
+big `AppErrorView`. When the list is **already** there (refresh or load more
+failed), we keep the chats and add a small strip above them:
+
+```
+┌ Chats ───────────────────── 👤 ┐
+│ ☁̸ No Internet       Try again │  ← AppErrorBanner (grey; red for server errors)
+├────────────────────────────────┤
+│ (JD) Jane Doe           10:42  │  ← old chats stay readable
+│ (👥) Team ERP        Yesterday │
+└────────────────────────────────┘
+```
+
+```mermaid
+flowchart LR
+    S["state"] --> D{"state.data?"}
+    D -->|"null + Error"| V["AppErrorView<br/>(full page)"]
+    D -->|"null"| SP["spinner"]
+    D -->|"list"| E{"is InboxErrorState?"}
+    E -->|"yes"| B["AppErrorBanner<br/>+ list"]
+    E -->|"no"| L["list only"]
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef error fill:#fde2e2,stroke:#d64545,color:#611
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    class L ok
+    class V,B error
+    class SP wait
+```
+
+| Piece | Why |
+|---|---|
+| `AppErrorBanner` in `core/widgets/` | Any page with data can reuse it (profile later). Same `iconFor` and colours as `AppErrorView`. |
+| `onRetry` returns a `Future` | "Try again" turns into a small spinner and can't be tapped twice. It reuses the same `refresh()` as pull-to-refresh (the `done` Completer). |
+| `AnimatedSize` around it | The list slides down/up smoothly instead of jumping. |
+| It stays until a load **works** | Then the state is `InboxLoadedState` again and the banner is gone. A snackbar disappears after a few seconds, and you'd forget the list is old. |
+| No snackbar on this page any more | Two messages for one problem is noise. |
+| Load more failed → banner too | `_onLoadMore` only runs from a Loaded state, so after an error, scrolling can't load more. "Try again" reloads page 1 and fixes that. |
+
 ### `InboxList`: when to load more
 
 ```dart
@@ -338,7 +430,7 @@ yesterday vs 00:01 today = "Yesterday", even on a daylight-saving day.
 ## 5. Try it
 
 ```bash
-flutter test                                    # 94 tests → All tests passed!
+flutter test                                    # 100 tests → All tests passed!
 flutter run --flavor dev -t lib/main_dev.dart
 ```
 
@@ -350,7 +442,9 @@ flutter run --flavor dev -t lib/main_dev.dart
    **"Dara: …"**.
 5. Unread chats: bold, a blue time, a count badge.
 6. More than 20 chats? Scroll down → a small spinner → `…page=2` in the log.
-7. Pull down → refresh. Airplane mode + pull → the list stays, a red bar shows.
+7. Pull down → refresh → the spinner stops (even when nothing changed).
+   Airplane mode + pull → the list stays and a grey **No Internet · Try
+   again** strip shows above it. Wi-Fi back on → Try again → the strip slides away.
 8. 👤 → My Profile → ⎋ Log out → Login.
 9. No chats yet → "No chats yet" (create one in Postman to see the list fill).
 
@@ -362,6 +456,8 @@ flutter run --flavor dev -t lib/main_dev.dart
 3. Why is "You: " added in `InboxTile` and not stored in `MessageModel`?
 4. The user scrolls and `onLoadMore` fires 30 times. How many requests go out?
 5. Why can the same conversation come on page 1 **and** page 2?
+6. Pull-to-refresh returns exactly the same list. Why does no new state come,
+   and how does the spinner still stop?
 
 <details><summary>Answers</summary>
 
@@ -375,5 +471,8 @@ flutter run --flavor dev -t lib/main_dev.dart
    when `hasMore` is false.
 5. A new message moves a chat to the top, which shifts every later chat by
    one. The BLoC drops ids it already shows.
+6. The new `InboxLoadedState` is `==` the old one, and Bloc skips equal
+   states. The event's `done` Completer is completed in `finally`, and
+   `onRefresh` awaits that.
 
 </details>

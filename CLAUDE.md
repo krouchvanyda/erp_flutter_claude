@@ -241,8 +241,10 @@ Login response
   repository (a feature's **model** may be shared, its repository not).
 - Server file paths (`/uploads/...`) → `ApiEndPoint.fileUrl(path)` before
   showing them. People → `AppAvatar(name:, imageUrl:)` (cached photo or
-  initials). A page whose first load failed → `AppErrorView(onRetry:)`; a
-  failed refresh keeps the data and shows `AppSnackBar`.
+  initials). A page whose first load failed → `AppErrorView.fromError(error, onRetry:)` (icon per error type; red tint for server errors); a
+  failed refresh keeps the data and shows `AppSnackBar` (profile) or an
+  `AppErrorBanner(error:, onRetry:)` strip above the data (lists like the
+  inbox; it stays until a load works, `onRetry` returns a Future).
 
 ### Network (Step 2) — MVVM-template style
 
@@ -296,6 +298,10 @@ Login response
   `fullName` + `avatarUrl`, so never call `/users/{id}` to draw a chat.
 - Paged lists: `page` / `hasMore` in the state, load more ~300 px before the
   end, the BLoC ignores repeats, and appending drops ids already shown.
+- Pull-to-refresh: the event carries a `Completer<void>? done`, which the BLoC
+  completes in `finally`; `onRefresh` returns `done.future`. Never wait on
+  `bloc.stream.firstWhere(...)`: Bloc skips a state `==` the current one, so
+  an unchanged list emits nothing and the spinner turns forever.
 - The inbox is the home after login. `InboxPage(onOpenProfile:)` gets the
   profile route from `app/` (chat never imports profile).
 

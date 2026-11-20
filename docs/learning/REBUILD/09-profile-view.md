@@ -242,7 +242,7 @@ builder: (context, state) {
       child: ProfileContent(profile: profile, onLogout: onLogout),
     );
   }
-  if (state is ProfileErrorState) return AppErrorView(..., onRetry: ...);
+  if (state is ProfileErrorState) return AppErrorView.fromError(state.error, onRetry: ...);
   return const Center(child: CircularProgressIndicator());
 }
 ```
@@ -260,8 +260,43 @@ builder: (context, state) {
 | Widget | What | Why in `core/widgets/` |
 |---|---|---|
 | `AppAvatar(name, imageUrl, size)` | `CachedNetworkImage` in a circle; initials while loading / on error / with no photo | Chat list, conversation header and call screen use it too. Caching = no re-download on scroll. |
-| `AppErrorView(title, message, onRetry)` | cloud icon · title · message · **Try again** | Every list or detail page can fail to load. |
+| `AppErrorView.fromError(error, onRetry:)` | icon **per error type** · title · message · **Try again** | Every list or detail page can fail to load. See below. |
 | `ApiEndPoint.fileUrl(path)` | `"/uploads/a.jpg"` → `"http://host:8080/uploads/a.jpg"` | The server sends paths; `Image` needs a full URL. `/uploads/**` is public, so no token is needed. |
+
+#### `AppErrorView.fromError`: the icon matches the problem
+
+At first every error showed ☁̸ (cloud off). For a **500 "Server error"**
+that says "check your wifi", which is misleading. Now the icon comes from the
+error type:
+
+```dart
+static IconData iconFor(NetworkErrorModel error) => switch (error) {
+  NoInternetError(title: Constants.timeout)           => Icons.hourglass_empty_rounded,
+  NoInternetError(title: Constants.serverUnreachable) => Icons.cloud_off_rounded,
+  NoInternetError()   => Icons.wifi_off_rounded,       // phone offline
+  ServerError()       => Icons.error_outline_rounded,  // 4xx / 5xx
+  UnauthorizedError() => Icons.lock_outline_rounded,
+  UnknownError()      => Icons.help_outline_rounded,
+};
+```
+
+| Error | Icon | Circle |
+|---|---|---|
+| Phone offline | 📶̸ wifi off | calm **grey**: "check your connection" |
+| Server unreachable | ☁̸ cloud off | grey |
+| Timeout | ⏳ hourglass | grey |
+| Server error (4xx / 5xx) | ⚠ error | **red tint**: "something broke" |
+| Unknown (bad JSON…) | ? help | red tint |
+| Session expired | 🔒 lock | grey (rarely seen: `AuthGate` goes to Login) |
+
+- **`switch` on a sealed class**: add a new error type and the compiler
+  makes you choose its icon. No case can be forgotten.
+- **Object patterns** `NoInternetError(title: Constants.timeout)` match the
+  type **and** a field. The 3 "no internet" cases share one type; their
+  titles are our own constants (set in `AppService`), so comparing them is
+  safe.
+- Pages pass **one** thing, `AppErrorView.fromError(state.error, onRetry: …)`,
+  instead of title + message separately.
 
 `AppAvatar.initialsOf` uses `.characters`, so it counts letters as a
 **person** sees them: `"សុខ ចាន់"` → `"សុចា"` (the vowel sign stays on its

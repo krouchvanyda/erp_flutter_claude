@@ -99,9 +99,8 @@ class ProfilePage extends StatelessWidget {
               );
             }
             if (state is ProfileErrorState) {
-              return AppErrorView(
-                title: state.error.title,
-                message: state.error.description,
+              return AppErrorView.fromError(
+                state.error,
                 onRetry: () => bloc.add(OnProfileLoadEvent()),
               );
             }

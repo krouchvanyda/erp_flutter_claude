@@ -1,11 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/di/service_locator.dart';
 import '../../../core/theme/app_font_size.dart';
 import '../../../core/theme/app_label.dart';
+import '../../../core/widgets/app_error_banner.dart';
 import '../../../core/widgets/app_error_view.dart';
-import '../../../core/widgets/app_snack_bar.dart';
 import '../viewmodel/inbox_view_model_bloc.dart';
 import '../widgets/inbox_empty_view.dart';
 import '../widgets/inbox_list.dart';
@@ -17,6 +19,7 @@ import '../widgets/inbox_list.dart';
 /// ```
 /// state.data != null, list empty  → InboxEmptyView
 /// state.data != null              → InboxList (pull to refresh, load more)
+///   + InboxErrorState (has data)  → AppErrorBanner above the list
 /// InboxErrorState (no data)       → AppErrorView + "Try again"
 /// otherwise                       → spinner
 /// ```
@@ -51,19 +54,7 @@ class InboxPage extends StatelessWidget {
             const SizedBox(width: 4),
           ],
         ),
-        body: BlocConsumer<InboxViewModelBloc, InboxViewModelState>(
-          // Refresh / load-more failed while the list is on screen → red bar.
-          listenWhen: (previous, current) =>
-              current is InboxErrorState && current.lastData != null,
-          listener: (context, state) {
-            if (state is InboxErrorState) {
-              AppSnackBar.error(
-                context,
-                title: state.error.title,
-                message: state.error.description,
-              );
-            }
-          },
+        body: BlocBuilder<InboxViewModelBloc, InboxViewModelState>(
           buildWhen: (previous, current) =>
               previous.runtimeType != current.runtimeType ||
               previous.data != current.data, // InboxLoadedState has ==
@@ -71,30 +62,57 @@ class InboxPage extends StatelessWidget {
             final bloc = context.read<InboxViewModelBloc>();
             final data = state.data;
 
+            // Pull-to-refresh AND the banner's "Try again" wait on this.
+            // Wait for "finished", not for a new state: an unchanged list is
+            // == the old one, so Bloc emits nothing.
+            Future<void> refresh() {
+              final done = Completer<void>();
+              bloc.add(OnInboxLoadEvent(done: done));
+              return done.future;
+            }
+
             if (data != null) {
-              return RefreshIndicator(
-                onRefresh: () {
-                  bloc.add(OnInboxLoadEvent());
-                  return bloc.stream.firstWhere(
-                    (s) => s is InboxLoadedState || s is InboxErrorState,
-                  );
-                },
-                child: data.conversations.isEmpty
-                    ? const InboxEmptyView()
-                    : InboxList(
-                        conversations: data.conversations,
-                        myId: data.myId,
-                        isLoadingMore: data.isLoadingMore,
-                        onLoadMore: () => bloc.add(OnInboxLoadMoreEvent()),
-                      ),
+              return Column(
+                children: [
+                  // A load failed but we still have chats → keep them, and
+                  // show a small strip on top until a load works again.
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    alignment: Alignment.topCenter,
+                    child: state is InboxErrorState
+                        ? Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(
+                                maxWidth: InboxList.maxWidth,
+                              ),
+                              child: AppErrorBanner(
+                                error: state.error,
+                                onRetry: refresh,
+                              ),
+                            ),
+                          )
+                        : const SizedBox(width: double.infinity),
+                  ),
+                  Expanded(
+                    child: RefreshIndicator(
+                      onRefresh: refresh,
+                      child: data.conversations.isEmpty
+                          ? const InboxEmptyView()
+                          : InboxList(
+                              conversations: data.conversations,
+                              myId: data.myId,
+                              isLoadingMore: data.isLoadingMore,
+                              onLoadMore: () =>
+                                  bloc.add(OnInboxLoadMoreEvent()),
+                            ),
+                    ),
+                  ),
+                ],
               );
             }
             if (state is InboxErrorState) {
-              return AppErrorView(
-                title: state.error.title,
-                message: state.error.description,
-                onRetry: () => bloc.add(OnInboxLoadEvent()),
-              );
+              return AppErrorView.fromError(state.error, onRetry: refresh);
             }
             return const Center(child: CircularProgressIndicator());
           },

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart' show immutable;
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -13,6 +15,7 @@ part 'inbox_view_model_state.dart';
 ///
 /// First load:  Loading → Loaded(page 1)  or  Error(no data)
 /// Refresh:     (no Loading — keep the list) → Loaded(page 1) or Error(+data)
+///              (an unchanged list emits nothing; `event.done` still completes)
 /// Load more:   Loaded(isLoadingMore) → Loaded(page + 1, items appended)
 ///              or Error(+data)
 class InboxViewModelBloc
@@ -28,23 +31,29 @@ class InboxViewModelBloc
     OnInboxLoadEvent event,
     Emitter<InboxViewModelState> emit,
   ) async {
-    if (state is InboxLoadingState) return;
-    final shown = state.data; // the list on screen (null on the first load)
-    if (shown == null) emit(InboxLoadingState());
+    try {
+      if (state is InboxLoadingState) return;
+      final shown = state.data; // the list on screen (null on the first load)
+      if (shown == null) emit(InboxLoadingState());
 
-    final myId = await _repository.myUserId();
-    final result = await _repository.loadInbox();
-    result.fold(
-      (error) => emit(InboxErrorState(error: error, lastData: shown)),
-      (page) => emit(
-        InboxLoadedState(
-          conversations: page.items,
-          myId: myId,
-          page: page.page,
-          hasMore: page.hasMore,
+      final myId = await _repository.myUserId();
+      final result = await _repository.loadInbox();
+      result.fold(
+        (error) => emit(InboxErrorState(error: error, lastData: shown)),
+        // Same list as before → == → Bloc emits nothing (that's fine).
+        (page) => emit(
+          InboxLoadedState(
+            conversations: page.items,
+            myId: myId,
+            page: page.page,
+            hasMore: page.hasMore,
+          ),
         ),
-      ),
-    );
+      );
+    } finally {
+      // ALWAYS, even on an early return → the refresh spinner always stops.
+      if (event.done?.isCompleted == false) event.done!.complete();
+    }
   }
 
   Future<void> _onLoadMore(

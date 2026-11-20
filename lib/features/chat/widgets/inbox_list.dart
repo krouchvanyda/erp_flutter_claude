@@ -23,7 +23,7 @@ class InboxList extends StatelessWidget {
   final bool isLoadingMore;
   final VoidCallback onLoadMore;
 
-  static const double _maxWidth = 720;
+  static const double maxWidth = 720; // the page aligns the banner to it
   static const double _loadMoreBefore = 300; // px from the end
 
   @override
@@ -38,7 +38,7 @@ class InboxList extends StatelessWidget {
       },
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: _maxWidth),
+          constraints: const BoxConstraints(maxWidth: maxWidth),
           child: ListView.separated(
             physics: const AlwaysScrollableScrollPhysics(),
             itemCount: conversations.length + (isLoadingMore ? 1 : 0),

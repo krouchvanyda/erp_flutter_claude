@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bloc_test/bloc_test.dart';
 import 'package:dartz/dartz.dart' show Left, Right;
 import 'package:erp_mobile/core/network/network_error_model.dart';
@@ -110,4 +112,39 @@ void main() {
       ),
     ],
   );
+
+  // The "refresh spins forever" bug: the same list → the new state is == the
+  // old one → Bloc emits NOTHING. The page must still be told "finished".
+  test(
+    'refresh with an unchanged list emits nothing but completes done',
+    () async {
+      when(
+        () => repo.loadInbox(),
+      ).thenAnswer((_) async => Right(pageOf(['a'])));
+      final bloc = InboxViewModelBloc(repo)..add(OnInboxLoadEvent());
+      await bloc.stream.firstWhere((s) => s is InboxLoadedState);
+
+      final emitted = <InboxViewModelState>[];
+      final sub = bloc.stream.listen(emitted.add);
+      final done = Completer<void>();
+      bloc.add(OnInboxLoadEvent(done: done));
+
+      await done.future.timeout(const Duration(seconds: 1));
+      expect(emitted, isEmpty); // proves why waiting for a state would hang
+      await sub.cancel();
+      await bloc.close();
+    },
+  );
+
+  test('refresh that fails also completes done', () async {
+    when(
+      () => repo.loadInbox(),
+    ).thenAnswer((_) async => const Left(NoInternetError()));
+    final bloc = InboxViewModelBloc(repo);
+    final done = Completer<void>();
+    bloc.add(OnInboxLoadEvent(done: done));
+    await done.future.timeout(const Duration(seconds: 1));
+    expect(bloc.state, isA<InboxErrorState>());
+    await bloc.close();
+  });
 }
