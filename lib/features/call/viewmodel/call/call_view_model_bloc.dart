@@ -9,9 +9,11 @@ import '../../model/call_end_reason.dart';
 import '../../model/call_enums.dart';
 import '../../model/call_model.dart';
 import '../../model/call_peer.dart';
+import '../../model/call_sound.dart';
 import '../../model/call_update.dart';
 import '../../repository/call_media.dart';
 import '../../repository/call_repository.dart';
+import '../../repository/call_sounds.dart';
 
 part 'call_view_model_event.dart';
 part 'call_view_model_state.dart';
@@ -41,16 +43,20 @@ typedef CallPeerLoader = Future<CallPeer?> Function(CallModel call);
 /// Media (Step 6.2): entering InCall joins the Stream call ([CallMedia]).
 /// "Connecting…" until the OTHER person is really in the media call, then the
 /// timer starts at 00:00 (CALL_SCENARIOS.md #8). Every end path leaves it.
+///
+/// Sounds (Step 6.3a): every state change → [soundFor] → [CallSounds].
 class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
   CallViewModelBloc(
     this._repository, {
     required CallMedia media,
     required CallPeerLoader loadPeer,
+    CallSounds? sounds,
     required AuthSession session,
     this.ringBackstop = CallConfig.ringBackstop,
     this.endedScreen = CallConfig.endedScreen,
     DateTime Function()? clock,
   }) : _media = media,
+       _sounds = sounds,
        _loadPeer = loadPeer,
        _session = session,
        _now = clock ?? DateTime.now,
@@ -82,6 +88,7 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
 
   final CallRepository _repository;
   final CallMedia _media;
+  final CallSounds? _sounds; // null = silent (tests)
   final CallPeerLoader _loadPeer;
   final AuthSession _session;
   final Duration ringBackstop;
@@ -117,6 +124,41 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
   void onChange(Change<CallViewModelState> change) {
     super.onChange(change);
     inCall.value = change.nextState.isActive;
+    final sound = soundFor(change.currentState, change.nextState);
+    if (sound != null) _sounds?.play(sound);
+  }
+
+  /// Which sound a state change makes (null = leave the player alone).
+  ///
+  /// | change                                  | sound          |
+  /// |-----------------------------------------|----------------|
+  /// | → Outgoing "Calling…"                   | — (silent)     |
+  /// | Outgoing: their phone rings "Ringing…"  | ringback loop  |
+  /// | → Incoming (a new call)                 | ringtone loop  |
+  /// | Incoming: I tap Accept                  | silence        |
+  /// | → InCall "Connecting…"                  | silence        |
+  /// | InCall: they're in the media (00:00)    | connected beep |
+  /// | a live call → Ended (any reason)        | ended beep     |
+  static CallSound? soundFor(CallViewModelState prev, CallViewModelState next) {
+    switch (next) {
+      case CallOutgoingState(:final peerRinging):
+        final wasRinging = prev is CallOutgoingState && prev.peerRinging;
+        return peerRinging && !wasRinging ? CallSound.ringback : null;
+      case CallIncomingState(:final call, :final accepting):
+        if (prev is! CallIncomingState || prev.call.id != call.id) {
+          return CallSound.ringtone;
+        }
+        return accepting && !prev.accepting ? CallSound.silence : null;
+      case CallInCallState(:final connectedAt):
+        if (prev is! CallInCallState) return CallSound.silence;
+        return prev.connectedAt == null && connectedAt != null
+            ? CallSound.connected
+            : null;
+      case CallEndedState():
+        return prev.isActive ? CallSound.ended : null;
+      case CallIdleState():
+        return null;
+    }
   }
 
   @override

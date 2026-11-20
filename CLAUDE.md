@@ -444,6 +444,13 @@ Login response
   timer starts. Join fails → `POST /end` + failed. Every `_end` → `leave()`.
   Toggles (mic · camera · speaker · flip) are optimistic with rollback. A
   video call draws in `AppTheme.dark()` set ABOVE the Scaffold.
+- **6.3a sounds:** `CallViewModelBloc.soundFor(prev, next)` (pure rule
+  table) runs in `onChange` → `CallSounds.play` (own just_audio player with
+  `handleAudioSessionActivation / handleInterruptions /
+  androidApplyAudioAttributes: false`: never touch WebRTC's audio session).
+  Silent "Calling…" · ringback on "Ringing…" · ringtone on incoming ·
+  silence on Accept / "Connecting…" · connected beep at 00:00 · ended beep
+  after any live phase. `null` = leave the player alone (Mute, name loaded).
 - Stuck calls: the backend hangs up for a user whose socket is gone 30 s
   during an ANSWERED call (`answered-disconnect-grace-seconds`, backend
   `CallDisconnectHandler`). The raw "Caller is already in an active call"
