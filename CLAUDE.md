@@ -166,7 +166,7 @@ lib/
         ├── repository/    concrete repository (uses AppService)
         ├── viewmodel/     <x>_view_model_bloc.dart + part _event / _state
         ├── view/          pages
-        ├── widgets/       feature-only widgets
+        ├── widgets/       feature-only widgets, ONE widget per file
         └── <feature>_di.dart   registerXModule(getIt), called from app/app_di.dart
 ```
 
@@ -345,6 +345,12 @@ Deep call docs: `docs/learning/IOS_CALL/`, `docs/learning/ANDROID_CALL/`,
   away), never a raw `SnackBar` or an inline error card. Call it from a `BlocConsumer` /
   `BlocListener` **listener** (one-time action), never from a builder. Field
   errors (`fieldErrors`) stay under the fields, so `listenWhen` skips them.
+- Keep page files short. `view/<x>_page.dart` = layout + `BlocProvider`
+  only. Each piece of the screen (form, header, panel, tile…) goes in its own
+  file in `features/<feature>/widgets/`, public and named after the feature
+  (`LoginForm`, `LoginBrandPanel`). Pieces any feature can reuse go in
+  `core/widgets/` named `App…` (`AppFadeSlideIn`). No private `_Xxx`
+  widget classes in page files.
 - Every screen is responsive: decide with `LayoutBuilder` on available width
   (wide ≥ 720), cap form/content width (forms ≤ 420), keep it scrollable for
   the keyboard, and check light + dark.

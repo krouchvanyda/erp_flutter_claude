@@ -167,7 +167,7 @@ elegant, works on phone **and** tablet*).
  ││ ⓘ Error             ✕  ││     slides down · tablet: 420 wide, centred
  ││   Invalid email or ... ││
  │└────────────────────────┘│
- │                    [DEV] │            │                   │                    [DEV] │
+ │                          │            │                   │                          │
  │  [icon]  ERP Dev         │            │      [icon]       │   Welcome back           │
  │                          │            │     ERP Dev       │   Sign in to your account│
  │  Welcome back            │            │                   │                          │
@@ -187,19 +187,18 @@ elegant, works on phone **and** tablet*).
 ```mermaid
 flowchart TD
     LP["LoginPage"] --> LB{"LayoutBuilder<br/>width ≥ 720?"}
-    LB -->|"no — phone"| ONE["one column<br/>_BrandRow on top"]
-    LB -->|"yes — tablet"| TWO["Row:<br/>_BrandPanel (5) + form (6)"]
-    ONE --> FC["_FormColumn<br/>max 420 · scroll · fade+slide in"]
+    LB -->|"no — phone"| ONE["one column<br/>LoginBrandRow on top"]
+    LB -->|"yes — tablet"| TWO["Row:<br/>LoginBrandPanel (5) + form (6)"]
+    ONE --> FC["LoginFormColumn<br/>max 420 · scroll · AppFadeSlideIn"]
     TWO --> FC
-    FC --> T["_Titles"]
-    FC --> F["_LoginForm<br/>labels · validation · button<br/>errors → AppSnackBar"]
-    FC --> N["_SecureNote"]
-    FC --> BADGE["_FlavorBadge<br/>DEV / UAT · hidden in prod"]
+    FC --> T["LoginTitles"]
+    FC --> F["LoginForm<br/>labels · validation · button<br/>errors → AppSnackBar"]
+    FC --> N["LoginSecureNote"]
 
     classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
     classDef feat fill:#fff4d6,stroke:#d4a017,color:#5a4300
     class LP,LB,FC app
-    class ONE,TWO,T,F,N,BADGE feat
+    class ONE,TWO,T,F,N feat
 ```
 
 | Design choice | Why |
@@ -208,7 +207,6 @@ flowchart TD
 | **`LayoutBuilder`** at 720 | Decides by the **available width**, not the device type — works for tablets, landscape phones, split-screen. |
 | **Form max 420 wide** (`ConstrainedBox`) | 1000-px-wide text fields on an iPad look broken and are hard to read. |
 | **Brand panel on wide screens** | Fills the empty half with calm brand colour instead of white space. On phones the brand moves to a small row above the form. |
-| **`_FlavorBadge` (DEV / UAT), hidden in prod** | Testers always know which server they're on. |
 | **Fade + 16 px slide in, 300 ms** (`TweenAnimationBuilder`) | Design guide motion rules: calm, no bounce. `child:` is passed in so the form isn't rebuilt every frame. |
 | **Tap anywhere → hide keyboard** (`GestureDetector`) | Expected on mobile; the button is never hidden behind the keyboard. |
 | **Errors in an `AppSnackBar`**, not a card in the form | The form never jumps or grows. The message slides down at the **top** (the keyboard can't hide it), can be swiped up or closed (✕), and goes away by itself after 4 s. One widget for the whole app. |
@@ -224,7 +222,8 @@ lib/
 │   ├── widgets/
 │   │   ├── app_input_text.dart      AppInputText (template, themed)              NEW
 │   │   ├── app_button.dart          AppButton + isLoading (template, themed)     NEW
-│   │   └── app_snack_bar.dart       AppSnackBar.error / success / info / hide    NEW
+│   │   ├── app_snack_bar.dart       AppSnackBar.error / success / info / hide    NEW
+│   │   └── app_fade_slide_in.dart   AppFadeSlideIn (entry animation, reusable)   NEW
 │   └── utils/validators/
 │       ├── validators.dart          Validators.email / password / phone         NEW
 │       ├── form_validators.dart     FormValidators.loginEmail / loginPassword    NEW
@@ -237,8 +236,15 @@ lib/
     ├── viewmodel/
     │   ├── login_view_model_bloc.dart     + part …_event.dart, …_state.dart
     ├── view/
-    │   ├── login_page.dart          the real form (Screen 1.1)
+    │   ├── login_page.dart          LAYOUT only: responsive column / row (Screen 1.1)
     │   └── splash_page.dart         moved from views/
+    ├── widgets/                     one widget per file (pieces of the login page)
+    │   ├── login_form_column.dart   LoginFormColumn: centred, max 420, scroll, the pieces in order
+    │   ├── login_form.dart          LoginForm: fields + Sign in + BlocConsumer
+    │   ├── login_titles.dart        "Welcome back" + subtitle
+    │   ├── login_brand_row.dart     phone: icon + app name
+    │   ├── login_brand_panel.dart   tablet: blue brand panel
+    │   └── login_secure_note.dart   "Secured connection"
     └── auth_di.dart                 registerAuthModule()
 test/
 ├── features/auth/auth_repository_test.dart        3 tests (fake server)
@@ -553,21 +559,38 @@ flowchart TD
 it calls core first, then each feature. (Same reason `AuthGate` lives in
 `app/`.)
 
-### `view/login_page.dart`
+### `view/login_page.dart` + `widgets/`
+
+The page file is **only the layout** (~50 lines). Every piece lives in its
+own file in `widgets/`. One 400-line file was hard to read: you had to scroll
+past the brand panel to find the form.
 
 ```dart
 return BlocProvider(
   create: (_) => getIt<LoginViewModelBloc>(),   // an "edge": may use getIt
-  child: const Scaffold(body: SafeArea(child: _LoginForm())),
+  child: Scaffold(body: LayoutBuilder(...)),     // phone column / tablet row
 );
+// LoginFormColumn: LoginBrandRow · LoginTitles · LoginForm · LoginSecureNote
 ```
+
+| Where | What goes there | Example |
+|---|---|---|
+| `features/auth/view/` | pages: layout + `BlocProvider` | `LoginPage` |
+| `features/auth/widgets/` | pieces used **only by auth**, one per file, named `Login…` | `LoginForm`, `LoginBrandPanel` |
+| `core/widgets/` | pieces **any feature** can use, named `App…` | `AppButton`, `AppSnackBar`, `AppFadeSlideIn` |
+
+- **Public names** (`LoginForm`, no `_`): a `_` class is private to its file,
+  so a widget in another file must be public.
+- **`const LoginForm({super.key})`**: public widgets take a `key`, like every
+  Flutter widget.
+- **`LoginForm` keeps its private `_LoginFormState`**: nobody outside needs
+  the state class.
 
 ```mermaid
 flowchart TD
-    LP["LoginPage<br/>BlocProvider(create: getIt)"] --> LF["_LoginForm (StatefulWidget)<br/>controllers · _obscure"]
+    LP["LoginPage<br/>BlocProvider(create: getIt)"] --> LF["LoginForm (StatefulWidget)<br/>controllers · _obscure"]
     LF --> BB["BlocConsumer<br/>listenWhen: error, no fieldErrors<br/>buildWhen: not Success"]
     BB -.->|"listener"| SNACK["AppSnackBar.error"]
-    BB --> H["_Titles"]
     BB --> E["AppInputText email<br/>validator + errorText"]
     BB --> P["AppInputText password<br/>👁 toggle"]
     BB --> BTN["AppButton<br/>isLoading"]
@@ -580,7 +603,7 @@ flowchart TD
 
 | Piece | Why |
 |---|---|
-| `_LoginForm` is a `StatefulWidget` | it owns `TextEditingController`s (must be `dispose()`d) and `_obscure` — **UI-only** state. Business state (loading, error) lives in the BLoC. |
+| `LoginForm` is a `StatefulWidget` | it owns `TextEditingController`s (must be `dispose()`d) and `_obscure` — **UI-only** state. Business state (loading, error) lives in the BLoC. |
 | `GlobalKey<FormState>` + `validate()` | runs every field's `validator` at once; returns `false` → no request. |
 | `buildWhen: current is! LoginSuccessState` | on success `AuthGate` is already fading to Home — no need to rebuild the form (CLAUDE.md: `buildWhen` on every `BlocBuilder`). |
 | `enabled: !loading` | fields locked while the request runs. |
@@ -708,6 +731,8 @@ Three layers, like the template: **messages** (texts) → **validators**
 | Server errors → `AppSnackBar` (via `BlocConsumer.listener`) | An inline error card in the form (our first version) | You asked for it, and it keeps the form still. The snackbar is one shared widget, so every screen shows errors the same way. |
 | `AppSnackBar` = static methods (`AppSnackBar.error(context, …)`) | The template's `context.showSnackBar(msg)` extension | Same one-line call, but with a type (error / success / info), a title, theme colours and tablet width. |
 | `AppSnackBar` at the **top**, drawn in the `Overlay` | Flutter's `SnackBar` (bottom only) | You asked for the top: the keyboard never covers it, and it's where the eye looks after tapping Sign in. |
+| Page = layout, pieces in `widgets/` (one per file) | Everything in `login_page.dart` | One long file is hard to read and review. Small files have one job, a clear name, and are easy to find. |
+| No DEV / UAT badge on the login page | A `_FlavorBadge` in the corner | Removed on request: the app name already says "ERP Dev" / "ERP UAT". |
 | `bloc_test` + `mocktail` | Real repository in BLoC tests | The BLoC test checks only the BLoC: state order. The repository has its own tests. |
 
 ## 5. Try it

@@ -38,17 +38,14 @@ class UserModel {
   );
 
   /// Profile edit (Step 4) changes one field and keeps the rest.
-  UserModel copyWith({
-    String? fullName,
-    String? phone,
-    String? avatarUrl,
-  }) => UserModel(
-    id: id,
-    email: email,
-    fullName: fullName ?? this.fullName,
-    phone: phone ?? this.phone,
-    avatarUrl: avatarUrl ?? this.avatarUrl,
-  );
+  UserModel copyWith({String? fullName, String? phone, String? avatarUrl}) =>
+      UserModel(
+        id: id,
+        email: email,
+        fullName: fullName ?? this.fullName,
+        phone: phone ?? this.phone,
+        avatarUrl: avatarUrl ?? this.avatarUrl,
+      );
 
   @override
   bool operator ==(Object other) =>
