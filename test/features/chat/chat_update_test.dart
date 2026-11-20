@@ -53,4 +53,11 @@ void main() {
     expect(parse('reaction.toggle', {'x': 1}), isNull);
     expect(parse('message.send', 'not a map'), isNull);
   });
+
+  test('typing → TypingChanged (who comes from the server)', () {
+    final u =
+        parse('typing', {'conversationId': 42, 'userId': 7, 'typing': false})!
+            as TypingChanged;
+    expect((u.conversationId, u.userId, u.typing), ('42', '7', false));
+  });
 }

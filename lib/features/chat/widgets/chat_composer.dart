@@ -23,6 +23,7 @@ class ChatComposer extends StatefulWidget {
     required this.onSend,
     required this.onAttach,
     required this.onVoice,
+    this.onTextChanged,
     this.enabled = true,
   });
 
@@ -33,6 +34,9 @@ class ChatComposer extends StatefulWidget {
 
   /// A finished voice note.
   final void Function(String path, int seconds) onVoice;
+
+  /// Every change of the text box (for "typing…", 5.6).
+  final ValueChanged<String>? onTextChanged;
   final bool enabled;
 
   @override
@@ -51,6 +55,7 @@ class _ChatComposerState extends State<ChatComposer> {
   }
 
   void _onChanged(String value) {
+    widget.onTextChanged?.call(value);
     final hasText = value.trim().isNotEmpty;
     if (hasText != _hasText) setState(() => _hasText = hasText);
   }

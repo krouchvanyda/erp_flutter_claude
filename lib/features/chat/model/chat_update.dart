@@ -14,6 +14,7 @@ import 'message_model.dart';
 /// | `message.read`                          | [MessagesRead]        |
 /// | `conversation.create` / `.update`       | [ConversationChanged] |
 /// | `conversation.remove`                   | [ConversationRemoved] |
+/// | `typing`                                | [TypingChanged]       |
 ///
 /// Unknown events (reactions until 5.6, calls…) → null, ignored.
 sealed class ChatUpdate {
@@ -38,6 +39,11 @@ sealed class ChatUpdate {
         // a ConversationDto, or just { conversationId } when deleted
         'conversation.remove' => ConversationRemoved(
           '${p['conversationId'] ?? p['id']}',
+        ),
+        'typing' => TypingChanged(
+          conversationId: '${p['conversationId']}',
+          userId: '${p['userId']}',
+          typing: p['typing'] as bool? ?? true,
         ),
         _ => null,
       };
@@ -79,4 +85,17 @@ final class ConversationChanged extends ChatUpdate {
 final class ConversationRemoved extends ChatUpdate {
   const ConversationRemoved(this.conversationId);
   final String conversationId;
+}
+
+/// [userId] started (true) / stopped (false) typing in [conversationId].
+/// The WHO comes from the server (the sender's token), not the phone.
+final class TypingChanged extends ChatUpdate {
+  const TypingChanged({
+    required this.conversationId,
+    required this.userId,
+    required this.typing,
+  });
+  final String conversationId;
+  final String userId;
+  final bool typing;
 }

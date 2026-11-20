@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
@@ -95,6 +96,21 @@ class RealtimeService {
       return t;
     });
     return topic.controller.stream;
+  }
+
+  /// SEND [body] (as JSON) to [destination] — e.g. typing (5.6).
+  ///
+  /// Only while connected; otherwise it's dropped (returns false). That's
+  /// right for "live" signals like typing: sending them later is useless.
+  bool send(String destination, Map<String, Object?> body) {
+    final connection = _connection;
+    if (connection == null) return false;
+    try {
+      connection.send(destination, jsonEncode(body));
+      return true;
+    } catch (_) {
+      return false; // the socket died this very moment → a retry will come
+    }
   }
 
   /// Logged in → go online (and keep trying).

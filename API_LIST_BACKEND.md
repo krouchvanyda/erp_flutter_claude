@@ -449,8 +449,14 @@ Every event has the same shape: `{ "event": "<name>", "payload": { ... } }`.
 
 | Destination | Events |
 |---|---|
-| `/topic/conversations/{conversationId}` | `message.send`, `message.edit`, `message.delete`, `message.read`, `reaction.toggle`, `conversation.update` |
+| `/topic/conversations/{conversationId}` | `message.send`, `message.edit`, `message.delete`, `message.read`, `reaction.toggle`, `conversation.update`, `typing` |
 | `/topic/conversations/{conversationId}/call` | `call.invite`, `call.ringing`, `call.accept`, `call.reject`, `call.hangup` |
 | `/topic/presence` | Presence changes |
 | `/user/queue/inbox` | `conversation.create`, `conversation.update`, `conversation.remove`, `message.send` |
 | `/user/queue/calls` | `call.invite`, `call.ringing` |
+
+### Send (client → server)
+
+| Destination | Body | Result |
+|---|---|---|
+| `/app/conversations/{conversationId}/typing` | `{ "typing": true }` / `{ "typing": false }` | `typing` `{ conversationId, userId, typing }` on `/topic/conversations/{conversationId}`. `userId` = the token's user (can't be faked). Members only; others are ignored. Re-send every ~3 s while typing; listeners expire it after ~6 s. |

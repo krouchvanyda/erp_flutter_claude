@@ -14,6 +14,7 @@ import '../model/conversation_model.dart';
 import '../repository/chat_repository.dart';
 import '../viewmodel/conversation/conversation_view_model_bloc.dart';
 import '../viewmodel/conversation_info/conversation_info_view_model_bloc.dart';
+import '../viewmodel/typing/typing_view_model_bloc.dart';
 import '../widgets/chat_composer.dart';
 import '../widgets/conversation_app_bar_title.dart';
 import '../widgets/conversation_empty_view.dart';
@@ -57,6 +58,14 @@ class ConversationPage extends StatelessWidget {
         ),
         // The CURRENT name / members (5.4): the title, the names in group
         // bubbles, and the info page all read it.
+        // "Dara is typing…" — in and out (5.6).
+        BlocProvider(
+          create: (_) => TypingViewModelBloc(
+            getIt<ChatRepository>(),
+            conversationId: conversation.id,
+            myId: myId,
+          ),
+        ),
         BlocProvider(
           create: (_) => ConversationInfoViewModelBloc(
             getIt<ChatRepository>(),
@@ -119,10 +128,25 @@ class ConversationPage extends StatelessWidget {
                           ),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 6),
-                            child: ConversationAppBarTitle(
-                              conversation: info.conversation,
-                              myId: myId,
-                            ),
+                            child:
+                                BlocBuilder<
+                                  TypingViewModelBloc,
+                                  TypingViewModelState
+                                >(
+                                  builder: (context, typing) =>
+                                      ConversationAppBarTitle(
+                                        conversation: info.conversation,
+                                        myId: myId,
+                                        typingNames: [
+                                          for (final m
+                                              in info.conversation.members)
+                                            if (typing.userIds.contains(
+                                              m.userId,
+                                            ))
+                                              m.displayName,
+                                        ],
+                                      ),
+                                ),
                           ),
                         ),
                       ),
@@ -214,8 +238,15 @@ class ConversationPage extends StatelessWidget {
                                   ),
                                   child: ChatComposer(
                                     enabled: data != null,
-                                    onSend: (text) =>
-                                        bloc.add(OnMessageSendEvent(text)),
+                                    onSend: (text) {
+                                      context.read<TypingViewModelBloc>().add(
+                                        OnTypingStopEvent(),
+                                      );
+                                      bloc.add(OnMessageSendEvent(text));
+                                    },
+                                    onTextChanged: (text) => context
+                                        .read<TypingViewModelBloc>()
+                                        .add(OnTypingTextChangedEvent(text)),
                                     onAttach: (type, path) => bloc.add(
                                       OnAttachmentSendEvent(
                                         type: type,

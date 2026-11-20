@@ -23,6 +23,11 @@ class _FakeConnection implements StompConnection {
     return () => subs.remove(d);
   }
 
+  final List<(String, String)> sent = [];
+
+  @override
+  void send(String destination, String body) => sent.add((destination, body));
+
   @override
   void close() => closed = true;
 }
@@ -148,5 +153,15 @@ void main() {
     await settle();
 
     expect(realtime.status.value, RealtimeStatus.connected);
+  });
+
+  test('send: JSON while connected; dropped (false) when not', () async {
+    expect(realtime.send('/app/x', {'typing': true}), isFalse); // not started
+
+    realtime.start();
+    await settle();
+
+    expect(realtime.send('/app/x', {'typing': true}), isTrue);
+    expect(connections.single.sent.single, ('/app/x', '{"typing":true}'));
   });
 }

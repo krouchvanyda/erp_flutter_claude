@@ -1,6 +1,6 @@
 # Step 5.5 — Chat: attachments (photo · PDF · voice)
 
-> ← Previous: [14-chat-groups.md](14-chat-groups.md) · Roadmap: [README.md](README.md)
+> ← Previous: [14-chat-groups.md](14-chat-groups.md) · Next: [16-chat-typing.md](16-chat-typing.md) → · Roadmap: [README.md](README.md)
 
 ```
 5.1 Inbox ✅ · 5.2 Conversation ✅ · 5.3 Realtime ✅ · 5.4 Groups ✅

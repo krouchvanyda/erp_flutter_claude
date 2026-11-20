@@ -403,8 +403,8 @@ class ConversationViewModelBloc
         }).toList();
         if (changed) _emitData(emit, data.copyWith(messages: messages));
 
-      case ConversationChanged() || ConversationRemoved():
-        break; // the title / members: Step 5.4
+      case ConversationChanged() || ConversationRemoved() || TypingChanged():
+        break; // title / members: info bloc (5.4) · typing: typing bloc (5.6)
     }
   }
 }

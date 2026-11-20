@@ -207,7 +207,7 @@ class InboxViewModelBloc
           ),
         );
 
-      case MessageChanged() || MessagesRead():
+      case MessageChanged() || MessagesRead() || TypingChanged():
         break; // only the open conversation cares
     }
   }

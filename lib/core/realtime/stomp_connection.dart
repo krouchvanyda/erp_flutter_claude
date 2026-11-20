@@ -10,6 +10,9 @@ abstract interface class StompConnection {
     void Function(String? body) onMessage,
   );
 
+  /// SEND a frame to [destination] (e.g. "/app/conversations/42/typing").
+  void send(String destination, String body);
+
   void close();
 }
 
@@ -92,6 +95,10 @@ class _StompClientConnection implements StompConnection {
       }
     };
   }
+
+  @override
+  void send(String destination, String body) =>
+      _client.send(destination: destination, body: body);
 
   @override
   void close() => _client.deactivate();

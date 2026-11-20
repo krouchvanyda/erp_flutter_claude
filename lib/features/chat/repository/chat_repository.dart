@@ -283,6 +283,11 @@ class ChatRepository {
   Stream<ChatUpdate> conversationUpdates(String conversationId) =>
       _updates(ApiEndPoint.conversationTopic(conversationId));
 
+  /// "I'm typing" / "I stopped" (5.6). Over the socket, not REST: it's a
+  /// live signal, so if we're offline it's simply dropped.
+  bool sendTyping(String conversationId, {required bool typing}) => _realtime
+      .send(ApiEndPoint.typingDestination(conversationId), {'typing': typing});
+
   /// The connection came back after a drop. Events sent meanwhile are lost,
   /// so listeners reload (catch-up).
   Stream<void> get reconnected => _realtime.reconnected;

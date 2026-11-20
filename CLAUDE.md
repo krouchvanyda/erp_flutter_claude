@@ -374,6 +374,17 @@ Login response
 - One `AppAudioPlayer` (`core/audio`, just_audio): one sound at a time;
   the chat page stops it on leave. PDFs open outside the app
   (`url_launcher`, Android `<queries>` VIEW).
+- **Typing (5.6):** the first client → server STOMP SEND. Backend
+  `TypingController` (`@MessageMapping("/conversations/{id}/typing")`, in
+  `erp_java_backend_claude`) takes WHO from the STOMP principal, checks
+  membership, broadcasts `typing {conversationId, userId, typing}` on the
+  conversation topic. App: `RealtimeService.send` (dropped when offline),
+  `ChatRepository.sendTyping`, one `TypingViewModelBloc` per open chat:
+  send `true` ≤ every 3 s, `false` after 4 s idle / clear / send / leave;
+  show others with a 6 s expiry; ignore me. Shown under the chat title.
+- Never let the phone SEND straight to `/topic/...` or put a user id in a
+  body the server trusts: always an `/app/...` handler that uses the
+  principal.
 
 ### Chat & call (Steps 5–7): lessons from the old app
 

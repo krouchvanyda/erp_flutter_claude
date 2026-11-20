@@ -54,6 +54,11 @@ abstract final class ApiEndPoint {
   static String get websocketUrl => Flavor.current.realtimeUrl;
 
   static const String inboxQueue = '/user/queue/inbox';
+
+  /// SEND here `{typing: true|false}` → the server tells the conversation
+  /// topic "typing" (5.6). `/app` = the server's handlers (not a topic).
+  static String typingDestination(String conversationId) =>
+      '/app/conversations/$conversationId/typing';
   static String conversationTopic(String conversationId) =>
       '/topic/conversations/$conversationId';
 
