@@ -5,7 +5,20 @@ import 'package:flutter/foundation.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart';
 
+import '../model/call_config.dart';
 import '../model/stream_token_model.dart';
+
+/// MY link to the media call (Step 6.3b).
+enum MediaLink {
+  /// Sound flows.
+  connected,
+
+  /// My network dropped; Stream is trying again ("Reconnecting…").
+  reconnecting,
+
+  /// Stream gave up.
+  lost,
+}
 
 /// What [CallMedia.join] got: which tracks really started.
 typedef MediaJoin = ({bool ok, bool micOn, bool cameraOn});
@@ -32,7 +45,9 @@ class CallMedia {
   StreamVideo? _client;
   String? _clientUserId;
   StreamSubscription<bool>? _stateSub;
+  StreamSubscription<MediaLink>? _linkSub;
   final _peer = StreamController<bool>.broadcast();
+  final _link = StreamController<MediaLink>.broadcast();
 
   /// Bumped by [leave]: a join that finishes after it must not stay.
   int _generation = 0;
@@ -42,6 +57,21 @@ class CallMedia {
 
   /// true when someone else is in the media call, false when they left.
   Stream<bool> get peerPresent => _peer.stream;
+
+  /// MY connection to the media call: connected · reconnecting · lost.
+  Stream<MediaLink> get link => _link.stream;
+
+  /// Stream's call status → our 3 words. Other statuses (joining, idle…)
+  /// → null (not interesting during a call).
+  @visibleForTesting
+  static MediaLink? linkOf(CallStatus status) {
+    if (status is CallStatusReconnectionFailed) return MediaLink.lost;
+    if (status.isReconnecting || status.isMigrating) {
+      return MediaLink.reconnecting;
+    }
+    if (status.isConnected || status.isJoined) return MediaLink.connected;
+    return null;
+  }
 
   /// Joins the Stream call `type:id` ([cid] = `ChatCallDto.streamCallCid`).
   /// Never throws: anything wrong → `ok: false`.
@@ -83,6 +113,12 @@ class CallMedia {
           .map((s) => s.otherParticipants.isNotEmpty)
           .distinct()
           .listen(_peer.add);
+      _linkSub = c.state.valueStream
+          .map((s) => linkOf(s.status))
+          .where((l) => l != null)
+          .cast<MediaLink>()
+          .distinct()
+          .listen(_link.add);
       return (ok: true, micOn: micOn, cameraOn: cameraOn);
     } catch (e) {
       debugPrint('[CallMedia] join failed: $e');
@@ -102,6 +138,14 @@ class CallMedia {
       // Stream asks again when the token expires (calls can be long).
       tokenLoader: (_) async => (await _loadToken())?.token ?? '',
       failIfSingletonExists: false,
+      // Give up after 30 s without network (Stream's default: forever),
+      // so "Reconnecting…" can't hang (Step 6.3b).
+      options: StreamVideoOptions(
+        defaultCallPreferences: DefaultCallPreferences(
+          reconnectTimeout: CallConfig.reconnectTimeout,
+          networkAvailabilityTimeout: CallConfig.reconnectTimeout,
+        ),
+      ),
     );
     _client = client;
     _clientUserId = token.userId;
@@ -157,6 +201,8 @@ class CallMedia {
     _generation++;
     await _stateSub?.cancel();
     _stateSub = null;
+    await _linkSub?.cancel();
+    _linkSub = null;
     final c = call.value;
     call.value = null;
     if (c != null) {

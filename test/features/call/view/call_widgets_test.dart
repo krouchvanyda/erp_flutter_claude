@@ -112,6 +112,22 @@ void main() {
     );
   });
 
+  test('reconnecting texts (6.3b)', () {
+    final talking = CallInCallState(
+      call: _call,
+      peer: _peer,
+      connectedAt: DateTime(2026),
+    );
+    expect(
+      CallStatusText.textFor(talking.copyWith(reconnecting: true)),
+      'Reconnecting…',
+    );
+    expect(
+      CallStatusText.textFor(talking.copyWith(peerAway: true)),
+      'Jane is reconnecting…',
+    );
+  });
+
   testWidgets('outgoing: only End → hang up', (tester) async {
     final taps = <String>[];
     await tester.pumpWidget(

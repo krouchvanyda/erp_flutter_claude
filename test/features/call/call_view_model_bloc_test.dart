@@ -45,6 +45,7 @@ void main() {
   late List<String> sent; // what the phone told the server
   late _MockCallMedia media;
   late StreamController<bool> peer; // the other person in the media call
+  late StreamController<MediaLink> link; // MY link to the media call
 
   setUpAll(() => registerFallbackValue(CallType.voice));
 
@@ -58,6 +59,8 @@ void main() {
     media = _MockCallMedia();
     peer = StreamController<bool>.broadcast();
     when(() => media.peerPresent).thenAnswer((_) => peer.stream);
+    link = StreamController<MediaLink>.broadcast();
+    when(() => media.link).thenAnswer((_) => link.stream);
     when(
       () => media.join(
         cid: any(named: 'cid'),
@@ -100,17 +103,21 @@ void main() {
     await topic.close();
     await reconnected.close();
     await peer.close();
+    await link.close();
   });
 
-  CallViewModelBloc build({Duration backstop = const Duration(seconds: 70)}) =>
-      CallViewModelBloc(
-        repo,
-        media: media,
-        loadPeer: (_) async => _jane$,
-        session: session,
-        ringBackstop: backstop,
-        endedScreen: const Duration(milliseconds: 30),
-      );
+  CallViewModelBloc build({
+    Duration backstop = const Duration(seconds: 70),
+    Duration reconnectTimeout = const Duration(seconds: 30),
+  }) => CallViewModelBloc(
+    repo,
+    media: media,
+    loadPeer: (_) async => _jane$,
+    session: session,
+    ringBackstop: backstop,
+    endedScreen: const Duration(milliseconds: 30),
+    reconnectTimeout: reconnectTimeout,
+  );
 
   Future<void> tick([int ms = 0]) =>
       Future<void>.delayed(Duration(milliseconds: ms));
@@ -600,6 +607,79 @@ void main() {
       expect(s.cameraOn, isTrue);
       expect(s.speakerOn, isTrue);
       verify(() => media.join(cid: 'default:call-7', video: true)).called(1);
+      await bloc.close();
+    });
+  });
+
+  group('reconnecting (6.3b)', () {
+    Future<CallViewModelBloc> talking({
+      Duration reconnectTimeout = const Duration(seconds: 30),
+    }) async {
+      final bloc = build(reconnectTimeout: reconnectTimeout);
+      queue.add(CallInvited(_call(callerId: _jane)));
+      await tick();
+      bloc.add(OnCallAcceptEvent());
+      await tick();
+      peer.add(true); // 00:00
+      await tick();
+      return bloc;
+    }
+
+    CallInCallState inCall(CallViewModelBloc bloc) =>
+        bloc.state as CallInCallState;
+
+    test('my network drops → "Reconnecting…" → back → normal', () async {
+      final bloc = await talking();
+      link.add(MediaLink.reconnecting);
+      await tick();
+      expect(inCall(bloc).reconnecting, isTrue);
+      link.add(MediaLink.connected);
+      await tick();
+      expect(inCall(bloc).reconnecting, isFalse);
+      await bloc.close();
+    });
+
+    test('no network for too long → end + "Connection lost"', () async {
+      final bloc = await talking(
+        reconnectTimeout: const Duration(milliseconds: 30),
+      );
+      link.add(MediaLink.reconnecting);
+      await tick(60);
+      expect(sent.last, 'end 7');
+      expect(endedWith(bloc), CallEndReason.connectionLost);
+      await bloc.close();
+    });
+
+    test('back in time → the give-up timer is cancelled', () async {
+      final bloc = await talking(
+        reconnectTimeout: const Duration(milliseconds: 40),
+      );
+      link.add(MediaLink.reconnecting);
+      await tick(10);
+      link.add(MediaLink.connected);
+      await tick(60);
+      expect(bloc.state, isA<CallInCallState>()); // still talking
+      await bloc.close();
+    });
+
+    test('Stream gives up (lost) → "Connection lost" at once', () async {
+      final bloc = await talking();
+      link.add(MediaLink.lost);
+      await tick();
+      expect(endedWith(bloc), CallEndReason.connectionLost);
+      await bloc.close();
+    });
+
+    test('THEY drop out of the media → peerAway; back → normal', () async {
+      final bloc = await talking();
+      final startedAt = inCall(bloc).connectedAt;
+      peer.add(false);
+      await tick();
+      expect(inCall(bloc).peerAway, isTrue);
+      peer.add(true);
+      await tick();
+      expect(inCall(bloc).peerAway, isFalse);
+      expect(inCall(bloc).connectedAt, startedAt); // the timer goes on
       await bloc.close();
     });
   });

@@ -54,6 +54,7 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     required AuthSession session,
     this.ringBackstop = CallConfig.ringBackstop,
     this.endedScreen = CallConfig.endedScreen,
+    this.reconnectTimeout = CallConfig.reconnectTimeout,
     DateTime Function()? clock,
   }) : _media = media,
        _sounds = sounds,
@@ -77,6 +78,8 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     on<OnCallToggleCameraEvent>(_onToggleCamera);
     on<OnCallToggleSpeakerEvent>(_onToggleSpeaker);
     on<OnCallFlipCameraEvent>(_onFlipCamera);
+    on<OnCallMediaLinkEvent>(_onMediaLink);
+    on<OnCallReconnectTimeoutEvent>(_onReconnectTimeout);
 
     // Invites can come at any time → listen for the whole session.
     _queue = _repository.callsQueue().listen(_live);
@@ -93,6 +96,7 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
   final AuthSession _session;
   final Duration ringBackstop;
   final Duration endedScreen;
+  final Duration reconnectTimeout;
   final DateTime Function() _now;
 
   /// For chat's 📞 buttons (greyed while a call is on) — `app/` passes it.
@@ -102,6 +106,8 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
   late final StreamSubscription<void> _reconnected;
   StreamSubscription<CallUpdate>? _topic; // the current call's conversation
   StreamSubscription<bool>? _peerMedia; // is the other person in the media?
+  StreamSubscription<MediaLink>? _mediaLink; // is MY media link up?
+  Timer? _reconnectGiveUp;
   Timer? _backstop;
   Timer? _closing;
   String? _myId;
@@ -469,6 +475,10 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     _peerMedia = _media.peerPresent.listen((present) {
       if (!isClosed) add(OnCallPeerMediaEvent(event.callId, present));
     });
+    _mediaLink?.cancel();
+    _mediaLink = _media.link.listen((link) {
+      if (!isClosed) add(OnCallMediaLinkEvent(event.callId, link));
+    });
 
     final joined = await _media.join(cid: cid, video: s.call.isVideo);
     final now = state;
@@ -489,11 +499,55 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
   ) {
     final s = state;
     if (s is! CallInCallState || s.call.id != event.callId) return;
-    if (event.present && s.connectedAt == null) {
-      emit(s.copyWith(connectedAt: _now()));
+    if (event.present) {
+      // first time → the timer starts; later → they're back
+      emit(s.copyWith(connectedAt: s.connectedAt ?? _now(), peerAway: false));
+    } else if (s.connectedAt != null) {
+      // They dropped out of the media (their network?). Wait: they may come
+      // back; if they don't, the server hangs up for them (`call.hangup`).
+      emit(s.copyWith(peerAway: true));
     }
-    // They LEFT the media: the signalling (`call.hangup`) ends the call.
-    // "Reconnecting…" for a drop is Step 6.3.
+  }
+
+  /// MY link: reconnecting → "Reconnecting…" + a give-up timer; connected →
+  /// back to normal; lost (Stream gave up) → the call is over.
+  void _onMediaLink(
+    OnCallMediaLinkEvent event,
+    Emitter<CallViewModelState> emit,
+  ) {
+    final s = state;
+    if (s is! CallInCallState || s.call.id != event.callId) return;
+    switch (event.link) {
+      case MediaLink.reconnecting:
+        if (s.reconnecting) return;
+        emit(s.copyWith(reconnecting: true));
+        _reconnectGiveUp?.cancel();
+        _reconnectGiveUp = Timer(reconnectTimeout, () {
+          if (!isClosed) add(OnCallReconnectTimeoutEvent(event.callId));
+        });
+      case MediaLink.connected:
+        _reconnectGiveUp?.cancel();
+        if (s.reconnecting) emit(s.copyWith(reconnecting: false));
+      case MediaLink.lost:
+        _giveUp(emit, s);
+    }
+  }
+
+  void _onReconnectTimeout(
+    OnCallReconnectTimeoutEvent event,
+    Emitter<CallViewModelState> emit,
+  ) {
+    final s = state;
+    if (s is CallInCallState && s.call.id == event.callId && s.reconnecting) {
+      _giveUp(emit, s);
+    }
+  }
+
+  /// No network for too long: tell the server (best effort — it also hangs
+  /// up for us after its own 30 s) and close.
+  void _giveUp(Emitter<CallViewModelState> emit, CallInCallState s) {
+    _repository.end(s.call.id);
+    _end(emit, CallEndReason.connectionLost);
   }
 
   /// Flip at once (the button reacts), then ask the SDK; it said no
@@ -570,6 +624,8 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     _topic = null;
     _peerMedia?.cancel();
     _peerMedia = null;
+    _mediaLink?.cancel();
+    _mediaLink = null;
     _media.leave(); // every end path leaves the sound / picture
     emit(
       CallEndedState(peer: peer, type: type, reason: reason, message: message),
@@ -598,6 +654,8 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
 
   void _stopTimers() {
     _cancelBackstop();
+    _reconnectGiveUp?.cancel();
+    _reconnectGiveUp = null;
     _closing?.cancel();
     _closing = null;
   }

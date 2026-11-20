@@ -84,3 +84,20 @@ final class OnCallToggleSpeakerEvent extends CallViewModelEvent {}
 
 /// 🔄 front / back camera.
 final class OnCallFlipCameraEvent extends CallViewModelEvent {}
+
+// ── reconnecting (Step 6.3b) ──
+
+/// My link to the media call changed (internal).
+final class OnCallMediaLinkEvent extends CallViewModelEvent {
+  OnCallMediaLinkEvent(this.callId, this.link);
+
+  final String callId;
+  final MediaLink link;
+}
+
+/// "Reconnecting…" lasted too long (internal).
+final class OnCallReconnectTimeoutEvent extends CallViewModelEvent {
+  OnCallReconnectTimeoutEvent(this.callId);
+
+  final String callId;
+}

@@ -14,6 +14,8 @@ import 'call_timer_text.dart';
 /// | Incoming                       | Incoming call         |
 /// | Incoming, Accept tapped        | Connecting…           |
 /// | InCall, media not up yet       | Connecting…           |
+/// | InCall, MY network dropped     | Reconnecting…         |
+/// | InCall, THEY dropped           | Jane is reconnecting… |
 /// | InCall                         | 00:12 (the timer)     |
 /// | Ended                          | Call declined / Busy… |
 class CallStatusText extends StatelessWidget {
@@ -29,15 +31,27 @@ class CallStatusText extends StatelessWidget {
       accepting ? 'Connecting…' : 'Incoming call',
     CallEndedState() => state.text,
     // until the other person is really in the media call (#8)
+    CallInCallState(:final reconnecting) when reconnecting => 'Reconnecting…',
+    CallInCallState(:final peerAway, :final peer) when peerAway =>
+      '${_first(peer.name)} is reconnecting…',
     CallInCallState(:final isConnecting) => isConnecting ? 'Connecting…' : '',
     CallIdleState() => '',
   };
+
+  /// "Jane Doe" → "Jane"; no name yet → "They".
+  static String _first(String name) {
+    final first = name.trim().split(RegExp(r'\s+')).first;
+    return first.isEmpty ? 'They' : first;
+  }
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final s = state;
-    if (s is CallInCallState && s.connectedAt != null) {
+    if (s is CallInCallState &&
+        s.connectedAt != null &&
+        !s.reconnecting &&
+        !s.peerAway) {
       return CallTimerText(
         key: const ValueKey('timer'),
         since: s.connectedAt!,

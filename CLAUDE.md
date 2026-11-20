@@ -451,6 +451,12 @@ Login response
   Silent "Calling…" · ringback on "Ringing…" · ringtone on incoming ·
   silence on Accept / "Connecting…" · connected beep at 00:00 · ended beep
   after any live phase. `null` = leave the player alone (Mute, name loaded).
+- **6.3b reconnecting:** `CallMedia.link` (`MediaLink` connected ·
+  reconnecting · lost, from Stream's `CallStatus` via `linkOf`; Stream's
+  `reconnectTimeout` = `CallConfig.reconnectTimeout` 30 s). InCall
+  `reconnecting` → "Reconnecting…" + a 30 s give-up timer → `POST /end` +
+  `connectionLost`. `peerAway` (they left the media after 00:00) → "Jane is
+  reconnecting…"; never hang up for them (their phone / the server does).
 - Stuck calls: the backend hangs up for a user whose socket is gone 30 s
   during an ANSWERED call (`answered-disconnect-grace-seconds`, backend
   `CallDisconnectHandler`). The raw "Caller is already in an active call"

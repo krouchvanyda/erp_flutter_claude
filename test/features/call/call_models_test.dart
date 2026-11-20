@@ -2,6 +2,13 @@ import 'package:erp_mobile/core/realtime/realtime_event.dart';
 import 'package:erp_mobile/features/call/model/call_enums.dart';
 import 'package:erp_mobile/features/call/model/call_model.dart';
 import 'package:erp_mobile/features/call/model/call_update.dart';
+import 'package:erp_mobile/features/call/repository/call_media.dart';
+import 'package:stream_video_flutter/stream_video_flutter.dart'
+    show
+        CallStatusConnected,
+        CallStatusReconnecting,
+        CallStatusReconnectionFailed,
+        CallStatusIdle;
 import 'package:flutter_test/flutter_test.dart';
 
 const _dto = {
@@ -96,5 +103,15 @@ void main() {
         isA<CallAccepted>(),
       );
     });
+  });
+
+  test('CallMedia.linkOf: Stream status → connected / reconnecting / lost', () {
+    expect(CallMedia.linkOf(CallStatusConnected()), MediaLink.connected);
+    expect(
+      CallMedia.linkOf(const CallStatusReconnecting(attempt: 1)),
+      MediaLink.reconnecting,
+    );
+    expect(CallMedia.linkOf(CallStatusReconnectionFailed()), MediaLink.lost);
+    expect(CallMedia.linkOf(CallStatusIdle()), isNull);
   });
 }

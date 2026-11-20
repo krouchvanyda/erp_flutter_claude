@@ -119,6 +119,8 @@ final class CallInCallState extends CallViewModelState {
     this.cameraOn = false,
     this.speakerOn = false,
     this.frontCamera = true,
+    this.reconnecting = false,
+    this.peerAway = false,
   });
 
   final CallModel call;
@@ -129,6 +131,12 @@ final class CallInCallState extends CallViewModelState {
   final bool speakerOn;
   final bool frontCamera;
 
+  /// MY network dropped; Stream is trying again (6.3b).
+  final bool reconnecting;
+
+  /// THEY left the media call after it started (their network?) (6.3b).
+  final bool peerAway;
+
   bool get isConnecting => connectedAt == null;
 
   CallInCallState copyWith({
@@ -137,6 +145,8 @@ final class CallInCallState extends CallViewModelState {
     bool? cameraOn,
     bool? speakerOn,
     bool? frontCamera,
+    bool? reconnecting,
+    bool? peerAway,
   }) => CallInCallState(
     call: call,
     peer: peer,
@@ -145,6 +155,8 @@ final class CallInCallState extends CallViewModelState {
     cameraOn: cameraOn ?? this.cameraOn,
     speakerOn: speakerOn ?? this.speakerOn,
     frontCamera: frontCamera ?? this.frontCamera,
+    reconnecting: reconnecting ?? this.reconnecting,
+    peerAway: peerAway ?? this.peerAway,
   );
 
   @override
@@ -156,7 +168,9 @@ final class CallInCallState extends CallViewModelState {
       other.micOn == micOn &&
       other.cameraOn == cameraOn &&
       other.speakerOn == speakerOn &&
-      other.frontCamera == frontCamera;
+      other.frontCamera == frontCamera &&
+      other.reconnecting == reconnecting &&
+      other.peerAway == peerAway;
 
   @override
   int get hashCode => Object.hash(
@@ -167,6 +181,8 @@ final class CallInCallState extends CallViewModelState {
     cameraOn,
     speakerOn,
     frontCamera,
+    reconnecting,
+    peerAway,
   );
 }
 

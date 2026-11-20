@@ -14,6 +14,12 @@ abstract final class CallConfig {
   /// (CALL_SCENARIOS.md #19 — a bug in the old app).
   static const Duration ringBackstop = Duration(seconds: 70);
 
+  /// My network dropped during a call: "Reconnecting…" for at most this
+  /// long, then the call ends ("Connection lost"). Same as the backend's
+  /// `answered-disconnect-grace-seconds`, which hangs up for a phone whose
+  /// socket is gone this long (Step 6.3b, CALL_SCENARIOS.md #8).
+  static const Duration reconnectTimeout = Duration(seconds: 30);
+
   /// How long "Call ended" / "Call declined" stays before the screen closes.
   static const Duration endedScreen = Duration(milliseconds: 1500);
 }

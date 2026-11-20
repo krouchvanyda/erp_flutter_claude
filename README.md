@@ -57,7 +57,8 @@ the same data count as equal. Why, and what breaks without them:
 | 6.1 | Call: signalling (call screen, accept / decline, busy, timeouts) | ✅ |
 | 6.2 | Call: voice + video (Stream Video) | ✅ |
 | 6.3a | Call: sounds | ✅ |
-| 6.3b – 7 | Call: reconnecting, group calls, call line in the chat, call when the app is killed | ⏳ |
+| 6.3b | Call: reconnecting | ✅ |
+| 6.3c – 7 | Call: group calls, call line in the chat, call when the app is killed | ⏳ |
 | 8 | Translations, tests, polish | ⏳ |
 
 The full table with lesson links is in

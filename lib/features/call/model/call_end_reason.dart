@@ -27,6 +27,9 @@ enum CallEndReason {
   /// such calls itself ~30 s after the app's socket is gone.
   stillInCall("You're still in another call. Try again in a moment."),
 
+  /// My network was gone too long during the call (Step 6.3b).
+  connectionLost('Connection lost'),
+
   /// The start / accept request failed (the state carries the reason).
   failed("Couldn't connect the call");
 
