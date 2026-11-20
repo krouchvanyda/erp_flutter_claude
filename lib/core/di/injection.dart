@@ -6,6 +6,7 @@ import '../config/flavor.dart';
 import '../network/app_service.dart';
 import '../network/auth_interceptor.dart';
 import '../network/dio_factory.dart';
+import '../audio/app_audio_player.dart';
 import '../network/token_refresher.dart';
 import '../network/token_storage.dart';
 import '../network/api_endpoints.dart';
@@ -98,6 +99,9 @@ Future<void> _registerCore() async {
           (await getIt<TokenRefresher>().validTokens())?.accessToken,
     ),
   );
+  // ONE audio player: one voice message at a time (Step 5.5).
+  getIt.registerLazySingleton<AppAudioPlayer>(AppAudioPlayer.new);
+
   // Starts / stops it with the session, the app and the network.
   getIt.registerLazySingleton<RealtimeLifecycle>(
     () => RealtimeLifecycle(

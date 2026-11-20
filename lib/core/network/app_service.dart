@@ -52,6 +52,8 @@ class AppService {
     Object? data,
     Map<String, dynamic>? queryParameters,
     FormData? formData,
+    // Upload progress (sent bytes, total bytes) — chat attachments (5.5).
+    void Function(int sent, int total)? onSendProgress,
   }) async {
     try {
       final body = formData ?? data; // FormData = file uploads (multipart)
@@ -64,16 +66,19 @@ class AppService {
           endPoint,
           data: body,
           queryParameters: queryParameters,
+          onSendProgress: onSendProgress,
         ),
         HttpMethods.put => await _dio.put<Object?>(
           endPoint,
           data: body,
           queryParameters: queryParameters,
+          onSendProgress: onSendProgress,
         ),
         HttpMethods.patch => await _dio.patch<Object?>(
           endPoint,
           data: body,
           queryParameters: queryParameters,
+          onSendProgress: onSendProgress,
         ),
         HttpMethods.delete => await _dio.delete<Object?>(
           endPoint,

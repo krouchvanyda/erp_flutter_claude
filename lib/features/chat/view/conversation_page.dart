@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/audio/app_audio_player.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../core/router/config_router.dart';
 import '../../../core/widgets/app_error_banner.dart';
 import '../../../core/widgets/app_error_view.dart';
 import '../../../core/widgets/app_snack_bar.dart';
+import '../model/chat_enums.dart';
 import '../model/conversation_model.dart';
 import '../repository/chat_repository.dart';
 import '../viewmodel/conversation/conversation_view_model_bloc.dart';
@@ -89,130 +91,152 @@ class ConversationPage extends StatelessWidget {
                   );
               }
             },
-            child: Scaffold(
-              appBar: AppBar(
-                titleSpacing: 0,
-                // Tap the title → chat info. Live name / member changes show here.
-                title:
-                    BlocBuilder<
-                      ConversationInfoViewModelBloc,
-                      ConversationInfoViewModelState
-                    >(
-                      buildWhen: (previous, current) =>
-                          previous.conversation != current.conversation,
-                      builder: (context, info) => InkWell(
-                        onTap: () => ConfigRouter.pushPageAnimation<void>(
-                          context,
-                          BlocProvider.value(
-                            value: context
-                                .read<ConversationInfoViewModelBloc>(),
-                            child: ConversationInfoPage(myId: myId),
+            // Leaving the chat (back, or closed because it's gone) → stop a
+            // voice message that is still playing.
+            child: PopScope(
+              onPopInvokedWithResult: (didPop, _) {
+                if (didPop) getIt<AppAudioPlayer>().stop();
+              },
+              child: Scaffold(
+                appBar: AppBar(
+                  titleSpacing: 0,
+                  // Tap the title → chat info. Live name / member changes show here.
+                  title:
+                      BlocBuilder<
+                        ConversationInfoViewModelBloc,
+                        ConversationInfoViewModelState
+                      >(
+                        buildWhen: (previous, current) =>
+                            previous.conversation != current.conversation,
+                        builder: (context, info) => InkWell(
+                          onTap: () => ConfigRouter.pushPageAnimation<void>(
+                            context,
+                            BlocProvider.value(
+                              value: context
+                                  .read<ConversationInfoViewModelBloc>(),
+                              child: ConversationInfoPage(myId: myId),
+                            ),
                           ),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 6),
-                          child: ConversationAppBarTitle(
-                            conversation: info.conversation,
-                            myId: myId,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 6),
+                            child: ConversationAppBarTitle(
+                              conversation: info.conversation,
+                              myId: myId,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-              ),
-              body: SafeArea(
-                top: false,
-                child:
-                    BlocBuilder<
-                      ConversationViewModelBloc,
-                      ConversationViewModelState
-                    >(
-                      buildWhen: (previous, current) =>
-                          previous.runtimeType != current.runtimeType ||
-                          previous.data != current.data, // Loaded has ==
-                      builder: (context, state) {
-                        final bloc = context.read<ConversationViewModelBloc>();
-                        final data = state.data;
+                ),
+                body: SafeArea(
+                  top: false,
+                  child:
+                      BlocBuilder<
+                        ConversationViewModelBloc,
+                        ConversationViewModelState
+                      >(
+                        buildWhen: (previous, current) =>
+                            previous.runtimeType != current.runtimeType ||
+                            previous.data != current.data, // Loaded has ==
+                        builder: (context, state) {
+                          final bloc = context
+                              .read<ConversationViewModelBloc>();
+                          final data = state.data;
 
-                        // "Try again" waits for "finished" (see the inbox lesson).
-                        Future<void> reload() {
-                          final done = Completer<void>();
-                          bloc.add(OnConversationLoadEvent(done: done));
-                          return done.future;
-                        }
+                          // "Try again" waits for "finished" (see the inbox lesson).
+                          Future<void> reload() {
+                            final done = Completer<void>();
+                            bloc.add(OnConversationLoadEvent(done: done));
+                            return done.future;
+                          }
 
-                        final Widget content;
-                        if (data == null) {
-                          content = state is ConversationErrorState
-                              ? AppErrorView.fromError(
-                                  state.error,
-                                  onRetry: reload,
-                                )
-                              : const Center(
-                                  child: CircularProgressIndicator(),
-                                );
-                        } else if (data.messages.isEmpty &&
-                            data.outgoing.isEmpty) {
-                          content = const ConversationEmptyView();
-                        } else {
-                          content = MessageList(
-                            messages: data.messages,
-                            outgoing: data.outgoing,
-                            myId: myId,
-                            isGroup: conversation.isGroup,
-                            // current members (a new member's name shows)
-                            members: context
-                                .select<
-                                  ConversationInfoViewModelBloc,
-                                  ConversationModel
-                                >((b) => b.state.conversation)
-                                .members,
-                            isLoadingOlder: data.isLoadingOlder,
-                            onLoadOlder: () =>
-                                bloc.add(OnConversationLoadOlderEvent()),
-                            onRetry: (localId) =>
-                                bloc.add(OnMessageRetryEvent(localId)),
-                          );
-                        }
+                          final Widget content;
+                          if (data == null) {
+                            content = state is ConversationErrorState
+                                ? AppErrorView.fromError(
+                                    state.error,
+                                    onRetry: reload,
+                                  )
+                                : const Center(
+                                    child: CircularProgressIndicator(),
+                                  );
+                          } else if (data.messages.isEmpty &&
+                              data.outgoing.isEmpty) {
+                            content = const ConversationEmptyView();
+                          } else {
+                            content = MessageList(
+                              messages: data.messages,
+                              outgoing: data.outgoing,
+                              myId: myId,
+                              isGroup: conversation.isGroup,
+                              // current members (a new member's name shows)
+                              members: context
+                                  .select<
+                                    ConversationInfoViewModelBloc,
+                                    ConversationModel
+                                  >((b) => b.state.conversation)
+                                  .members,
+                              isLoadingOlder: data.isLoadingOlder,
+                              onLoadOlder: () =>
+                                  bloc.add(OnConversationLoadOlderEvent()),
+                              onRetry: (localId) =>
+                                  bloc.add(OnMessageRetryEvent(localId)),
+                              audioPlayer: getIt<AppAudioPlayer>(),
+                            );
+                          }
 
-                        return Column(
-                          children: [
-                            AnimatedSize(
-                              duration: const Duration(milliseconds: 220),
-                              curve: Curves.easeOutCubic,
-                              alignment: Alignment.topCenter,
-                              child:
-                                  state is ConversationErrorState &&
-                                      data != null
-                                  ? Center(
-                                      child: ConstrainedBox(
-                                        constraints: const BoxConstraints(
-                                          maxWidth: MessageList.maxWidth,
+                          return Column(
+                            children: [
+                              AnimatedSize(
+                                duration: const Duration(milliseconds: 220),
+                                curve: Curves.easeOutCubic,
+                                alignment: Alignment.topCenter,
+                                child:
+                                    state is ConversationErrorState &&
+                                        data != null
+                                    ? Center(
+                                        child: ConstrainedBox(
+                                          constraints: const BoxConstraints(
+                                            maxWidth: MessageList.maxWidth,
+                                          ),
+                                          child: AppErrorBanner(
+                                            error: state.error,
+                                            onRetry: reload,
+                                          ),
                                         ),
-                                        child: AppErrorBanner(
-                                          error: state.error,
-                                          onRetry: reload,
-                                        ),
+                                      )
+                                    : const SizedBox(width: double.infinity),
+                              ),
+                              Expanded(child: content),
+                              Center(
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    maxWidth: MessageList.maxWidth,
+                                  ),
+                                  child: ChatComposer(
+                                    enabled: data != null,
+                                    onSend: (text) =>
+                                        bloc.add(OnMessageSendEvent(text)),
+                                    onAttach: (type, path) => bloc.add(
+                                      OnAttachmentSendEvent(
+                                        type: type,
+                                        filePath: path,
                                       ),
-                                    )
-                                  : const SizedBox(width: double.infinity),
-                            ),
-                            Expanded(child: content),
-                            Center(
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  maxWidth: MessageList.maxWidth,
-                                ),
-                                child: ChatComposer(
-                                  enabled: data != null,
-                                  onSend: (text) =>
-                                      bloc.add(OnMessageSendEvent(text)),
+                                    ),
+                                    onVoice: (path, seconds) => bloc.add(
+                                      OnAttachmentSendEvent(
+                                        type: MessageType.voice,
+                                        filePath: path,
+                                        durationSeconds: seconds,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
+                            ],
+                          );
+                        },
+                      ),
+                ),
               ),
             ),
           ),

@@ -40,6 +40,8 @@ class MessageBubble extends StatelessWidget {
     this.firstInRun = true,
     this.lastInRun = true,
     this.onRetry,
+    this.media,
+    this.body,
   });
 
   final String text;
@@ -59,7 +61,17 @@ class MessageBubble extends StatelessWidget {
   final bool lastInRun;
   final VoidCallback? onRetry;
 
+  /// A photo (Step 5.5): fills the bubble, the time sits ON the photo.
+  final Widget? media;
+
+  /// A file / voice row (Step 5.5) instead of [text].
+  final Widget? body;
+
   static const double _radius = 18;
+
+  /// Photo bubbles: at most this big (the photo keeps its shape inside).
+  static const double mediaMaxWidth = 260;
+  static const double mediaMaxHeight = 320;
   static const double _tail = 4;
 
   @override
@@ -89,55 +101,95 @@ class MessageBubble extends StatelessWidget {
             bottomRight: isMine ? small : big,
           );
 
-    final bubble = Container(
-      constraints: BoxConstraints(maxWidth: maxWidth),
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.sm + 4,
-        AppSpacing.sm,
-        AppSpacing.sm + 4,
-        AppSpacing.xs + 2,
-      ),
-      decoration: BoxDecoration(
-        color: failed ? background.withValues(alpha: 0.55) : background,
-        borderRadius: corners,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            widthFactor: 1,
-            child: AppLabel(
-              text: text,
-              fontSize: AppFontSize.value16,
-              lineHeight: 1.35,
-              color: isPlaceholder ? soft : foreground,
-              fontWeight: isPlaceholder ? FontWeight.w500 : FontWeight.normal,
+    Widget timeRow(Color color) => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (edited) ...[
+          AppLabel(text: 'edited', fontSize: AppFontSize.value11, color: color),
+          const SizedBox(width: AppSpacing.xs),
+        ],
+        AppLabel(text: time, fontSize: AppFontSize.value11, color: color),
+        if (isMine && status != BubbleStatus.none) ...[
+          const SizedBox(width: 3),
+          Icon(_statusIcon, size: 14, color: color),
+        ],
+      ],
+    );
+
+    final Widget bubble;
+    if (media != null) {
+      // Photo: no padding, rounded like the bubble, time in a dark pill.
+      bubble = Opacity(
+        opacity: failed ? 0.55 : 1,
+        child: ClipRRect(
+          borderRadius: corners,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: maxWidth < mediaMaxWidth ? maxWidth : mediaMaxWidth,
+              maxHeight: mediaMaxHeight,
+            ),
+            child: Stack(
+              children: [
+                media!,
+                PositionedDirectional(
+                  end: 6,
+                  bottom: 6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      borderRadius: BorderRadius.circular(_radius),
+                    ),
+                    // white on a dark pill: readable on any photo
+                    child: timeRow(Colors.white),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 2),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (edited) ...[
-                AppLabel(
-                  text: 'edited',
-                  fontSize: AppFontSize.value11,
-                  color: soft,
-                ),
-                const SizedBox(width: AppSpacing.xs),
-              ],
-              AppLabel(text: time, fontSize: AppFontSize.value11, color: soft),
-              if (isMine && status != BubbleStatus.none) ...[
-                const SizedBox(width: 3),
-                Icon(_statusIcon, size: 14, color: soft),
-              ],
-            ],
-          ),
-        ],
-      ),
-    );
+        ),
+      );
+    } else {
+      bubble = Container(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.sm + 4,
+          AppSpacing.sm,
+          AppSpacing.sm + 4,
+          AppSpacing.xs + 2,
+        ),
+        decoration: BoxDecoration(
+          color: failed ? background.withValues(alpha: 0.55) : background,
+          borderRadius: corners,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              widthFactor: 1,
+              child:
+                  body ??
+                  AppLabel(
+                    text: text,
+                    fontSize: AppFontSize.value16,
+                    lineHeight: 1.35,
+                    color: isPlaceholder ? soft : foreground,
+                    fontWeight: isPlaceholder
+                        ? FontWeight.w500
+                        : FontWeight.normal,
+                  ),
+            ),
+            const SizedBox(height: 2),
+            timeRow(soft),
+          ],
+        ),
+      );
+    }
 
     return Column(
       crossAxisAlignment: isMine

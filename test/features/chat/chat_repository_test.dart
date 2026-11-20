@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -7,6 +8,8 @@ import 'package:erp_mobile/core/network/app_service.dart';
 import 'package:erp_mobile/core/network/auth_tokens.dart';
 import 'package:erp_mobile/core/network/token_storage.dart';
 import 'package:erp_mobile/core/realtime/realtime_service.dart';
+import 'package:erp_mobile/features/chat/model/chat_attachment.dart';
+import 'package:erp_mobile/features/chat/model/chat_enums.dart';
 import 'package:erp_mobile/features/chat/repository/chat_repository.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -251,6 +254,88 @@ void main() {
       await repo.deleteConversation('7');
       expect(server.last!.method, 'DELETE');
       expect(server.last!.path, ApiEndPoint.conversation('7'));
+    });
+  });
+
+  // ─────────────── Step 5.5 ───────────────
+
+  group('attachments', () {
+    test(
+      'upload → POST /chats/attachments, multipart "file" + real type',
+      () async {
+        final dir = await Directory.systemTemp.createTemp('att');
+        final file = File('${dir.path}/voice-1.m4a')
+          ..writeAsBytesSync([1, 2, 3]);
+        server.data = {
+          'url': '/uploads/chat/x.m4a',
+          'contentType': 'audio/mp4',
+          'sizeBytes': 3,
+        };
+
+        final uploaded = (await repo.uploadAttachment(
+          file.path,
+        )).getOrElse(() => throw StateError('expected Right'));
+
+        expect(server.last!.path, ApiEndPoint.chatAttachments);
+        final form = server.last!.data as FormData;
+        expect(form.files.single.key, 'file');
+        expect(form.files.single.value.contentType.toString(), 'audio/mp4');
+        expect(uploaded.url, '/uploads/chat/x.m4a');
+      },
+    );
+
+    test(
+      'sendAttachment VOICE → body with url, type, size, duration',
+      () async {
+        server.data = {
+          'id': 11,
+          'conversationId': 5,
+          'senderId': 1,
+          'type': 'VOICE',
+        };
+
+        await repo.sendAttachment(
+          '5',
+          type: MessageType.voice,
+          attachment: const ChatAttachmentModel(
+            url: '/uploads/chat/x.m4a',
+            contentType: 'audio/mp4',
+            sizeBytes: 3,
+          ),
+          durationSeconds: 7,
+        );
+
+        expect(server.last!.path, ApiEndPoint.messages('5'));
+        expect(server.last!.data, {
+          'type': 'VOICE',
+          'attachmentUrl': '/uploads/chat/x.m4a',
+          'attachmentContentType': 'audio/mp4',
+          'attachmentSizeBytes': 3,
+          'durationSeconds': 7,
+        });
+      },
+    );
+
+    test('sendAttachment IMAGE → no durationSeconds key', () async {
+      server.data = {
+        'id': 12,
+        'conversationId': 5,
+        'senderId': 1,
+        'type': 'IMAGE',
+      };
+      await repo.sendAttachment(
+        '5',
+        type: MessageType.image,
+        attachment: const ChatAttachmentModel(
+          url: '/u/a.jpg',
+          contentType: 'image/jpeg',
+          sizeBytes: 9,
+        ),
+      );
+      expect(
+        (server.last!.data as Map).containsKey('durationSeconds'),
+        isFalse,
+      );
     });
   });
 }

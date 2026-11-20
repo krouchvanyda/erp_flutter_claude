@@ -2,21 +2,37 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/app_input_text.dart';
+import '../model/chat_enums.dart';
+import 'chat_attach_sheet.dart';
+import 'chat_voice_recorder_bar.dart';
 
-/// The text box + ➤ at the bottom of a conversation.
+/// The bottom of a conversation.
 ///
 /// ```
-/// ┌ Message… ─────────────────────┐  (➤)
+/// (📎) ┌ Message… ─────────────┐  (🎤)     ← empty: 🎤 records a voice note
+/// (📎) ┌ Hello ────────────────┐  (➤)      ← typing: ➤ sends the text
+/// 🔴 0:07 ▁▃▅▂▆        ✕  (➤)              ← recording (ChatVoiceRecorderBar)
 /// ```
-/// - Grows up to 5 lines, then scrolls.
-/// - ➤ is enabled only when the text is not blank.
+/// - The text box grows up to 5 lines, then scrolls.
 /// - After ➤ the box is cleared at once (the bubble shows 🕓 while sending).
 ///
-/// Stateful only for the text controller — UI state, not business state.
+/// Stateful only for UI state (the text, "recording?").
 class ChatComposer extends StatefulWidget {
-  const ChatComposer({super.key, required this.onSend, this.enabled = true});
+  const ChatComposer({
+    super.key,
+    required this.onSend,
+    required this.onAttach,
+    required this.onVoice,
+    this.enabled = true,
+  });
 
   final ValueChanged<String> onSend;
+
+  /// A photo / PDF that passed the size + type checks.
+  final void Function(MessageType type, String path) onAttach;
+
+  /// A finished voice note.
+  final void Function(String path, int seconds) onVoice;
   final bool enabled;
 
   @override
@@ -26,6 +42,7 @@ class ChatComposer extends StatefulWidget {
 class _ChatComposerState extends State<ChatComposer> {
   final _controller = TextEditingController();
   bool _hasText = false;
+  bool _recording = false;
 
   @override
   void dispose() {
@@ -46,12 +63,28 @@ class _ChatComposerState extends State<ChatComposer> {
     setState(() => _hasText = false);
   }
 
+  Future<void> _attach() async {
+    final picked = await ChatAttachSheet.pick(context);
+    if (picked != null && mounted) widget.onAttach(picked.type, picked.path);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final canSend = widget.enabled && _hasText;
+    if (_recording) {
+      return ChatVoiceRecorderBar(
+        onSend: (path, seconds) {
+          setState(() => _recording = false);
+          widget.onVoice(path, seconds);
+        },
+        onCancel: () {
+          if (mounted) setState(() => _recording = false);
+        },
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
+        AppSpacing.xs,
         AppSpacing.sm,
         AppSpacing.sm,
         AppSpacing.sm,
@@ -59,6 +92,14 @@ class _ChatComposerState extends State<ChatComposer> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: IconButton(
+              tooltip: 'Attach',
+              onPressed: widget.enabled ? _attach : null,
+              icon: const Icon(Icons.attach_file_rounded),
+            ),
+          ),
           Expanded(
             child: AppInputText(
               controller: _controller,
@@ -74,12 +115,33 @@ class _ChatComposerState extends State<ChatComposer> {
           const SizedBox(width: AppSpacing.sm),
           Padding(
             padding: const EdgeInsets.only(bottom: 2),
-            child: IconButton.filled(
-              tooltip: 'Send',
-              onPressed: canSend ? _send : null,
-              iconSize: 22,
-              style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
-              icon: const Icon(Icons.send_rounded),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 150),
+              transitionBuilder: (child, animation) =>
+                  ScaleTransition(scale: animation, child: child),
+              child: _hasText
+                  ? IconButton.filled(
+                      key: const ValueKey('send'),
+                      tooltip: 'Send',
+                      onPressed: widget.enabled ? _send : null,
+                      iconSize: 22,
+                      style: IconButton.styleFrom(
+                        minimumSize: const Size(48, 48),
+                      ),
+                      icon: const Icon(Icons.send_rounded),
+                    )
+                  : IconButton.filled(
+                      key: const ValueKey('mic'),
+                      tooltip: 'Record a voice message',
+                      onPressed: widget.enabled
+                          ? () => setState(() => _recording = true)
+                          : null,
+                      iconSize: 22,
+                      style: IconButton.styleFrom(
+                        minimumSize: const Size(48, 48),
+                      ),
+                      icon: const Icon(Icons.mic_rounded),
+                    ),
             ),
           ),
         ],

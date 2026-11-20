@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/audio/app_audio_player.dart';
 import '../../../core/network/api_endpoints.dart';
+import '../../../core/router/config_router.dart';
+import '../../../core/widgets/app_snack_bar.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/chat_time.dart';
 import '../../../core/widgets/app_avatar.dart';
@@ -8,7 +12,11 @@ import '../model/chat_enums.dart';
 import '../model/member_model.dart';
 import '../model/message_model.dart';
 import '../model/outgoing_message.dart';
+import '../view/chat_image_viewer_page.dart';
 import 'chat_day_divider.dart';
+import 'chat_file_content.dart';
+import 'chat_image_content.dart';
+import 'chat_voice_content.dart';
 import 'message_bubble.dart';
 
 /// The scrolling messages of one conversation.
@@ -34,6 +42,7 @@ class MessageList extends StatefulWidget {
     required this.isLoadingOlder,
     required this.onLoadOlder,
     required this.onRetry,
+    required this.audioPlayer,
   });
 
   final List<MessageModel> messages; // newest first
@@ -44,6 +53,9 @@ class MessageList extends StatefulWidget {
   final bool isLoadingOlder;
   final VoidCallback onLoadOlder;
   final ValueChanged<String> onRetry; // localId
+
+  /// Plays voice messages, one at a time (Step 5.5).
+  final AppAudioPlayer audioPlayer;
 
   static const double maxWidth = 720;
   static const double _loadOlderBefore = 300; // px from the top
@@ -186,10 +198,53 @@ class _MessageListState extends State<MessageList> {
             onRetry: e.localId == null
                 ? null
                 : () => widget.onRetry(e.localId!),
+            media: e.type == MessageType.image && !e.deleted
+                ? ChatImageContent(
+                    url: e.fileUrl,
+                    localPath: e.localPath,
+                    progress: e.progress,
+                    onTap: () => ConfigRouter.pushPageAnimation<void>(
+                      context,
+                      ChatImageViewerPage(
+                        url: e.fileUrl,
+                        localPath: e.localPath,
+                      ),
+                    ),
+                  )
+                : null,
+            body: e.deleted
+                ? null
+                : switch (e.type) {
+                    MessageType.file => ChatFileContent(
+                      isMine: e.isMine,
+                      sizeBytes: e.sizeBytes,
+                      progress: e.progress,
+                      onTap: e.fileUrl == null ? null : () => _open(e.fileUrl!),
+                    ),
+                    MessageType.voice => ChatVoiceContent(
+                      playKey: e.key,
+                      source: e.fileUrl ?? e.localPath,
+                      player: widget.audioPlayer,
+                      isMine: e.isMine,
+                      durationSeconds: e.durationSeconds,
+                    ),
+                    _ => null,
+                  },
           ),
         ),
       ],
     );
+  }
+
+  /// A PDF → the phone's viewer / browser. `/uploads` needs no token.
+  Future<void> _open(String url) async {
+    final ok = await launchUrl(
+      Uri.parse(url),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!ok && mounted) {
+      AppSnackBar.error(context, message: 'Could not open the file.');
+    }
   }
 
   /// Same person, close in time → one "run" (joined bubbles, one name).
@@ -207,12 +262,17 @@ class _Entry {
       senderId = m.senderId,
       isMine = m.senderId == myId,
       time = m.createdAt ?? DateTime.now(),
-      text = m.deleted || m.type != MessageType.text
-          ? m
-                .previewText // "Message deleted", "📷 Photo" (until 5.5)
-          : (m.body ?? ''),
-      isPlaceholder = m.deleted || m.type != MessageType.text,
+      type = m.type,
+      deleted = m.deleted,
+      // text, or "Message deleted"; attachments draw their own content
+      text = m.deleted ? m.previewText : (m.body ?? ''),
+      isPlaceholder = m.deleted,
       edited = m.editedAt != null && !m.deleted,
+      fileUrl = ApiEndPoint.fileUrl(m.attachmentUrl),
+      localPath = null,
+      progress = null,
+      sizeBytes = m.attachmentSizeBytes,
+      durationSeconds = m.durationSeconds,
       status = m.senderId != myId
           ? BubbleStatus.none
           : m.readByUserIds.isNotEmpty
@@ -225,9 +285,16 @@ class _Entry {
       senderId = myId ?? '',
       isMine = true,
       time = o.createdAt,
+      type = o.type,
+      deleted = false,
       text = o.text,
       isPlaceholder = false,
       edited = false,
+      fileUrl = null, // still on my phone → localPath
+      localPath = o.localPath,
+      progress = o.progress,
+      sizeBytes = o.sizeBytes,
+      durationSeconds = o.durationSeconds,
       status = o.failed ? BubbleStatus.failed : BubbleStatus.sending;
 
   final String key;
@@ -235,8 +302,15 @@ class _Entry {
   final String senderId;
   final bool isMine;
   final DateTime time;
+  final MessageType type;
+  final bool deleted;
   final String text;
   final bool isPlaceholder;
   final bool edited;
+  final String? fileUrl; // full URL of the uploaded file
+  final String? localPath;
+  final double? progress;
+  final int? sizeBytes;
+  final int? durationSeconds;
   final BubbleStatus status;
 }

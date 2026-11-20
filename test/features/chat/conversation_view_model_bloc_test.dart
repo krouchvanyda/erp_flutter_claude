@@ -1,9 +1,10 @@
 import 'dart:async';
 
 import 'package:bloc_test/bloc_test.dart';
-import 'package:dartz/dartz.dart' show Left, Right;
+import 'package:dartz/dartz.dart' show Either, Left, Right;
 import 'package:erp_mobile/core/network/network_error_model.dart';
 import 'package:erp_mobile/core/network/page_model.dart';
+import 'package:erp_mobile/features/chat/model/chat_attachment.dart';
 import 'package:erp_mobile/features/chat/model/chat_enums.dart';
 import 'package:erp_mobile/features/chat/model/chat_update.dart';
 import 'package:erp_mobile/features/chat/model/message_model.dart';
@@ -372,6 +373,183 @@ void main() {
       seed: () => loaded(['3']),
       act: (_) => reconnected.add(null),
       verify: (_) => verify(() => repo.loadMessages('c1')).called(1),
+    );
+  });
+
+  // ─────────────── Step 5.5: attachments ───────────────
+
+  group('attachments', () {
+    const uploaded = ChatAttachmentModel(
+      url: '/uploads/chat/a.jpg',
+      contentType: 'image/jpeg',
+      sizeBytes: 300,
+    );
+    MessageModel imageMsg(String id) => MessageModel(
+      id: id,
+      conversationId: 'c1',
+      senderId: '1',
+      type: MessageType.image,
+      attachmentUrl: uploaded.url,
+    );
+
+    setUpAll(() {
+      registerFallbackValue(MessageType.text);
+      registerFallbackValue(uploaded);
+    });
+
+    void stubUpload(
+      Future<Either<NetworkErrorModel, ChatAttachmentModel>> Function() answer,
+    ) => when(
+      () => repo.uploadAttachment(any(), onProgress: any(named: 'onProgress')),
+    ).thenAnswer((_) => answer());
+
+    void stubSend(
+      Future<Either<NetworkErrorModel, MessageModel>> Function() answer,
+    ) => when(
+      () => repo.sendAttachment(
+        any(),
+        type: any(named: 'type'),
+        attachment: any(named: 'attachment'),
+        durationSeconds: any(named: 'durationSeconds'),
+      ),
+    ).thenAnswer((_) => answer());
+
+    blocTest<ConversationViewModelBloc, ConversationViewModelState>(
+      'photo: shows at once (local file) → upload → send → server message',
+      setUp: () {
+        stubUpload(() async => const Right(uploaded));
+        stubSend(() async => Right(imageMsg('20')));
+      },
+      build: build,
+      seed: () => loaded(['3']),
+      act: (bloc) => bloc.add(
+        OnAttachmentSendEvent(type: MessageType.image, filePath: '/tmp/a.jpg'),
+      ),
+      verify: (bloc) {
+        final data = bloc.state.data!;
+        expect(data.outgoing, isEmpty);
+        expect(data.messages.first.id, '20');
+        verify(
+          () => repo.sendAttachment(
+            'c1',
+            type: MessageType.image,
+            attachment: uploaded,
+            durationSeconds: null,
+          ),
+        ).called(1);
+      },
+    );
+
+    blocTest<ConversationViewModelBloc, ConversationViewModelState>(
+      'the first state is the optimistic bubble with the LOCAL path',
+      setUp: () {
+        stubUpload(
+          () => Completer<Either<NetworkErrorModel, ChatAttachmentModel>>()
+              .future, // never finishes
+        );
+      },
+      build: build,
+      seed: () => loaded(['3']),
+      act: (bloc) => bloc.add(
+        OnAttachmentSendEvent(type: MessageType.image, filePath: '/tmp/a.jpg'),
+      ),
+      expect: () => [
+        isA<ConversationLoadedState>()
+            .having((s) => s.outgoing.single.localPath, 'path', '/tmp/a.jpg')
+            .having((s) => s.outgoing.single.progress, 'progress', 0.0),
+      ],
+    );
+
+    blocTest<ConversationViewModelBloc, ConversationViewModelState>(
+      'upload OK but message fails → retry does NOT upload again',
+      setUp: () {
+        var sends = 0;
+        stubUpload(() async => const Right(uploaded));
+        stubSend(
+          () async => ++sends == 1
+              ? const Left(NoInternetError())
+              : Right(imageMsg('21')),
+        );
+      },
+      build: build,
+      seed: () => loaded(['3']),
+      act: (bloc) async {
+        bloc.add(
+          OnAttachmentSendEvent(
+            type: MessageType.image,
+            filePath: '/tmp/a.jpg',
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        expect(bloc.state.data!.outgoing.single.failed, isTrue);
+        expect(bloc.state.data!.outgoing.single.uploadedUrl, uploaded.url);
+        bloc.add(OnMessageRetryEvent('local-1'));
+      },
+      wait: const Duration(milliseconds: 10),
+      verify: (bloc) {
+        verify(
+          () => repo.uploadAttachment(
+            any(),
+            onProgress: any(named: 'onProgress'),
+          ),
+        ).called(1); // once
+        expect(bloc.state.data!.messages.first.id, '21');
+        expect(bloc.state.data!.outgoing, isEmpty);
+      },
+    );
+
+    blocTest<ConversationViewModelBloc, ConversationViewModelState>(
+      'upload fails → bubble ⚠ (no message request)',
+      setUp: () => stubUpload(() async => const Left(NoInternetError())),
+      build: build,
+      seed: () => loaded(['3']),
+      act: (bloc) => bloc.add(
+        OnAttachmentSendEvent(type: MessageType.file, filePath: '/tmp/r.pdf'),
+      ),
+      verify: (bloc) {
+        final o = bloc.state.data!.outgoing.single;
+        expect((o.failed, o.progress, o.uploadedUrl), (true, null, null));
+        verifyNever(
+          () => repo.sendAttachment(
+            any(),
+            type: any(named: 'type'),
+            attachment: any(named: 'attachment'),
+            durationSeconds: any(named: 'durationSeconds'),
+          ),
+        );
+      },
+    );
+
+    blocTest<ConversationViewModelBloc, ConversationViewModelState>(
+      'my echo of a photo replaces the bubble by its uploaded URL',
+      setUp: () {
+        gate = Completer<void>();
+        stubUpload(() async => const Right(uploaded));
+        stubSend(() async {
+          await gate.future;
+          return Right(imageMsg('22'));
+        });
+      },
+      build: build,
+      seed: () => loaded(['3']),
+      act: (bloc) async {
+        bloc.add(
+          OnAttachmentSendEvent(
+            type: MessageType.image,
+            filePath: '/tmp/a.jpg',
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        updates.add(MessageArrived(imageMsg('22'))); // echo first
+        await Future<void>.delayed(Duration.zero);
+        gate.complete();
+      },
+      wait: const Duration(milliseconds: 10),
+      verify: (bloc) {
+        final data = bloc.state.data!;
+        expect(data.outgoing, isEmpty);
+        expect(data.messages.where((m) => m.id == '22'), hasLength(1));
+      },
     );
   });
 }

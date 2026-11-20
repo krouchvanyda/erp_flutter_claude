@@ -37,3 +37,17 @@ final class OnConversationLiveUpdateEvent extends ConversationViewModelEvent {
 
   final ChatUpdate update;
 }
+
+/// Send a photo / PDF / voice note (Step 5.5). [filePath] is on the phone;
+/// VOICE needs [durationSeconds].
+final class OnAttachmentSendEvent extends ConversationViewModelEvent {
+  OnAttachmentSendEvent({
+    required this.type,
+    required this.filePath,
+    this.durationSeconds,
+  });
+
+  final MessageType type;
+  final String filePath;
+  final int? durationSeconds;
+}

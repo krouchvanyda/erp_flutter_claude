@@ -1,4 +1,5 @@
 import 'package:dartz/dartz.dart' show Either;
+import 'package:dio/dio.dart' show DioMediaType, FormData, MultipartFile;
 
 import '../../../core/network/api_endpoints.dart';
 import '../../../core/network/app_service.dart';
@@ -7,6 +8,7 @@ import '../../../core/network/network_error_model.dart';
 import '../../../core/network/page_model.dart';
 import '../../../core/network/token_storage.dart';
 import '../../../core/realtime/realtime_service.dart';
+import '../model/chat_attachment.dart';
 import '../model/chat_update.dart';
 import '../model/contact_model.dart';
 import '../model/chat_enums.dart';
@@ -103,6 +105,61 @@ class ChatRepository {
       httpMethods: HttpMethods.get,
       endPoint: ApiEndPoint.conversation(conversationId),
       parse: (data) => ConversationModel.fromJson(data as Map<String, dynamic>),
+    );
+  }
+
+  // ─────────────── Step 5.5: attachments ───────────────
+
+  /// Step 1 of 2: upload the file (`POST /chats/attachments`, multipart
+  /// field `file`). [onProgress] gets 0.0–1.0 while it goes up.
+  Future<Either<NetworkErrorModel, ChatAttachmentModel>> uploadAttachment(
+    String filePath, {
+    void Function(double progress)? onProgress,
+  }) async {
+    final name = filePath.split('/').last;
+    final form = FormData.fromMap({
+      'file': await MultipartFile.fromFile(
+        filePath,
+        filename: name,
+        // The server checks the content type → never "octet-stream".
+        contentType: DioMediaType.parse(
+          AttachmentRules.contentTypeFor(name) ?? 'application/octet-stream',
+        ),
+      ),
+    });
+    return _appService.send(
+      httpMethods: HttpMethods.post,
+      endPoint: ApiEndPoint.chatAttachments,
+      formData: form,
+      onSendProgress: onProgress == null
+          ? null
+          : (sent, total) {
+              if (total > 0) onProgress(sent / total);
+            },
+      parse: (data) =>
+          ChatAttachmentModel.fromJson(data as Map<String, dynamic>),
+    );
+  }
+
+  /// Step 2 of 2: the message that points to the uploaded file.
+  /// VOICE needs [durationSeconds] (the server checks).
+  Future<Either<NetworkErrorModel, MessageModel>> sendAttachment(
+    String conversationId, {
+    required MessageType type,
+    required ChatAttachmentModel attachment,
+    int? durationSeconds,
+  }) {
+    return _appService.send(
+      httpMethods: HttpMethods.post,
+      endPoint: ApiEndPoint.messages(conversationId),
+      data: {
+        'type': type.toJson(),
+        'attachmentUrl': attachment.url,
+        'attachmentContentType': attachment.contentType,
+        'attachmentSizeBytes': attachment.sizeBytes,
+        'durationSeconds': ?durationSeconds,
+      },
+      parse: (data) => MessageModel.fromJson(data as Map<String, dynamic>),
     );
   }
 

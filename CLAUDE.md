@@ -360,6 +360,20 @@ Login response
   `isAdmin`, but the server is the real check (403 → snackbar).
 - DIRECT create returns the existing chat with that person (no duplicates).
   Leave = `DELETE …/members/{myId}`. Ids go to the server as numbers.
+- **Attachments (5.5):** 2 requests: `uploadAttachment` (multipart `file`,
+  `POST /chats/attachments`, progress via `AppService.send(onSendProgress:)`)
+  → `sendAttachment` `{type, attachmentUrl, attachmentContentType,
+  attachmentSizeBytes, durationSeconds?}`. Server rules live in
+  `AttachmentRules` (25 MB; images, audio, **PDF only**) and are checked on
+  the phone BEFORE uploading. Photos: image_picker 1600 px / quality 80.
+  Voice: `record` AAC `.m4a` (= `audio/mp4`), `durationSeconds` required.
+- The outgoing bubble shows the LOCAL file at once with progress; it keeps
+  `uploadedUrl` so a retry only re-sends the message. My echo of a file is
+  matched by `attachmentUrl`. Picking / recording live in widgets (system
+  UI); uploading in the bloc.
+- One `AppAudioPlayer` (`core/audio`, just_audio): one sound at a time;
+  the chat page stops it on leave. PDFs open outside the app
+  (`url_launcher`, Android `<queries>` VIEW).
 
 ### Chat & call (Steps 5–7): lessons from the old app
 

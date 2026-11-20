@@ -32,6 +32,10 @@ abstract final class ApiEndPoint {
   static String markRead(String conversationId) =>
       '$conversations/$conversationId/read';
 
+  /// Chat file upload (POST multipart `file`) → `{url, contentType,
+  /// sizeBytes}` — Step 5.5.
+  static const String chatAttachments = '$_v1/chats/attachments';
+
   /// One conversation (GET) — for a chat that isn't in the loaded inbox yet.
   static String conversation(String conversationId) =>
       '$conversations/$conversationId';

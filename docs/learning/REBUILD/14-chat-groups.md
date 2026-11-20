@@ -1,6 +1,6 @@
 # Step 5.4 — Chat: new chats + groups
 
-> ← Previous: [13-chat-realtime.md](13-chat-realtime.md) · Roadmap: [README.md](README.md)
+> ← Previous: [13-chat-realtime.md](13-chat-realtime.md) · Next: [15-chat-attachments.md](15-chat-attachments.md) → · Roadmap: [README.md](README.md)
 
 ```
 5.1 Inbox ✅ · 5.2 Conversation ✅ · 5.3 Realtime ✅

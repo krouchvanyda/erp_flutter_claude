@@ -1,10 +1,13 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
+import 'package:dartz/dartz.dart' show Either;
 import 'package:flutter/foundation.dart' show immutable;
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/network/network_error_model.dart';
+import '../../model/chat_attachment.dart';
+import '../../model/chat_enums.dart';
 import '../../model/chat_update.dart';
 import '../../model/message_model.dart';
 import '../../model/outgoing_message.dart';
@@ -21,6 +24,8 @@ part 'conversation_view_model_state.dart';
 /// Send:       + outgoing 🕓 → server OK: outgoing → messages ✓
 ///                           → server fail: outgoing.failed ⚠
 /// Retry:      failed ⚠ → 🕓 → (same as Send)
+/// Attachment: + outgoing ◔ (upload %) → uploaded → 🕓 → ✓ (5.5)
+///             retry skips the upload if it already worked
 /// Live (5.3): message.send → new bubble (+ markRead) · my own echo replaces
 ///             its 🕓 bubble · edit / delete → swapped in place ·
 ///             message.read → ✓✓ · connection back → reload (catch-up)
@@ -39,6 +44,7 @@ class ConversationViewModelBloc
     on<OnConversationLoadOlderEvent>(_onLoadOlder);
     on<OnMessageSendEvent>(_onSend);
     on<OnMessageRetryEvent>(_onRetry);
+    on<OnAttachmentSendEvent>(_onSendAttachment);
     on<OnConversationLiveUpdateEvent>(_onLiveUpdate);
 
     _subscriptions = [
@@ -180,22 +186,85 @@ class ConversationViewModelBloc
     await _deliver(retry, emit);
   }
 
+  /// Photo / PDF / voice (Step 5.5): show it at once (my own file), then
+  /// upload + send.
+  Future<void> _onSendAttachment(
+    OnAttachmentSendEvent event,
+    Emitter<ConversationViewModelState> emit,
+  ) async {
+    final data = state.data;
+    if (data == null) return;
+    final local = OutgoingMessage(
+      localId: 'local-${++_localSeq}',
+      text: '',
+      createdAt: DateTime.now(),
+      type: event.type,
+      localPath: event.filePath,
+      contentType: AttachmentRules.contentTypeFor(event.filePath),
+      durationSeconds: event.durationSeconds,
+      progress: 0,
+    );
+    _emitData(emit, data.copyWith(outgoing: [local, ...data.outgoing]));
+    await _deliver(local, emit);
+  }
+
   /// Sends [local] and swaps its bubble for the server's answer.
+  ///
+  /// Text: one request. Attachment: upload (unless a retry already has the
+  /// url) → message. Any failure → that bubble ⚠, the text / file kept.
   Future<void> _deliver(
     OutgoingMessage local,
     Emitter<ConversationViewModelState> emit,
   ) async {
-    final result = await _repository.sendText(conversationId, local.text);
+    Either<NetworkErrorModel, MessageModel> result;
+    if (!local.isAttachment) {
+      result = await _repository.sendText(conversationId, local.text);
+    } else {
+      var current = local;
+      if (current.uploadedUrl == null) {
+        var shown = 0; // last % drawn → redraw only every 5 %
+        final upload = await _repository.uploadAttachment(
+          current.localPath!,
+          onProgress: (p) {
+            final percent = (p * 100).floor();
+            if (percent - shown < 5 && percent < 100) return;
+            shown = percent;
+            _updateOutgoing(emit, current.copyWith(progress: p));
+          },
+        );
+        final uploaded = upload.fold((_) => null, (a) => a);
+        if (uploaded == null) {
+          _updateOutgoing(
+            emit,
+            current.copyWith(failed: true, clearProgress: true),
+          );
+          return;
+        }
+        current = current.copyWith(
+          uploadedUrl: uploaded.url,
+          contentType: uploaded.contentType,
+          sizeBytes: uploaded.sizeBytes,
+          clearProgress: true, // ◔ → 🕓
+        );
+        _updateOutgoing(emit, current);
+      }
+      result = await _repository.sendAttachment(
+        conversationId,
+        type: current.type,
+        attachment: ChatAttachmentModel(
+          url: current.uploadedUrl!,
+          contentType: current.contentType ?? '',
+          sizeBytes: current.sizeBytes ?? 0,
+        ),
+        durationSeconds: current.durationSeconds,
+      );
+      local = current;
+    }
+
     final data = state.data; // fresh: other events may have run meanwhile
     if (data == null) return;
-
     result.fold(
-      (_) => _emitData(
-        emit,
-        data.copyWith(
-          outgoing: _replace(data.outgoing, local.copyWith(failed: true)),
-        ),
-      ),
+      (_) => _updateOutgoing(emit, local.copyWith(failed: true)),
       (sent) => _emitData(
         emit,
         data.copyWith(
@@ -203,7 +272,7 @@ class ConversationViewModelBloc
             for (final o in data.outgoing)
               if (o.localId != local.localId) o,
           ],
-          // newest first; drop it if a reload already brought it
+          // newest first; drop it if a reload / the echo already brought it
           messages: [
             sent,
             for (final m in data.messages)
@@ -212,6 +281,18 @@ class ConversationViewModelBloc
         ),
       ),
     );
+  }
+
+  /// Replace one outgoing bubble (progress, uploaded url, failed) — on the
+  /// LATEST state, and only if it's still there.
+  void _updateOutgoing(
+    Emitter<ConversationViewModelState> emit,
+    OutgoingMessage updated,
+  ) {
+    final data = state.data;
+    if (data == null || emit.isDone) return;
+    if (!data.outgoing.any((o) => o.localId == updated.localId)) return;
+    _emitData(emit, data.copyWith(outgoing: _replace(data.outgoing, updated)));
   }
 
   /// A send must not hide a load error (the banner stays), so keep the
@@ -261,8 +342,14 @@ class ConversationViewModelBloc
           // My own message comes back (the echo) — maybe BEFORE the HTTP
           // answer. It replaces the OLDEST 🕓 bubble with the same text, so
           // it never shows twice.
+          // text → same text; attachment → same uploaded url (5.5)
           final echo = outgoing.lastWhereOrNull(
-            (o) => !o.failed && o.text == (message.body ?? '').trim(),
+            (o) =>
+                !o.failed &&
+                (message.type == MessageType.text
+                    ? !o.isAttachment && o.text == (message.body ?? '').trim()
+                    : o.uploadedUrl != null &&
+                          o.uploadedUrl == message.attachmentUrl),
           );
           if (echo != null) {
             outgoing = [

@@ -107,6 +107,8 @@ dependencies:
     path: packages/erp_callkit
   record: ^6.2.1
   just_audio: ^0.10.5
+  file_picker: ^11.0.3
+  url_launcher: ^6.3.3
 
 dev_dependencies:
   flutter_test:
