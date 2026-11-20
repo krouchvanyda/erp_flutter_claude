@@ -6,25 +6,29 @@ import '../../../core/network/helper_service.dart';
 import '../../../core/network/network_error_model.dart';
 import '../../../core/network/token_storage.dart';
 import '../../../core/router/auth_session.dart';
+import '../../../core/storage/user_cache.dart';
 import '../model/auth_response_model.dart';
 import '../model/user_model.dart';
 
 /// Auth business rules. The BLoC calls this; it never touches Dio or tokens.
 ///
-/// login = ask the server → SAVE the tokens → OPEN the session.
+/// login = ask the server → SAVE the tokens (+ the user) → OPEN the session.
 /// The order matters: tokens are saved BEFORE the session opens, so the very
 /// first request after login already carries the token.
 class AuthRepository {
   AuthRepository({
     required AppService appService,
     required TokenStorage tokenStorage,
+    required UserCache userCache,
     required AuthSession session,
   }) : _appService = appService,
        _tokenStorage = tokenStorage,
+       _userCache = userCache,
        _session = session;
 
   final AppService _appService;
   final TokenStorage _tokenStorage;
+  final UserCache _userCache;
   final AuthSession _session;
 
   Future<Either<NetworkErrorModel, UserModel>> login({
@@ -35,16 +39,23 @@ class AuthRepository {
       httpMethods: HttpMethods.post,
       endPoint: ApiEndPoint.login,
       data: {'email': email.trim(), 'password': password},
-      parse: AuthResponseModel.fromData,
+      // The model AND the raw `user` map (UserCache saves the server's JSON
+      // as-is, so UserModel needs no toJson).
+      parse: (data) => (
+        AuthResponseModel.fromData(data),
+        (data as Map<String, dynamic>)['user'] as Map<String, dynamic>,
+      ),
     );
 
     // fold = handle both boxes. The success side is async (we save tokens),
     // so both sides return a Future.
     return result.fold<Future<Either<NetworkErrorModel, UserModel>>>(
       (error) async => Left(error), // wrong password, offline… → pass it up
-      (response) async {
+      (parsed) async {
+        final (response, userJson) = parsed;
         await _tokenStorage.write(response.tokens); // 1. save tokens
-        _session.markAuthenticated(); //               2. open the session
+        await _userCache.save(userJson); //            2. remember the user
+        _session.markAuthenticated(); //               3. open the session
         return Right(response.user);
       },
     );
@@ -65,6 +76,7 @@ class AuthRepository {
     final refreshExpiresAt = tokens.refreshTokenExpiresAt;
     if (refreshExpiresAt != null && refreshExpiresAt.isBefore(DateTime.now())) {
       await _tokenStorage.clear(); // dead tokens → don't keep them
+      await _userCache.clear();
       return false;
     }
 
@@ -99,7 +111,8 @@ class AuthRepository {
       }
     } finally {
       await _tokenStorage.clear(); // 1. no more auto-login
-      _session.markLoggedOut(); //    2. AuthGate → Login
+      await _userCache.clear(); //    2. forget who was logged in
+      _session.markLoggedOut(); //    3. AuthGate → Login
     }
   }
 

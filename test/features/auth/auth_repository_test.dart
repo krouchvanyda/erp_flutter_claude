@@ -8,9 +8,11 @@ import 'package:erp_mobile/core/network/auth_tokens.dart';
 import 'package:erp_mobile/core/network/network_error_model.dart';
 import 'package:erp_mobile/core/network/token_storage.dart';
 import 'package:erp_mobile/core/router/auth_session.dart';
+import 'package:erp_mobile/core/storage/user_cache.dart';
 import 'package:erp_mobile/features/auth/repository/auth_repository.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeServer implements HttpClientAdapter {
   int status = 200;
@@ -51,10 +53,13 @@ void main() {
   late _FakeServer server;
   late TokenStorage storage;
   late AuthSession session;
+  late UserCache userCache;
   late AuthRepository repo;
 
-  setUp(() {
+  setUp(() async {
     FlutterSecureStorage.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({});
+    userCache = UserCache(await SharedPreferences.getInstance());
     server = _FakeServer();
     storage = TokenStorage(const FlutterSecureStorage());
     session = AuthSession();
@@ -63,6 +68,7 @@ void main() {
     repo = AuthRepository(
       appService: AppService(dio, hasInternet: () async => true),
       tokenStorage: storage,
+      userCache: userCache,
       session: session,
     );
   });
@@ -92,6 +98,8 @@ void main() {
     expect((await storage.read())!.accessToken, 'a1');
     expect(session.isAuthenticated, isTrue);
     expect(server.last!.data, {'email': 'v@x.com', 'password': 'secret'});
+    // the raw user JSON is cached for the profile (Step 4.1)
+    expect(userCache.read()!['fullName'], 'Vanyda');
   });
 
   test(
@@ -105,6 +113,7 @@ void main() {
 
       expect(result.isLeft(), isTrue);
       expect(await storage.read(), isNull);
+      expect(userCache.read(), isNull);
       expect(session.isAuthenticated, isFalse);
     },
   );
@@ -152,12 +161,14 @@ void main() {
       expect(server.calls, 0); // no network on the splash
     });
 
-    test('refresh token expired → false, tokens CLEARED', () async {
+    test('refresh token expired → false, tokens + user CLEARED', () async {
       await storage.write(tokens(refreshExpiresAt: DateTime(2000)));
+      await userCache.save({'id': 7});
 
       expect(await repo.restoreSession(), isFalse);
       expect(session.isAuthenticated, isFalse);
       expect(await storage.read(), isNull);
+      expect(userCache.read(), isNull);
     });
   });
 
@@ -166,19 +177,24 @@ void main() {
   group('logout', () {
     setUp(() async {
       await storage.write(tokens());
+      await userCache.save({'id': 7, 'email': 'v@x.com'});
       session.markAuthenticated();
     });
 
-    test('tells the server, CLEARS tokens, CLOSES the session', () async {
-      server.body = env(null);
+    test(
+      'tells the server, CLEARS tokens + user, CLOSES the session',
+      () async {
+        server.body = env(null);
 
-      await repo.logout();
+        await repo.logout();
 
-      expect(server.last!.path, ApiEndPoint.logout);
-      expect(server.last!.data, {'refreshToken': 'r1'});
-      expect(await storage.read(), isNull);
-      expect(session.isAuthenticated, isFalse);
-    });
+        expect(server.last!.path, ApiEndPoint.logout);
+        expect(server.last!.data, {'refreshToken': 'r1'});
+        expect(await storage.read(), isNull);
+        expect(userCache.read(), isNull); // next person never sees the old user
+        expect(session.isAuthenticated, isFalse);
+      },
+    );
 
     test('server error (500) → STILL logs out locally', () async {
       server
@@ -188,6 +204,7 @@ void main() {
       await repo.logout();
 
       expect(await storage.read(), isNull);
+      expect(userCache.read(), isNull);
       expect(session.isAuthenticated, isFalse);
     });
 

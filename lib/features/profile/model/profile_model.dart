@@ -4,8 +4,8 @@ import 'employee_model.dart';
 /// What the profile page shows: my login user + my employee record (if any).
 ///
 /// ```
-/// GET /users/me      → user      (always)
-/// GET /employees/me  → employee  (null when the server says 404)
+/// user      → cached at login (UserCache), or GET /users/me
+/// employee  → GET /employees/me, fresh every load (null when 404)
 /// ```
 ///
 /// The page never asks "user or employee?": these getters decide once.
@@ -15,12 +15,16 @@ class ProfileModel {
   final UserModel user;
   final EmployeeModel? employee;
 
-  String get displayName => user.displayName;
+  /// The employee record is loaded fresh every time; the user may come from
+  /// the login-time cache. So for name + phone the EMPLOYEE wins.
+  String get displayName =>
+      _firstNotEmpty(employee?.fullName, null) ?? user.displayName;
 
+  /// The LOGIN email (what you type to sign in), not the HR `workEmail`.
   String get email => user.email;
 
-  /// Prefer the login phone; fall back to the employee record.
-  String? get phone => _firstNotEmpty(user.phone, employee?.phone);
+  /// Prefer the employee phone (fresh); fall back to the login user's.
+  String? get phone => _firstNotEmpty(employee?.phone, user.phone);
 
   /// The avatar upload (Step 4.2) goes to `/employees/me/avatar`, so the
   /// employee's avatar is newest; fall back to the user's.

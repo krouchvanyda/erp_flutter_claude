@@ -2,6 +2,7 @@ import '../../core/di/service_locator.dart';
 import '../../core/network/app_service.dart';
 import '../../core/network/token_storage.dart';
 import '../../core/router/auth_session.dart';
+import '../../core/storage/user_cache.dart';
 import 'repository/auth_repository.dart';
 import 'viewmodel/login_view_model_bloc.dart';
 import 'viewmodel/splash_view_model_bloc.dart';
@@ -14,6 +15,7 @@ void registerAuthModule(ServiceLocator getIt) {
       () => AuthRepository(
         appService: getIt<AppService>(),
         tokenStorage: getIt<TokenStorage>(),
+        userCache: getIt<UserCache>(),
         session: getIt<AuthSession>(),
       ),
     )

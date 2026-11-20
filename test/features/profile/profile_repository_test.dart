@@ -6,8 +6,10 @@ import 'package:dio/dio.dart';
 import 'package:erp_mobile/core/network/api_endpoints.dart';
 import 'package:erp_mobile/core/network/app_service.dart';
 import 'package:erp_mobile/core/network/network_error_model.dart';
+import 'package:erp_mobile/core/storage/user_cache.dart';
 import 'package:erp_mobile/features/profile/repository/profile_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// A fake server that answers per PATH: path → (status, data).
 class _FakeServer implements HttpClientAdapter {
@@ -45,6 +47,7 @@ class _FakeServer implements HttpClientAdapter {
 void main() {
   late _FakeServer server;
   late ProfileRepository repo;
+  late UserCache userCache;
 
   const userJson = {
     'id': 7,
@@ -63,56 +66,120 @@ void main() {
     'avatarUrl': '/uploads/emp.jpg',
   };
 
-  setUp(() {
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({}); // empty cache by default
+    userCache = UserCache(await SharedPreferences.getInstance());
     server = _FakeServer();
     final dio = Dio(BaseOptions(baseUrl: 'http://test'))
       ..httpClientAdapter = server;
     repo = ProfileRepository(
       appService: AppService(dio, hasInternet: () async => true),
+      userCache: userCache,
     );
   });
 
-  test(
-    'user + employee → both, employee wins avatar, user→employee phone',
-    () async {
+  List<String> paths() => [for (final r in server.received) r.path];
+
+  group('user cached at login (normal)', () {
+    setUp(() => userCache.save(userJson));
+
+    test('ONE request: /employees/me; employee wins photo + phone', () async {
+      server.routes[ApiEndPoint.employeesMe] = (200, employeeJson);
+
+      final profile = (await repo.loadProfile()).getOrElse(
+        () => throw StateError('expected Right'),
+      );
+
+      expect(paths(), [ApiEndPoint.employeesMe]); // no /users/me
+      expect(profile.user.id, '7'); // from the cache
+      expect(profile.email, 'v@x.com');
+      expect(profile.employee!.employeeNo, 'E-003');
+      expect(profile.employee!.hireDate, DateTime(2024, 1, 15));
+      expect(profile.avatarUrl, '/uploads/emp.jpg');
+      expect(profile.phone, '012345678');
+      expect(profile.displayName, 'Vanyda'); // employee has no name → user's
+    });
+
+    test('employee 404 → fresh /users/me, profile WITHOUT employee', () async {
+      server.routes[ApiEndPoint.me] = (
+        200,
+        {...userJson, 'fullName': 'Vanyda K.'}, // changed since login
+      ); // employeesMe → 404
+
+      final profile = (await repo.loadProfile()).getOrElse(
+        () => throw StateError('expected Right'),
+      );
+
+      expect(paths(), [ApiEndPoint.employeesMe, ApiEndPoint.me]);
+      expect(profile.employee, isNull);
+      expect(profile.displayName, 'Vanyda K.');
+      expect(userCache.read()!['fullName'], 'Vanyda K.'); // re-cached
+    });
+
+    test(
+      'employee 404 + /users/me fails → still shows the cached user',
+      () async {
+        server.routes[ApiEndPoint.me] = (500, null); // employeesMe → 404
+
+        final profile = (await repo.loadProfile()).getOrElse(
+          () => throw StateError('expected Right'),
+        );
+
+        expect(profile.displayName, 'Vanyda');
+        expect(profile.avatarUrl, '/uploads/user.jpg');
+      },
+    );
+
+    test('employee 500 → Left (no half page)', () async {
+      server.routes[ApiEndPoint.employeesMe] = (500, null);
+
+      final result = await repo.loadProfile();
+
+      expect(result.fold((e) => e.statusCode, (_) => null), 500);
+    });
+  });
+
+  group('no cached user (session from before the cache)', () {
+    test('both requests together, and the user gets cached', () async {
       server.routes
         ..[ApiEndPoint.me] = (200, userJson)
         ..[ApiEndPoint.employeesMe] = (200, employeeJson);
 
-      final profile = (await repo.loadProfile()).getOrElse(
-        () => throw StateError('expected Right'),
+      final result = await repo.loadProfile();
+
+      expect(result.isRight(), isTrue);
+      expect(
+        paths(),
+        unorderedEquals([ApiEndPoint.me, ApiEndPoint.employeesMe]),
       );
+      expect(userCache.read()!['email'], 'v@x.com');
+    });
 
-      expect(profile.user.id, '7');
-      expect(profile.employee!.employeeNo, 'E-003');
-      expect(profile.employee!.hireDate, DateTime(2024, 1, 15));
-      expect(profile.avatarUrl, '/uploads/emp.jpg'); // employee first
-      expect(profile.phone, '012345678'); // user has none → employee's
-    },
-  );
+    test('user fails → Left (nothing to show)', () async {
+      server.routes
+        ..[ApiEndPoint.me] = (500, null)
+        ..[ApiEndPoint.employeesMe] = (200, employeeJson);
 
-  test(
-    'employee 404 (no linked employee) → profile WITHOUT employee',
-    () async {
-      server.routes[ApiEndPoint.me] = (200, userJson); // employeesMe → 404
+      final result = await repo.loadProfile();
 
-      final profile = (await repo.loadProfile()).getOrElse(
-        () => throw StateError('expected Right'),
-      );
+      expect(result.fold((e) => e, (_) => null), isA<ServerError>());
+      expect(userCache.read(), isNull);
+    });
+  });
 
-      expect(profile.employee, isNull);
-      expect(profile.avatarUrl, '/uploads/user.jpg');
-    },
-  );
+  test('employee name + phone win over the (maybe old) cached user', () async {
+    await userCache.save({...userJson, 'phone': '099000000'});
+    server.routes[ApiEndPoint.employeesMe] = (
+      200,
+      {...employeeJson, 'fullName': 'Krouch Vanyda'},
+    );
 
-  test('user fails → Left (nothing to show)', () async {
-    server.routes
-      ..[ApiEndPoint.me] = (500, null)
-      ..[ApiEndPoint.employeesMe] = (200, employeeJson);
+    final profile = (await repo.loadProfile()).getOrElse(
+      () => throw StateError('expected Right'),
+    );
 
-    final result = await repo.loadProfile();
-
-    expect(result.fold((e) => e, (_) => null), isA<ServerError>());
+    expect(profile.displayName, 'Krouch Vanyda');
+    expect(profile.phone, '012345678');
   });
 
   // ─────────────── Step 4.2: avatar ───────────────

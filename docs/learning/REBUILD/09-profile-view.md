@@ -6,7 +6,7 @@ Step 4 is split in three:
 
 | Part | What | Status |
 |---|---|---|
-| **4.1 (this lesson)** | View my profile (`/users/me` + `/employees/me`), ⎋ logout at the top right | ✅ |
+| **4.1 (this lesson)** | View my profile (`/employees/me` + the user cached at login), ⎋ logout at the top right | ✅ |
 | 4.2 | Avatar: camera / gallery → `POST /employees/me/avatar` → [10-profile-avatar.md](10-profile-avatar.md) | ✅ |
 | 4.3 | Edit name / phone | ⏸ waiting for the backend's `PATCH /api/v1/users/me` |
 
@@ -19,7 +19,8 @@ Step 4 is split in three:
 The first screen **after** login that shows real data. It reuses everything
 from Steps 1–3 and adds three things you'll use in every later feature:
 
-- **Two requests at once** (`(a, b).wait`): user + employee.
+- **One request, plus a cache**: the user saved at login (`UserCache`) +
+  `GET /employees/me`. (First version: two requests at once, `(a, b).wait`.)
 - **Three page states**: loading → data → error, plus **refresh** that keeps
   the data on screen.
 - **Shared widgets**: `AppAvatar` (chat list, call screen) and `AppErrorView`
@@ -30,14 +31,14 @@ flowchart LR
     H["Home<br/>👤 icon"] -->|"ConfigRouter.pushPageAnimation"| P["ProfilePage<br/>(onLogout)"]
     P -->|"event"| B["ProfileViewModelBloc"]
     B -->|"loadProfile()"| R["ProfileRepository"]
-    R -->|"GET /users/me"| A["AppService"]
-    R -->|"GET /employees/me"| A
+    R -->|"read()"| C["UserCache<br/>(saved at login)"]
+    R -->|"GET /employees/me"| A["AppService"]
     P -->|"Log out"| L["onLogout =<br/>AuthRepository.logout<br/>(from app/)"]
 
     classDef feat fill:#fff4d6,stroke:#d4a017,color:#5a4300
     classDef core fill:#dbe9ff,stroke:#3b6fd8,color:#123
     class P,B,R feat
-    class H,A,L core
+    class H,A,L,C core
 ```
 
 🟨 new (profile feature) · 🟦 built before
@@ -52,22 +53,29 @@ sequenceDiagram
     participant P as ProfilePage
     participant B as ProfileViewModelBloc
     participant R as ProfileRepository
+    participant C as UserCache
     participant A as AppService
     participant S as 🛠 Server
 
     P->>B: add(OnProfileLoadEvent)
     B-->>P: ProfileLoadingState → spinner
     B->>R: loadProfile()
-    par at the same time
-        R->>A: GET /users/me
-        A->>S: request
-        S-->>A: user
-    and
+    R->>C: read()
+    alt user cached (normal: saved at login)
         R->>A: GET /employees/me
         A->>S: request
         S-->>A: employee, or 404
+        opt 404 (no linked employee)
+            R->>A: GET /users/me (fresh user, re-cached)
+        end
+    else no cache (session from before the cache)
+        par at the same time
+            R->>A: GET /users/me (then cached)
+        and
+            R->>A: GET /employees/me
+        end
     end
-    Note over R: user failed → Left(error)<br/>employee failed → employee = null
+    Note over R: employee 404 → employee = null<br/>other error → Left(error)
     R-->>B: Right(ProfileModel)
     B-->>P: ProfileLoadedState → cards
 ```
@@ -153,38 +161,79 @@ test/
 
 ## 3. Code
 
-### `ProfileRepository.loadProfile()`: two requests at once
+### `ProfileRepository.loadProfile()`: one request + the cached user
+
+**First version** (two requests, both every time):
 
 ```dart
 final (userResult, employeeResult) = await (
-  _appService.send(httpMethods: HttpMethods.get, endPoint: ApiEndPoint.me,
-      parse: (data) => UserModel.fromJson(data as Map<String, dynamic>)),
-  _appService.send(httpMethods: HttpMethods.get, endPoint: ApiEndPoint.employeesMe,
-      parse: (data) => EmployeeModel.fromJson(data as Map<String, dynamic>)),
+  _appService.send(... endPoint: ApiEndPoint.me ...),
+  _appService.send(... endPoint: ApiEndPoint.employeesMe ...),
 ).wait;
-
-final employee = employeeResult.fold((_) => null, (e) => e);
-return userResult.fold(
-  Left.new,
-  (user) => Right(ProfileModel(user: user, employee: employee)),
-);
 ```
 
-- **`(a, b).wait`**: the same trick as the splash (Step 3.2). Both requests
-  fly together, so the time is the slower one, not the sum.
-- **User fails → `Left`**: without the user there's nothing to show.
-- **Employee fails → `null`**: a 404 means "this login has no employee
-  record", which is **normal**. Any other employee error must not hide the
-  whole profile either.
-- **`Left.new`** is a **constructor tear-off**: the same as
-  `(error) => Left(error)`.
+Why it was built like this: back then `/employees/me` could answer **404**
+for a login with no employee record, so `/users/me` was the safe base.
+
+**Why it changed.** The backend now creates the employee record by itself
+(`EmployeeService.ensureProfileForUser`) on register, on admin "create
+user", and on every login. And login **already returns the user**. So we save
+that user once (`UserCache`) and only ask for the employee:
+
+```dart
+final cachedJson = _userCache.read();
+if (cachedJson == null) {                 // session from before the cache
+  final (userResult, employeeResult) = await (_fetchUser(), _fetchEmployee()).wait;
+  return userResult.fold(Left.new, (user) => _combine(user, employeeResult));
+}
+final employeeResult = await _fetchEmployee();           // 1 request
+if (_isNotFound(employeeResult)) {                       // rare: no employee
+  final fresh = await _fetchUser();                      // re-cached
+  return Right(ProfileModel(user: fresh.getOrElse(() => UserModel.fromJson(cachedJson))));
+}
+return _combine(UserModel.fromJson(cachedJson), employeeResult);
+```
+
+| Rule | Why |
+|---|---|
+| Normal case = 1 request | The user came with the login response; asking again is waste. |
+| No cache → both requests (and cache the user) | Sessions restored by auto-login from before this change have no cache yet. |
+| Employee **404** → fresh `/users/me` | The user is then ALL we show, so it should be fresh. If that fails too, the cached user is still fine. |
+| Employee **other error** (offline, 500) → `Left` | The employee is now the main source (name, phone, photo). A page with only old cached data would mislead. |
+| `_fetchUser()` saves the raw JSON | Every fresh `/users/me` updates the cache. |
+| `Left.new` | A **constructor tear-off**: the same as `(error) => Left(error)`. |
+
+### `UserCache` (`core/storage/user_cache.dart`)
+
+```
+login ──► save(user JSON) ──► shared_preferences
+profile ──► read() ──► UserModel.fromJson(...)
+logout · refresh token expired · refresh rejected ──► clear()
+```
+
+- It stores the server's **raw JSON map**. `core/` can't import `UserModel`
+  (it lives in `features/auth`), and we don't need a `toJson`: the server
+  already gave us JSON. Login's `parse` returns a record:
+  `(AuthResponseModel.fromData(data), data['user'])`.
+- `shared_preferences`, not the secure vault: name, email and phone are not
+  secrets. **Tokens never go here.**
+- Cleared in the same places as the tokens (logout `finally`, expired refresh
+  token on the splash, refresh rejected in `AuthInterceptor` via
+  `onSessionExpired`). Otherwise the next person on this phone could see the
+  old user.
 
 ### `ProfileModel`: decide once, not in widgets
 
 ```dart
-String? get phone => _firstNotEmpty(user.phone, employee?.phone);
+String get displayName => _firstNotEmpty(employee?.fullName, null) ?? user.displayName;
+String get email => user.email;                 // the LOGIN email, not workEmail
+String? get phone => _firstNotEmpty(employee?.phone, user.phone);
 String? get avatarUrl => _firstNotEmpty(employee?.avatarUrl, user.avatarUrl);
 ```
+
+The employee is loaded **fresh** every time, but the user may be the copy
+from login. So for name, phone and photo the **employee wins**. The email is
+the login email (what you type to sign in), which only the user has.
 
 The page never asks "user or employee?". Rules like "the employee avatar is
 newer, because Step 4.2 uploads to `/employees/me/avatar`" live in **one**
@@ -326,8 +375,9 @@ the profile page (`popUntil(isFirst)`, Step 1.4) and shows Login.
 | Choice we made | Other way | Why we didn't pick the other way |
 |---|---|---|
 | Wait for the backend's `PATCH /users/me` (4.3) | Call `PATCH /users/{id}` | Needs `user:write` → 403 for normal users. |
-| `/users/me` + `/employees/me` together | Only `/users/me` | Position, department, hire date and avatar live on the employee. |
-| Employee error → `null`, keep going | Any error fails the page | A 404 is normal (no linked employee). |
+| `/employees/me` + the user cached at login | `/users/me` + `/employees/me` every time (first version) | The backend now always creates the employee, and login already gave us the user. 1 request instead of 2. |
+| Keep the login user at all | Only `/employees/me` | Its email is the HR `workEmail`, not the login email, and a rare 404 would leave nothing to show. |
+| Employee 404 → `null`, other errors → `Left` | Any employee error → `null` | 404 = no linked employee (fine). Offline/500 would show a page made only of old cached data. |
 | `ProfileModel` getters (`phone`, `avatarUrl`) | `user.phone ?? employee?.phone` in widgets | Business rules in one place, testable. |
 | One `OnProfileLoadEvent` + `state.profile` getter | Separate Load / Refresh / Retry events | Same work for all three; less code. |
 | Refresh error keeps data + snackbar | Refresh error → full error page | Never take data away from the user because of a hiccup. |
@@ -340,16 +390,17 @@ the profile page (`popUntil(isFirst)`, Step 1.4) and shows Login.
 ## 5. Try it
 
 ```bash
-flutter test                                    # 64 tests → All tests passed!
+flutter test                                    # 104 tests → All tests passed!
 flutter run --flavor dev -t lib/main_dev.dart
 ```
 
 1. Home → tap the **👤** icon (top right) → the page slides in → spinner →
    your profile.
-2. In the log: `GET /api/v1/users/me` and `GET /api/v1/employees/me` start
-   **together**.
-3. If your login has no employee record: `/employees/me` → 404, and the page
-   still shows the hero + Contact (no Personal card).
+2. In the log: only `GET /api/v1/employees/me` (the user comes from the
+   login cache). Right after an update, an old auto-login session has no
+   cache yet: the first open also calls `GET /api/v1/users/me`, once.
+3. If your login has no employee record: `/employees/me` → 404 → then
+   `/users/me`, and the page still shows the hero + Contact (no Personal card).
 4. **Pull down** → refresh. Turn on airplane mode and pull → the data stays,
    and a red bar appears at the top.
 5. Airplane mode, go back, open the profile again → **"No Internet"** page →
@@ -372,7 +423,8 @@ flutter run --flavor dev -t lib/main_dev.dart
 1. The only edit endpoint, `PATCH /users/{id}`, needs `user:write` (admin).
    A normal user gets 403. We wait for `PATCH /users/me`.
 2. The hero card and Contact card (no Employee ID / Hire date, no Personal
-   card). The repository turns the employee error into `employee = null`.
+   card). The repository turns the 404 into `employee = null` and fetches a
+   fresh `/users/me` (the user is all it shows).
 3. `ProfileErrorState(error, lastProfile: <old data>)`. `state.profile`
    is still set, so the cards stay. The listener shows an `AppSnackBar`.
 4. Features don't use each other's internals. The app layer (`app/`) may

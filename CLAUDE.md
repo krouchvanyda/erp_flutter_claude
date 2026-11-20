@@ -156,6 +156,7 @@ lib/
 │   ├── router/    ConfigRouter, AppNavigator,     (Step 1.4)
 │   │              AuthSession
 │   ├── network/   AppService + Dio + interceptors (Step 2)
+│   ├── storage/   UserCache (logged-in user JSON) (Step 4.1)
 │   ├── realtime/  STOMP client                    (Step 5)
 │   └── push/      FCM / VoIP                      (Step 7)
 ├── shared/widgets/                 reusable UI, no feature logic
@@ -184,7 +185,8 @@ lib/
 ```
 Login response
   ├── accessToken + refreshToken (+ expiresAt) ──► flutter_secure_storage
-  └── user { id, email, fullName, phone, avatarUrl } ──► shared_preferences (cache)
+  └── user { id, email, fullName, phone, avatarUrl } ──► shared_preferences
+      (`UserCache`, core/storage: the RAW JSON map, no toJson)
 ```
 
 - The backend contract is [`API_LIST_BACKEND.md`](./API_LIST_BACKEND.md)
@@ -210,7 +212,9 @@ Login response
   interceptor needs the stored access token to authorize the call. Ask
   "Log out?" before calling it.
 - Logout and any failed refresh **must** call `TokenStorage.clear()`.
-  Skipping it re-enables auto-login, which is a security bug.
+  Skipping it re-enables auto-login, which is a security bug. Clear
+  `UserCache` in the same places (logout `finally`, expired refresh token on
+  the splash, `AuthInterceptor`'s `onSessionExpired` in `core/di`).
 - The "should I auto-login?" decision lives in the splash (its BLoC) only.
 - Pages never navigate after login/logout: they call
   `AuthSession.markAuthenticated()` / `markLoggedOut()`, and `AuthGate` swaps
@@ -221,11 +225,14 @@ Login response
 
 ### Profile (Step 4)
 
-- **4.1 view:** `ProfileRepository.loadProfile()` = `GET /users/me` +
-  `GET /employees/me` **together** (`(a, b).wait`). User fails → `Left`.
-  Employee fails (404 = no linked employee) → `employee: null`, still show
-  the page. "Which phone / avatar wins" lives in `ProfileModel` getters,
-  never in widgets.
+- **4.1 view:** `ProfileRepository.loadProfile()` = the user from
+  `UserCache` (saved at login) + `GET /employees/me` → **1 request**. The
+  backend auto-creates the employee on register / create user / login
+  (`ensureProfileForUser`). No cache (old session) → `/users/me` +
+  `/employees/me` together and cache the user. Employee 404 → fresh
+  `/users/me`, `employee: null`. Other employee errors → `Left`. "Which
+  name / phone / avatar wins" (employee first; email = login email) lives in
+  `ProfileModel` getters, never in widgets.
 - **4.2 avatar:** `POST /employees/me/avatar` (multipart field `file`,
   `contentType` from the extension) / `DELETE` the same path, then reload the
   profile (don't guess the response). Photos are picked with

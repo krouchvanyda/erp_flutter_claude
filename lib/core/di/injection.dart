@@ -8,6 +8,7 @@ import '../network/auth_interceptor.dart';
 import '../network/dio_factory.dart';
 import '../network/token_storage.dart';
 import '../router/auth_session.dart';
+import '../storage/user_cache.dart';
 import 'service_locator.dart';
 
 /// Fills the box with CORE services. Called by `configureAppDependencies()`
@@ -22,6 +23,7 @@ import 'service_locator.dart';
 ///   │                          AuthSession         (Step 1.4)
 ///   │                          Dio, AppService     (Step 2.1)
 ///   │                          TokenStorage, AuthInterceptor (Step 2.2)
+///   │                          UserCache           (Step 4.1)
 ///   ├── registerAuthModule()   (Step 3)
 ///   ├── registerProfileModule()(Step 4)
 ///   ├── registerChatModule()   (Step 5)
@@ -48,6 +50,11 @@ Future<void> _registerCore() async {
     () => TokenStorage(getIt<FlutterSecureStorage>()),
   );
 
+  // The logged-in user (not secret) → shared_preferences.
+  getIt.registerLazySingleton<UserCache>(
+    () => UserCache(getIt<SharedPreferences>()),
+  );
+
   // ONE app Dio, with the auth interceptor. AppService wraps it.
   getIt.registerLazySingleton<Dio>(
     () => createDio(
@@ -57,8 +64,11 @@ Future<void> _registerCore() async {
           tokenStorage: getIt<TokenStorage>(),
           // separate Dio WITHOUT the interceptor → refresh can't loop
           refreshDio: createDio(Flavor.current),
-          // session really over → AuthGate shows Login
-          onSessionExpired: getIt<AuthSession>().markLoggedOut,
+          // session really over → forget the user, AuthGate shows Login
+          onSessionExpired: () {
+            getIt<UserCache>().clear();
+            getIt<AuthSession>().markLoggedOut();
+          },
         ),
       ],
     ),
