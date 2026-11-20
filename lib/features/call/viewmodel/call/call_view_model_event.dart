@@ -65,12 +65,14 @@ final class OnCallMediaStartEvent extends CallViewModelEvent {
   final String callId;
 }
 
-/// The other person entered / left the media call (internal).
+/// Who else is in the media call changed (internal).
 final class OnCallPeerMediaEvent extends CallViewModelEvent {
-  OnCallPeerMediaEvent(this.callId, this.present);
+  OnCallPeerMediaEvent(this.callId, this.userIds);
 
   final String callId;
-  final bool present;
+
+  /// The others in the media call now (empty = nobody).
+  final List<String> userIds;
 }
 
 /// 🎙 mute / unmute.

@@ -10,6 +10,7 @@ import '../repository/call_media.dart';
 import '../viewmodel/call/call_view_model_bloc.dart';
 import '../widgets/call_background.dart';
 import '../widgets/call_controls.dart';
+import '../widgets/call_participants_row.dart';
 import '../widgets/call_peer_header.dart';
 import '../widgets/call_permission_gate.dart';
 import '../widgets/call_status_text.dart';
@@ -117,6 +118,13 @@ class CallPage extends StatelessWidget {
                             ),
                             child: header,
                           ),
+                          // a group voice call: who is in it (6.3c)
+                          if (state case CallInCallState(
+                            :final others,
+                          ) when peer.isGroup && others.isNotEmpty) ...[
+                            const SizedBox(height: AppSpacing.lg),
+                            CallParticipantsRow(userIds: others, peer: peer),
+                          ],
                           const Spacer(flex: 2),
                           controls,
                           const SizedBox(height: AppSpacing.xxl),

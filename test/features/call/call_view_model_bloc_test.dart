@@ -44,7 +44,7 @@ void main() {
   late AuthSession session;
   late List<String> sent; // what the phone told the server
   late _MockCallMedia media;
-  late StreamController<bool> peer; // the other person in the media call
+  late StreamController<List<String>> peer; // the others in the media call
   late StreamController<MediaLink> link; // MY link to the media call
 
   setUpAll(() => registerFallbackValue(CallType.voice));
@@ -57,8 +57,8 @@ void main() {
     session = AuthSession()..markAuthenticated();
     sent = [];
     media = _MockCallMedia();
-    peer = StreamController<bool>.broadcast();
-    when(() => media.peerPresent).thenAnswer((_) => peer.stream);
+    peer = StreamController<List<String>>.broadcast();
+    when(() => media.peers).thenAnswer((_) => peer.stream);
     link = StreamController<MediaLink>.broadcast();
     when(() => media.link).thenAnswer((_) => link.stream);
     when(
@@ -529,7 +529,7 @@ void main() {
 
     test('the other person is in the media → the timer starts (#8)', () async {
       final bloc = await accepted();
-      peer.add(true);
+      peer.add([_jane]);
       await tick();
       expect((bloc.state as CallInCallState).connectedAt, isNotNull);
       await bloc.close();
@@ -620,7 +620,7 @@ void main() {
       await tick();
       bloc.add(OnCallAcceptEvent());
       await tick();
-      peer.add(true); // 00:00
+      peer.add([_jane]); // 00:00
       await tick();
       return bloc;
     }
@@ -673,13 +673,49 @@ void main() {
     test('THEY drop out of the media → peerAway; back → normal', () async {
       final bloc = await talking();
       final startedAt = inCall(bloc).connectedAt;
-      peer.add(false);
+      peer.add([]);
       await tick();
       expect(inCall(bloc).peerAway, isTrue);
-      peer.add(true);
+      peer.add([_jane]);
       await tick();
       expect(inCall(bloc).peerAway, isFalse);
       expect(inCall(bloc).connectedAt, startedAt); // the timer goes on
+      await bloc.close();
+    });
+  });
+
+  group('group calls (6.3c)', () {
+    test('people join the media one by one → others grows, timer from the '
+        'FIRST', () async {
+      final bloc = build();
+      queue.add(CallInvited(_call(callerId: _jane)));
+      await tick();
+      bloc.add(OnCallAcceptEvent());
+      await tick();
+      peer.add([_jane]);
+      await tick();
+      final first = (bloc.state as CallInCallState).connectedAt;
+      peer.add([_jane, '3']);
+      await tick();
+      final s = bloc.state as CallInCallState;
+      expect(s.others, [_jane, '3']);
+      expect(s.connectedAt, first); // a 2nd person doesn't restart the timer
+      await bloc.close();
+    });
+
+    test('one leaves the media, others stay → not "away"', () async {
+      final bloc = build();
+      queue.add(CallInvited(_call(callerId: _jane)));
+      await tick();
+      bloc.add(OnCallAcceptEvent());
+      await tick();
+      peer.add([_jane, '3']);
+      await tick();
+      peer.add(['3']);
+      await tick();
+      final s = bloc.state as CallInCallState;
+      expect(s.peerAway, isFalse);
+      expect(s.others, ['3']);
       await bloc.close();
     });
   });

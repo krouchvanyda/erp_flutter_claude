@@ -12,10 +12,12 @@ import 'call_timer_text.dart';
 /// | Outgoing (not ringing yet)     | Calling…              |
 /// | Outgoing, their phone shows it | Ringing…              |
 /// | Incoming                       | Incoming call         |
+/// | Incoming, a group              | Dara is calling…      |
 /// | Incoming, Accept tapped        | Connecting…           |
 /// | InCall, media not up yet       | Connecting…           |
 /// | InCall, MY network dropped     | Reconnecting…         |
 /// | InCall, THEY dropped           | Jane is reconnecting… |
+/// | InCall, a group, all dropped   | Waiting for others…   |
 /// | InCall                         | 00:12 (the timer)     |
 /// | Ended                          | Call declined / Busy… |
 class CallStatusText extends StatelessWidget {
@@ -27,13 +29,19 @@ class CallStatusText extends StatelessWidget {
   static String textFor(CallViewModelState state) => switch (state) {
     CallOutgoingState(:final peerRinging) =>
       peerRinging ? 'Ringing…' : 'Calling…',
-    CallIncomingState(:final accepting) =>
-      accepting ? 'Connecting…' : 'Incoming call',
+    CallIncomingState(:final accepting) when accepting => 'Connecting…',
+    // a group: WHO is calling (the title is the group's name) (6.3c)
+    CallIncomingState(:final peer, :final call)
+        when peer.isGroup && peer.members.containsKey(call.callerId) =>
+      '${peer.member(call.callerId).firstName} is calling…',
+    CallIncomingState() => 'Incoming call',
     CallEndedState() => state.text,
     // until the other person is really in the media call (#8)
     CallInCallState(:final reconnecting) when reconnecting => 'Reconnecting…',
     CallInCallState(:final peerAway, :final peer) when peerAway =>
-      '${_first(peer.name)} is reconnecting…',
+      peer.isGroup
+          ? 'Waiting for others…'
+          : '${_first(peer.name)} is reconnecting…',
     CallInCallState(:final isConnecting) => isConnecting ? 'Connecting…' : '',
     CallIdleState() => '',
   };

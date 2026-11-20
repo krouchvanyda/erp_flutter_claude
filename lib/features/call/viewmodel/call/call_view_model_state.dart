@@ -121,6 +121,7 @@ final class CallInCallState extends CallViewModelState {
     this.frontCamera = true,
     this.reconnecting = false,
     this.peerAway = false,
+    this.others = const [],
   });
 
   final CallModel call;
@@ -137,6 +138,9 @@ final class CallInCallState extends CallViewModelState {
   /// THEY left the media call after it started (their network?) (6.3b).
   final bool peerAway;
 
+  /// Who else is in the media call (user ids) — the group row / grid (6.3c).
+  final List<String> others;
+
   bool get isConnecting => connectedAt == null;
 
   CallInCallState copyWith({
@@ -147,6 +151,7 @@ final class CallInCallState extends CallViewModelState {
     bool? frontCamera,
     bool? reconnecting,
     bool? peerAway,
+    List<String>? others,
   }) => CallInCallState(
     call: call,
     peer: peer,
@@ -157,7 +162,10 @@ final class CallInCallState extends CallViewModelState {
     frontCamera: frontCamera ?? this.frontCamera,
     reconnecting: reconnecting ?? this.reconnecting,
     peerAway: peerAway ?? this.peerAway,
+    others: others ?? this.others,
   );
+
+  static const _ids = ListEquality<String>();
 
   @override
   bool operator ==(Object other) =>
@@ -170,7 +178,8 @@ final class CallInCallState extends CallViewModelState {
       other.speakerOn == speakerOn &&
       other.frontCamera == frontCamera &&
       other.reconnecting == reconnecting &&
-      other.peerAway == peerAway;
+      other.peerAway == peerAway &&
+      _ids.equals(other.others, others);
 
   @override
   int get hashCode => Object.hash(
@@ -183,6 +192,7 @@ final class CallInCallState extends CallViewModelState {
     frontCamera,
     reconnecting,
     peerAway,
+    _ids.hash(others),
   );
 }
 

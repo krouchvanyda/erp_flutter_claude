@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -105,7 +106,7 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
   late final StreamSubscription<CallUpdate> _queue;
   late final StreamSubscription<void> _reconnected;
   StreamSubscription<CallUpdate>? _topic; // the current call's conversation
-  StreamSubscription<bool>? _peerMedia; // is the other person in the media?
+  StreamSubscription<List<String>>? _peerMedia; // who else is in the media?
   StreamSubscription<MediaLink>? _mediaLink; // is MY media link up?
   Timer? _reconnectGiveUp;
   Timer? _backstop;
@@ -472,8 +473,8 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     }
     // Listen first: the other person may already be in the media call.
     _peerMedia?.cancel();
-    _peerMedia = _media.peerPresent.listen((present) {
-      if (!isClosed) add(OnCallPeerMediaEvent(event.callId, present));
+    _peerMedia = _media.peers.listen((ids) {
+      if (!isClosed) add(OnCallPeerMediaEvent(event.callId, ids));
     });
     _mediaLink?.cancel();
     _mediaLink = _media.link.listen((link) {
@@ -492,20 +493,26 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     emit(now.copyWith(micOn: joined.micOn, cameraOn: joined.cameraOn));
   }
 
-  /// The other person entered the media call → the timer starts now.
+  /// Who else is in the media call changed. The FIRST person → the timer
+  /// starts. Everybody gone after that → "… is reconnecting" (we wait: the
+  /// server hangs up for them if they don't come back).
   void _onPeerMedia(
     OnCallPeerMediaEvent event,
     Emitter<CallViewModelState> emit,
   ) {
     final s = state;
     if (s is! CallInCallState || s.call.id != event.callId) return;
-    if (event.present) {
-      // first time → the timer starts; later → they're back
-      emit(s.copyWith(connectedAt: s.connectedAt ?? _now(), peerAway: false));
+    final ids = event.userIds;
+    if (ids.isNotEmpty) {
+      emit(
+        s.copyWith(
+          connectedAt: s.connectedAt ?? _now(),
+          peerAway: false,
+          others: ids,
+        ),
+      );
     } else if (s.connectedAt != null) {
-      // They dropped out of the media (their network?). Wait: they may come
-      // back; if they don't, the server hangs up for them (`call.hangup`).
-      emit(s.copyWith(peerAway: true));
+      emit(s.copyWith(peerAway: true, others: const []));
     }
   }
 

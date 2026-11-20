@@ -1,10 +1,10 @@
 import '../core/di/injection.dart';
 import '../core/di/service_locator.dart';
-import '../core/network/api_endpoints.dart';
 import '../features/auth/auth_di.dart';
 import '../features/call/call_di.dart';
 import '../features/call/model/call_model.dart';
 import '../features/call/model/call_peer.dart';
+import 'call_peer_of.dart';
 import '../features/chat/chat_di.dart';
 import '../features/chat/repository/chat_repository.dart';
 import '../features/profile/profile_di.dart';
@@ -38,12 +38,5 @@ Future<CallPeer?> _callPeer(CallModel call) async {
     chat.loadConversation(call.conversationId),
     chat.myUserId(),
   ).wait;
-  return result.fold(
-    (_) => null,
-    (c) => CallPeer(
-      name: c.title(myId),
-      avatarUrl: ApiEndPoint.fileUrl(c.avatarUrlFor(myId)),
-      isGroup: c.isGroup,
-    ),
-  );
+  return result.fold((_) => null, (c) => callPeerOf(c, myId));
 }

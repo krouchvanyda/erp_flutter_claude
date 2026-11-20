@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../core/di/service_locator.dart';
-import '../core/network/api_endpoints.dart';
 import '../core/router/app_navigator.dart';
 import '../core/router/auth_session.dart';
 import '../core/router/config_router.dart';
@@ -9,12 +8,12 @@ import '../features/auth/repository/auth_repository.dart';
 import '../features/auth/view/login_page.dart';
 import '../features/auth/view/splash_page.dart';
 import '../features/call/model/call_enums.dart';
-import '../features/call/model/call_peer.dart';
 import '../features/call/viewmodel/call/call_view_model_bloc.dart';
 import '../features/call/widgets/call_permission_gate.dart';
 import '../features/chat/model/chat_call_launcher.dart';
 import '../features/chat/view/inbox_page.dart';
 import '../features/profile/view/profile_page.dart';
+import 'call_peer_of.dart';
 
 /// The app's first screen. Decides the BIG screen from the session:
 ///
@@ -73,11 +72,7 @@ class _AuthGateState extends State<AuthGate> {
         calls.add(
           OnCallStartEvent(
             conversationId: conversation.id,
-            peer: CallPeer(
-              name: conversation.title(myId),
-              avatarUrl: ApiEndPoint.fileUrl(conversation.avatarUrlFor(myId)),
-              isGroup: conversation.isGroup,
-            ),
+            peer: callPeerOf(conversation, myId),
             type: video ? CallType.video : CallType.voice,
           ),
         );

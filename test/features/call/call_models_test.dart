@@ -1,6 +1,7 @@
 import 'package:erp_mobile/core/realtime/realtime_event.dart';
 import 'package:erp_mobile/features/call/model/call_enums.dart';
 import 'package:erp_mobile/features/call/model/call_model.dart';
+import 'package:erp_mobile/features/call/model/call_peer.dart';
 import 'package:erp_mobile/features/call/model/call_update.dart';
 import 'package:erp_mobile/features/call/repository/call_media.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart'
@@ -113,5 +114,21 @@ void main() {
     );
     expect(CallMedia.linkOf(CallStatusReconnectionFailed()), MediaLink.lost);
     expect(CallMedia.linkOf(CallStatusIdle()), isNull);
+  });
+
+  test('CallPeer: members are part of ==; unknown id → empty member', () {
+    const a = CallPeer(
+      name: 'Team',
+      isGroup: true,
+      members: {'2': CallMember(name: 'Dara Sok')},
+    );
+    const b = CallPeer(
+      name: 'Team',
+      isGroup: true,
+      members: {'2': CallMember(name: 'Dara Sok')},
+    );
+    expect(a, b);
+    expect(a.member('2').firstName, 'Dara');
+    expect(a.member('99').name, '');
   });
 }

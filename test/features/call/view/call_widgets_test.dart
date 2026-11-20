@@ -128,6 +128,29 @@ void main() {
     );
   });
 
+  test('group texts (6.3c): who is calling · waiting for others', () {
+    const team = CallPeer(
+      name: 'Team ERP',
+      isGroup: true,
+      members: {'2': CallMember(name: 'Dara Sok')},
+    );
+    expect(
+      CallStatusText.textFor(const CallIncomingState(call: _call, peer: team)),
+      'Dara is calling…', // _call.callerId == '2'
+    );
+    expect(
+      CallStatusText.textFor(
+        CallInCallState(
+          call: _call,
+          peer: team,
+          connectedAt: DateTime(2026),
+          peerAway: true,
+        ),
+      ),
+      'Waiting for others…',
+    );
+  });
+
   testWidgets('outgoing: only End → hang up', (tester) async {
     final taps = <String>[];
     await tester.pumpWidget(

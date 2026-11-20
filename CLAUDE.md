@@ -457,6 +457,14 @@ Login response
   `reconnecting` → "Reconnecting…" + a 30 s give-up timer → `POST /end` +
   `connectionLost`. `peerAway` (they left the media after 00:00) → "Jane is
   reconnecting…"; never hang up for them (their phone / the server does).
+- **6.3c groups:** `app/call_peer_of.dart` builds `CallPeer` (+ `members`
+  userId → `CallMember` name / photo) for outgoing AND incoming calls.
+  `CallMedia.peers` = the OTHER user ids in the media (sorted, distinct);
+  InCall `others`; the FIRST one starts the timer; "away" only when nobody
+  is left ("Waiting for others…" in a group). Incoming group: "Dara is
+  calling…". Voice: `CallParticipantsRow` (max 4 + "+N"); video:
+  `CallVideoView` 1 full · 2 rows · 2×2 (max 4) of `CallVideoTile`. Stream
+  also exports `CallMember` → `hide CallMember` where both are imported.
 - Stuck calls: the backend hangs up for a user whose socket is gone 30 s
   during an ANSWERED call (`answered-disconnect-grace-seconds`, backend
   `CallDisconnectHandler`). The raw "Caller is already in an active call"

@@ -44,9 +44,9 @@ class CallMedia {
 
   StreamVideo? _client;
   String? _clientUserId;
-  StreamSubscription<bool>? _stateSub;
+  StreamSubscription<List<String>>? _stateSub;
   StreamSubscription<MediaLink>? _linkSub;
-  final _peer = StreamController<bool>.broadcast();
+  final _peers = StreamController<List<String>>.broadcast();
   final _link = StreamController<MediaLink>.broadcast();
 
   /// Bumped by [leave]: a join that finishes after it must not stay.
@@ -55,8 +55,9 @@ class CallMedia {
   /// The joined Stream call (null when none) — `CallVideoView` draws it.
   final ValueNotifier<Call?> call = ValueNotifier(null);
 
-  /// true when someone else is in the media call, false when they left.
-  Stream<bool> get peerPresent => _peer.stream;
+  /// The OTHER people in the media call right now (user ids, sorted).
+  /// Empty = nobody else (yet, or they left). Groups: several (6.3c).
+  Stream<List<String>> get peers => _peers.stream;
 
   /// MY connection to the media call: connected · reconnecting · lost.
   Stream<MediaLink> get link => _link.stream;
@@ -110,9 +111,13 @@ class CallMedia {
 
       call.value = c;
       _stateSub = c.state.valueStream
-          .map((s) => s.otherParticipants.isNotEmpty)
-          .distinct()
-          .listen(_peer.add);
+          .map(
+            (s) =>
+                {for (final p in s.otherParticipants) p.userId}.toList()
+                  ..sort(),
+          )
+          .distinct(const ListEquality<String>().equals)
+          .listen(_peers.add);
       _linkSub = c.state.valueStream
           .map((s) => linkOf(s.status))
           .where((l) => l != null)
