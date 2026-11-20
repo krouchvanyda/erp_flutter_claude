@@ -110,7 +110,7 @@ Live status: [`docs/learning/REBUILD/README.md`](docs/learning/REBUILD/README.md
 | Secrets | `flutter_secure_storage` | Tokens only |
 | Navigation | `ConfigRouter` (`Navigator` + `page_transition`) + `AuthGate` | No go_router. `AuthGate` swaps Splash / Login / Home from `AuthSession` |
 | Models | Hand-written immutable + Dart 3 `sealed class` | `json_serializable` for JSON models only |
-| Calls | `stream_video_flutter` + `packages/erp_callkit` | |
+| Calls | `stream_video_flutter` (+ a native CallKit plugin, rebuilt in Step 7; old one: `git show feature/call:packages/erp_callkit`) | |
 | Push | `firebase_messaging` (+ VoIP on iOS) | Step 7 |
 | Translations | GetX `.tr` **only** | Step 8 |
 | Tests | `flutter_test`, `bloc_test`, `mocktail` | |
