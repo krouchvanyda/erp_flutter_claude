@@ -219,6 +219,27 @@ Login response
 - Every other page move uses `ConfigRouter` (`pushPageAnimation` for normal
   pages). Code without a context navigates via `AppNavigator.rootKey`.
 
+### Profile (Step 4)
+
+- **4.1 view:** `ProfileRepository.loadProfile()` = `GET /users/me` +
+  `GET /employees/me` **together** (`(a, b).wait`). User fails → `Left`.
+  Employee fails (404 = no linked employee) → `employee: null`, still show
+  the page. "Which phone / avatar wins" lives in `ProfileModel` getters,
+  never in widgets.
+- **4.2 avatar:** `POST /employees/me/avatar` (multipart `file`). The employee
+  avatar wins over the user's.
+- **4.3 edit name / phone is BLOCKED:** the only edit endpoint
+  `PATCH /users/{id}` needs `user:write` (admin) → 403. Waiting for the
+  backend's `PATCH /api/v1/users/me`. Don't call `/users/{id}`.
+- Logout lives on the profile page, as a red ⎋ icon at the top right of the
+  AppBar (always visible, works even if the load failed). `ProfilePage(onLogout:)` gets
+  `AuthRepository.logout` from `app/`; profile never imports the auth
+  repository (a feature's **model** may be shared, its repository not).
+- Server file paths (`/uploads/...`) → `ApiEndPoint.fileUrl(path)` before
+  showing them. People → `AppAvatar(name:, imageUrl:)` (cached photo or
+  initials). A page whose first load failed → `AppErrorView(onRetry:)`; a
+  failed refresh keeps the data and shows `AppSnackBar`.
+
 ### Network (Step 2) — MVVM-template style
 
 - Every request goes through `AppService.send(httpMethods:, endPoint:,

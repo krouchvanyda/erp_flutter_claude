@@ -1,6 +1,6 @@
 # Step 3.2 — Splash auto-login + real logout
 
-> ← Previous: [07-login.md](07-login.md) · Roadmap: [README.md](README.md)
+> ← Previous: [07-login.md](07-login.md) · Next: [09-profile-view.md](09-profile-view.md) · Roadmap: [README.md](README.md)
 
 Step 3.1 saved the tokens. Now we **use** them:
 

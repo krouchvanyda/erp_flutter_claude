@@ -1,3 +1,5 @@
+import '../config/flavor.dart';
+
 /// Every backend path, in one place (see API_LIST_BACKEND.md).
 /// Never type a path in a repository.
 abstract final class ApiEndPoint {
@@ -12,6 +14,7 @@ abstract final class ApiEndPoint {
   // ── Token needed ──
   static const String logout = '$_v1/auth/logout';
   static const String me = '$_v1/users/me';
+  static const String employeesMe = '$_v1/employees/me';
 
   /// Endpoints that never carry a token and never trigger a refresh.
   /// (The backend answers 401 for a WRONG PASSWORD on login — that must not
@@ -19,4 +22,14 @@ abstract final class ApiEndPoint {
   static const Set<String> publicEndpoints = {health, login, register, refresh};
 
   static bool isPublic(String path) => publicEndpoints.contains(path);
+
+  /// Server file path → full URL for `Image` widgets.
+  /// `"/uploads/a.jpg"` → `"http://host:8080/uploads/a.jpg"`.
+  /// Already full (`http…`) → unchanged. Empty / null → null.
+  /// `/uploads/**` is public on the backend, so no token is needed.
+  static String? fileUrl(String? path) {
+    if (path == null || path.isEmpty) return null;
+    if (path.startsWith('http')) return path;
+    return '${Flavor.current.apiBaseUrl}$path';
+  }
 }

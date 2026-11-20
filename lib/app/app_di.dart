@@ -1,6 +1,7 @@
 import '../core/di/injection.dart';
 import '../core/di/service_locator.dart';
 import '../features/auth/auth_di.dart';
+import '../features/profile/profile_di.dart';
 
 /// Fills the DI box for the whole app. Called ONCE from `bootstrap()`.
 ///
@@ -18,4 +19,5 @@ import '../features/auth/auth_di.dart';
 Future<void> configureAppDependencies() async {
   await configureDependencies(); // core first: features depend on it
   registerAuthModule(getIt);
+  registerProfileModule(getIt);
 }

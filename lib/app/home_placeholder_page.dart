@@ -9,7 +9,7 @@ import '../core/router/config_router.dart';
 import '../core/theme/app_font_size.dart';
 import '../core/theme/app_label.dart';
 import '../core/theme/app_spacing.dart';
-import '../core/widgets/app_confirm_dialog.dart';
+import '../features/profile/view/profile_page.dart';
 
 /// Temporary page after login (Step 5 replaces it with the chat inbox).
 /// Also keeps the theme preview from Step 1.2.
@@ -85,9 +85,13 @@ class HomePlaceholderPage extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            tooltip: 'Log out',
-            onPressed: () => confirmLogout(context, onLogout),
-            icon: const Icon(Icons.logout),
+            tooltip: 'My profile',
+            // Logout now lives on the profile page (Step 4.1).
+            onPressed: () => ConfigRouter.pushPageAnimation(
+              context,
+              ProfilePage(onLogout: onLogout),
+            ),
+            icon: const Icon(Icons.account_circle_outlined),
           ),
         ],
       ),
@@ -124,19 +128,6 @@ class HomePlaceholderPage extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: AppSpacing.md),
-          FilledButton(
-            // ConfigRouter demo: slide right → left.
-            onPressed: () => ConfigRouter.pushPageAnimation(
-              context,
-              _DemoDetailPage(onLogout: onLogout),
-            ),
-            child: const AppLabel(
-              text: 'Open detail (ConfigRouter)',
-              fontSize: AppFontSize.value14,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
         ],
       ),
     );
@@ -169,55 +160,4 @@ class _DemoCard extends StatelessWidget {
       ),
     );
   }
-}
-
-/// A pushed page — shows that logout from here also closes it
-/// (AuthGate pops everything back to the first route).
-class _DemoDetailPage extends StatelessWidget {
-  const _DemoDetailPage({required this.onLogout});
-
-  final Future<void> Function() onLogout;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const AppLabel(
-          text: 'Detail',
-          fontSize: AppFontSize.value20,
-          fontWeight: FontWeight.w600,
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Log out',
-            onPressed: () => confirmLogout(context, onLogout),
-            icon: const Icon(Icons.logout),
-          ),
-        ],
-      ),
-      body: const Center(
-        child: AppLabel(
-          text: 'Pushed with ConfigRouter.pushPageAnimation',
-          fontSize: AppFontSize.value14,
-        ),
-      ),
-    );
-  }
-}
-
-/// "Log out?" → Cancel / Log out. Only on "Log out" do we call [onLogout].
-/// A mistake tap must not throw the user out (destructive → ask first).
-Future<void> confirmLogout(
-  BuildContext context,
-  Future<void> Function() onLogout,
-) async {
-  final yes = await AppConfirmDialog.show(
-    context,
-    icon: Icons.logout_rounded,
-    title: 'Log out?',
-    message: 'You will need to sign in again.',
-    confirmText: 'Log out',
-    destructive: true,
-  );
-  if (yes) await onLogout();
 }
