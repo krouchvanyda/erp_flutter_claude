@@ -9,6 +9,7 @@ import '../core/router/config_router.dart';
 import '../core/theme/app_font_size.dart';
 import '../core/theme/app_label.dart';
 import '../core/theme/app_spacing.dart';
+import '../core/widgets/app_confirm_dialog.dart';
 
 /// Temporary page after login (Step 5 replaces it with the chat inbox).
 /// Also keeps the theme preview from Step 1.2.
@@ -205,39 +206,18 @@ class _DemoDetailPage extends StatelessWidget {
 }
 
 /// "Log out?" → Cancel / Log out. Only on "Log out" do we call [onLogout].
-/// A mistake tap must not throw the user out (design guide: destructive
-/// actions ask first).
+/// A mistake tap must not throw the user out (destructive → ask first).
 Future<void> confirmLogout(
   BuildContext context,
   Future<void> Function() onLogout,
 ) async {
-  final yes = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const AppLabel(
-        text: 'Log out?',
-        fontSize: AppFontSize.value20,
-        fontWeight: FontWeight.w600,
-      ),
-      content: const AppLabel(
-        text: 'You will need to sign in again.',
-        fontSize: AppFontSize.value14,
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const AppLabel(text: 'Cancel', fontSize: AppFontSize.value14),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: const AppLabel(
-            text: 'Log out',
-            fontSize: AppFontSize.value14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    ),
+  final yes = await AppConfirmDialog.show(
+    context,
+    icon: Icons.logout_rounded,
+    title: 'Log out?',
+    message: 'You will need to sign in again.',
+    confirmText: 'Log out',
+    destructive: true,
   );
-  if (yes == true) await onLogout();
+  if (yes) await onLogout();
 }

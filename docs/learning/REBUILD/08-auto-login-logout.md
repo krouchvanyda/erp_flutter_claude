@@ -129,7 +129,8 @@ sequenceDiagram
 lib/
 ├── app/
 │   ├── auth_gate.dart               SplashPage(onFinished) · Home(onLogout: repo.logout)   CHANGED
-│   └── home_placeholder_page.dart   logout → "Log out?" dialog → onLogout()              CHANGED
+│   └── home_placeholder_page.dart   logout → AppConfirmDialog → onLogout()               CHANGED
+├── core/widgets/app_confirm_dialog.dart  AppConfirmDialog.show(...) → bool             NEW
 └── features/auth/
     ├── repository/auth_repository.dart   + restoreSession() + logout()                   CHANGED
     ├── viewmodel/
@@ -281,6 +282,46 @@ HomePlaceholderPage(onLogout: getIt<AuthRepository>().logout, ...)
 
 - **"Log out?" dialog**: logout is destructive (you must type the password
   again), so a mistake tap must not do it.
+
+### `core/widgets/app_confirm_dialog.dart`
+
+```
+┌──────────────────────────────┐
+│            ( ⎋ )             │  icon in a soft red circle
+│          Log out?            │  title, centred
+│ You will need to sign in…    │  message, muted
+│ [  Cancel  ] [  Log out   ]  │  two EQUAL buttons, red confirm on the right
+└──────────────────────────────┘
+```
+
+```dart
+final yes = await AppConfirmDialog.show(
+  context,
+  icon: Icons.logout_rounded,
+  title: 'Log out?',
+  message: 'You will need to sign in again.',
+  confirmText: 'Log out',
+  destructive: true,
+);
+if (yes) await onLogout();
+```
+
+Our first try used a plain `AlertDialog` and looked broken: **Cancel** was
+alone on the right and **Log out** was a huge blue bar under it.
+
+| Problem | Cause | Fix |
+|---|---|---|
+| Log out button full width, on its own row | The **theme** gives every `FilledButton` `minimumSize: Size.fromHeight(52)` = infinitely wide (right for the login form) | In the dialog: `minimumSize: Size(0, 48)` + `Expanded` → two buttons share the row |
+| Log out in brand blue | Default `FilledButton` colour | `destructive: true` → `colors.error` / `onError` (red = "careful") |
+| Cancel floating alone as plain text | `TextButton` next to a giant button | `OutlinedButton`, same size as confirm |
+| Cancel border invisible | `outlineVariant` ≈ the dialog's background | `colors.outline` at 35 % |
+| Text could wrap in a narrow button | Long words / Khmer later | `maxLines: 1` + ellipsis |
+
+- **Returns `bool`, not `bool?`**: tapping outside or pressing back = Cancel
+  (`yes ?? false`), so callers write `if (yes)`.
+- **`ConstrainedBox(maxWidth: 400)`**: on a tablet the dialog doesn't stretch.
+- **Reusable**: chat "Delete message?", "Leave group?", call "End call?" will
+  use the same widget.
 - **`onLogout: getIt<AuthRepository>().logout`** is a **tear-off**: we pass
   the method itself, without calling it. Home doesn't know about repositories,
   it just calls `onLogout()`.
@@ -299,6 +340,7 @@ HomePlaceholderPage(onLogout: getIt<AuthRepository>().logout, ...)
 | Logout: server → clear → close, in `finally` | Clear first, then call the server | The interceptor needs the token from storage to authorize `/logout`. |
 | Ignore the logout result, 5 s timeout | Show an error if the server fails | The user wants out. A failed revoke can't keep them in; the refresh token expires on the server anyway. |
 | "Log out?" dialog | Log out on one tap | Destructive action → confirm (design guide). |
+| `AppConfirmDialog` in `core/widgets/` | `AlertDialog` with default buttons | The theme's full-width buttons broke `AlertDialog` actions. One shared dialog = the same look for every "are you sure?". |
 | Tokens only (no user cache yet) | Cache `UserModel` in SharedPreferences now | Home doesn't show the user yet. Step 4 (Profile) loads `/users/me` and decides about caching. |
 
 ## 5. Try it
@@ -314,7 +356,8 @@ flutter run --flavor dev -t lib/main_dev.dart
 3. Tap **Call GET /users/me** → **✅ Signed in as …** (the access token may be
    old; if so the interceptor refreshes it, and you see `POST /auth/refresh`
    in the log first).
-4. Tap **⎋** → **"Log out?"** → **Cancel** → nothing happens.
+4. Tap **⎋** → the **"Log out?"** dialog (red icon, Cancel | Log out side by
+   side) → **Cancel** → nothing happens. Tap outside the dialog → same.
 5. Tap **⎋** → **Log out** → in the log: `POST /api/v1/auth/logout` → Login.
 6. **Kill the app → open again → Login** (not Home). ✅ tokens really cleared
 7. Airplane mode → sign in is impossible, but if you were signed in: log out

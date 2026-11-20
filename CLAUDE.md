@@ -345,8 +345,12 @@ Deep call docs: `docs/learning/IOS_CALL/`, `docs/learning/ANDROID_CALL/`,
   (`core/utils/validators/`); the BLoC handles submit, loading, server errors
   (`ServerError.fieldErrors` → `AppInputText(errorText:)`) and success.
 - Reusable widgets in `core/widgets/` (`AppInputText` with optional `label`,
-  `AppButton` with `isLoading`, `AppSnackBar`) take colors from the theme,
-  never hard-coded.
+  `AppButton` with `isLoading`, `AppSnackBar`, `AppConfirmDialog`) take
+  colors from the theme, never hard-coded.
+- "Are you sure?" questions (logout, delete, leave group, end call) use
+  `AppConfirmDialog.show(...)` → `bool` (`destructive: true` → red confirm).
+  Never a raw `AlertDialog`: the theme makes buttons full width, which breaks
+  its actions row.
 - Server / network errors (and success messages) are shown with
   `AppSnackBar.error / success / info(context, title:, message:)` (a bar at
   the **top**, drawn in the root `Overlay`; `AppSnackBar.hide()` slides it
