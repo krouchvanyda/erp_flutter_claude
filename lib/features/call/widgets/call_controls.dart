@@ -4,15 +4,19 @@ import '../../../core/theme/app_status_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../viewmodel/call/call_view_model_bloc.dart';
 import 'call_action_button.dart';
+import 'call_toggle_button.dart';
 
 /// The buttons at the bottom, from the state:
 ///
 /// ```
 /// Incoming          (⛔ Decline)      (📞 Accept)
-/// Outgoing / InCall          (⛔ End)
+/// Outgoing                   (⛔ End)
+/// InCall voice      (🎙 Mute) (🔊 Speaker)
+///                            (⛔ End)
+/// InCall video  (🎙) (🎥) (🔄) (🔊)
+///                            (⛔ End)
 /// Ended / Idle               (nothing)
 /// ```
-/// Mute · speaker · camera come with the real audio (Step 6.2).
 class CallControls extends StatelessWidget {
   const CallControls({
     super.key,
@@ -20,12 +24,20 @@ class CallControls extends StatelessWidget {
     required this.onAccept,
     required this.onDecline,
     required this.onHangUp,
+    required this.onToggleMic,
+    required this.onToggleSpeaker,
+    required this.onToggleCamera,
+    required this.onFlipCamera,
   });
 
   final CallViewModelState state;
   final VoidCallback onAccept;
   final VoidCallback onDecline;
   final VoidCallback onHangUp;
+  final VoidCallback onToggleMic;
+  final VoidCallback onToggleSpeaker;
+  final VoidCallback onToggleCamera;
+  final VoidCallback onFlipCamera;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +64,54 @@ class CallControls extends StatelessWidget {
           ),
         ],
       ),
-      CallOutgoingState() || CallInCallState() => Center(child: end),
+      CallInCallState(
+        :final call,
+        :final micOn,
+        :final speakerOn,
+        :final cameraOn,
+      ) =>
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                CallToggleButton(
+                  icon: micOn ? Icons.mic_rounded : Icons.mic_off_rounded,
+                  label: micOn ? 'Mute' : 'Unmute',
+                  highlighted: !micOn,
+                  onPressed: onToggleMic,
+                ),
+                if (call.isVideo) ...[
+                  CallToggleButton(
+                    icon: cameraOn
+                        ? Icons.videocam_rounded
+                        : Icons.videocam_off_rounded,
+                    label: 'Camera',
+                    highlighted: !cameraOn,
+                    onPressed: onToggleCamera,
+                  ),
+                  CallToggleButton(
+                    icon: Icons.cameraswitch_rounded,
+                    label: 'Flip',
+                    onPressed: cameraOn ? onFlipCamera : null,
+                  ),
+                ],
+                CallToggleButton(
+                  icon: speakerOn
+                      ? Icons.volume_up_rounded
+                      : Icons.volume_down_rounded,
+                  label: 'Speaker',
+                  highlighted: speakerOn,
+                  onPressed: onToggleSpeaker,
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            end,
+          ],
+        ),
+      CallOutgoingState() => Center(child: end),
       // keep the height → the header doesn't jump when the buttons go
       CallEndedState() || CallIdleState() => const SizedBox(height: 96),
     };

@@ -10,6 +10,7 @@ import '../../model/call_enums.dart';
 import '../../model/call_model.dart';
 import '../../model/call_peer.dart';
 import '../../model/call_update.dart';
+import '../../repository/call_media.dart';
 import '../../repository/call_repository.dart';
 
 part 'call_view_model_event.dart';
@@ -36,15 +37,21 @@ typedef CallPeerLoader = Future<CallPeer?> Function(CallModel call);
 ///   the call is ended as soon as its id arrives.
 /// - Backstop (#19): the callee's timer only CLOSES the screen; it never
 ///   sends "reject" (that would save "declined", not "missed").
+///
+/// Media (Step 6.2): entering InCall joins the Stream call ([CallMedia]).
+/// "Connecting…" until the OTHER person is really in the media call, then the
+/// timer starts at 00:00 (CALL_SCENARIOS.md #8). Every end path leaves it.
 class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
   CallViewModelBloc(
     this._repository, {
+    required CallMedia media,
     required CallPeerLoader loadPeer,
     required AuthSession session,
     this.ringBackstop = CallConfig.ringBackstop,
     this.endedScreen = CallConfig.endedScreen,
     DateTime Function()? clock,
-  }) : _loadPeer = loadPeer,
+  }) : _media = media,
+       _loadPeer = loadPeer,
        _session = session,
        _now = clock ?? DateTime.now,
        super(const CallIdleState()) {
@@ -58,6 +65,12 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     on<OnCallClosedEvent>(_onClosed);
     on<OnCallResyncEvent>(_onResync);
     on<OnCallResetEvent>(_onReset);
+    on<OnCallMediaStartEvent>(_onMediaStart);
+    on<OnCallPeerMediaEvent>(_onPeerMedia);
+    on<OnCallToggleMicEvent>(_onToggleMic);
+    on<OnCallToggleCameraEvent>(_onToggleCamera);
+    on<OnCallToggleSpeakerEvent>(_onToggleSpeaker);
+    on<OnCallFlipCameraEvent>(_onFlipCamera);
 
     // Invites can come at any time → listen for the whole session.
     _queue = _repository.callsQueue().listen(_live);
@@ -68,6 +81,7 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
   }
 
   final CallRepository _repository;
+  final CallMedia _media;
   final CallPeerLoader _loadPeer;
   final AuthSession _session;
   final Duration ringBackstop;
@@ -80,6 +94,7 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
   late final StreamSubscription<CallUpdate> _queue;
   late final StreamSubscription<void> _reconnected;
   StreamSubscription<CallUpdate>? _topic; // the current call's conversation
+  StreamSubscription<bool>? _peerMedia; // is the other person in the media?
   Timer? _backstop;
   Timer? _closing;
   String? _myId;
@@ -109,6 +124,8 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     _session.removeListener(_onSession);
     _stopTimers();
     await _topic?.cancel();
+    await _peerMedia?.cancel();
+    await _media.leave();
     await _queue.cancel();
     await _reconnected.cancel();
     inCall.dispose();
@@ -213,10 +230,7 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     if (now is! CallIncomingState || now.call.id != s.call.id) return;
     result.fold(
       (error) => _end(emit, CallEndReason.failed, message: error.description),
-      (call) {
-        _cancelBackstop();
-        emit(CallInCallState(call: call, peer: now.peer, connectedAt: _now()));
-      },
+      (call) => _enterCall(emit, call, now.peer),
     );
   }
 
@@ -272,13 +286,10 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
         CallOutgoingState(:final call?, :final peer),
         CallAccepted(call: final fresh),
       ):
-        _cancelBackstop();
-        emit(
-          CallInCallState(
-            call: fresh ?? call.copyWith(status: CallStatus.answered),
-            peer: peer,
-            connectedAt: _now(),
-          ),
+        _enterCall(
+          emit,
+          fresh ?? call.copyWith(status: CallStatus.answered),
+          peer,
         );
       case (CallOutgoingState(), CallRejected(:final reason, :final call))
           when _isOver(call):
@@ -363,8 +374,7 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
           _ => CallEndReason.hungUp,
         });
       } else if (call.status == CallStatus.answered && s is CallOutgoingState) {
-        _cancelBackstop();
-        emit(CallInCallState(call: call, peer: s.peer, connectedAt: _now()));
+        _enterCall(emit, call, s.peer);
       }
     });
   }
@@ -373,9 +383,130 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     _stopTimers();
     _topic?.cancel();
     _topic = null;
+    _peerMedia?.cancel();
+    _peerMedia = null;
+    _media.signOut(); // forget the Stream user too
     _myId = null;
     emit(const CallIdleState());
   }
+
+  // ───────────── media (6.2) ─────────────
+
+  /// Both sides agreed → "Connecting…" and join the Stream call.
+  void _enterCall(
+    Emitter<CallViewModelState> emit,
+    CallModel call,
+    CallPeer peer,
+  ) {
+    _cancelBackstop();
+    emit(
+      CallInCallState(
+        call: call,
+        peer: peer,
+        cameraOn: call.isVideo,
+        speakerOn: call.isVideo, // video → loudspeaker, voice → earpiece
+      ),
+    );
+    add(OnCallMediaStartEvent(call.id));
+  }
+
+  Future<void> _onMediaStart(
+    OnCallMediaStartEvent event,
+    Emitter<CallViewModelState> emit,
+  ) async {
+    final s = state;
+    if (s is! CallInCallState || s.call.id != event.callId) return;
+    final cid = s.call.streamCallCid ?? '';
+    if (cid.isEmpty) {
+      _repository.end(s.call.id);
+      _end(emit, CallEndReason.failed);
+      return;
+    }
+    // Listen first: the other person may already be in the media call.
+    _peerMedia?.cancel();
+    _peerMedia = _media.peerPresent.listen((present) {
+      if (!isClosed) add(OnCallPeerMediaEvent(event.callId, present));
+    });
+
+    final joined = await _media.join(cid: cid, video: s.call.isVideo);
+    final now = state;
+    if (now is! CallInCallState || now.call.id != event.callId) return;
+    if (!joined.ok) {
+      // No sound is no call: hang up properly so the other side isn't stuck.
+      _repository.end(now.call.id);
+      _end(emit, CallEndReason.failed);
+      return;
+    }
+    emit(now.copyWith(micOn: joined.micOn, cameraOn: joined.cameraOn));
+  }
+
+  /// The other person entered the media call → the timer starts now.
+  void _onPeerMedia(
+    OnCallPeerMediaEvent event,
+    Emitter<CallViewModelState> emit,
+  ) {
+    final s = state;
+    if (s is! CallInCallState || s.call.id != event.callId) return;
+    if (event.present && s.connectedAt == null) {
+      emit(s.copyWith(connectedAt: _now()));
+    }
+    // They LEFT the media: the signalling (`call.hangup`) ends the call.
+    // "Reconnecting…" for a drop is Step 6.3.
+  }
+
+  /// Flip at once (the button reacts), then ask the SDK; it said no
+  /// (e.g. permission denied) → flip back.
+  Future<void> _toggle(
+    Emitter<CallViewModelState> emit,
+    CallInCallState Function(CallInCallState s) flipped,
+    Future<bool> Function(CallInCallState next) apply,
+  ) async {
+    final s = state;
+    if (s is! CallInCallState) return;
+    final next = flipped(s);
+    emit(next);
+    final ok = await apply(next);
+    final now = state;
+    if (!ok && now is CallInCallState && now.call.id == s.call.id) {
+      emit(flipped(now)); // back
+    }
+  }
+
+  Future<void> _onToggleMic(
+    OnCallToggleMicEvent event,
+    Emitter<CallViewModelState> emit,
+  ) => _toggle(
+    emit,
+    (s) => s.copyWith(micOn: !s.micOn),
+    (next) => _media.setMicrophone(next.micOn),
+  );
+
+  Future<void> _onToggleCamera(
+    OnCallToggleCameraEvent event,
+    Emitter<CallViewModelState> emit,
+  ) => _toggle(
+    emit,
+    (s) => s.copyWith(cameraOn: !s.cameraOn),
+    (next) => _media.setCamera(next.cameraOn),
+  );
+
+  Future<void> _onToggleSpeaker(
+    OnCallToggleSpeakerEvent event,
+    Emitter<CallViewModelState> emit,
+  ) => _toggle(
+    emit,
+    (s) => s.copyWith(speakerOn: !s.speakerOn),
+    (next) => _media.setSpeaker(next.speakerOn),
+  );
+
+  Future<void> _onFlipCamera(
+    OnCallFlipCameraEvent event,
+    Emitter<CallViewModelState> emit,
+  ) => _toggle(
+    emit,
+    (s) => s.copyWith(frontCamera: !s.frontCamera),
+    (_) => _media.flipCamera(),
+  );
 
   // ───────────── helpers ─────────────
 
@@ -395,6 +526,9 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     _stopTimers();
     _topic?.cancel();
     _topic = null;
+    _peerMedia?.cancel();
+    _peerMedia = null;
+    _media.leave(); // every end path leaves the sound / picture
     emit(
       CallEndedState(peer: peer, type: type, reason: reason, message: message),
     );

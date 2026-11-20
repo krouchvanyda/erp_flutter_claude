@@ -55,7 +55,8 @@ the same data count as equal. Why, and what breaks without them:
 | 5.5 | Chat: attachments (photo, PDF, voice) | ✅ |
 | 5.6 | Chat: typing · edit / delete · reactions · presence · search | ✅ |
 | 6.1 | Call: signalling (call screen, accept / decline, busy, timeouts) | ✅ |
-| 6.2 – 7 | Call: voice + video, polish, call when the app is killed | ⏳ |
+| 6.2 | Call: voice + video (Stream Video) | ✅ |
+| 6.3 – 7 | Call: polish, call when the app is killed | ⏳ |
 | 8 | Translations, tests, polish | ⏳ |
 
 The full table with lesson links is in

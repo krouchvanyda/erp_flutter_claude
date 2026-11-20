@@ -82,6 +82,10 @@ abstract final class ApiEndPoint {
   static String callReject(String callId) => '${call(callId)}/reject';
   static String callEnd(String callId) => '${call(callId)}/end';
 
+  /// GET → `{token, apiKey, userId, expiresAt}`: a short-lived Stream Video
+  /// token for the sound + picture (Step 6.2).
+  static const String callStreamToken = '$_v1/chats/calls/stream-token';
+
   // ── Realtime (Step 5.3) ──
   /// STOMP over WebSocket, per flavor (`Environments.*RealtimeUrl`, the
   /// backend's `/ws`). The token goes in the CONNECT frame, not the URL.

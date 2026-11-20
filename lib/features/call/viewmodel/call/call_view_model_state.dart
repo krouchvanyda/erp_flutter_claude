@@ -107,27 +107,67 @@ final class CallIncomingState extends CallViewModelState {
   int get hashCode => Object.hash(call, peer, accepting);
 }
 
-/// Connected. The timer counts from [connectedAt].
+/// Both sides agreed (Accept). [connectedAt] is null while "Connecting…"
+/// (the media call isn't up with the other person yet), then the timer
+/// counts from it.
 final class CallInCallState extends CallViewModelState {
   const CallInCallState({
     required this.call,
     required this.peer,
-    required this.connectedAt,
+    this.connectedAt,
+    this.micOn = true,
+    this.cameraOn = false,
+    this.speakerOn = false,
+    this.frontCamera = true,
   });
 
   final CallModel call;
   final CallPeer peer;
-  final DateTime connectedAt;
+  final DateTime? connectedAt;
+  final bool micOn;
+  final bool cameraOn;
+  final bool speakerOn;
+  final bool frontCamera;
+
+  bool get isConnecting => connectedAt == null;
+
+  CallInCallState copyWith({
+    DateTime? connectedAt,
+    bool? micOn,
+    bool? cameraOn,
+    bool? speakerOn,
+    bool? frontCamera,
+  }) => CallInCallState(
+    call: call,
+    peer: peer,
+    connectedAt: connectedAt ?? this.connectedAt,
+    micOn: micOn ?? this.micOn,
+    cameraOn: cameraOn ?? this.cameraOn,
+    speakerOn: speakerOn ?? this.speakerOn,
+    frontCamera: frontCamera ?? this.frontCamera,
+  );
 
   @override
   bool operator ==(Object other) =>
       other is CallInCallState &&
       other.call == call &&
       other.peer == peer &&
-      other.connectedAt == connectedAt;
+      other.connectedAt == connectedAt &&
+      other.micOn == micOn &&
+      other.cameraOn == cameraOn &&
+      other.speakerOn == speakerOn &&
+      other.frontCamera == frontCamera;
 
   @override
-  int get hashCode => Object.hash(call, peer, connectedAt);
+  int get hashCode => Object.hash(
+    call,
+    peer,
+    connectedAt,
+    micOn,
+    cameraOn,
+    speakerOn,
+    frontCamera,
+  );
 }
 
 /// Over. Shown for `CallConfig.endedScreen`, then → Idle.

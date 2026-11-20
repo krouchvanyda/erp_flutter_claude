@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show ValueListenable;
+import 'package:flutter/widgets.dart' show BuildContext;
 
 import 'conversation_model.dart';
 
@@ -8,13 +9,16 @@ import 'conversation_model.dart';
 /// passes it to each chat. Same idea as `InboxPage(onOpenProfile:)`.
 ///
 /// ```
-/// chat 📞 ──start(conversation, myId, video: false)──► app/ ──► CallViewModelBloc
+/// chat 📞 ──start(context, conversation, myId, video: false)──► app/
+///          ──► mic / camera permission ──► CallViewModelBloc
 /// chat 📞 greyed ◄── inCall (true while a call is on screen)
 /// ```
 class ChatCallLauncher {
   const ChatCallLauncher({required this.start, required this.inCall});
 
+  /// [context] = the chat page's, for the permission dialogs.
   final void Function(
+    BuildContext context,
     ConversationModel conversation, {
     required String? myId,
     required bool video,

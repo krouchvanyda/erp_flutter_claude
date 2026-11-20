@@ -55,3 +55,32 @@ final class OnCallResyncEvent extends CallViewModelEvent {}
 
 /// Logged out → forget everything (internal).
 final class OnCallResetEvent extends CallViewModelEvent {}
+
+// ── media (Step 6.2) ──
+
+/// We're in the call → join the Stream call (internal).
+final class OnCallMediaStartEvent extends CallViewModelEvent {
+  OnCallMediaStartEvent(this.callId);
+
+  final String callId;
+}
+
+/// The other person entered / left the media call (internal).
+final class OnCallPeerMediaEvent extends CallViewModelEvent {
+  OnCallPeerMediaEvent(this.callId, this.present);
+
+  final String callId;
+  final bool present;
+}
+
+/// 🎙 mute / unmute.
+final class OnCallToggleMicEvent extends CallViewModelEvent {}
+
+/// 🎥 camera on / off.
+final class OnCallToggleCameraEvent extends CallViewModelEvent {}
+
+/// 🔊 loudspeaker / earpiece.
+final class OnCallToggleSpeakerEvent extends CallViewModelEvent {}
+
+/// 🔄 front / back camera.
+final class OnCallFlipCameraEvent extends CallViewModelEvent {}

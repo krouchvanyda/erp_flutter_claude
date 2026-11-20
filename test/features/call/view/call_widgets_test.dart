@@ -65,6 +65,10 @@ void main() {
         onAccept: () => taps.add('accept'),
         onDecline: () => taps.add('decline'),
         onHangUp: () => taps.add('hangUp'),
+        onToggleMic: () => taps.add('mic'),
+        onToggleSpeaker: () => taps.add('speaker'),
+        onToggleCamera: () => taps.add('camera'),
+        onFlipCamera: () => taps.add('flip'),
       ),
     ),
   );
@@ -85,6 +89,27 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.call_rounded));
     expect(taps, isEmpty); // no double accept
+  });
+
+  testWidgets('in a voice call: Mute + Speaker + End (no camera)', (
+    tester,
+  ) async {
+    final taps = <String>[];
+    await tester.pumpWidget(
+      host(const CallInCallState(call: _call, peer: _peer), taps),
+    );
+    expect(find.text('Camera'), findsNothing);
+    await tester.tap(find.byIcon(Icons.mic_rounded));
+    await tester.tap(find.byIcon(Icons.volume_down_rounded));
+    await tester.tap(find.byIcon(Icons.call_end_rounded));
+    expect(taps, ['mic', 'speaker', 'hangUp']);
+  });
+
+  test('InCall before the other person joins the media → "Connecting…"', () {
+    expect(
+      CallStatusText.textFor(const CallInCallState(call: _call, peer: _peer)),
+      'Connecting…',
+    );
   });
 
   testWidgets('outgoing: only End → hang up', (tester) async {

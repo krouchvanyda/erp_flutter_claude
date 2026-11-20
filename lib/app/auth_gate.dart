@@ -11,6 +11,7 @@ import '../features/auth/view/splash_page.dart';
 import '../features/call/model/call_enums.dart';
 import '../features/call/model/call_peer.dart';
 import '../features/call/viewmodel/call/call_view_model_bloc.dart';
+import '../features/call/widgets/call_permission_gate.dart';
 import '../features/chat/model/chat_call_launcher.dart';
 import '../features/chat/view/inbox_page.dart';
 import '../features/profile/view/profile_page.dart';
@@ -66,17 +67,21 @@ class _AuthGateState extends State<AuthGate> {
     final calls = getIt<CallViewModelBloc>();
     return ChatCallLauncher(
       inCall: calls.inCall,
-      start: (conversation, {required myId, required video}) => calls.add(
-        OnCallStartEvent(
-          conversationId: conversation.id,
-          peer: CallPeer(
-            name: conversation.title(myId),
-            avatarUrl: ApiEndPoint.fileUrl(conversation.avatarUrlFor(myId)),
-            isGroup: conversation.isGroup,
+      start: (context, conversation, {required myId, required video}) async {
+        // Microphone (+ camera) FIRST — no call starts without it.
+        if (!await CallPermissionGate.ensure(context, video: video)) return;
+        calls.add(
+          OnCallStartEvent(
+            conversationId: conversation.id,
+            peer: CallPeer(
+              name: conversation.title(myId),
+              avatarUrl: ApiEndPoint.fileUrl(conversation.avatarUrlFor(myId)),
+              isGroup: conversation.isGroup,
+            ),
+            type: video ? CallType.video : CallType.voice,
           ),
-          type: video ? CallType.video : CallType.voice,
-        ),
-      ),
+        );
+      },
     );
   }
 

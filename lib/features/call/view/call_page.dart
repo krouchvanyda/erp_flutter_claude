@@ -1,24 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/di/service_locator.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_theme.dart';
 import '../model/call_enums.dart';
+import '../model/call_peer.dart';
+import '../repository/call_media.dart';
 import '../viewmodel/call/call_view_model_bloc.dart';
+import '../widgets/call_background.dart';
 import '../widgets/call_controls.dart';
 import '../widgets/call_peer_header.dart';
+import '../widgets/call_permission_gate.dart';
 import '../widgets/call_status_text.dart';
+import '../widgets/call_video_overlay.dart';
+import '../widgets/call_video_view.dart';
 
-/// THE call screen, for every phase (Step 6.1). Layout only.
+/// THE call screen, for every phase (Steps 6.1 + 6.2). Layout only.
 ///
 /// ```
-/// ┌──────────────────────┐
-/// │        (JD)          │  CallPeerHeader
-/// │      Jane Doe        │
-/// │   📞 Voice call      │
-/// │     Ringing…         │  CallStatusText (or the timer)
-/// │                      │
-/// │ (⛔ Decline) (📞 Accept)│  CallControls
-/// └──────────────────────┘
+/// voice / ringing / ended            video, in call
+/// ┌──────────────────────┐   ┌──────────────────────┐
+/// │        (JD)          │   │ Jane Doe 01:15 ┌───┐ │
+/// │      Jane Doe        │   │                │me │ │
+/// │   📞 Voice call      │   │  THEIR CAMERA  └───┘ │
+/// │      01:15           │   │                      │
+/// │  (🎙 Mute) (🔊)      │   │ (🎙) (🎥) (🔄) (🔊)  │
+/// │       (⛔ End)        │   │       (⛔ End)        │
+/// └──────────────────────┘   └──────────────────────┘
 /// ```
 ///
 /// ONE page from ring to goodbye: Accept doesn't open a new page, it just
@@ -30,7 +39,6 @@ class CallPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     return BlocConsumer<CallViewModelBloc, CallViewModelState>(
       listenWhen: (previous, current) => current is CallIdleState,
       listener: (context, state) {
@@ -49,56 +57,72 @@ class CallPage extends StatelessWidget {
           CallIncomingState(:final peer, :final call) ||
           CallInCallState(:final peer, :final call) => (peer, call.type),
           CallEndedState(:final peer, :final type) => (peer, type),
-          CallIdleState() => (null, CallType.voice),
+          CallIdleState() => (CallPeer.unknown, CallType.voice),
         };
         final video = type == CallType.video;
+        final controls = CallControls(
+          state: state,
+          // Microphone (+ camera) first, THEN accept.
+          onAccept: () async {
+            if (await CallPermissionGate.ensure(context, video: video)) {
+              bloc.add(OnCallAcceptEvent());
+            }
+          },
+          onDecline: () => bloc.add(OnCallDeclineEvent()),
+          onHangUp: () => bloc.add(OnCallHangUpEvent()),
+          onToggleMic: () => bloc.add(OnCallToggleMicEvent()),
+          onToggleSpeaker: () => bloc.add(OnCallToggleSpeakerEvent()),
+          onToggleCamera: () => bloc.add(OnCallToggleCameraEvent()),
+          onFlipCamera: () => bloc.add(OnCallFlipCameraEvent()),
+        );
+        final header = CallPeerHeader(
+          peer: peer,
+          kind: _kind(peer.isGroup, video),
+          kindIcon: video ? Icons.videocam_outlined : Icons.call_outlined,
+          status: CallStatusText(state: state),
+        );
 
+        final onVideo = state is CallInCallState && video;
         return PopScope(
           // Back must not drop a live call by accident.
           canPop: !state.isActive,
-          child: Scaffold(
-            body: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [colors.primaryContainer, colors.surface],
-                ),
-              ),
-              child: SafeArea(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 420),
-                    child: Column(
+          // Video: always dark around the picture, in light mode too. Set
+          // ABOVE the Scaffold, so its text colours follow too.
+          child: Theme(
+            data: onVideo ? AppTheme.dark() : Theme.of(context),
+            child: Scaffold(
+              body: onVideo
+                  ? Stack(
+                      fit: StackFit.expand,
                       children: [
-                        const Spacer(),
-                        if (peer != null)
+                        CallVideoView(
+                          call: getIt<CallMedia>().call,
+                          peer: peer,
+                          myCameraOn: state.cameraOn,
+                        ),
+                        CallVideoOverlay(
+                          name: peer.name,
+                          status: CallStatusText(state: state),
+                          controls: controls,
+                        ),
+                      ],
+                    )
+                  : CallBackground(
+                      child: Column(
+                        children: [
+                          const Spacer(),
                           Padding(
                             padding: const EdgeInsets.symmetric(
                               horizontal: AppSpacing.lg,
                             ),
-                            child: CallPeerHeader(
-                              peer: peer,
-                              kind: _kind(peer.isGroup, video),
-                              kindIcon: video
-                                  ? Icons.videocam_outlined
-                                  : Icons.call_outlined,
-                              status: CallStatusText(state: state),
-                            ),
+                            child: header,
                           ),
-                        const Spacer(flex: 2),
-                        CallControls(
-                          state: state,
-                          onAccept: () => bloc.add(OnCallAcceptEvent()),
-                          onDecline: () => bloc.add(OnCallDeclineEvent()),
-                          onHangUp: () => bloc.add(OnCallHangUpEvent()),
-                        ),
-                        const SizedBox(height: AppSpacing.xxl),
-                      ],
+                          const Spacer(flex: 2),
+                          controls,
+                          const SizedBox(height: AppSpacing.xxl),
+                        ],
+                      ),
                     ),
-                  ),
-                ),
-              ),
             ),
           ),
         );

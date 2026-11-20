@@ -9,6 +9,7 @@ import '../../../core/realtime/realtime_service.dart';
 import '../model/call_enums.dart';
 import '../model/call_model.dart';
 import '../model/call_update.dart';
+import '../model/stream_token_model.dart';
 
 /// Call signalling (Step 6.1): REST to change a call, STOMP to hear about it.
 ///
@@ -73,6 +74,15 @@ class CallRepository {
   /// The call as the server sees it NOW (after a reconnect).
   Future<Either<NetworkErrorModel, CallModel>> load(String callId) =>
       _send(HttpMethods.get, ApiEndPoint.call(callId));
+
+  /// A fresh Stream Video token (Step 6.2) — for the sound and picture.
+  Future<Either<NetworkErrorModel, StreamTokenModel>> streamToken() =>
+      _appService.send(
+        httpMethods: HttpMethods.get,
+        endPoint: ApiEndPoint.callStreamToken,
+        parse: (json) =>
+            StreamTokenModel.fromJson(json as Map<String, dynamic>),
+      );
 
   /// Invites (and "ringing" for my own calls) — for the whole session.
   Stream<CallUpdate> callsQueue() => _updates(ApiEndPoint.callsQueue);

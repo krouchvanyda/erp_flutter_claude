@@ -1,6 +1,6 @@
 # Step 6.1 — Call: signalling (no sound yet)
 
-> ← Previous: [17-chat-extras.md](17-chat-extras.md) · Roadmap: [README.md](README.md)
+> ← Previous: [17-chat-extras.md](17-chat-extras.md) · Next: [19-call-media.md](19-call-media.md) → · Roadmap: [README.md](README.md)
 
 ```
 6.1 signalling   📞 → Calling… → Ringing… → Accept / Decline → in call → ended   ← this lesson
@@ -251,6 +251,17 @@ forever, and the server refused every new call.
 Not covered: a fast app restart reconnects within the 30 s, so the server
 can't tell it apart from a network blip. In 6.2, when the app really knows
 when its media ends, the app ends its own call.
+
+### Fixed after testing on two phones: the callee never rang
+
+Android stayed on "Calling…" and the iPad showed nothing. The answer of
+`POST /calls` said `"participants": []`. The backend's `start` saved each
+participant to the database but never added it to the call object in memory,
+and its "reload" returned that SAME object (Hibernate's first-level cache).
+So the controller's `call.invite` fan-out (one per participant) went to
+nobody. Fix: `c.getParticipants().add(p)` in `ChatCallService.start`
+(test: `ChatCallServiceStartParticipantsTest`). Lesson: when a response
+looks empty, read it: the app's network log showed the bug at once.
 
 ## 5. Try it
 

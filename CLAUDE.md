@@ -431,6 +431,19 @@ Login response
   server's 60 s `call.hangup reason=no_answer` decides "No answer";
   `reconnected` → `GET /calls/{id}`. Every end has its own words
   (`CallEndReason.label`).
+- **6.2 media:** `CallMedia` (call/repository) is the ONLY Stream SDK user
+  (plus `CallVideoView`, which draws `StreamVideoRenderer`). Token from
+  `GET /chats/calls/stream-token` (never a Stream secret in the app), one
+  `StreamVideo` per user (`reset` on user change / logout), `join` the
+  `streamCallCid` after Accept on both sides. Permissions are asked FIRST
+  by `CallPermissionGate` (UI): when I tap 📞 / 🎥 (in `app/`'s launcher)
+  and when I tap Accept. Mic denied → no call (snackbar; denied for good →
+  "Open Settings" dialog). Camera denied → the call goes on, camera off.
+  `CallMedia.join` only CHECKS the status. InCall: `connectedAt == null`
+  = "Connecting…" until `peerPresent` (the OTHER person in the media) → the
+  timer starts. Join fails → `POST /end` + failed. Every `_end` → `leave()`.
+  Toggles (mic · camera · speaker · flip) are optimistic with rollback. A
+  video call draws in `AppTheme.dark()` set ABOVE the Scaffold.
 - Stuck calls: the backend hangs up for a user whose socket is gone 30 s
   during an ANSWERED call (`answered-disconnect-grace-seconds`, backend
   `CallDisconnectHandler`). The raw "Caller is already in an active call"

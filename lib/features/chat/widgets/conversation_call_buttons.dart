@@ -27,14 +27,24 @@ class ConversationCallButtons extends StatelessWidget {
             tooltip: 'Voice call',
             onPressed: busy
                 ? null
-                : () => calls.start(conversation, myId: myId, video: false),
+                : () => calls.start(
+                    context,
+                    conversation,
+                    myId: myId,
+                    video: false,
+                  ),
             icon: const Icon(Icons.call_outlined),
           ),
           IconButton(
             tooltip: 'Video call',
             onPressed: busy
                 ? null
-                : () => calls.start(conversation, myId: myId, video: true),
+                : () => calls.start(
+                    context,
+                    conversation,
+                    myId: myId,
+                    video: true,
+                  ),
             icon: const Icon(Icons.videocam_outlined),
           ),
         ],

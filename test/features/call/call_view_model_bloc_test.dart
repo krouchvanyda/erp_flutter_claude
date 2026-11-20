@@ -8,12 +8,15 @@ import 'package:erp_mobile/features/call/model/call_enums.dart';
 import 'package:erp_mobile/features/call/model/call_model.dart';
 import 'package:erp_mobile/features/call/model/call_peer.dart';
 import 'package:erp_mobile/features/call/model/call_update.dart';
+import 'package:erp_mobile/features/call/repository/call_media.dart';
 import 'package:erp_mobile/features/call/repository/call_repository.dart';
 import 'package:erp_mobile/features/call/viewmodel/call/call_view_model_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 class _MockCallRepository extends Mock implements CallRepository {}
+
+class _MockCallMedia extends Mock implements CallMedia {}
 
 const _me = '1';
 const _jane = '2';
@@ -30,6 +33,7 @@ CallModel _call({
   callerId: callerId,
   type: type,
   status: status,
+  streamCallCid: 'default:call-$id',
 );
 
 void main() {
@@ -39,6 +43,8 @@ void main() {
   late StreamController<void> reconnected;
   late AuthSession session;
   late List<String> sent; // what the phone told the server
+  late _MockCallMedia media;
+  late StreamController<bool> peer; // the other person in the media call
 
   setUpAll(() => registerFallbackValue(CallType.voice));
 
@@ -49,6 +55,17 @@ void main() {
     reconnected = StreamController<void>.broadcast();
     session = AuthSession()..markAuthenticated();
     sent = [];
+    media = _MockCallMedia();
+    peer = StreamController<bool>.broadcast();
+    when(() => media.peerPresent).thenAnswer((_) => peer.stream);
+    when(
+      () => media.join(
+        cid: any(named: 'cid'),
+        video: any(named: 'video'),
+      ),
+    ).thenAnswer((_) async => (ok: true, micOn: true, cameraOn: false));
+    when(() => media.leave()).thenAnswer((_) async {});
+    when(() => media.signOut()).thenAnswer((_) async {});
 
     when(() => repo.myUserId()).thenAnswer((_) async => _me);
     when(() => repo.callsQueue()).thenAnswer((_) => queue.stream);
@@ -82,11 +99,13 @@ void main() {
     await queue.close();
     await topic.close();
     await reconnected.close();
+    await peer.close();
   });
 
   CallViewModelBloc build({Duration backstop = const Duration(seconds: 70)}) =>
       CallViewModelBloc(
         repo,
+        media: media,
         loadPeer: (_) async => _jane$,
         session: session,
         ringBackstop: backstop,
@@ -483,6 +502,108 @@ void main() {
     });
   });
 
+  group('media (6.2)', () {
+    Future<CallViewModelBloc> accepted() async {
+      final bloc = build();
+      queue.add(CallInvited(_call(callerId: _jane)));
+      await tick();
+      bloc.add(OnCallAcceptEvent());
+      await tick();
+      return bloc;
+    }
+
+    test('InCall → "Connecting…" → join the Stream call by its cid', () async {
+      final bloc = await accepted();
+      final s = bloc.state as CallInCallState;
+      expect(s.isConnecting, isTrue); // no timer yet
+      verify(() => media.join(cid: 'default:call-7', video: false)).called(1);
+      await bloc.close();
+    });
+
+    test('the other person is in the media → the timer starts (#8)', () async {
+      final bloc = await accepted();
+      peer.add(true);
+      await tick();
+      expect((bloc.state as CallInCallState).connectedAt, isNotNull);
+      await bloc.close();
+    });
+
+    test('join fails → end the call properly + "failed"', () async {
+      when(
+        () => media.join(
+          cid: any(named: 'cid'),
+          video: any(named: 'video'),
+        ),
+      ).thenAnswer((_) async => (ok: false, micOn: false, cameraOn: false));
+      final bloc = await accepted();
+      expect(sent.last, 'end 7'); // the other side isn't left waiting
+      expect(endedWith(bloc), CallEndReason.failed);
+      await bloc.close();
+    });
+
+    test('mic permission denied → InCall shows the mic off', () async {
+      when(
+        () => media.join(
+          cid: any(named: 'cid'),
+          video: any(named: 'video'),
+        ),
+      ).thenAnswer((_) async => (ok: true, micOn: false, cameraOn: false));
+      final bloc = await accepted();
+      expect((bloc.state as CallInCallState).micOn, isFalse);
+      await bloc.close();
+    });
+
+    test('every end leaves the media (hang up)', () async {
+      final bloc = await accepted();
+      bloc.add(OnCallHangUpEvent());
+      await tick();
+      verify(() => media.leave()).called(greaterThanOrEqualTo(1));
+      await bloc.close();
+    });
+
+    test('mute: flips at once; the SDK says no → flips back', () async {
+      final answer = Completer<bool>();
+      when(() => media.setMicrophone(any())).thenAnswer((_) => answer.future);
+      final bloc = await accepted();
+      bloc.add(OnCallToggleMicEvent());
+      await tick();
+      expect((bloc.state as CallInCallState).micOn, isFalse); // instant
+      verify(() => media.setMicrophone(false)).called(1);
+      answer.complete(false);
+      await tick();
+      expect((bloc.state as CallInCallState).micOn, isTrue); // put back
+      await bloc.close();
+    });
+
+    test('video call: camera + loudspeaker start on', () async {
+      when(() => repo.accept(any())).thenAnswer(
+        (_) async => Right(
+          _call(
+            callerId: _jane,
+            type: CallType.video,
+            status: CallStatus.answered,
+          ),
+        ),
+      );
+      when(
+        () => media.join(
+          cid: any(named: 'cid'),
+          video: any(named: 'video'),
+        ),
+      ).thenAnswer((_) async => (ok: true, micOn: true, cameraOn: true));
+      final bloc = build();
+      queue.add(CallInvited(_call(callerId: _jane, type: CallType.video)));
+      await tick();
+      bloc.add(OnCallAcceptEvent());
+      await tick();
+      final s = bloc.state as CallInCallState;
+      expect(s.cameraOn, isTrue);
+      expect(s.speakerOn, isTrue);
+      verify(() => media.join(cid: 'default:call-7', video: true)).called(1);
+      await bloc.close();
+    });
+  });
+
   test('events for another call are ignored', () async {
     final bloc = build();
     startCall(bloc);
@@ -500,6 +621,7 @@ void main() {
     session.markLoggedOut();
     await tick();
     expect(bloc.state, const CallIdleState());
+    verify(() => media.signOut()).called(1); // forget the Stream user
     await bloc.close();
   });
 }

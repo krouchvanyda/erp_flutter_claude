@@ -92,6 +92,22 @@ void main() {
     expect(server.requests.single.path, '/api/v1/chats/calls/7');
   });
 
+  test('streamToken → GET /calls/stream-token → StreamTokenModel', () async {
+    server.data = {
+      'token': 'jwt',
+      'apiKey': 'key',
+      'userId': 42,
+      'expiresAt': '2026-11-20T11:00:00Z',
+    };
+    final token = (await repo.streamToken()).getOrElse(
+      () => throw StateError('expected Right'),
+    );
+    expect(server.requests.single.path, ApiEndPoint.callStreamToken);
+    expect(token.userId, '42');
+    expect(token.isUsable, isTrue);
+    expect(token.toString(), isNot(contains('jwt'))); // never print it
+  });
+
   test('destinations', () {
     expect(ApiEndPoint.callsQueue, '/user/queue/calls');
     expect(ApiEndPoint.callTopic('42'), '/topic/conversations/42/call');

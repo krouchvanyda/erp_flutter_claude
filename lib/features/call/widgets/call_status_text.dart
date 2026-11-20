@@ -13,6 +13,7 @@ import 'call_timer_text.dart';
 /// | Outgoing, their phone shows it | Ringing…              |
 /// | Incoming                       | Incoming call         |
 /// | Incoming, Accept tapped        | Connecting…           |
+/// | InCall, media not up yet       | Connecting…           |
 /// | InCall                         | 00:12 (the timer)     |
 /// | Ended                          | Call declined / Busy… |
 class CallStatusText extends StatelessWidget {
@@ -27,17 +28,19 @@ class CallStatusText extends StatelessWidget {
     CallIncomingState(:final accepting) =>
       accepting ? 'Connecting…' : 'Incoming call',
     CallEndedState() => state.text,
-    CallInCallState() || CallIdleState() => '',
+    // until the other person is really in the media call (#8)
+    CallInCallState(:final isConnecting) => isConnecting ? 'Connecting…' : '',
+    CallIdleState() => '',
   };
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final s = state;
-    if (s is CallInCallState) {
+    if (s is CallInCallState && s.connectedAt != null) {
       return CallTimerText(
         key: const ValueKey('timer'),
-        since: s.connectedAt,
+        since: s.connectedAt!,
         color: colors.primary,
       );
     }
