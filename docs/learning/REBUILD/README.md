@@ -85,11 +85,12 @@ flowchart TD
     STEP2 --> FEATS
     subgraph FEATS["Steps 3–6 — features"]
         direction LR
-        S3["3 auth<br/>3.1 login ✅<br/>3.2 auto-login + logout ✅"] --> S4["4 profile<br/>4.1 view ✅<br/>4.2 avatar ✅"] --> S5["5 chat<br/>5.1 inbox ✅<br/>5.2 conversation ✅<br/>5.3 realtime ✅<br/>5.4 groups ✅<br/>5.5 attachments ✅<br/>5.6 typing · actions · presence · search ✅"] --> S6["6 call (in app)<br/>6.1 signalling ✅<br/>6.2 voice + video ✅<br/>6.3a sounds ✅<br/>6.3b reconnecting ✅<br/>6.3c groups ✅<br/>6.3d call line"]
+        S3["3 auth<br/>3.1 login ✅<br/>3.2 auto-login + logout ✅"] --> S4["4 profile<br/>4.1 view ✅<br/>4.2 avatar ✅"] --> S5["5 chat<br/>5.1 inbox ✅<br/>5.2 conversation ✅<br/>5.3 realtime ✅<br/>5.4 groups ✅<br/>5.5 attachments ✅<br/>5.6 typing · actions · presence · search ✅"] --> S6["6 call (in app)<br/>6.1 signalling ✅<br/>6.2 voice + video ✅<br/>6.3a sounds ✅<br/>6.3b reconnecting ✅<br/>6.3c groups ✅<br/>6.3d call line ✅"]
     end
     FEATS --> S7["7 call when the app is killed<br/>(FCM / CallKit)"] --> S8["8 translations + tests + polish"]
     class S0,S11,S12,S13,S14,S21,S22 ok
-    class S3,S4,S5,S6,S7,S8 wait
+    class S3,S4,S5,S6 ok
+    class S7,S8 wait
     classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
     classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
     classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
@@ -128,7 +129,7 @@ current one works.
 | 6.3a | Call: sounds (silent "Calling…", ringback, ringtone, connected / ended beeps) | [20-call-sounds.md](20-call-sounds.md) | ✅ |
 | 6.3b | Call: "Reconnecting…" (mine / theirs, give up after 30 s) | [21-call-reconnecting.md](21-call-reconnecting.md) | ✅ |
 | 6.3c | Call: group calls (who is calling, faces row, video grid) | [22-call-groups.md](22-call-groups.md) | ✅ |
-| 6.3d | Call: call line in the chat (backend CALL message) | — | ⏳ |
+| 6.3d | Call: call line in the chat (backend `CALL` message + app) | [23-call-line.md](23-call-line.md) | ✅ |
 | 7 | Call in background / killed app | see `../IOS_CALL`, `../ANDROID_CALL` | ⏳ |
 | 8 | Translations, tests, polish | — | ⏳ |
 

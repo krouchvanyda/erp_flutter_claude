@@ -465,6 +465,14 @@ Login response
   calling…". Voice: `CallParticipantsRow` (max 4 + "+N"); video:
   `CallVideoView` 1 full · 2 rows · 2×2 (max 4) of `CallVideoTile`. Stream
   also exports `CallMember` → `hide CallMember` where both are imported.
+- **6.3d call line:** the BACKEND writes it: `ChatCallService.endCallInternal`
+  (every end) → `CallMessageRecorder` saves a `MessageType.CALL` message
+  (sender = caller, `durationSeconds`, body JSON `{callId, callType, status,
+  endReason, answered}`) + `message.send` to topic + inboxes. Clients can't
+  send CALL (400); search skips it. App: `ChatCallInfo.of(message)` (chat's
+  own model) → outcome → words per viewer (`mine` = I called; missed for the
+  others = red); `ChatCallContent` in the bubble (no ✓✓), tap = call back via
+  `ChatCallLauncher`; inbox preview "📞 Missed voice call" (no "You:").
 - Stuck calls: the backend hangs up for a user whose socket is gone 30 s
   during an ANSWERED call (`answered-disconnect-grace-seconds`, backend
   `CallDisconnectHandler`). The raw "Caller is already in an active call"

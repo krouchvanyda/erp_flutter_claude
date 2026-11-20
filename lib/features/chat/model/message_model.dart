@@ -77,6 +77,8 @@ class MessageModel {
       MessageType.image => '📷 Photo',
       MessageType.voice => '🎤 Voice message',
       MessageType.file => '📎 File',
+      // the inbox tile asks ChatCallInfo for "📞 Missed voice call" (needs myId)
+      MessageType.call => '📞 Call',
       MessageType.text => (body ?? '').trim(),
     };
   }

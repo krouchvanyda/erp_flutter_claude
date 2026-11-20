@@ -263,6 +263,19 @@ class ConversationPage extends StatelessWidget {
                               bloc.add(OnConversationLoadOlderEvent()),
                           onLongPress: (message) =>
                               _showActions(context, message),
+                          // tap a call line → call back (6.3d)
+                          onCallBack: switch (calls) {
+                            final calls? => ({required video}) => calls.start(
+                              context,
+                              context
+                                  .read<ConversationInfoViewModelBloc>()
+                                  .state
+                                  .conversation,
+                              myId: myId,
+                              video: video,
+                            ),
+                            null => null,
+                          },
                           onReact: (messageId, emoji) =>
                               bloc.add(OnReactionToggleEvent(messageId, emoji)),
                           onRetry: (localId) =>

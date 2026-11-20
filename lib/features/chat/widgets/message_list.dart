@@ -8,12 +8,14 @@ import '../../../core/widgets/app_snack_bar.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/chat_time.dart';
 import '../../../core/widgets/app_avatar.dart';
+import '../model/chat_call_info.dart';
 import '../model/chat_enums.dart';
 import '../model/member_model.dart';
 import '../model/message_model.dart';
 import '../model/outgoing_message.dart';
 import '../view/chat_image_viewer_page.dart';
 import 'chat_day_divider.dart';
+import 'chat_call_content.dart';
 import 'chat_file_content.dart';
 import 'chat_image_content.dart';
 import 'chat_voice_content.dart';
@@ -46,6 +48,7 @@ class MessageList extends StatefulWidget {
     required this.audioPlayer,
     this.onLongPress,
     this.onReact,
+    this.onCallBack,
   });
 
   final List<MessageModel> messages; // newest first
@@ -66,6 +69,10 @@ class MessageList extends StatefulWidget {
 
   /// Tap a reaction chip → toggle MY reaction (messageId, emoji).
   final void Function(String messageId, String emoji)? onReact;
+
+  /// Tap a call line → call back (6.3d). `video` = the same kind of call.
+  /// null → the lines can't be tapped (no calls here / a call is on).
+  final void Function({required bool video})? onCallBack;
 
   static const double maxWidth = 720;
   static const double _loadOlderBefore = 300; // px from the top
@@ -251,11 +258,26 @@ class _MessageListState extends State<MessageList> {
                       isMine: e.isMine,
                       durationSeconds: e.durationSeconds,
                     ),
+                    MessageType.call => switch (e.message) {
+                      final m? => _callContent(m, e.isMine),
+                      null => null,
+                    },
                     _ => null,
                   },
           ),
         ),
       ],
+    );
+  }
+
+  Widget? _callContent(MessageModel m, bool isMine) {
+    final info = ChatCallInfo.of(m);
+    if (info == null) return null;
+    final callBack = widget.onCallBack;
+    return ChatCallContent(
+      info: info,
+      isMine: isMine,
+      onCallBack: callBack == null ? null : () => callBack(video: info.video),
     );
   }
 
@@ -289,7 +311,10 @@ class _Entry {
       type = m.type,
       deleted = m.deleted,
       // text, or "Message deleted"; attachments draw their own content
-      text = m.deleted ? m.previewText : (m.body ?? ''),
+      // (a call line's body is JSON → never shown as text)
+      text = m.deleted || m.type == MessageType.call
+          ? m.previewText
+          : (m.body ?? ''),
       isPlaceholder = m.deleted,
       edited = m.editedAt != null && !m.deleted,
       fileUrl = ApiEndPoint.fileUrl(m.attachmentUrl),
@@ -297,7 +322,8 @@ class _Entry {
       progress = null,
       sizeBytes = m.attachmentSizeBytes,
       durationSeconds = m.durationSeconds,
-      status = m.senderId != myId
+      // a call line has no ✓✓ (it's a record, not a sent message)
+      status = m.senderId != myId || m.type == MessageType.call
           ? BubbleStatus.none
           : m.readByUserIds.isNotEmpty
           ? BubbleStatus.read

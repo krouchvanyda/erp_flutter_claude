@@ -12,17 +12,20 @@ enum ConversationType {
       value == 'GROUP' ? group : direct;
 }
 
-/// `TEXT`, `IMAGE`, `VOICE`, `FILE`.
+/// `TEXT`, `IMAGE`, `VOICE`, `FILE`, `CALL` (6.3d: a call line the SERVER
+/// writes when a call ends — the app never sends one).
 enum MessageType {
   text,
   image,
   voice,
-  file;
+  file,
+  call;
 
   static MessageType fromJson(Object? value) => switch (value) {
     'IMAGE' => image,
     'VOICE' => voice,
     'FILE' => file,
+    'CALL' => call,
     _ => text,
   };
 

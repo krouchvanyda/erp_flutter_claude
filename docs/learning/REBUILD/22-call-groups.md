@@ -1,6 +1,6 @@
 # Step 6.3c — Call: group calls
 
-> ← Previous: [21-call-reconnecting.md](21-call-reconnecting.md) · Roadmap: [README.md](README.md)
+> ← Previous: [21-call-reconnecting.md](21-call-reconnecting.md) · Next: [23-call-line.md](23-call-line.md) → · Roadmap: [README.md](README.md)
 
 ```
 6.3a sounds ✅ · 6.3b reconnecting ✅

@@ -8,6 +8,7 @@ import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/chat_time.dart';
 import '../../../core/widgets/app_avatar.dart';
+import '../model/chat_call_info.dart';
 import '../model/conversation_model.dart';
 import '../model/presence_model.dart';
 import 'presence_dot.dart';
@@ -41,6 +42,10 @@ class InboxTile extends StatelessWidget {
   String _preview() {
     final last = conversation.lastMessage;
     if (last == null) return 'No messages yet';
+    // a call line: its own words, no "You:" (6.3d)
+    if (ChatCallInfo.of(last) case final call?) {
+      return call.preview(mine: last.senderId == myId);
+    }
     final text = last.previewText;
     if (last.senderId == myId) return 'You: $text';
     if (conversation.isGroup) {
