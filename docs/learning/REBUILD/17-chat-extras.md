@@ -201,14 +201,22 @@ The match is highlighted by `MessageSearchTile.split(text, query)` → parts
 | Drop stale answers | Show whatever arrives | A slow "mee" answer would overwrite the "meet" results. |
 | No "jump to message" (v1) | Load pages until found | Could load many pages; a later step can add an "around id" API. |
 
-**For the backend team:** deleting the **last** message doesn't update the
-inbox preview (`message.delete` goes only to the conversation topic, not to
-`/user/queue/inbox`).
+### Fixed after testing on two phones: the inbox preview
+
+Editing "Hi" → "Hi Bin" changed the open chat, but the **other phone's
+inbox** still said "Hi". The backend sent `message.edit` / `message.delete`
+only to the conversation topic, and the inbox listens to
+`/user/queue/inbox`.
+
+| Side | Change |
+|---|---|
+| Backend `MessageController.edit / delete` | + `broadcaster.toUsers(memberIds, "inbox", "message.edit" / "message.delete", dto)` — the same fan-out as `send` (test: `MessageControllerInboxFanOutTest`) |
+| App `InboxViewModelBloc` | `MessageChanged` for the chat's **last** message → edited: new preview · deleted: "Message deleted", then `GET /conversations/{id}` for the real last one (keeping our unread count). Older messages → ignored. The order doesn't change. |
 
 ## 5. Try it
 
 ```bash
-flutter test                                    # 211 tests → All tests passed!
+flutter test                                    # 214 tests → All tests passed!
 flutter run --flavor dev -t lib/main_dev.dart
 ```
 

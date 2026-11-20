@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/network/network_error_model.dart';
 import '../../model/chat_update.dart';
 import '../../model/conversation_model.dart';
+import '../../model/message_model.dart';
 import '../../repository/chat_repository.dart';
 import '../../repository/presence_store.dart';
 
@@ -21,6 +22,7 @@ part 'inbox_view_model_state.dart';
 /// Load more:   Loaded(isLoadingMore) → Loaded(page + 1, items appended)
 ///              or Error(+data)
 /// Live (5.3):  new message → preview + time + unread, moved to the top
+///              last message edited → new preview · deleted → re-fetch (5.6)
 ///              chat created / changed / removed → list updated
 ///              connection back → reload page 1 (catch-up)
 class InboxViewModelBloc
@@ -217,10 +219,10 @@ class InboxViewModelBloc
           ),
         );
 
-      case MessageChanged() ||
-          MessagesRead() ||
-          TypingChanged() ||
-          ReactionsChanged():
+      case MessageChanged(:final message):
+        await _onLastMessageChanged(emit, message);
+
+      case MessagesRead() || TypingChanged() || ReactionsChanged():
         break; // only the open conversation cares
     }
   }
@@ -234,6 +236,49 @@ class InboxViewModelBloc
         for (final c in list)
           if (c.otherMember(myId) case final other?) other.userId,
       ]),
+    );
+  }
+
+  /// `message.edit` / `message.delete` in my inbox queue (5.6). Only the
+  /// chat's LAST message matters (that's the preview). The order and the
+  /// unread count don't change.
+  Future<void> _onLastMessageChanged(
+    Emitter<InboxViewModelState> emit,
+    MessageModel message,
+  ) async {
+    bool isLast(ConversationModel c) =>
+        c.id == message.conversationId && c.lastMessage?.id == message.id;
+
+    final data = state.data!;
+    if (!data.conversations.any(isLast)) return; // an older message
+    // Edited → the new text. Deleted → "Message deleted" for a moment…
+    _emitData(
+      emit,
+      data.copyWith(
+        conversations: [
+          for (final c in data.conversations)
+            isLast(c) ? c.copyWith(lastMessage: message) : c,
+        ],
+      ),
+    );
+    if (!message.deleted) return;
+
+    // …then ask the server which message is the last one now.
+    final result = await _repository.loadConversation(message.conversationId);
+    final fresh = result.fold((_) => null, (c) => c);
+    final now = state.data;
+    if (fresh == null || now == null) return;
+    _emitData(
+      emit,
+      now.copyWith(
+        conversations: [
+          for (final c in now.conversations)
+            c.id == fresh.id
+                // keep OUR unread count (the 5.3 rule)
+                ? fresh.copyWith(unreadCount: c.unreadCount)
+                : c,
+        ],
+      ),
     );
   }
 

@@ -392,6 +392,10 @@ Login response
   rollback; the server's full list wins. A failed edit / delete / reaction
   = `ConversationActionFailedState` → snackbar (never the load banner).
   Deleted messages are REMOVED (history leaves them out), live too.
+  `message.edit` / `message.delete` also reach `/user/queue/inbox` (backend
+  fan-out, like `send`): the inbox updates the preview only if it's the
+  chat's LAST message (deleted → re-fetch the conversation, keep our
+  unread count).
 - **Presence (5.6):** one `PresenceStore` (chat, `ValueNotifier`): `watch(ids)`
   batches `GET /chats/presence?ids=`, follows `/topic/presence`, reloads on
   reconnect, clears on logout. Inbox → 🟢 `PresenceDot`; direct chat title →

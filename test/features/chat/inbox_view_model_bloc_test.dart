@@ -271,4 +271,77 @@ void main() {
       verify: (_) => verify(() => repo.loadInbox()).called(1),
     );
   });
+
+  // ─────────────── 5.6: edit / delete reach the inbox ───────────────
+
+  group('last message edited / deleted', () {
+    MessageModel m(String id, {String body = 'Hi', bool deleted = false}) =>
+        MessageModel(
+          id: id,
+          conversationId: 'a',
+          senderId: '1',
+          type: MessageType.text,
+          body: deleted ? null : body,
+          deleted: deleted,
+        );
+    ConversationModel chatWith(MessageModel last, {int unread = 0}) =>
+        ConversationModel(
+          id: 'a',
+          type: ConversationType.direct,
+          lastMessage: last,
+          unreadCount: unread,
+        );
+    InboxLoadedState seeded(List<ConversationModel> list) => InboxLoadedState(
+      conversations: list,
+      myId: '1',
+      page: 1,
+      hasMore: false,
+    );
+
+    blocTest<InboxViewModelBloc, InboxViewModelState>(
+      'the LAST message edited → the preview shows the new text',
+      build: () => InboxViewModelBloc(repo),
+      seed: () => seeded([chatWith(m('9')), chat('b')]),
+      act: (_) => updates.add(MessageChanged(m('9', body: 'Hi Bin'))),
+      expect: () => [
+        isA<InboxLoadedState>().having(
+          (s) => s.conversations.first.lastMessage?.body,
+          'preview',
+          'Hi Bin',
+        ),
+      ],
+    );
+
+    blocTest<InboxViewModelBloc, InboxViewModelState>(
+      'an OLDER message edited → nothing changes',
+      build: () => InboxViewModelBloc(repo),
+      seed: () => seeded([chatWith(m('9'))]),
+      act: (_) => updates.add(MessageChanged(m('5', body: 'old one edited'))),
+      expect: () => <InboxViewModelState>[],
+    );
+
+    blocTest<InboxViewModelBloc, InboxViewModelState>(
+      'the LAST message deleted → "Message deleted", then the real new last one',
+      setUp: () => when(() => repo.loadConversation('a')).thenAnswer(
+        (_) async => Right(chatWith(m('8', body: 'before'), unread: 7)),
+      ),
+      build: () => InboxViewModelBloc(repo),
+      seed: () => seeded([chatWith(m('9'), unread: 2)]),
+      act: (_) => updates.add(MessageChanged(m('9', deleted: true))),
+      expect: () => [
+        isA<InboxLoadedState>().having(
+          (s) => s.conversations.single.lastMessage?.previewText,
+          'for a moment',
+          'Message deleted',
+        ),
+        isA<InboxLoadedState>()
+            .having(
+              (s) => s.conversations.single.lastMessage?.body,
+              'real',
+              'before',
+            )
+            .having((s) => s.conversations.single.unreadCount, 'our count', 2),
+      ],
+    );
+  });
 }
