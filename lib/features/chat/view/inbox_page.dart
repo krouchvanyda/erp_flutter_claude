@@ -9,10 +9,13 @@ import '../../../core/router/config_router.dart';
 import '../../../core/widgets/app_error_banner.dart';
 import '../../../core/widgets/app_realtime_title.dart';
 import '../../../core/widgets/app_error_view.dart';
+import '../model/conversation_model.dart';
 import '../viewmodel/inbox/inbox_view_model_bloc.dart';
 import 'conversation_page.dart';
+import 'member_picker_page.dart';
 import '../widgets/inbox_empty_view.dart';
 import '../widgets/inbox_list.dart';
+import '../widgets/inbox_new_chat_button.dart';
 
 /// Chats — the app's home after login (Step 5.1).
 ///
@@ -25,6 +28,8 @@ import '../widgets/inbox_list.dart';
 /// InboxErrorState (no data)       → AppErrorView + "Try again"
 /// otherwise                       → spinner
 /// ```
+///
+/// ✎ (bottom right) → `MemberPickerPage` → the new / existing chat opens.
 ///
 /// [onOpenProfile] comes from the app layer: the chat feature doesn't import
 /// the profile feature (CLAUDE.md: features don't use each other's insides).
@@ -55,6 +60,11 @@ class InboxPage extends StatelessWidget {
             ),
             const SizedBox(width: 4),
           ],
+        ),
+        // ✎ → pick a person (1-to-1) or "New group" (Step 5.4).
+        floatingActionButton: Builder(
+          builder: (context) =>
+              InboxNewChatButton(onPressed: () => _startNewChat(context)),
         ),
         body: BlocBuilder<InboxViewModelBloc, InboxViewModelState>(
           buildWhen: (previous, current) =>
@@ -107,27 +117,8 @@ class InboxPage extends StatelessWidget {
                               isLoadingMore: data.isLoadingMore,
                               onLoadMore: () =>
                                   bloc.add(OnInboxLoadMoreEvent()),
-                              onOpen: (conversation) async {
-                                bloc.add(
-                                  OnInboxConversationOpenedEvent(
-                                    conversation.id,
-                                  ),
-                                );
-                                await ConfigRouter.pushPageAnimation<void>(
-                                  context,
-                                  ConversationPage(
-                                    conversation: conversation,
-                                    myId: data.myId,
-                                  ),
-                                );
-                                // Back: no reload any more — live updates
-                                // (5.3) keep the inbox fresh.
-                                if (!bloc.isClosed) {
-                                  bloc.add(
-                                    OnInboxConversationOpenedEvent(null),
-                                  );
-                                }
-                              },
+                              onOpen: (conversation) =>
+                                  _open(context, conversation),
                             ),
                     ),
                   ),
@@ -142,5 +133,33 @@ class InboxPage extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Open one conversation. While it's open, the inbox treats its messages
+  /// as read; back → "nothing open". (Live updates keep the list fresh.)
+  static Future<void> _open(
+    BuildContext context,
+    ConversationModel conversation,
+  ) async {
+    final bloc = context.read<InboxViewModelBloc>();
+    bloc.add(OnInboxConversationOpenedEvent(conversation.id));
+    await ConfigRouter.pushPageAnimation<void>(
+      context,
+      ConversationPage(conversation: conversation, myId: bloc.state.data?.myId),
+    );
+    if (!bloc.isClosed) bloc.add(OnInboxConversationOpenedEvent(null));
+  }
+
+  /// ✎ → the picker → it closes with the chat (new or existing) → open it.
+  /// (The inbox row itself arrives by the live `conversation.create`.)
+  static Future<void> _startNewChat(BuildContext context) async {
+    final conversation =
+        await ConfigRouter.pushPageAnimation<ConversationModel>(
+          context,
+          const MemberPickerPage(),
+        );
+    if (conversation != null && context.mounted) {
+      await _open(context, conversation);
+    }
   }
 }

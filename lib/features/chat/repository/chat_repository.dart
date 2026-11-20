@@ -8,6 +8,7 @@ import '../../../core/network/page_model.dart';
 import '../../../core/network/token_storage.dart';
 import '../../../core/realtime/realtime_service.dart';
 import '../model/chat_update.dart';
+import '../model/contact_model.dart';
 import '../model/chat_enums.dart';
 import '../model/conversation_model.dart';
 import '../model/message_model.dart';
@@ -104,6 +105,117 @@ class ChatRepository {
       parse: (data) => ConversationModel.fromJson(data as Map<String, dynamic>),
     );
   }
+
+  // ─────────────── Step 5.4: new chats + groups ───────────────
+
+  /// How many people per page in the picker (we load them all, page by page).
+  static const int contactsPageSize = 100;
+
+  /// One page of people I can chat with.
+  Future<Either<NetworkErrorModel, PageModel<ContactModel>>> loadContacts({
+    int page = 1,
+  }) {
+    return _appService.send(
+      httpMethods: HttpMethods.get,
+      endPoint: ApiEndPoint.users,
+      queryParameters: {'page': page, 'pageSize': contactsPageSize},
+      parse: (data) => PageModel.fromData(data, ContactModel.fromJson),
+    );
+  }
+
+  /// A 1-to-1 chat. If one already exists with this person, the server
+  /// returns THAT one (no duplicates). I'm added by the server.
+  Future<Either<NetworkErrorModel, ConversationModel>> createDirect(
+    String userId,
+  ) => _createConversation({
+    'type': ConversationType.direct.name.toUpperCase(),
+    'memberIds': [_wireId(userId)],
+  });
+
+  /// A group with [name]. I'm added by the server, as ADMIN.
+  Future<Either<NetworkErrorModel, ConversationModel>> createGroup({
+    required String name,
+    required List<String> memberIds,
+  }) => _createConversation({
+    'type': ConversationType.group.name.toUpperCase(),
+    'name': name.trim(),
+    'memberIds': [for (final id in memberIds) _wireId(id)],
+  });
+
+  Future<Either<NetworkErrorModel, ConversationModel>> _createConversation(
+    Map<String, dynamic> body,
+  ) {
+    return _appService.send(
+      httpMethods: HttpMethods.post,
+      endPoint: ApiEndPoint.conversations,
+      data: body,
+      parse: _conversation,
+    );
+  }
+
+  /// Rename a group (admin only; the server answers 403 otherwise).
+  Future<Either<NetworkErrorModel, ConversationModel>> rename(
+    String conversationId,
+    String name,
+  ) {
+    return _appService.send(
+      httpMethods: HttpMethods.patch,
+      endPoint: ApiEndPoint.conversation(conversationId),
+      data: {'name': name.trim()},
+      parse: _conversation,
+    );
+  }
+
+  /// Add people to a group (admin only).
+  Future<Either<NetworkErrorModel, ConversationModel>> addMembers(
+    String conversationId,
+    List<String> userIds,
+  ) {
+    return _appService.send(
+      httpMethods: HttpMethods.post,
+      endPoint: ApiEndPoint.conversationMembers(conversationId),
+      data: {
+        'memberIds': [for (final id in userIds) _wireId(id)],
+      },
+      parse: _conversation,
+    );
+  }
+
+  /// Remove someone from a group (admin only) → the updated group.
+  Future<Either<NetworkErrorModel, ConversationModel>> removeMember(
+    String conversationId,
+    String userId,
+  ) {
+    return _appService.send(
+      httpMethods: HttpMethods.delete,
+      endPoint: ApiEndPoint.conversationMember(conversationId, userId),
+      parse: _conversation,
+    );
+  }
+
+  /// Leave a group = remove MYSELF (allowed for everyone).
+  Future<Either<NetworkErrorModel, void>> leave(String conversationId) async {
+    final me = await myUserId() ?? '';
+    final result = await removeMember(conversationId, me);
+    return result.map((_) {});
+  }
+
+  /// Delete for everyone. Group: admin only. Direct: either person.
+  Future<Either<NetworkErrorModel, void>> deleteConversation(
+    String conversationId,
+  ) {
+    return _appService.send<void>(
+      httpMethods: HttpMethods.delete,
+      endPoint: ApiEndPoint.conversation(conversationId),
+      parse: (_) {},
+    );
+  }
+
+  static ConversationModel _conversation(Object? data) =>
+      ConversationModel.fromJson(data as Map<String, dynamic>);
+
+  /// The server wants NUMBER ids ("7" → 7).
+  static Object _wireId(String id) => int.tryParse(id) ?? id;
 
   // ─────────────── Step 5.3: live updates ───────────────
 

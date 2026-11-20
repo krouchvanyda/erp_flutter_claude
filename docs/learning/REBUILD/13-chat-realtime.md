@@ -1,6 +1,6 @@
 # Step 5.3 — Chat: real time (STOMP)
 
-> ← Previous: [12-chat-conversation.md](12-chat-conversation.md) · Roadmap: [README.md](README.md)
+> ← Previous: [12-chat-conversation.md](12-chat-conversation.md) · Next: [14-chat-groups.md](14-chat-groups.md) → · Roadmap: [README.md](README.md)
 >
 > 📖 New to WebSockets? Start with the step-by-step [reading path](13b-realtime-reading-path.md).
 

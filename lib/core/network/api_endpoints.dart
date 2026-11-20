@@ -17,6 +17,10 @@ abstract final class ApiEndPoint {
   static const String employeesMe = '$_v1/employees/me';
   static const String employeesMeAvatar = '$_v1/employees/me/avatar';
 
+  /// Everyone I can chat with (5.4 member picker). Open to every logged-in
+  /// user. NOTE: the backend ignores `search` → we filter on the phone.
+  static const String users = '$_v1/users';
+
   // ── Chat (Step 5) ──
   static const String conversations = '$_v1/chats/conversations';
 
@@ -31,6 +35,14 @@ abstract final class ApiEndPoint {
   /// One conversation (GET) — for a chat that isn't in the loaded inbox yet.
   static String conversation(String conversationId) =>
       '$conversations/$conversationId';
+
+  /// Add members (POST `{memberIds}`) — 5.4.
+  static String conversationMembers(String conversationId) =>
+      '$conversations/$conversationId/members';
+
+  /// Remove one member (DELETE). Removing MYSELF = leaving the group.
+  static String conversationMember(String conversationId, String userId) =>
+      '$conversations/$conversationId/members/$userId';
 
   // ── Realtime (Step 5.3) ──
   /// STOMP over WebSocket, per flavor (`Environments.*RealtimeUrl`, the

@@ -7,7 +7,7 @@ import '../../../core/theme/app_spacing.dart';
 /// "No chats yet" — the inbox loaded fine but is empty.
 ///
 /// It's inside a scrollable so pull-to-refresh still works on it.
-/// (Step 5.4 adds a "New chat" button here.)
+/// New chats start from the ✎ button (InboxNewChatButton, Step 5.4).
 class InboxEmptyView extends StatelessWidget {
   const InboxEmptyView({super.key});
 
@@ -47,7 +47,7 @@ class InboxEmptyView extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   AppLabel(
-                    text: 'Your conversations will show up here.',
+                    text: 'Tap ✎ to start a chat or a group.',
                     fontSize: AppFontSize.value14,
                     color: colors.onSurfaceVariant,
                     textAlign: TextAlign.center,

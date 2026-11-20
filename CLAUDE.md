@@ -345,6 +345,21 @@ Login response
   Conversation: my own `message.send` echo replaces the oldest 🕓 bubble
   with the same text; `message.read` → ✓✓ (compare ids as numbers).
 - Destinations live in `ApiEndPoint` (`inboxQueue`, `conversationTopic(id)`).
+- **New chat + groups (5.4):** one `MemberPickerPage(mode: newChat /
+  newGroup / addMembers)` + `MemberPickerViewModelBloc`. `GET /users`
+  ignores `search` → load every page (100 each) and filter on the phone
+  (`ContactModel.matches`); hide me, disabled accounts and `excludeIds`.
+  Pages return results with `pop(conversation)`; the inbox opens it. When
+  two pages share a bloc (`BlocProvider.value`), listeners act only if
+  `ModalRoute.of(context)?.isCurrent`.
+- `ConversationPage` owns a `ConversationInfoViewModelBloc` (the CURRENT
+  conversation: title, member names, info page). It listens to the topic
+  (`conversation.update`) AND the inbox queue (`conversation.remove`).
+  Left / deleted / removed → `ConversationInfoGoneState` → the chat page
+  `popUntil(isFirst)` + snackbar. Admin buttons are hidden by
+  `isAdmin`, but the server is the real check (403 → snackbar).
+- DIRECT create returns the existing chat with that person (no duplicates).
+  Leave = `DELETE …/members/{myId}`. Ids go to the server as numbers.
 
 ### Chat & call (Steps 5–7): lessons from the old app
 

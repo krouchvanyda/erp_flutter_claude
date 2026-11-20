@@ -151,4 +151,106 @@ void main() {
     expect(server.last!.path, '/api/v1/chats/conversations/5/read');
     expect(server.last!.data, {'lastReadMessageId': 42}); // int, not "42"
   });
+
+  // ─────────────── Step 5.4 ───────────────
+
+  group('new chats + groups', () {
+    const groupJson = {
+      'id': 7,
+      'type': 'GROUP',
+      'name': 'Team',
+      'members': [
+        {'userId': 1, 'role': 'ADMIN'},
+        {'userId': 2},
+      ],
+    };
+
+    test('loadContacts → GET /users?page&pageSize=100', () async {
+      server.data = {
+        'items': [
+          {'id': 2, 'email': 'd@x.com', 'fullName': 'Dara', 'enabled': true},
+        ],
+        'page': 1,
+        'pageSize': 100,
+        'totalItems': 1,
+        'totalPages': 1,
+      };
+
+      final page = (await repo.loadContacts()).getOrElse(
+        () => throw StateError('expected Right'),
+      );
+
+      expect(server.last!.path, ApiEndPoint.users);
+      expect(server.last!.queryParameters, {'page': 1, 'pageSize': 100});
+      expect(page.items.single.displayName, 'Dara');
+    });
+
+    test('createDirect → POST {type: DIRECT, memberIds: [number]}', () async {
+      server.data = {'id': 3, 'type': 'DIRECT'};
+
+      await repo.createDirect('2');
+
+      expect(server.last!.method, 'POST');
+      expect(server.last!.path, ApiEndPoint.conversations);
+      expect(server.last!.data, {
+        'type': 'DIRECT',
+        'memberIds': [2],
+      });
+    });
+
+    test(
+      'createGroup → POST {type: GROUP, name (trimmed), memberIds}',
+      () async {
+        server.data = groupJson;
+
+        final group = (await repo.createGroup(
+          name: '  Team ',
+          memberIds: ['2', '3'],
+        )).getOrElse(() => throw StateError('expected Right'));
+
+        expect(server.last!.data, {
+          'type': 'GROUP',
+          'name': 'Team',
+          'memberIds': [2, 3],
+        });
+        expect(group.name, 'Team');
+      },
+    );
+
+    test('rename → PATCH /conversations/{id} {name}', () async {
+      server.data = groupJson;
+      await repo.rename('7', 'New');
+      expect(server.last!.method, 'PATCH');
+      expect(server.last!.path, ApiEndPoint.conversation('7'));
+      expect(server.last!.data, {'name': 'New'});
+    });
+
+    test('addMembers → POST …/members {memberIds}', () async {
+      server.data = groupJson;
+      await repo.addMembers('7', ['4']);
+      expect(server.last!.path, '/api/v1/chats/conversations/7/members');
+      expect(server.last!.data, {
+        'memberIds': [4],
+      });
+    });
+
+    test('leave → DELETE …/members/{MY id}', () async {
+      await storage.write(
+        AuthTokens(accessToken: jwt({'sub': 1}), refreshToken: 'r'),
+      );
+      server.data = groupJson;
+
+      final result = await repo.leave('7');
+
+      expect(result.isRight(), isTrue);
+      expect(server.last!.method, 'DELETE');
+      expect(server.last!.path, '/api/v1/chats/conversations/7/members/1');
+    });
+
+    test('deleteConversation → DELETE /conversations/{id}', () async {
+      await repo.deleteConversation('7');
+      expect(server.last!.method, 'DELETE');
+      expect(server.last!.path, ApiEndPoint.conversation('7'));
+    });
+  });
 }
