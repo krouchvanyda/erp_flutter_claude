@@ -235,7 +235,7 @@ lib/
     │   └── auth_response_model.dart tokens + user
     ├── repository/auth_repository.dart   login → save tokens → open session
     ├── viewmodel/
-    │   ├── login_view_model_bloc.dart     + part …_event.dart, …_state.dart
+    │   └── login/login_view_model_bloc.dart   + part …_event.dart, …_state.dart (one folder per BLoC)
     ├── view/
     │   ├── login_page.dart          LAYOUT only: responsive column / row (Screen 1.1)
     │   └── splash_page.dart         moved from views/

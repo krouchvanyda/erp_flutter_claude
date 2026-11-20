@@ -8,7 +8,7 @@ import '../../../core/widgets/app_error_banner.dart';
 import '../../../core/widgets/app_error_view.dart';
 import '../model/conversation_model.dart';
 import '../repository/chat_repository.dart';
-import '../viewmodel/conversation_view_model_bloc.dart';
+import '../viewmodel/conversation/conversation_view_model_bloc.dart';
 import '../widgets/chat_composer.dart';
 import '../widgets/conversation_app_bar_title.dart';
 import '../widgets/conversation_empty_view.dart';

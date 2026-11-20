@@ -1,6 +1,6 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:erp_mobile/features/auth/repository/auth_repository.dart';
-import 'package:erp_mobile/features/auth/viewmodel/splash_view_model_bloc.dart';
+import 'package:erp_mobile/features/auth/viewmodel/splash/splash_view_model_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 

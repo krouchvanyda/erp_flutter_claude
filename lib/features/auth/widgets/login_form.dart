@@ -6,7 +6,7 @@ import '../../../core/utils/validators/form_validators.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_input_text.dart';
 import '../../../core/widgets/app_snack_bar.dart';
-import '../viewmodel/login_view_model_bloc.dart';
+import '../viewmodel/login/login_view_model_bloc.dart';
 
 /// Email + password + Sign in. Talks to [LoginViewModelBloc]:
 /// - builder  → loading + field errors under the fields

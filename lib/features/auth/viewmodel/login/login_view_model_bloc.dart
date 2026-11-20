@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart' show immutable;
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../core/network/network_error_model.dart';
-import '../model/user_model.dart';
-import '../repository/auth_repository.dart';
+import '../../../../core/network/network_error_model.dart';
+import '../../model/user_model.dart';
+import '../../repository/auth_repository.dart';
 
 part 'login_view_model_event.dart';
 part 'login_view_model_state.dart';

@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart' show immutable;
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../repository/auth_repository.dart';
+import '../../repository/auth_repository.dart';
 
 part 'splash_view_model_event.dart';
 part 'splash_view_model_state.dart';

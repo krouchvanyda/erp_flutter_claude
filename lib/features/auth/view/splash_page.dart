@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/di/service_locator.dart';
 import '../../../core/theme/app_spacing.dart';
-import '../viewmodel/splash_view_model_bloc.dart';
+import '../viewmodel/splash/splash_view_model_bloc.dart';
 import '../widgets/splash_logo.dart';
 
 /// Screen 0.1 — logo + name + small spinner while we check for a saved

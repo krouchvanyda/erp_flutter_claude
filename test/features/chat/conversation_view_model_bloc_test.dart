@@ -8,7 +8,7 @@ import 'package:erp_mobile/features/chat/model/chat_enums.dart';
 import 'package:erp_mobile/features/chat/model/chat_update.dart';
 import 'package:erp_mobile/features/chat/model/message_model.dart';
 import 'package:erp_mobile/features/chat/repository/chat_repository.dart';
-import 'package:erp_mobile/features/chat/viewmodel/conversation_view_model_bloc.dart';
+import 'package:erp_mobile/features/chat/viewmodel/conversation/conversation_view_model_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 

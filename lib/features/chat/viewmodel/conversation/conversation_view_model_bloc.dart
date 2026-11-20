@@ -4,11 +4,11 @@ import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart' show immutable;
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../core/network/network_error_model.dart';
-import '../model/chat_update.dart';
-import '../model/message_model.dart';
-import '../model/outgoing_message.dart';
-import '../repository/chat_repository.dart';
+import '../../../../core/network/network_error_model.dart';
+import '../../model/chat_update.dart';
+import '../../model/message_model.dart';
+import '../../model/outgoing_message.dart';
+import '../../repository/chat_repository.dart';
 
 part 'conversation_view_model_event.dart';
 part 'conversation_view_model_state.dart';

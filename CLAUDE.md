@@ -165,7 +165,9 @@ lib/
     └── <feature>/                  (MVVM-template folder names)
         ├── model/         immutable data classes (fromJson / fromData)
         ├── repository/    concrete repository (uses AppService)
-        ├── viewmodel/     <x>_view_model_bloc.dart + part _event / _state
+        ├── viewmodel/<x>/ ONE FOLDER PER BLOC: <x>_view_model_bloc.dart
+        │                  + part <x>_view_model_event.dart / _state.dart
+        │                  (e.g. viewmodel/login/, viewmodel/inbox/)
         ├── view/          pages
         ├── widgets/       feature-only widgets, ONE widget per file
         └── <feature>_di.dart   registerXModule(getIt), called from app/app_di.dart

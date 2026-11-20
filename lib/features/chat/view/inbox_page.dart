@@ -9,7 +9,7 @@ import '../../../core/router/config_router.dart';
 import '../../../core/widgets/app_error_banner.dart';
 import '../../../core/widgets/app_realtime_title.dart';
 import '../../../core/widgets/app_error_view.dart';
-import '../viewmodel/inbox_view_model_bloc.dart';
+import '../viewmodel/inbox/inbox_view_model_bloc.dart';
 import 'conversation_page.dart';
 import '../widgets/inbox_empty_view.dart';
 import '../widgets/inbox_list.dart';

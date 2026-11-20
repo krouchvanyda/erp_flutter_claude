@@ -125,7 +125,7 @@ lib/core/widgets/app_input_text.dart       + minLines / maxLines / textCapitaliz
 lib/features/chat/
 ├── model/outgoing_message.dart            NEW  my text, not confirmed yet
 ├── repository/chat_repository.dart        + loadMessages · sendText · markRead
-├── viewmodel/conversation_view_model_*    NEW  bloc + event + state
+├── viewmodel/conversation/…             NEW  bloc + event + state
 ├── view/conversation_page.dart            NEW  layout only
 ├── view/inbox_page.dart                   tile tap → open, back → reload
 └── widgets/

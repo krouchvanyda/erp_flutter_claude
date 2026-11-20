@@ -3,7 +3,7 @@ import '../../core/network/app_service.dart';
 import '../../core/network/token_storage.dart';
 import '../../core/realtime/realtime_service.dart';
 import 'repository/chat_repository.dart';
-import 'viewmodel/inbox_view_model_bloc.dart';
+import 'viewmodel/inbox/inbox_view_model_bloc.dart';
 
 /// Registers the chat feature. Called from `configureAppDependencies()`.
 void registerChatModule(ServiceLocator getIt) {

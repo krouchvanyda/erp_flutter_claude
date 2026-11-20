@@ -3,7 +3,7 @@ import 'package:dartz/dartz.dart' show Either, Left, Right;
 import 'package:erp_mobile/core/network/network_error_model.dart';
 import 'package:erp_mobile/features/auth/model/user_model.dart';
 import 'package:erp_mobile/features/auth/repository/auth_repository.dart';
-import 'package:erp_mobile/features/auth/viewmodel/login_view_model_bloc.dart';
+import 'package:erp_mobile/features/auth/viewmodel/login/login_view_model_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 

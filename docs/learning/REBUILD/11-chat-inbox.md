@@ -130,7 +130,7 @@ lib/
     │   ├── message_model.dart       MessageDto + previewText                          NEW
     │   └── conversation_model.dart  ConversationDto + title(myId) · avatarUrlFor     NEW
     ├── repository/chat_repository.dart   loadInbox(page) · myUserId()                 NEW
-    ├── viewmodel/inbox_view_model_bloc.dart  + part event / state                     NEW
+    ├── viewmodel/inbox/inbox_view_model_bloc.dart  + part event / state               NEW
     ├── view/inbox_page.dart         layout: data / empty / error / spinner            NEW
     ├── widgets/
     │   ├── inbox_list.dart          ListView + load-more trigger + spinner row        NEW

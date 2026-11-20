@@ -134,7 +134,7 @@ lib/
 └── features/auth/
     ├── repository/auth_repository.dart   + restoreSession() + logout()                   CHANGED
     ├── viewmodel/
-    │   ├── splash_view_model_bloc.dart   + part …_event.dart, …_state.dart              NEW
+    │   └── splash/splash_view_model_bloc.dart  + part …_event.dart, …_state.dart      NEW
     ├── view/splash_page.dart        layout only: BlocProvider + BlocListener             CHANGED
     ├── widgets/splash_logo.dart     logo fade + scale animation                          NEW
     └── auth_di.dart                 + SplashViewModelBloc (factory)                      CHANGED

@@ -4,10 +4,10 @@ import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart' show immutable;
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../core/network/network_error_model.dart';
-import '../model/chat_update.dart';
-import '../model/conversation_model.dart';
-import '../repository/chat_repository.dart';
+import '../../../../core/network/network_error_model.dart';
+import '../../model/chat_update.dart';
+import '../../model/conversation_model.dart';
+import '../../repository/chat_repository.dart';
 
 part 'inbox_view_model_event.dart';
 part 'inbox_view_model_state.dart';

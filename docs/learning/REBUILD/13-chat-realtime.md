@@ -1,6 +1,8 @@
 # Step 5.3 — Chat: real time (STOMP)
 
 > ← Previous: [12-chat-conversation.md](12-chat-conversation.md) · Roadmap: [README.md](README.md)
+>
+> 📖 New to WebSockets? Start with the step-by-step [reading path](13b-realtime-reading-path.md).
 
 ```
 5.1 Inbox ✅ · 5.2 Conversation ✅
@@ -110,7 +112,7 @@ lib/core/widgets/app_realtime_title.dart  NEW  "⟳ Connecting…" title
 lib/features/chat/
 ├── model/chat_update.dart                NEW  sealed: MessageArrived, MessageChanged, MessagesRead, ConversationChanged, ConversationRemoved
 ├── repository/chat_repository.dart       + inboxUpdates · conversationUpdates · reconnected · loadConversation
-└── viewmodel/inbox_* · conversation_*    + live update handlers
+└── viewmodel/inbox/ · conversation/    + live update handlers
 ```
 
 ## 3. Code
