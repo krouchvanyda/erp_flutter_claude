@@ -1,19 +1,25 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/network/api_endpoints.dart';
 import '../../../core/theme/app_font_size.dart';
 import '../../../core/theme/app_label.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
-import '../../../core/widgets/app_avatar.dart';
 import '../model/profile_model.dart';
+import 'profile_avatar.dart';
 
 /// Design guide 9.9 "ProfileHeroCard": avatar · name · email ·
 /// position + department chips, on a soft brand background.
 class ProfileHeroCard extends StatelessWidget {
-  const ProfileHeroCard({super.key, required this.profile});
+  const ProfileHeroCard({
+    super.key,
+    required this.profile,
+    this.avatarBusy = false,
+  });
 
   final ProfileModel profile;
+
+  /// Step 4.2: avatar upload running → spinner on the avatar.
+  final bool avatarBusy;
 
   @override
   Widget build(BuildContext context) {
@@ -32,11 +38,7 @@ class ProfileHeroCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          AppAvatar(
-            name: profile.displayName,
-            imageUrl: ApiEndPoint.fileUrl(profile.avatarUrl),
-            size: 88,
-          ),
+          ProfileAvatar(profile: profile, busy: avatarBusy),
           const SizedBox(height: AppSpacing.md),
           AppLabel(
             text: profile.displayName,

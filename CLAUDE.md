@@ -226,8 +226,12 @@ Login response
   Employee fails (404 = no linked employee) → `employee: null`, still show
   the page. "Which phone / avatar wins" lives in `ProfileModel` getters,
   never in widgets.
-- **4.2 avatar:** `POST /employees/me/avatar` (multipart `file`). The employee
-  avatar wins over the user's.
+- **4.2 avatar:** `POST /employees/me/avatar` (multipart field `file`,
+  `contentType` from the extension) / `DELETE` the same path, then reload the
+  profile (don't guess the response). Photos are picked with
+  `image_picker` at max 1024 px, JPEG 85. Picking (system screens, needs a
+  context) lives in the widget; the upload goes BLoC → repository. No
+  employee record → no 📷 badge. The employee avatar wins over the user's.
 - **4.3 edit name / phone is BLOCKED:** the only edit endpoint
   `PATCH /users/{id}` needs `user:write` (admin) → 403. Waiting for the
   backend's `PATCH /api/v1/users/me`. Don't call `/users/{id}`.
@@ -271,6 +275,10 @@ Login response
   on a **private** endpoint is `UnauthorizedError` ("Session expired"). Always
   show the server's message when the envelope has one; don't replace it with
   a guess.
+- **File uploads:** send `FormData` via `AppService.send(formData:)`. A
+  `FormData` can be sent only ONCE, so `AuthInterceptor`'s retry sends
+  `formData.clone()` (otherwise: "FormData has already been finalized").
+  Always shrink images before upload.
 - Never log the `Authorization` header or request bodies outside dev/uat.
 
 ### Chat & call (Steps 5–7): lessons from the old app
@@ -372,8 +380,13 @@ Deep call docs: `docs/learning/IOS_CALL/`, `docs/learning/ANDROID_CALL/`,
   `AppConfirmDialog.show(...)` → `bool` (`destructive: true` → red confirm).
   Never a raw `AlertDialog`: the theme makes buttons full width, which breaks
   its actions row.
-- Server / network errors (and success messages) are shown with
-  `AppSnackBar.error / success / info(context, title:, message:)` (a bar at
+- Status colours (success · warning · error + `onXxx`) come from the theme
+  extension `AppStatusColors` → `context.statusColors.xxx`. Light uses deep
+  shades + white text, dark uses light shades + dark text. Never hard-code
+  them. Every text-on-colour pair must reach 4.5:1 (checked by
+  `test/core/theme/app_status_colors_test.dart`).
+- Server / network errors (and success / warning messages) are shown with
+  `AppSnackBar.error / warning / success / info(context, title:, message:)` (a bar at
   the **top**, drawn in the root `Overlay`; `AppSnackBar.hide()` slides it
   away), never a raw `SnackBar` or an inline error card. Call it from a `BlocConsumer` /
   `BlocListener` **listener** (one-time action), never from a builder. Field
@@ -418,6 +431,7 @@ Core tokens:
 ```
 primary #3B4FE8 · surface #F8F9FC · surfaceVariant #EEF0F5 · onSurface #1A1D23
 success #16A34A · warning #D97706 · error #DC2626 · info #0284C7
+(backgrounds with text: success #15803D · warning #B45309 — see AppStatusColors)
 spacing  xs 4 · sm 8 · md 16 · lg 24 · xl 32 · xxl 48
 radius   sm 8 · md 12 · lg 16 · xl 24 · full 999
 font     Inter

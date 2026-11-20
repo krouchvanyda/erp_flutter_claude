@@ -124,6 +124,30 @@ void main() {
     expect(sessionExpired, 0);
   });
 
+  test(
+    'file upload (FormData) + 401 → refresh → retry with a FRESH copy',
+    () async {
+      await storage.write(oldPair);
+      server.routes[ApiEndPoint.employeesMeAvatar] = (o) =>
+          o.headers['Authorization'] == 'Bearer new-a'
+          ? (status: 200, body: env({}))
+          : (status: 401, body: env(null, success: false));
+      final form = FormData.fromMap({
+        'file': MultipartFile.fromBytes([1, 2, 3], filename: 'a.jpg'),
+      });
+
+      // Without clone(): "The FormData has already been finalized".
+      final response = await dio.post<Object?>(
+        ApiEndPoint.employeesMeAvatar,
+        data: form,
+      );
+
+      expect(response.statusCode, 200);
+      expect(server.calls(ApiEndPoint.employeesMeAvatar), 2); // 401, then OK
+      expect(server.received.last.data, isNot(same(form))); // a new copy
+    },
+  );
+
   test('3 parallel 401s → only ONE refresh', () async {
     await storage.write(oldPair);
 

@@ -1,13 +1,13 @@
 # Step 4.1 — Profile: view my profile (+ logout moves here)
 
-> ← Previous: [08-auto-login-logout.md](08-auto-login-logout.md) · Roadmap: [README.md](README.md)
+> ← Previous: [08-auto-login-logout.md](08-auto-login-logout.md) · Next: [10-profile-avatar.md](10-profile-avatar.md) · Roadmap: [README.md](README.md)
 
 Step 4 is split in three:
 
 | Part | What | Status |
 |---|---|---|
 | **4.1 (this lesson)** | View my profile (`/users/me` + `/employees/me`), ⎋ logout at the top right | ✅ |
-| 4.2 | Avatar: camera / gallery → `POST /employees/me/avatar` | next |
+| 4.2 | Avatar: camera / gallery → `POST /employees/me/avatar` → [10-profile-avatar.md](10-profile-avatar.md) | ✅ |
 | 4.3 | Edit name / phone | ⏸ waiting for the backend's `PATCH /api/v1/users/me` |
 
 > **Why 4.3 waits.** The API doc has no "edit **my** profile" endpoint. The

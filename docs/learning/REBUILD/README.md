@@ -85,7 +85,7 @@ flowchart TD
     STEP2 --> FEATS
     subgraph FEATS["Steps 3–6 — features"]
         direction LR
-        S3["3 auth<br/>3.1 login ✅<br/>3.2 auto-login + logout ✅"] --> S4["4 profile<br/>4.1 view ✅"] --> S5["5 chat"] --> S6["6 call (in app)"]
+        S3["3 auth<br/>3.1 login ✅<br/>3.2 auto-login + logout ✅"] --> S4["4 profile<br/>4.1 view ✅<br/>4.2 avatar ✅"] --> S5["5 chat"] --> S6["6 call (in app)"]
     end
     FEATS --> S7["7 call when the app is killed<br/>(FCM / CallKit)"] --> S8["8 translations + tests + polish"]
     class S0,S11,S12,S13,S14,S21,S22 ok
@@ -114,7 +114,7 @@ current one works.
 | 3.1 | Auth: login (model · repository · ViewModel BLoC · form) | [07-login.md](07-login.md) | ✅ |
 | 3.2 | Auth: splash auto-login + real logout | [08-auto-login-logout.md](08-auto-login-logout.md) | ✅ |
 | 4.1 | Profile: view (`/users/me` + `/employees/me`), logout moves here | [09-profile-view.md](09-profile-view.md) | ✅ |
-| 4.2 | Profile: avatar (camera / gallery) | — | ⏳ |
+| 4.2 | Profile: avatar (camera / gallery / remove, multipart upload) | [10-profile-avatar.md](10-profile-avatar.md) | ✅ |
 | 4.3 | Profile: edit name / phone (needs backend `PATCH /users/me`) | — | ⏸ |
 | 5 | Chat | — | ⏳ |
 | 6 | Call (in app) | — | ⏳ |

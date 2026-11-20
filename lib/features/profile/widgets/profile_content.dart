@@ -18,9 +18,16 @@ import 'profile_info_row.dart';
 /// └──────────────┘              └──────────────────────────────┘
 /// ```
 class ProfileContent extends StatelessWidget {
-  const ProfileContent({super.key, required this.profile});
+  const ProfileContent({
+    super.key,
+    required this.profile,
+    this.avatarBusy = false,
+  });
 
   final ProfileModel profile;
+
+  /// Step 4.2: avatar upload running.
+  final bool avatarBusy;
 
   static const double _wideBreakpoint = 720;
   static const double _maxWidth = 900;
@@ -104,7 +111,7 @@ class ProfileContent extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    ProfileHeroCard(profile: profile),
+                    ProfileHeroCard(profile: profile, avatarBusy: avatarBusy),
                     const SizedBox(height: AppSpacing.lg),
                     if (wide && personal != null)
                       Row(

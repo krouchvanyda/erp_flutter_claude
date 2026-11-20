@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'app_colors.dart';
 import 'app_radius.dart';
 import 'app_spacing.dart';
+import 'app_status_colors.dart';
 import 'app_text_style.dart';
 
 /// Builds [ThemeData] for light and dark mode from the design tokens.
@@ -85,6 +86,12 @@ abstract final class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
+      // Colours ColorScheme doesn't have (success). context.statusColors.
+      extensions: [
+        scheme.brightness == Brightness.dark
+            ? AppStatusColors.dark
+            : AppStatusColors.light,
+      ],
       textTheme: textTheme,
       scaffoldBackgroundColor: scheme.surface,
 

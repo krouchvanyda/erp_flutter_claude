@@ -6,9 +6,10 @@ import '../theme/app_font_size.dart';
 import '../theme/app_label.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
+import '../theme/app_status_colors.dart';
 
 /// What kind of message: picks the colour and the icon.
-enum AppSnackBarType { error, success, info }
+enum AppSnackBarType { error, warning, success, info }
 
 /// The app's one message bar, shown at the TOP of the screen
 /// (the MVVM template's `SnackBarHelper.show`, themed and responsive).
@@ -16,6 +17,7 @@ enum AppSnackBarType { error, success, info }
 /// ```dart
 /// AppSnackBar.error(context, title: error.title, message: error.description);
 /// AppSnackBar.success(context, message: 'Profile saved');
+/// AppSnackBar.warning(context, message: 'Weak connection');
 /// AppSnackBar.hide();
 /// ```
 ///
@@ -52,6 +54,17 @@ abstract final class AppSnackBar {
     message: message,
     title: title,
     type: AppSnackBarType.success,
+  );
+
+  static void warning(
+    BuildContext context, {
+    required String message,
+    String? title,
+  }) => show(
+    context,
+    message: message,
+    title: title,
+    type: AppSnackBarType.warning,
   );
 
   static void info(
@@ -155,15 +168,21 @@ class _TopBarState extends State<_TopBar> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final status = context.statusColors; // success · warning · error
     final (background, foreground, icon) = switch (widget.type) {
       AppSnackBarType.error => (
-        colors.error,
-        colors.onError,
+        status.error,
+        status.onError,
         Icons.error_outline,
       ),
+      AppSnackBarType.warning => (
+        status.warning,
+        status.onWarning,
+        Icons.warning_amber_rounded,
+      ),
       AppSnackBarType.success => (
-        colors.inverseSurface,
-        colors.onInverseSurface,
+        status.success,
+        status.onSuccess,
         Icons.check_circle_outline,
       ),
       AppSnackBarType.info => (

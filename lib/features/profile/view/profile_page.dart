@@ -1,7 +1,9 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/di/service_locator.dart';
+import '../../../core/network/api_endpoints.dart';
 import '../../../core/theme/app_font_size.dart';
 import '../../../core/theme/app_label.dart';
 import '../../../core/widgets/app_error_view.dart';
@@ -10,7 +12,7 @@ import '../viewmodel/profile_view_model_bloc.dart';
 import '../widgets/profile_content.dart';
 import '../widgets/profile_logout_button.dart';
 
-/// Screen 9.9 — My Profile (Step 4.1: view only).
+/// Screen 9.9 — My Profile (4.1 view · 4.2 avatar).
 ///
 /// Layout only. Which body to draw comes from the state:
 ///
@@ -45,16 +47,31 @@ class ProfilePage extends StatelessWidget {
           ],
         ),
         body: BlocConsumer<ProfileViewModelBloc, ProfileViewModelState>(
-          // A REFRESH failed while data is on screen → snackbar, keep data.
+          // One-time messages:
+          // - refresh / avatar failed while data is on screen → red bar
+          // - avatar changed → green-ish bar
           listenWhen: (previous, current) =>
-              current is ProfileErrorState && current.lastProfile != null,
+              (current is ProfileErrorState && current.lastProfile != null) ||
+              current is ProfileAvatarUpdatedState,
           listener: (context, state) {
-            if (state is ProfileErrorState) {
-              AppSnackBar.error(
-                context,
-                title: state.error.title,
-                message: state.error.description,
-              );
+            switch (state) {
+              case ProfileErrorState(:final error):
+                AppSnackBar.error(
+                  context,
+                  title: error.title,
+                  message: error.description,
+                );
+              case ProfileAvatarUpdatedState(:final profile, :final removed):
+                // If the server reuses the same URL for a new photo, the
+                // disk cache would still show the old one → forget it.
+                final url = ApiEndPoint.fileUrl(profile.avatarUrl);
+                if (url != null) CachedNetworkImage.evictFromCache(url);
+                AppSnackBar.success(
+                  context,
+                  message: removed ? 'Photo removed' : 'Photo updated',
+                );
+              default:
+                break;
             }
           },
           buildWhen: (previous, current) =>
@@ -70,10 +87,15 @@ class ProfilePage extends StatelessWidget {
                   bloc.add(OnProfileLoadEvent());
                   // the spinner stays until the bloc answers
                   return bloc.stream.firstWhere(
-                    (s) => s is ProfileLoadedState || s is ProfileErrorState,
+                    (s) =>
+                        s is! ProfileLoadingState &&
+                        s is! ProfileAvatarUploadingState,
                   );
                 },
-                child: ProfileContent(profile: profile),
+                child: ProfileContent(
+                  profile: profile,
+                  avatarBusy: state is ProfileAvatarUploadingState,
+                ),
               );
             }
             if (state is ProfileErrorState) {

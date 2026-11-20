@@ -56,4 +56,75 @@ void main() {
           .having((s) => s.profile, 'profile', profile),
     ],
   );
+
+  // ─────────────── Step 4.2: avatar ───────────────
+
+  const newProfile = ProfileModel(
+    user: UserModel(
+      id: '7',
+      email: 'v@x.com',
+      fullName: 'Vanyda',
+      avatarUrl: '/uploads/new.jpg',
+    ),
+  );
+
+  blocTest<ProfileViewModelBloc, ProfileViewModelState>(
+    'upload ok → [AvatarUploading(old), AvatarUpdated(new)]',
+    setUp: () => when(
+      () => repo.uploadAvatar(any()),
+    ).thenAnswer((_) async => const Right(newProfile)),
+    build: () => ProfileViewModelBloc(repo),
+    seed: () => ProfileLoadedState(profile: profile),
+    act: (bloc) => bloc.add(OnAvatarUploadEvent(filePath: '/tmp/a.jpg')),
+    expect: () => [
+      isA<ProfileAvatarUploadingState>().having(
+        (s) => s.profile,
+        'profile',
+        profile,
+      ),
+      isA<ProfileAvatarUpdatedState>()
+          .having((s) => s.profile, 'profile', newProfile)
+          .having((s) => s.removed, 'removed', false),
+    ],
+    verify: (_) => verify(() => repo.uploadAvatar('/tmp/a.jpg')).called(1),
+  );
+
+  blocTest<ProfileViewModelBloc, ProfileViewModelState>(
+    'upload fails → [AvatarUploading, Error KEEPING the old profile]',
+    setUp: () => when(
+      () => repo.uploadAvatar(any()),
+    ).thenAnswer((_) async => const Left(NoInternetError())),
+    build: () => ProfileViewModelBloc(repo),
+    seed: () => ProfileLoadedState(profile: profile),
+    act: (bloc) => bloc.add(OnAvatarUploadEvent(filePath: '/tmp/a.jpg')),
+    expect: () => [
+      isA<ProfileAvatarUploadingState>(),
+      isA<ProfileErrorState>().having((s) => s.lastProfile, 'last', profile),
+    ],
+  );
+
+  blocTest<ProfileViewModelBloc, ProfileViewModelState>(
+    'remove ok → [AvatarUploading, AvatarUpdated(removed: true)]',
+    setUp: () =>
+        when(repo.removeAvatar).thenAnswer((_) async => const Right(profile)),
+    build: () => ProfileViewModelBloc(repo),
+    seed: () => ProfileLoadedState(profile: newProfile),
+    act: (bloc) => bloc.add(OnAvatarRemoveEvent()),
+    expect: () => [
+      isA<ProfileAvatarUploadingState>(),
+      isA<ProfileAvatarUpdatedState>().having(
+        (s) => s.removed,
+        'removed',
+        true,
+      ),
+    ],
+  );
+
+  blocTest<ProfileViewModelBloc, ProfileViewModelState>(
+    'upload while nothing is on screen yet → ignored',
+    build: () => ProfileViewModelBloc(repo),
+    act: (bloc) => bloc.add(OnAvatarUploadEvent(filePath: '/tmp/a.jpg')),
+    expect: () => <ProfileViewModelState>[],
+    verify: (_) => verifyNever(() => repo.uploadAvatar(any())),
+  );
 }

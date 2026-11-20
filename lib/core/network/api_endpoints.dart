@@ -15,6 +15,7 @@ abstract final class ApiEndPoint {
   static const String logout = '$_v1/auth/logout';
   static const String me = '$_v1/users/me';
   static const String employeesMe = '$_v1/employees/me';
+  static const String employeesMeAvatar = '$_v1/employees/me/avatar';
 
   /// Endpoints that never carry a token and never trigger a refresh.
   /// (The backend answers 401 for a WRONG PASSWORD on login — that must not

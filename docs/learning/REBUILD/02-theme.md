@@ -399,6 +399,17 @@ replaces it with the router.
 > switch will be a Cubit (BLoC) saved in `shared_preferences`, because our
 > rule is "BLoC owns all real state".
 
+
+### Added later: status colours (Step 4.2)
+
+`ColorScheme` has no `success` / `warning`. All three status colours
+(success · warning · error, each with an `onXxx` text colour) live in the
+theme extension `AppStatusColors` (`core/theme/app_status_colors.dart`), read
+with `context.statusColors`. Light mode uses deeper shades than the tokens
+(white text on `#16A34A` / `#D97706` is only ~3.2:1); dark mode uses lighter
+shades with dark text. A test checks every pair is ≥ 4.5:1. Full
+explanation: [10-profile-avatar.md](10-profile-avatar.md#green-success-bar-status-colours-in-the-theme).
+
 ## 4. 🤔 Why like this? (other ways)
 
 | Choice we made | Other way | Why we didn't pick the other way |

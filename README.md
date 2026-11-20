@@ -46,7 +46,7 @@ the same data count as equal. Why, and what breaks without them:
 | 3.1 | Auth: login | ✅ |
 | 3.2 | Auth: auto-login + logout | ✅ |
 | 4.1 | Profile: view + logout | ✅ |
-| 4.2 | Profile: avatar | ⏳ |
+| 4.2 | Profile: avatar | ✅ |
 | 4.3 | Profile: edit (waiting for backend `PATCH /users/me`) | ⏸ |
 | 5 – 7 | Chat, Call, Call when the app is killed | ⏳ |
 | 8 | Translations, tests, polish | ⏳ |

@@ -34,6 +34,20 @@ abstract final class AppColors {
   static const Color onPrimaryDark = Color(0xFF0F1117);
 
   static const Color errorDark = Color(0xFFF87171);
+
+  /// Deeper green for BACKGROUNDS with white text: #16A34A + white is only
+  /// 3.3:1 contrast (text needs 4.5:1); #15803D + white is 5.0:1.
+  static const Color successDeep = Color(0xFF15803D);
+
+  /// Lighter green for dark mode (with dark text on it), like [errorDark].
+  static const Color successDark = Color(0xFF4ADE80);
+
+  /// Deeper amber for BACKGROUNDS with white text: #D97706 + white is only
+  /// 3.2:1; #B45309 + white is 5.0:1.
+  static const Color warningDeep = Color(0xFFB45309);
+
+  /// Lighter amber for dark mode (with dark text on it).
+  static const Color warningDark = Color(0xFFFBBF24);
   static const Color errorContainerDark = Color(0xFF3B1518);
   static const Color onErrorContainerDark = Color(0xFFFCA5A5);
 

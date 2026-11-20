@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -11,6 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// A fake server that answers per PATH: path → (status, data).
 class _FakeServer implements HttpClientAdapter {
   final Map<String, (int, Object?)> routes = {};
+  final List<RequestOptions> received = [];
 
   @override
   Future<ResponseBody> fetch(
@@ -18,6 +20,7 @@ class _FakeServer implements HttpClientAdapter {
     Stream<Uint8List>? requestStream,
     Future<void>? cancelFuture,
   ) async {
+    received.add(options);
     final (status, data) = routes[options.path] ?? (404, null);
     final ok = status >= 200 && status < 300;
     return ResponseBody.fromString(
@@ -110,5 +113,58 @@ void main() {
     final result = await repo.loadProfile();
 
     expect(result.fold((e) => e, (_) => null), isA<ServerError>());
+  });
+
+  // ─────────────── Step 4.2: avatar ───────────────
+
+  group('avatar', () {
+    late File photo;
+
+    setUp(() async {
+      final dir = await Directory.systemTemp.createTemp('avatar');
+      photo = File('${dir.path}/me.PNG')..writeAsBytesSync([1, 2, 3]);
+      server.routes
+        ..[ApiEndPoint.me] = (200, userJson)
+        ..[ApiEndPoint.employeesMe] = (200, employeeJson);
+    });
+
+    test(
+      'upload → multipart "file" (image type) → reloads the profile',
+      () async {
+        server.routes[ApiEndPoint.employeesMeAvatar] = (200, null);
+
+        final result = await repo.uploadAvatar(photo.path);
+
+        final upload = server.received.firstWhere(
+          (r) => r.path == ApiEndPoint.employeesMeAvatar,
+        );
+        expect(upload.method, 'POST');
+        final form = upload.data as FormData;
+        expect(form.files.single.key, 'file');
+        expect(form.files.single.value.filename, 'me.PNG');
+        expect(form.files.single.value.contentType.toString(), 'image/png');
+        // then the fresh profile
+        expect(result.isRight(), isTrue);
+        expect(server.received.last.path, isNot(ApiEndPoint.employeesMeAvatar));
+      },
+    );
+
+    test('upload fails (413 too big) → Left, no reload', () async {
+      server.routes[ApiEndPoint.employeesMeAvatar] = (413, null);
+
+      final result = await repo.uploadAvatar(photo.path);
+
+      expect(result.fold((e) => e.statusCode, (_) => null), 413);
+      expect(server.received.length, 1); // only the upload
+    });
+
+    test('remove → DELETE → reloads the profile', () async {
+      server.routes[ApiEndPoint.employeesMeAvatar] = (200, null);
+
+      final result = await repo.removeAvatar();
+
+      expect(server.received.first.method, 'DELETE');
+      expect(result.isRight(), isTrue);
+    });
   });
 }

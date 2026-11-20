@@ -130,9 +130,14 @@ class AuthInterceptor extends QueuedInterceptor {
   }
 
   Future<Response<dynamic>> _retry(RequestOptions request, AuthTokens tokens) {
+    final data = request.data;
     final options = request.copyWith(
       headers: {...request.headers, _header: 'Bearer ${tokens.accessToken}'},
       extra: {...request.extra, _retriedKey: true},
+      // A FormData (file upload) can be sent only ONCE — its stream is used
+      // up. Retrying the same object throws "already finalized" → send a
+      // fresh copy (Step 4.2 avatar upload).
+      data: data is FormData ? data.clone() : data,
     );
     return _refreshDio.fetch<dynamic>(options);
   }
