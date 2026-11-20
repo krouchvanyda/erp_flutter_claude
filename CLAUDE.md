@@ -147,7 +147,7 @@ DataSource  Remote: dio / STOMP   ·   Local: shared_preferences / secure storag
 ```
 lib/
 ├── main.dart, main_<flavor>.dart   bootstrap(flavor) — the one start-up function
-├── app/                            top layer: App (MaterialApp) + AuthGate
+├── app/                            top layer: App (MaterialApp) + AuthGate (→ Splash / Login / Inbox)
 │                                   + app_di.dart (core + feature DI). MAY import features/
 ├── core/                           shared infrastructure, never imports features/
 │   ├── config/    flavor + environments           (Step 1.1)
@@ -281,15 +281,32 @@ Login response
   Always shrink images before upload.
 - Never log the `Authorization` header or request bodies outside dev/uat.
 
+### Chat (Step 5)
+
+- **Models = the backend's Java records** (backend repo
+  `~/Documents/call_erp/erp_java_backend_claude`, `features/chats/dto/`):
+  `ConversationDto`, `MessageDto`, `MemberDto`, `ReactionDto`, and
+  `core/response/PageResponse` → `PageModel<T>`. Read them before adding a
+  field; don't guess. Ids → `String`, `Instant` → `DateTime.tryParse()?.toLocal()`,
+  unknown enum values → a safe default.
+- **My user id** = the access token's `sub` (`AuthTokens.userId`,
+  `ChatRepository.myUserId()`). Read-only, for the UI; no request.
+- A DIRECT conversation has no name: `ConversationModel.title(myId)` /
+  `avatarUrlFor(myId)` show the other member. Members already carry
+  `fullName` + `avatarUrl`, so never call `/users/{id}` to draw a chat.
+- Paged lists: `page` / `hasMore` in the state, load more ~300 px before the
+  end, the BLoC ignores repeats, and appending drops ids already shown.
+- The inbox is the home after login. `InboxPage(onOpenProfile:)` gets the
+  profile route from `app/` (chat never imports profile).
+
 ### Chat & call (Steps 5–7): lessons from the old app
 
 These bugs cost many rounds of fixes on `feature/call`. Build them in from the
 start:
 
-- **Address every message:** send `targetIds`. Receivers drop anything not
-  addressed to them.
-- **Direct conversation ids differ per device.** Look up the local
-  conversation by the other person's id, not by the sender's conversation id.
+- ~~Send `targetIds`~~ / ~~direct conversation ids differ per device~~: these
+  came from the old offline (SQLite) design and **don't apply** to this
+  backend. The server picks the receivers, and conversations have server ids.
 - **Inbox preview:** store the raw body, and add the "You: " prefix in **one**
   place (the tile).
 - **Accept from the incoming overlay:** push the call page with the

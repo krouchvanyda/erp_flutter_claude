@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// The token pair the backend gives on login / register / refresh
 /// (`AuthResponse` in API_LIST_BACKEND.md).
 ///
@@ -50,6 +52,27 @@ class AuthTokens {
     accessTokenExpiresAt,
     refreshTokenExpiresAt,
   );
+
+  /// MY user id, read from the access token (JWT claim `sub`).
+  ///
+  /// A JWT is 3 base64 parts: `header.payload.signature`. We only READ the
+  /// payload — never trust it for security (the server checks the signature
+  /// on every request). It's just "who am I?" for the UI: my chat bubbles on
+  /// the right, "You: " in the inbox. Works offline, no request. The id stays
+  /// the same when tokens are refreshed.
+  String? get userId {
+    try {
+      final parts = accessToken.split('.');
+      if (parts.length != 3) return null;
+      final payload = utf8.decode(
+        base64Url.decode(base64Url.normalize(parts[1])), // add missing '='
+      );
+      final sub = (jsonDecode(payload) as Map<String, dynamic>)['sub'];
+      return sub == null ? null : '$sub';
+    } catch (_) {
+      return null; // not a JWT (tests, a broken value) → unknown
+    }
+  }
 
   /// Never print real tokens (logs end up in screenshots and chats).
   @override

@@ -48,7 +48,9 @@ the same data count as equal. Why, and what breaks without them:
 | 4.1 | Profile: view + logout | ✅ |
 | 4.2 | Profile: avatar | ✅ |
 | 4.3 | Profile: edit (waiting for backend `PATCH /users/me`) | ⏸ |
-| 5 – 7 | Chat, Call, Call when the app is killed | ⏳ |
+| 5.1 | Chat: inbox | ✅ |
+| 5.2 – 5.6 | Chat: conversation, realtime, groups, attachments, extras | ⏳ |
+| 6 – 7 | Call, Call when the app is killed | ⏳ |
 | 8 | Translations, tests, polish | ⏳ |
 
 The full table with lesson links is in

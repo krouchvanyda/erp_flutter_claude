@@ -17,6 +17,9 @@ abstract final class ApiEndPoint {
   static const String employeesMe = '$_v1/employees/me';
   static const String employeesMeAvatar = '$_v1/employees/me/avatar';
 
+  // ── Chat (Step 5) ──
+  static const String conversations = '$_v1/chats/conversations';
+
   /// Endpoints that never carry a token and never trigger a refresh.
   /// (The backend answers 401 for a WRONG PASSWORD on login — that must not
   /// look like "token expired".)

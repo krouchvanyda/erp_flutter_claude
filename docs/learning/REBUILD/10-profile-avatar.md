@@ -1,6 +1,6 @@
 # Step 4.2 — Profile: change my avatar (camera / gallery / remove)
 
-> ← Previous: [09-profile-view.md](09-profile-view.md) · Roadmap: [README.md](README.md)
+> ← Previous: [09-profile-view.md](09-profile-view.md) · Next: [11-chat-inbox.md](11-chat-inbox.md) · Roadmap: [README.md](README.md)
 
 Tap the avatar → take a photo or pick one → it uploads → the new photo
 shows. Or remove it.
