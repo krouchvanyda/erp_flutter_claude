@@ -4,6 +4,7 @@ import '../../core/network/token_storage.dart';
 import '../../core/router/auth_session.dart';
 import 'repository/auth_repository.dart';
 import 'viewmodel/login_view_model_bloc.dart';
+import 'viewmodel/splash_view_model_bloc.dart';
 
 /// Registers the auth feature. Called from `configureDependencies()`.
 void registerAuthModule(ServiceLocator getIt) {
@@ -19,5 +20,9 @@ void registerAuthModule(ServiceLocator getIt) {
     // a FRESH bloc each time the login page opens
     ..registerFactory<LoginViewModelBloc>(
       () => LoginViewModelBloc(getIt<AuthRepository>()),
+    )
+    // a FRESH bloc each cold start (auto-login check)
+    ..registerFactory<SplashViewModelBloc>(
+      () => SplashViewModelBloc(getIt<AuthRepository>()),
     );
 }

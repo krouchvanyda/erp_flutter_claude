@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../core/di/service_locator.dart';
 import '../core/network/app_service.dart';
 import '../core/router/app_navigator.dart';
 import '../core/router/auth_session.dart';
+import '../features/auth/repository/auth_repository.dart';
 import '../features/auth/view/login_page.dart';
 import '../features/auth/view/splash_page.dart';
 import 'home_placeholder_page.dart';
@@ -59,13 +61,13 @@ class _AuthGateState extends State<AuthGate> {
   Widget build(BuildContext context) {
     final Widget screen;
     if (!_splashDone) {
-      screen = SplashPage(
-        session: widget.session,
-        onFinished: () => setState(() => _splashDone = true),
-      );
+      // The splash opens the session itself (auto-login) BEFORE it calls
+      // onFinished → the next build already sees isAuthenticated.
+      screen = SplashPage(onFinished: () => setState(() => _splashDone = true));
     } else if (widget.session.isAuthenticated) {
       screen = HomePlaceholderPage(
-        session: widget.session,
+        // Real logout: server revoke → clear tokens → close session.
+        onLogout: getIt<AuthRepository>().logout,
         appService: widget.appService,
       );
     } else {

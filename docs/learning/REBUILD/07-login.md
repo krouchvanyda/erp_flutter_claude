@@ -3,7 +3,8 @@
 > Step 3 is split in two:
 > - **3.1 (this lesson):** a real login: form → BLoC → repository → server →
 >   save tokens → open the session.
-> - **3.2 (next):** splash auto-login from saved tokens + real logout.
+> - **3.2 (next):** splash auto-login from saved tokens + real logout →
+>   [08-auto-login-logout.md](08-auto-login-logout.md).
 
 This is the **first real feature**, built the way your MVVM template builds
 features: `model/ · repository/ · viewmodel/ · view/`, a `…ViewModelBloc` with

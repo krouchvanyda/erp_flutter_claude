@@ -85,7 +85,7 @@ flowchart TD
     STEP2 --> FEATS
     subgraph FEATS["Steps 3–6 — features"]
         direction LR
-        S3["3 auth<br/>3.1 login ✅"] --> S4["4 profile"] --> S5["5 chat"] --> S6["6 call (in app)"]
+        S3["3 auth<br/>3.1 login ✅<br/>3.2 auto-login + logout ✅"] --> S4["4 profile"] --> S5["5 chat"] --> S6["6 call (in app)"]
     end
     FEATS --> S7["7 call when the app is killed<br/>(FCM / CallKit)"] --> S8["8 translations + tests + polish"]
     class S0,S11,S12,S13,S14,S21,S22 ok
@@ -112,7 +112,7 @@ current one works.
 | 2.1 | Network: AppService (template style), envelope, NetworkErrorModel | [05-network.md](05-network.md) | ✅ |
 | 2.2 | Network: tokens + auth interceptor (refresh) | [06-auth-interceptor.md](06-auth-interceptor.md) | ✅ |
 | 3.1 | Auth: login (model · repository · ViewModel BLoC · form) | [07-login.md](07-login.md) | ✅ |
-| 3.2 | Auth: splash auto-login + real logout | — | ⏳ |
+| 3.2 | Auth: splash auto-login + real logout | [08-auto-login-logout.md](08-auto-login-logout.md) | ✅ |
 | 4 | Profile | — | ⏳ |
 | 5 | Chat | — | ⏳ |
 | 6 | Call (in app) | — | ⏳ |

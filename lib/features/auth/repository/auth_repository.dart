@@ -49,4 +49,60 @@ class AuthRepository {
       },
     );
   }
+
+  /// Splash (auto-login): "is there a saved session?" — NO network call.
+  ///
+  /// - no tokens                → false (show Login)
+  /// - refresh token expired    → clear tokens, false (it can never work)
+  /// - otherwise                → OPEN the session, true (show Home)
+  ///
+  /// The ACCESS token is not checked: an expired one is fine, the first
+  /// request refreshes it in the AuthInterceptor (CLAUDE.md).
+  Future<bool> restoreSession() async {
+    final tokens = await _tokenStorage.read();
+    if (tokens == null) return false;
+
+    final refreshExpiresAt = tokens.refreshTokenExpiresAt;
+    if (refreshExpiresAt != null && refreshExpiresAt.isBefore(DateTime.now())) {
+      await _tokenStorage.clear(); // dead tokens → don't keep them
+      return false;
+    }
+
+    _session.markAuthenticated();
+    return true;
+  }
+
+  /// Logout = tell the server → CLEAR the tokens → CLOSE the session.
+  ///
+  /// 1. Server first: `POST /auth/logout` needs the access token, and the
+  ///    interceptor reads it from storage — so we can't clear before.
+  /// 2. "Best effort": offline, timeout or 500 → we still log out locally.
+  ///    The user pressed "Log out"; they must never stay logged in.
+  /// 3. `finally` → the clear + close ALWAYS run (CLAUDE.md: skipping
+  ///    `TokenStorage.clear()` re-enables auto-login = security bug).
+  Future<void> logout() async {
+    try {
+      final tokens = await _tokenStorage.read();
+      if (tokens != null) {
+        await _appService
+            .send<void>(
+              httpMethods: HttpMethods.post,
+              endPoint: ApiEndPoint.logout,
+              data: {'refreshToken': tokens.refreshToken},
+              parse: (_) {}, // nothing to read back
+            )
+            // Don't make the user wait 15 s for a dead server.
+            .timeout(
+              logoutTimeout,
+              onTimeout: () => const Left(UnknownError()),
+            );
+      }
+    } finally {
+      await _tokenStorage.clear(); // 1. no more auto-login
+      _session.markLoggedOut(); //    2. AuthGate → Login
+    }
+  }
+
+  /// How long logout waits for the server before giving up.
+  static const Duration logoutTimeout = Duration(seconds: 5);
 }

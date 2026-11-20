@@ -196,14 +196,22 @@ Login response
   permission checks in the app. `id` is a number on the wire → `String` in
   the app. `avatarUrl` is a server path (`/uploads/...`) or null.
 
-- **Auto-login:** the splash reads tokens from secure storage. If tokens exist,
-  call `AuthSession.markAuthenticated()` **before** going to the home route,
-  otherwise the router redirect sends the user back to `/login`.
+- **Auto-login (Step 3.2):** `SplashViewModelBloc` runs
+  `AuthRepository.restoreSession()` and a min duration together
+  (`(a, b).wait`). `restoreSession()` reads the tokens (no network), clears
+  them if the refresh token is expired, and otherwise calls
+  `AuthSession.markAuthenticated()` **before** the splash calls `onFinished`,
+  so `AuthGate` shows Home with no flash of Login.
 - The splash does **not** validate the access token. An expired one is fine:
   the first API call refreshes it in the interceptor.
+- **Logout (Step 3.2):** `AuthRepository.logout()` = `POST /auth/logout`
+  with the refresh token (best effort, 5 s timeout, result ignored) **then**,
+  in `finally`, `TokenStorage.clear()` + `markLoggedOut()`. Server first: the
+  interceptor needs the stored access token to authorize the call. Ask
+  "Log out?" before calling it.
 - Logout and any failed refresh **must** call `TokenStorage.clear()`.
   Skipping it re-enables auto-login, which is a security bug.
-- The "should I auto-login?" decision lives in the splash only.
+- The "should I auto-login?" decision lives in the splash (its BLoC) only.
 - Pages never navigate after login/logout: they call
   `AuthSession.markAuthenticated()` / `markLoggedOut()`, and `AuthGate` swaps
   the screen (on logout it also `popUntil(isFirst)` so no private page stays

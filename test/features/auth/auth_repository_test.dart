@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:erp_mobile/core/network/api_endpoints.dart';
 import 'package:erp_mobile/core/network/app_service.dart';
+import 'package:erp_mobile/core/network/auth_tokens.dart';
 import 'package:erp_mobile/core/network/network_error_model.dart';
 import 'package:erp_mobile/core/network/token_storage.dart';
 import 'package:erp_mobile/core/router/auth_session.dart';
@@ -14,6 +16,7 @@ class _FakeServer implements HttpClientAdapter {
   int status = 200;
   Object? body;
   RequestOptions? last;
+  int calls = 0;
 
   @override
   Future<ResponseBody> fetch(
@@ -22,6 +25,7 @@ class _FakeServer implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     last = options;
+    calls++;
     return ResponseBody.fromString(
       jsonEncode(body),
       status,
@@ -123,5 +127,77 @@ void main() {
     final error = result.fold((e) => e, (_) => null) as ServerError;
 
     expect(error.fieldErrors['email'], 'must be a well-formed email address');
+  });
+
+  // ─────────────── Step 3.2: auto-login ───────────────
+
+  AuthTokens tokens({DateTime? refreshExpiresAt}) => AuthTokens(
+    accessToken: 'a1',
+    refreshToken: 'r1',
+    refreshTokenExpiresAt: refreshExpiresAt,
+  );
+
+  group('restoreSession (splash)', () {
+    test('no tokens → false, session stays closed, no request', () async {
+      expect(await repo.restoreSession(), isFalse);
+      expect(session.isAuthenticated, isFalse);
+      expect(server.calls, 0);
+    });
+
+    test('tokens saved → true, session OPEN, no request', () async {
+      await storage.write(tokens(refreshExpiresAt: DateTime(2100)));
+
+      expect(await repo.restoreSession(), isTrue);
+      expect(session.isAuthenticated, isTrue);
+      expect(server.calls, 0); // no network on the splash
+    });
+
+    test('refresh token expired → false, tokens CLEARED', () async {
+      await storage.write(tokens(refreshExpiresAt: DateTime(2000)));
+
+      expect(await repo.restoreSession(), isFalse);
+      expect(session.isAuthenticated, isFalse);
+      expect(await storage.read(), isNull);
+    });
+  });
+
+  // ─────────────── Step 3.2: logout ───────────────
+
+  group('logout', () {
+    setUp(() async {
+      await storage.write(tokens());
+      session.markAuthenticated();
+    });
+
+    test('tells the server, CLEARS tokens, CLOSES the session', () async {
+      server.body = env(null);
+
+      await repo.logout();
+
+      expect(server.last!.path, ApiEndPoint.logout);
+      expect(server.last!.data, {'refreshToken': 'r1'});
+      expect(await storage.read(), isNull);
+      expect(session.isAuthenticated, isFalse);
+    });
+
+    test('server error (500) → STILL logs out locally', () async {
+      server
+        ..status = 500
+        ..body = env(null, success: false, msg: 'boom');
+
+      await repo.logout();
+
+      expect(await storage.read(), isNull);
+      expect(session.isAuthenticated, isFalse);
+    });
+
+    test('no tokens → no request, session closed', () async {
+      await storage.clear();
+
+      await repo.logout();
+
+      expect(server.calls, 0);
+      expect(session.isAuthenticated, isFalse);
+    });
   });
 }

@@ -5,7 +5,6 @@ import '../core/network/api_endpoints.dart';
 import '../core/network/app_service.dart';
 import '../core/network/helper_service.dart';
 import '../core/network/network_error_model.dart';
-import '../core/router/auth_session.dart';
 import '../core/router/config_router.dart';
 import '../core/theme/app_font_size.dart';
 import '../core/theme/app_label.dart';
@@ -16,11 +15,13 @@ import '../core/theme/app_spacing.dart';
 class HomePlaceholderPage extends StatelessWidget {
   const HomePlaceholderPage({
     super.key,
-    required this.session,
+    required this.onLogout,
     required this.appService,
   });
 
-  final AuthSession session;
+  /// `AuthRepository.logout` (Step 3.2): server revoke → clear tokens →
+  /// close the session → AuthGate shows Login.
+  final Future<void> Function() onLogout;
   final AppService appService;
 
   /// Step 2.1 demo: GET /health through AppService, show the result.
@@ -46,9 +47,8 @@ class HomePlaceholderPage extends StatelessWidget {
     messenger.showSnackBar(SnackBar(content: Text(text)));
   }
 
-  /// Step 2.2 demo: GET /users/me needs a token. The demo login stores NO
-  /// tokens, so: 401 → interceptor finds no tokens → session expired →
-  /// AuthGate shows Login. (Step 3's real login stores tokens → it works.)
+  /// Step 2.2 demo: GET /users/me needs a token. After a real login (or an
+  /// auto-login) the AuthInterceptor adds it → "Signed in as …".
   Future<void> _callMe(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context); // read BEFORE the await
     final result = await appService.send<String>(
@@ -85,8 +85,7 @@ class HomePlaceholderPage extends StatelessWidget {
         actions: [
           IconButton(
             tooltip: 'Log out',
-            // Flip the session; AuthGate swaps Home → Login.
-            onPressed: session.markLoggedOut,
+            onPressed: () => confirmLogout(context, onLogout),
             icon: const Icon(Icons.logout),
           ),
         ],
@@ -129,7 +128,7 @@ class HomePlaceholderPage extends StatelessWidget {
             // ConfigRouter demo: slide right → left.
             onPressed: () => ConfigRouter.pushPageAnimation(
               context,
-              _DemoDetailPage(session: session),
+              _DemoDetailPage(onLogout: onLogout),
             ),
             child: const AppLabel(
               text: 'Open detail (ConfigRouter)',
@@ -174,9 +173,9 @@ class _DemoCard extends StatelessWidget {
 /// A pushed page — shows that logout from here also closes it
 /// (AuthGate pops everything back to the first route).
 class _DemoDetailPage extends StatelessWidget {
-  const _DemoDetailPage({required this.session});
+  const _DemoDetailPage({required this.onLogout});
 
-  final AuthSession session;
+  final Future<void> Function() onLogout;
 
   @override
   Widget build(BuildContext context) {
@@ -190,7 +189,7 @@ class _DemoDetailPage extends StatelessWidget {
         actions: [
           IconButton(
             tooltip: 'Log out',
-            onPressed: session.markLoggedOut,
+            onPressed: () => confirmLogout(context, onLogout),
             icon: const Icon(Icons.logout),
           ),
         ],
@@ -203,4 +202,42 @@ class _DemoDetailPage extends StatelessWidget {
       ),
     );
   }
+}
+
+/// "Log out?" → Cancel / Log out. Only on "Log out" do we call [onLogout].
+/// A mistake tap must not throw the user out (design guide: destructive
+/// actions ask first).
+Future<void> confirmLogout(
+  BuildContext context,
+  Future<void> Function() onLogout,
+) async {
+  final yes = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const AppLabel(
+        text: 'Log out?',
+        fontSize: AppFontSize.value20,
+        fontWeight: FontWeight.w600,
+      ),
+      content: const AppLabel(
+        text: 'You will need to sign in again.',
+        fontSize: AppFontSize.value14,
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const AppLabel(text: 'Cancel', fontSize: AppFontSize.value14),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const AppLabel(
+            text: 'Log out',
+            fontSize: AppFontSize.value14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    ),
+  );
+  if (yes == true) await onLogout();
 }
