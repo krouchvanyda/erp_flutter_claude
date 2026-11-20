@@ -14,6 +14,8 @@ import '../model/contact_model.dart';
 import '../model/chat_enums.dart';
 import '../model/conversation_model.dart';
 import '../model/message_model.dart';
+import '../model/presence_model.dart';
+import '../model/reaction_model.dart';
 
 /// Chat business rules. BLoCs call this; they never touch Dio or tokens.
 class ChatRepository {
@@ -273,6 +275,87 @@ class ChatRepository {
 
   /// The server wants NUMBER ids ("7" → 7).
   static Object _wireId(String id) => int.tryParse(id) ?? id;
+
+  // ─────────────── Step 5.6: message actions · presence · search ───────────────
+
+  /// Edit my own TEXT message (server: own only, TEXT only, within 15 min).
+  Future<Either<NetworkErrorModel, MessageModel>> editMessage(
+    String messageId,
+    String body,
+  ) {
+    return _appService.send(
+      httpMethods: HttpMethods.patch,
+      endPoint: ApiEndPoint.message(messageId),
+      data: {'body': body.trim()},
+      parse: (data) => MessageModel.fromJson(data as Map<String, dynamic>),
+    );
+  }
+
+  /// Delete my own message (for everyone).
+  Future<Either<NetworkErrorModel, void>> deleteMessage(String messageId) {
+    return _appService.send<void>(
+      httpMethods: HttpMethods.delete,
+      endPoint: ApiEndPoint.message(messageId),
+      parse: (_) {},
+    );
+  }
+
+  /// Tap an emoji = add it, tap again = remove it → the FULL new list.
+  Future<Either<NetworkErrorModel, List<ReactionModel>>> toggleReaction(
+    String messageId,
+    String emoji,
+  ) {
+    return _appService.send(
+      httpMethods: HttpMethods.post,
+      endPoint: ApiEndPoint.messageReactions(messageId),
+      data: {'emoji': emoji},
+      parse: (data) => [
+        for (final r in data as List? ?? const [])
+          ReactionModel.fromJson(r as Map<String, dynamic>),
+      ],
+    );
+  }
+
+  /// Search inside one conversation (case-insensitive), newest first.
+  Future<Either<NetworkErrorModel, PageModel<MessageModel>>> searchMessages(
+    String conversationId,
+    String query, {
+    int page = 1,
+  }) {
+    return _appService.send(
+      httpMethods: HttpMethods.get,
+      endPoint: ApiEndPoint.messageSearch(conversationId),
+      queryParameters: {
+        'q': query.trim(),
+        'page': page,
+        'pageSize': messagesPageSize,
+      },
+      parse: (data) => PageModel.fromData(data, MessageModel.fromJson),
+    );
+  }
+
+  /// Online status of these people (one request).
+  Future<Either<NetworkErrorModel, List<PresenceModel>>> loadPresence(
+    Iterable<String> userIds,
+  ) {
+    return _appService.send(
+      httpMethods: HttpMethods.get,
+      endPoint: ApiEndPoint.presence,
+      queryParameters: {
+        'ids': [for (final id in userIds) _wireId(id)],
+      },
+      parse: (data) => [
+        for (final p in data as List? ?? const [])
+          PresenceModel.fromJson(p as Map<String, dynamic>),
+      ],
+    );
+  }
+
+  /// Live presence changes of everyone (`/topic/presence`).
+  Stream<PresenceModel> presenceUpdates() => _realtime
+      .subscribe(ApiEndPoint.presenceTopic)
+      .where((e) => e.event == 'presence.update' && e.payloadMap != null)
+      .map((e) => PresenceModel.fromJson(e.payloadMap!));
 
   // ─────────────── Step 5.3: live updates ───────────────
 

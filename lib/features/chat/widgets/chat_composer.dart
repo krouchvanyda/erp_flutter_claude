@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_font_size.dart';
+import '../../../core/theme/app_label.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/app_input_text.dart';
 import '../model/chat_enums.dart';
@@ -24,6 +26,9 @@ class ChatComposer extends StatefulWidget {
     required this.onAttach,
     required this.onVoice,
     this.onTextChanged,
+    this.editingText,
+    this.onSubmitEdit,
+    this.onCancelEdit,
     this.enabled = true,
   });
 
@@ -37,6 +42,12 @@ class ChatComposer extends StatefulWidget {
 
   /// Every change of the text box (for "typing…", 5.6).
   final ValueChanged<String>? onTextChanged;
+
+  /// Edit mode (5.6): the message's current text. Non-null → a
+  /// "✎ Editing message ✕" banner, the box is filled, ➤ saves.
+  final String? editingText;
+  final ValueChanged<String>? onSubmitEdit;
+  final VoidCallback? onCancelEdit;
   final bool enabled;
 
   @override
@@ -49,10 +60,26 @@ class _ChatComposerState extends State<ChatComposer> {
   bool _recording = false;
 
   @override
+  void didUpdateWidget(ChatComposer old) {
+    super.didUpdateWidget(old);
+    if (widget.editingText != old.editingText) {
+      // entering edit mode → fill the box; leaving → empty it
+      final text = widget.editingText ?? '';
+      _controller.value = TextEditingValue(
+        text: text,
+        selection: TextSelection.collapsed(offset: text.length),
+      );
+      setState(() => _hasText = text.trim().isNotEmpty);
+    }
+  }
+
+  @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
+
+  bool get _editing => widget.editingText != null;
 
   void _onChanged(String value) {
     widget.onTextChanged?.call(value);
@@ -62,7 +89,12 @@ class _ChatComposerState extends State<ChatComposer> {
 
   void _send() {
     final text = _controller.text.trim();
-    if (text.isEmpty || !widget.enabled) return;
+    if (!widget.enabled) return;
+    if (_editing) {
+      widget.onSubmitEdit?.call(text); // the bloc leaves edit mode
+      return;
+    }
+    if (text.isEmpty) return;
     widget.onSend(text);
     _controller.clear();
     setState(() => _hasText = false);
@@ -87,7 +119,8 @@ class _ChatComposerState extends State<ChatComposer> {
       );
     }
 
-    return Padding(
+    final colors = Theme.of(context).colorScheme;
+    final row = Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.xs,
         AppSpacing.sm,
@@ -101,7 +134,7 @@ class _ChatComposerState extends State<ChatComposer> {
             padding: const EdgeInsets.only(bottom: 4),
             child: IconButton(
               tooltip: 'Attach',
-              onPressed: widget.enabled ? _attach : null,
+              onPressed: widget.enabled && !_editing ? _attach : null,
               icon: const Icon(Icons.attach_file_rounded),
             ),
           ),
@@ -124,7 +157,7 @@ class _ChatComposerState extends State<ChatComposer> {
               duration: const Duration(milliseconds: 150),
               transitionBuilder: (child, animation) =>
                   ScaleTransition(scale: animation, child: child),
-              child: _hasText
+              child: _hasText || _editing
                   ? IconButton.filled(
                       key: const ValueKey('send'),
                       tooltip: 'Send',
@@ -133,7 +166,9 @@ class _ChatComposerState extends State<ChatComposer> {
                       style: IconButton.styleFrom(
                         minimumSize: const Size(48, 48),
                       ),
-                      icon: const Icon(Icons.send_rounded),
+                      icon: Icon(
+                        _editing ? Icons.check_rounded : Icons.send_rounded,
+                      ),
                     )
                   : IconButton.filled(
                       key: const ValueKey('mic'),
@@ -151,6 +186,43 @@ class _ChatComposerState extends State<ChatComposer> {
           ),
         ],
       ),
+    );
+
+    if (!_editing) return row;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // ✎ Editing message                       ✕
+        Container(
+          padding: const EdgeInsetsDirectional.only(
+            start: AppSpacing.md,
+            end: AppSpacing.xs,
+          ),
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: colors.outlineVariant)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.edit_rounded, size: 18, color: colors.primary),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: AppLabel(
+                  text: 'Editing message',
+                  fontSize: AppFontSize.value14,
+                  fontWeight: FontWeight.w600,
+                  color: colors.primary,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Cancel editing',
+                onPressed: widget.onCancelEdit,
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ],
+          ),
+        ),
+        row,
+      ],
     );
   }
 }

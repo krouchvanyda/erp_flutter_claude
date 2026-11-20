@@ -48,12 +48,34 @@ abstract final class ApiEndPoint {
   static String conversationMember(String conversationId, String userId) =>
       '$conversations/$conversationId/members/$userId';
 
+  /// One message: edit (PATCH `{body}`) / delete (DELETE) — 5.6.
+  static String message(String messageId) => '$_v1/chats/messages/$messageId';
+
+  /// Toggle an emoji (POST `{emoji}`) → the message's full reaction list.
+  static String messageReactions(String messageId) =>
+      '$_v1/chats/messages/$messageId/reactions';
+
+  /// Search inside one conversation (GET `?q&page&pageSize`) — 5.6.
+  static String messageSearch(String conversationId) =>
+      '$conversations/$conversationId/messages/search';
+
+  /// Online status: GET `?ids=1&ids=2` → `[{userId, status, lastSeenAt}]`.
+  static const String presence = '$_v1/chats/presence';
+
+  /// App minimized / back (so a minimized phone counts as OFFLINE at once,
+  /// which lets calls ring it by push — Steps 6–7).
+  static const String presenceBackground = '$_v1/chats/presence/background';
+  static const String presenceForeground = '$_v1/chats/presence/foreground';
+
   // ── Realtime (Step 5.3) ──
   /// STOMP over WebSocket, per flavor (`Environments.*RealtimeUrl`, the
   /// backend's `/ws`). The token goes in the CONNECT frame, not the URL.
   static String get websocketUrl => Flavor.current.realtimeUrl;
 
   static const String inboxQueue = '/user/queue/inbox';
+
+  /// Everyone's ONLINE / BUSY / OFFLINE changes (`presence.update`).
+  static const String presenceTopic = '/topic/presence';
 
   /// SEND here `{typing: true|false}` → the server tells the conversation
   /// topic "typing" (5.6). `/app` = the server's handlers (not a topic).

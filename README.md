@@ -53,7 +53,7 @@ the same data count as equal. Why, and what breaks without them:
 | 5.3 | Chat: realtime (STOMP) | ✅ |
 | 5.4 | Chat: new chat + groups | ✅ |
 | 5.5 | Chat: attachments (photo, PDF, voice) | ✅ |
-| 5.6 | Chat: typing ✅ · edit / delete, reactions, presence, search ⏳ | 🔶 |
+| 5.6 | Chat: typing · edit / delete · reactions · presence · search | ✅ |
 | 6 – 7 | Call, Call when the app is killed | ⏳ |
 | 8 | Translations, tests, polish | ⏳ |
 

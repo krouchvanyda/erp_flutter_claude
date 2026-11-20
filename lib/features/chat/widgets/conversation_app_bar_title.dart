@@ -5,12 +5,15 @@ import '../../../core/theme/app_font_size.dart';
 import '../../../core/theme/app_label.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/app_avatar.dart';
+import '../../../core/utils/chat_time.dart';
 import '../model/conversation_model.dart';
+import '../model/presence_model.dart';
 
 /// `(JD) Jane Doe` in the app bar. The second line:
 ///
 /// ```
 /// someone typing  → "typing…" / "Dara is typing…"   (primary colour, 5.6)
+/// else, direct    → "online" / "in a call" / "last seen 10:42"     (5.6)
 /// else, a group   → "5 members"
 /// ```
 class ConversationAppBarTitle extends StatelessWidget {
@@ -19,6 +22,7 @@ class ConversationAppBarTitle extends StatelessWidget {
     required this.conversation,
     required this.myId,
     this.typingNames = const [],
+    this.presenceText,
   });
 
   final ConversationModel conversation;
@@ -26,6 +30,9 @@ class ConversationAppBarTitle extends StatelessWidget {
 
   /// Names of the people typing now (never me).
   final List<String> typingNames;
+
+  /// Direct chats (5.6): "online" / "in a call" / "last seen 10:42".
+  final String? presenceText;
 
   /// The "typing" line. In a direct chat the name is already the title.
   ///
@@ -80,6 +87,14 @@ class ConversationAppBarTitle extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 )
+              else if (presenceText case final text? when !conversation.isGroup)
+                AppLabel(
+                  text: text,
+                  fontSize: AppFontSize.value12,
+                  color: colors.onSurfaceVariant,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                )
               else if (conversation.isGroup)
                 AppLabel(
                   text: '${conversation.members.length} members',
@@ -92,4 +107,15 @@ class ConversationAppBarTitle extends StatelessWidget {
       ],
     );
   }
+}
+
+/// The presence line for a direct chat (null = nothing known yet).
+String? presenceLine(PresenceModel? p, {DateTime? now}) {
+  if (p == null) return null;
+  return switch (p.status) {
+    PresenceStatus.online => 'online',
+    PresenceStatus.busy => 'in a call',
+    PresenceStatus.offline =>
+      p.lastSeenAt == null ? null : ChatTime.lastSeen(p.lastSeenAt!, now: now),
+  };
 }

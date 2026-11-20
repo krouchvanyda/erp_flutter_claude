@@ -1,6 +1,6 @@
 # Step 5.6 (part) — Chat: "typing…" (backend + app)
 
-> ← Previous: [15-chat-attachments.md](15-chat-attachments.md) · Roadmap: [README.md](README.md)
+> ← Previous: [15-chat-attachments.md](15-chat-attachments.md) · Next: [17-chat-extras.md](17-chat-extras.md) → · Roadmap: [README.md](README.md)
 
 The other person sees **"typing…"** (or **"Dara is typing…"** in a group)
 under the chat title while you type.

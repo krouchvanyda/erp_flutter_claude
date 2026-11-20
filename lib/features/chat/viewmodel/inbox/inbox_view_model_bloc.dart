@@ -8,6 +8,7 @@ import '../../../../core/network/network_error_model.dart';
 import '../../model/chat_update.dart';
 import '../../model/conversation_model.dart';
 import '../../repository/chat_repository.dart';
+import '../../repository/presence_store.dart';
 
 part 'inbox_view_model_event.dart';
 part 'inbox_view_model_state.dart';
@@ -24,7 +25,9 @@ part 'inbox_view_model_state.dart';
 ///              connection back → reload page 1 (catch-up)
 class InboxViewModelBloc
     extends Bloc<InboxViewModelEvent, InboxViewModelState> {
-  InboxViewModelBloc(this._repository) : super(InboxViewModelInitial()) {
+  InboxViewModelBloc(this._repository, {PresenceStore? presence})
+    : _presence = presence,
+      super(InboxViewModelInitial()) {
     on<OnInboxLoadEvent>(_onLoad);
     on<OnInboxLoadMoreEvent>(_onLoadMore);
     on<OnInboxLiveUpdateEvent>(_onLiveUpdate);
@@ -42,6 +45,9 @@ class InboxViewModelBloc
 
   final ChatRepository _repository;
   late final List<StreamSubscription<Object?>> _subscriptions;
+
+  /// Online dots for direct chats (5.6). Optional so tests can skip it.
+  final PresenceStore? _presence;
 
   /// The conversation on screen right now (its messages aren't "unread").
   String? _openConversationId;
@@ -68,14 +74,17 @@ class InboxViewModelBloc
       result.fold(
         (error) => emit(InboxErrorState(error: error, lastData: shown)),
         // Same list as before → == → Bloc emits nothing (that's fine).
-        (page) => emit(
-          InboxLoadedState(
-            conversations: page.items,
-            myId: myId,
-            page: page.page,
-            hasMore: page.hasMore,
-          ),
-        ),
+        (page) {
+          emit(
+            InboxLoadedState(
+              conversations: page.items,
+              myId: myId,
+              page: page.page,
+              hasMore: page.hasMore,
+            ),
+          );
+          _watchPresence(page.items, myId);
+        },
       );
     } finally {
       // ALWAYS, even on an early return → the refresh spinner always stops.
@@ -114,6 +123,7 @@ class InboxViewModelBloc
             isLoadingMore: false,
           ),
         );
+        _watchPresence(state.data!.conversations, current.myId);
       },
     );
   }
@@ -207,9 +217,24 @@ class InboxViewModelBloc
           ),
         );
 
-      case MessageChanged() || MessagesRead() || TypingChanged():
+      case MessageChanged() ||
+          MessagesRead() ||
+          TypingChanged() ||
+          ReactionsChanged():
         break; // only the open conversation cares
     }
+  }
+
+  /// Direct chats → follow the OTHER person's online status (one request).
+  void _watchPresence(List<ConversationModel> list, String? myId) {
+    final presence = _presence;
+    if (presence == null) return;
+    unawaited(
+      presence.watch([
+        for (final c in list)
+          if (c.otherMember(myId) case final other?) other.userId,
+      ]),
+    );
   }
 
   /// [updated] first, then the rest (without its old copy).
@@ -224,6 +249,7 @@ class InboxViewModelBloc
 
   /// Keep the state TYPE (an error banner stays), swap only the data.
   void _emitData(Emitter<InboxViewModelState> emit, InboxLoadedState data) {
+    _watchPresence(data.conversations, data.myId); // new chats → their dots
     final current = state;
     emit(
       current is InboxErrorState

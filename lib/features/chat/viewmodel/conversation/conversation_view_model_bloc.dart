@@ -11,6 +11,7 @@ import '../../model/chat_enums.dart';
 import '../../model/chat_update.dart';
 import '../../model/message_model.dart';
 import '../../model/outgoing_message.dart';
+import '../../model/reaction_model.dart';
 import '../../repository/chat_repository.dart';
 
 part 'conversation_view_model_event.dart';
@@ -26,6 +27,8 @@ part 'conversation_view_model_state.dart';
 /// Retry:      failed ⚠ → 🕓 → (same as Send)
 /// Attachment: + outgoing ◔ (upload %) → uploaded → 🕓 → ✓ (5.5)
 ///             retry skips the upload if it already worked
+/// Actions (5.6): edit (composer edit mode) · delete · reactions (optimistic)
+///             a failure → ActionFailed (snackbar), the messages stay
 /// Live (5.3): message.send → new bubble (+ markRead) · my own echo replaces
 ///             its 🕓 bubble · edit / delete → swapped in place ·
 ///             message.read → ✓✓ · connection back → reload (catch-up)
@@ -46,6 +49,11 @@ class ConversationViewModelBloc
     on<OnMessageRetryEvent>(_onRetry);
     on<OnAttachmentSendEvent>(_onSendAttachment);
     on<OnConversationLiveUpdateEvent>(_onLiveUpdate);
+    on<OnMessageEditStartEvent>(_onEditStart);
+    on<OnMessageEditCancelEvent>(_onEditCancel);
+    on<OnMessageEditSubmitEvent>(_onEditSubmit);
+    on<OnMessageDeleteEvent>(_onDelete);
+    on<OnReactionToggleEvent>(_onReactionToggle);
 
     _subscriptions = [
       _repository
@@ -369,23 +377,16 @@ class ConversationViewModelBloc
         );
 
       case MessageChanged(:final message):
-        _emitData(
-          emit,
-          data.copyWith(
-            messages: [
-              for (final m in data.messages)
-                m.id == message.id
-                    // edit / delete events have no read receipts → keep ours
-                    ? message.copyWith(
-                        readByUserIds: m.readByUserIds,
-                        reactions: message.reactions.isEmpty
-                            ? m.reactions
-                            : message.reactions,
-                      )
-                    : m,
-            ],
-          ),
-        );
+        if (message.deleted) {
+          // History leaves deleted messages OUT (`…DeletedAtIsNull`) → we
+          // remove it too, so a reload never changes what you see.
+          _emitData(emit, _without(data, message.id));
+          return;
+        }
+        _emitData(emit, _replaceMessage(data, message));
+
+      case ReactionsChanged(:final messageId, :final reactions):
+        _emitData(emit, _withReactions(data, messageId, reactions));
 
       case MessagesRead(:final userId, :final lastReadMessageId):
         if (userId == myId) return; // my own read (another device)
@@ -407,4 +408,152 @@ class ConversationViewModelBloc
         break; // title / members: info bloc (5.4) · typing: typing bloc (5.6)
     }
   }
+
+  // ─────────────── Step 5.6: message actions ───────────────
+
+  /// Editable = mine, TEXT, not deleted, younger than the server's 15 min.
+  static const Duration editWindow = Duration(minutes: 15);
+
+  bool canEdit(MessageModel m) =>
+      m.senderId == myId &&
+      m.type == MessageType.text &&
+      !m.deleted &&
+      m.createdAt != null &&
+      DateTime.now().difference(m.createdAt!) < editWindow;
+
+  void _onEditStart(
+    OnMessageEditStartEvent event,
+    Emitter<ConversationViewModelState> emit,
+  ) {
+    final data = state.data;
+    if (data == null || !canEdit(event.message)) return;
+    _emitData(emit, data.copyWith(editing: event.message));
+  }
+
+  void _onEditCancel(
+    OnMessageEditCancelEvent event,
+    Emitter<ConversationViewModelState> emit,
+  ) {
+    final data = state.data;
+    if (data == null || data.editing == null) return;
+    _emitData(emit, data.copyWith(clearEditing: true));
+  }
+
+  Future<void> _onEditSubmit(
+    OnMessageEditSubmitEvent event,
+    Emitter<ConversationViewModelState> emit,
+  ) async {
+    final data = state.data;
+    final editing = data?.editing;
+    final body = event.body.trim();
+    if (data == null || editing == null) return;
+    // Nothing changed / emptied → just leave edit mode.
+    if (body.isEmpty || body == (editing.body ?? '').trim()) {
+      _emitData(emit, data.copyWith(clearEditing: true));
+      return;
+    }
+    _emitData(emit, data.copyWith(clearEditing: true)); // banner closes now
+    final result = await _repository.editMessage(editing.id, body);
+    final now = state.data;
+    if (now == null) return;
+    result.fold(
+      (error) =>
+          emit(ConversationActionFailedState(error: error, lastData: now)),
+      (edited) => _emitData(emit, _replaceMessage(now, edited)),
+    );
+  }
+
+  Future<void> _onDelete(
+    OnMessageDeleteEvent event,
+    Emitter<ConversationViewModelState> emit,
+  ) async {
+    final result = await _repository.deleteMessage(event.messageId);
+    final data = state.data;
+    if (data == null) return;
+    result.fold(
+      (error) =>
+          emit(ConversationActionFailedState(error: error, lastData: data)),
+      (_) => _emitData(emit, _without(data, event.messageId)),
+    );
+  }
+
+  /// Optimistic: my reaction flips at once; the server's list then wins;
+  /// a failure puts the old list back.
+  Future<void> _onReactionToggle(
+    OnReactionToggleEvent event,
+    Emitter<ConversationViewModelState> emit,
+  ) async {
+    final data = state.data;
+    final me = myId;
+    final message = data?.messages.firstWhereOrNull(
+      (m) => m.id == event.messageId,
+    );
+    if (data == null || me == null || message == null || message.deleted) {
+      return;
+    }
+    final before = message.reactions;
+    final mine = ReactionModel(userId: me, emoji: event.emoji);
+    final flipped = before.contains(mine)
+        ? [
+            for (final r in before)
+              if (r != mine) r,
+          ]
+        : [...before, mine];
+    _emitData(emit, _withReactions(data, message.id, flipped));
+
+    final result = await _repository.toggleReaction(message.id, event.emoji);
+    final now = state.data;
+    if (now == null) return;
+    result.fold(
+      (error) => emit(
+        ConversationActionFailedState(
+          error: error,
+          lastData: _withReactions(now, message.id, before),
+        ),
+      ),
+      (server) => _emitData(emit, _withReactions(now, message.id, server)),
+    );
+  }
+
+  /// Swap in a changed message; keep the read receipts / reactions we
+  /// know when the server's copy has none (edit events carry no receipts).
+  static ConversationLoadedState _replaceMessage(
+    ConversationLoadedState data,
+    MessageModel changed,
+  ) => data.copyWith(
+    messages: [
+      for (final m in data.messages)
+        m.id == changed.id
+            ? changed.copyWith(
+                readByUserIds: {...m.readByUserIds, ...changed.readByUserIds},
+                reactions: changed.reactions.isEmpty
+                    ? m.reactions
+                    : changed.reactions,
+              )
+            : m,
+    ],
+  );
+
+  static ConversationLoadedState _without(
+    ConversationLoadedState data,
+    String messageId,
+  ) => data.copyWith(
+    messages: [
+      for (final m in data.messages)
+        if (m.id != messageId) m,
+    ],
+    // deleting the message I was editing → leave edit mode
+    clearEditing: data.editing?.id == messageId,
+  );
+
+  static ConversationLoadedState _withReactions(
+    ConversationLoadedState data,
+    String messageId,
+    List<ReactionModel> reactions,
+  ) => data.copyWith(
+    messages: [
+      for (final m in data.messages)
+        m.id == messageId ? m.copyWith(reactions: reactions) : m,
+    ],
+  );
 }

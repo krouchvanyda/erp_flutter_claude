@@ -8,6 +8,7 @@ import 'package:erp_mobile/features/chat/model/chat_attachment.dart';
 import 'package:erp_mobile/features/chat/model/chat_enums.dart';
 import 'package:erp_mobile/features/chat/model/chat_update.dart';
 import 'package:erp_mobile/features/chat/model/message_model.dart';
+import 'package:erp_mobile/features/chat/model/reaction_model.dart';
 import 'package:erp_mobile/features/chat/repository/chat_repository.dart';
 import 'package:erp_mobile/features/chat/viewmodel/conversation/conversation_view_model_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -550,6 +551,169 @@ void main() {
         expect(data.outgoing, isEmpty);
         expect(data.messages.where((m) => m.id == '22'), hasLength(1));
       },
+    );
+  });
+
+  // ─────────────── Step 5.6: message actions ───────────────
+
+  group('message actions', () {
+    MessageModel mine(String id, {String body = 'old', DateTime? at}) =>
+        MessageModel(
+          id: id,
+          conversationId: 'c1',
+          senderId: '1',
+          type: MessageType.text,
+          body: body,
+          createdAt: at ?? DateTime.now(),
+        );
+
+    ConversationLoadedState with_(List<MessageModel> list) =>
+        ConversationLoadedState(messages: list, page: 1, hasMore: false);
+
+    test('canEdit: mine + TEXT + < 15 min only', () {
+      final bloc = build();
+      expect(bloc.canEdit(mine('1')), isTrue);
+      expect(
+        bloc.canEdit(
+          mine('1', at: DateTime.now().subtract(const Duration(minutes: 16))),
+        ),
+        isFalse,
+      );
+      expect(bloc.canEdit(msg('2')), isFalse); // someone else's
+      bloc.close();
+    });
+
+    blocTest<ConversationViewModelBloc, ConversationViewModelState>(
+      'edit: start → submit → banner closes → server copy replaces it',
+      setUp: () => when(
+        () => repo.editMessage('5', 'new'),
+      ).thenAnswer((_) async => Right(mine('5', body: 'new').copyWith())),
+      build: build,
+      seed: () => with_([mine('5')]),
+      act: (bloc) async {
+        bloc.add(OnMessageEditStartEvent(mine('5')));
+        await Future<void>.delayed(Duration.zero);
+        expect(bloc.state.data!.editing?.id, '5');
+        bloc.add(OnMessageEditSubmitEvent('new'));
+      },
+      verify: (bloc) {
+        expect(bloc.state.data!.editing, isNull);
+        expect(bloc.state.data!.messages.single.body, 'new');
+      },
+    );
+
+    blocTest<ConversationViewModelBloc, ConversationViewModelState>(
+      'edit too late (server 400) → ActionFailed, the old text stays',
+      setUp: () => when(() => repo.editMessage('5', 'new')).thenAnswer(
+        (_) async => const Left(
+          ServerError(description: 'Edit window has expired', statusCode: 400),
+        ),
+      ),
+      build: build,
+      seed: () => with_([mine('5')]).copyWith(editing: mine('5')),
+      act: (bloc) => bloc.add(OnMessageEditSubmitEvent('new')),
+      expect: () => [
+        isA<ConversationLoadedState>().having(
+          (s) => s.editing,
+          'banner',
+          isNull,
+        ),
+        isA<ConversationActionFailedState>()
+            .having((s) => s.data.messages.single.body, 'kept', 'old')
+            .having(
+              (s) => s.error.description,
+              'why',
+              'Edit window has expired',
+            ),
+      ],
+    );
+
+    blocTest<ConversationViewModelBloc, ConversationViewModelState>(
+      'delete OK → the message disappears (like a reload would show)',
+      setUp: () => when(
+        () => repo.deleteMessage('5'),
+      ).thenAnswer((_) async => const Right(null)),
+      build: build,
+      seed: () => with_([mine('6'), mine('5')]),
+      act: (bloc) => bloc.add(OnMessageDeleteEvent('5')),
+      verify: (bloc) =>
+          expect(bloc.state.data!.messages.map((m) => m.id), ['6']),
+    );
+
+    blocTest<ConversationViewModelBloc, ConversationViewModelState>(
+      'live message.delete → removed too',
+      build: build,
+      seed: () => with_([msg('6'), msg('5')]),
+      act: (_) => updates.add(
+        const MessageChanged(
+          MessageModel(
+            id: '5',
+            conversationId: 'c1',
+            senderId: '2',
+            type: MessageType.text,
+            deleted: true,
+          ),
+        ),
+      ),
+      verify: (bloc) =>
+          expect(bloc.state.data!.messages.map((m) => m.id), ['6']),
+    );
+
+    blocTest<ConversationViewModelBloc, ConversationViewModelState>(
+      'reaction: optimistic at once, then the server list',
+      setUp: () => when(() => repo.toggleReaction('5', '👍')).thenAnswer(
+        (_) async => const Right([
+          ReactionModel(userId: '1', emoji: '👍'),
+          ReactionModel(userId: '2', emoji: '👍'),
+        ]),
+      ),
+      build: build,
+      seed: () => with_([msg('5')]),
+      act: (bloc) => bloc.add(OnReactionToggleEvent('5', '👍')),
+      expect: () => [
+        isA<ConversationLoadedState>().having(
+          (s) => s.messages.single.reactions.length,
+          'mine at once',
+          1,
+        ),
+        isA<ConversationLoadedState>().having(
+          (s) => s.messages.single.reactions.length,
+          'server list',
+          2,
+        ),
+      ],
+    );
+
+    blocTest<ConversationViewModelBloc, ConversationViewModelState>(
+      'reaction fails → the old list comes back + ActionFailed',
+      setUp: () => when(
+        () => repo.toggleReaction('5', '👍'),
+      ).thenAnswer((_) async => const Left(NoInternetError())),
+      build: build,
+      seed: () => with_([msg('5')]),
+      act: (bloc) => bloc.add(OnReactionToggleEvent('5', '👍')),
+      expect: () => [
+        isA<ConversationLoadedState>(),
+        isA<ConversationActionFailedState>().having(
+          (s) => s.data.messages.single.reactions,
+          'reverted',
+          isEmpty,
+        ),
+      ],
+    );
+
+    blocTest<ConversationViewModelBloc, ConversationViewModelState>(
+      'live reaction.toggle → that message gets the new list',
+      build: build,
+      seed: () => with_([msg('5')]),
+      act: (_) => updates.add(
+        const ReactionsChanged(
+          messageId: '5',
+          reactions: [ReactionModel(userId: '3', emoji: '😂')],
+        ),
+      ),
+      verify: (bloc) =>
+          expect(bloc.state.data!.messages.single.reactions.single.emoji, '😂'),
     );
   });
 }

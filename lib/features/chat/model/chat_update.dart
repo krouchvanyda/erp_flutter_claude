@@ -1,6 +1,7 @@
 import '../../../core/realtime/realtime_event.dart';
 import 'conversation_model.dart';
 import 'message_model.dart';
+import 'reaction_model.dart';
 
 /// A live change from the server (Step 5.3), already turned into our models.
 ///
@@ -15,8 +16,9 @@ import 'message_model.dart';
 /// | `conversation.create` / `.update`       | [ConversationChanged] |
 /// | `conversation.remove`                   | [ConversationRemoved] |
 /// | `typing`                                | [TypingChanged]       |
+/// | `reaction.toggle`                       | [ReactionsChanged]    |
 ///
-/// Unknown events (reactions until 5.6, calls…) → null, ignored.
+/// Unknown events (calls…) → null, ignored.
 sealed class ChatUpdate {
   const ChatUpdate();
 
@@ -39,6 +41,13 @@ sealed class ChatUpdate {
         // a ConversationDto, or just { conversationId } when deleted
         'conversation.remove' => ConversationRemoved(
           '${p['conversationId'] ?? p['id']}',
+        ),
+        'reaction.toggle' => ReactionsChanged(
+          messageId: '${p['messageId']}',
+          reactions: [
+            for (final r in p['reactions'] as List? ?? const [])
+              ReactionModel.fromJson(r as Map<String, dynamic>),
+          ],
         ),
         'typing' => TypingChanged(
           conversationId: '${p['conversationId']}',
@@ -98,4 +107,11 @@ final class TypingChanged extends ChatUpdate {
   final String conversationId;
   final String userId;
   final bool typing;
+}
+
+/// The FULL reaction list of [messageId] after someone tapped an emoji.
+final class ReactionsChanged extends ChatUpdate {
+  const ReactionsChanged({required this.messageId, required this.reactions});
+  final String messageId;
+  final List<ReactionModel> reactions;
 }

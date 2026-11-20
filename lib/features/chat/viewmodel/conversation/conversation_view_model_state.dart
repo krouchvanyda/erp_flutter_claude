@@ -18,6 +18,7 @@ final class ConversationLoadedState extends ConversationViewModelState {
     required this.page,
     required this.hasMore,
     this.isLoadingOlder = false,
+    this.editing,
   });
 
   /// What the SERVER has, NEWEST first (index 0 = the bottom bubble).
@@ -34,6 +35,9 @@ final class ConversationLoadedState extends ConversationViewModelState {
   /// Older page on its way → small spinner at the TOP.
   final bool isLoadingOlder;
 
+  /// The message I'm editing (the composer shows "✎ Editing") — 5.6.
+  final MessageModel? editing;
+
   @override
   ConversationLoadedState get data => this;
 
@@ -43,12 +47,15 @@ final class ConversationLoadedState extends ConversationViewModelState {
     int? page,
     bool? hasMore,
     bool? isLoadingOlder,
+    MessageModel? editing,
+    bool clearEditing = false,
   }) => ConversationLoadedState(
     messages: messages ?? this.messages,
     outgoing: outgoing ?? this.outgoing,
     page: page ?? this.page,
     hasMore: hasMore ?? this.hasMore,
     isLoadingOlder: isLoadingOlder ?? this.isLoadingOlder,
+    editing: clearEditing ? null : (editing ?? this.editing),
   );
 
   static const _messagesEq = ListEquality<MessageModel>();
@@ -61,7 +68,8 @@ final class ConversationLoadedState extends ConversationViewModelState {
       _outgoingEq.equals(other.outgoing, outgoing) &&
       other.page == page &&
       other.hasMore == hasMore &&
-      other.isLoadingOlder == isLoadingOlder;
+      other.isLoadingOlder == isLoadingOlder &&
+      other.editing == editing;
 
   @override
   int get hashCode => Object.hash(
@@ -70,6 +78,7 @@ final class ConversationLoadedState extends ConversationViewModelState {
     page,
     hasMore,
     isLoadingOlder,
+    editing,
   );
 
   @override
@@ -91,4 +100,17 @@ final class ConversationErrorState extends ConversationViewModelState {
   @override
   ConversationLoadedState? get data =>
       lastData?.copyWith(isLoadingOlder: false);
+}
+
+/// Edit / delete / reaction failed (403 "Can only edit own messages",
+/// "Edit window has expired", offline…) → the page shows a snackbar.
+/// The messages stay ([lastData]).
+final class ConversationActionFailedState extends ConversationViewModelState {
+  ConversationActionFailedState({required this.error, required this.lastData});
+
+  final NetworkErrorModel error;
+  final ConversationLoadedState lastData;
+
+  @override
+  ConversationLoadedState get data => lastData;
 }

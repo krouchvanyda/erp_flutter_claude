@@ -10,6 +10,7 @@ import '../audio/app_audio_player.dart';
 import '../network/token_refresher.dart';
 import '../network/token_storage.dart';
 import '../network/api_endpoints.dart';
+import '../network/helper_service.dart';
 import '../realtime/realtime_lifecycle.dart';
 import '../realtime/realtime_service.dart';
 import '../router/auth_session.dart';
@@ -107,6 +108,17 @@ Future<void> _registerCore() async {
     () => RealtimeLifecycle(
       session: getIt<AuthSession>(),
       realtime: getIt<RealtimeService>(),
+      // presence beacons (5.6): a minimized phone = OFFLINE at once
+      onBackground: () => getIt<AppService>().send<void>(
+        httpMethods: HttpMethods.post,
+        endPoint: ApiEndPoint.presenceBackground,
+        parse: (_) {},
+      ),
+      onForeground: () => getIt<AppService>().send<void>(
+        httpMethods: HttpMethods.post,
+        endPoint: ApiEndPoint.presenceForeground,
+        parse: (_) {},
+      ),
     ),
   );
 }

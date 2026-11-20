@@ -42,6 +42,8 @@ class MessageBubble extends StatelessWidget {
     this.onRetry,
     this.media,
     this.body,
+    this.footer,
+    this.onLongPress,
   });
 
   final String text;
@@ -66,6 +68,12 @@ class MessageBubble extends StatelessWidget {
 
   /// A file / voice row (Step 5.5) instead of [text].
   final Widget? body;
+
+  /// Under the bubble, e.g. the reaction chips (5.6).
+  final Widget? footer;
+
+  /// Long-press → the actions sheet (5.6).
+  final VoidCallback? onLongPress;
 
   static const double _radius = 18;
 
@@ -226,10 +234,18 @@ class MessageBubble extends StatelessWidget {
                       label: 'Not sent. Tap to retry',
                       child: GestureDetector(onTap: onRetry, child: bubble),
                     )
-                  : bubble,
+                  : GestureDetector(onLongPress: onLongPress, child: bubble),
             ),
           ],
         ),
+        if (footer != null)
+          Padding(
+            padding: EdgeInsetsDirectional.only(
+              top: 2,
+              start: isMine ? 0 : (leading == null ? 0 : 36),
+            ),
+            child: footer,
+          ),
         if (failed)
           InkWell(
             onTap: onRetry,

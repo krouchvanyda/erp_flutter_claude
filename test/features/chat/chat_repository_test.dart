@@ -338,4 +338,82 @@ void main() {
       );
     });
   });
+
+  // ─────────────── Step 5.6 ───────────────
+
+  group('message actions · presence · search', () {
+    test('editMessage → PATCH /chats/messages/{id} {body}', () async {
+      server.data = {
+        'id': 9,
+        'conversationId': 5,
+        'senderId': 1,
+        'type': 'TEXT',
+        'body': 'new',
+      };
+      await repo.editMessage('9', '  new ');
+      expect(server.last!.method, 'PATCH');
+      expect(server.last!.path, '/api/v1/chats/messages/9');
+      expect(server.last!.data, {'body': 'new'});
+    });
+
+    test('deleteMessage → DELETE /chats/messages/{id}', () async {
+      await repo.deleteMessage('9');
+      expect(server.last!.method, 'DELETE');
+      expect(server.last!.path, ApiEndPoint.message('9'));
+    });
+
+    test('toggleReaction → POST …/reactions {emoji} → the full list', () async {
+      server.data = [
+        {'userId': 1, 'emoji': '👍'},
+      ];
+      final list = (await repo.toggleReaction(
+        '9',
+        '👍',
+      )).getOrElse(() => throw StateError('expected Right'));
+      expect(server.last!.path, '/api/v1/chats/messages/9/reactions');
+      expect(server.last!.data, {'emoji': '👍'});
+      expect(list.single.userId, '1');
+    });
+
+    test('loadPresence → GET /chats/presence?ids=… (numbers)', () async {
+      server.data = [
+        {'userId': 2, 'status': 'ONLINE'},
+        {
+          'userId': 3,
+          'status': 'OFFLINE',
+          'lastSeenAt': '2026-11-20T03:00:00Z',
+        },
+      ];
+      final list = (await repo.loadPresence([
+        '2',
+        '3',
+      ])).getOrElse(() => throw StateError('expected Right'));
+      expect(server.last!.path, ApiEndPoint.presence);
+      expect(server.last!.queryParameters, {
+        'ids': [2, 3],
+      });
+      expect(list.first.isOnline, isTrue);
+      expect(list.last.lastSeenAt, isNotNull);
+    });
+
+    test('searchMessages → GET …/messages/search?q&page&pageSize', () async {
+      server.data = {
+        'items': [],
+        'page': 1,
+        'pageSize': 30,
+        'totalItems': 0,
+        'totalPages': 0,
+      };
+      await repo.searchMessages('5', ' meet ');
+      expect(
+        server.last!.path,
+        '/api/v1/chats/conversations/5/messages/search',
+      );
+      expect(server.last!.queryParameters, {
+        'q': 'meet',
+        'page': 1,
+        'pageSize': 30,
+      });
+    });
+  });
 }

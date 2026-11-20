@@ -9,6 +9,7 @@ import '../../model/chat_enums.dart';
 import '../../model/chat_update.dart';
 import '../../model/conversation_model.dart';
 import '../../repository/chat_repository.dart';
+import '../../repository/presence_store.dart';
 
 part 'conversation_info_view_model_event.dart';
 part 'conversation_info_view_model_state.dart';
@@ -31,7 +32,13 @@ class ConversationInfoViewModelBloc
     this._repository, {
     required ConversationModel conversation,
     required this.myId,
+    PresenceStore? presence,
   }) : super(ConversationInfoReadyState(conversation)) {
+    // Direct chat → follow the other person's online status (5.6).
+    final other = conversation.isGroup ? null : conversation.otherMember(myId);
+    if (presence != null && other != null) {
+      unawaited(presence.watch([other.userId]));
+    }
     on<OnInfoRenameEvent>(_onRename);
     on<OnInfoRemoveMemberEvent>(_onRemoveMember);
     on<OnInfoLeaveEvent>(_onLeave);

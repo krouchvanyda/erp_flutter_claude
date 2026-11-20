@@ -385,6 +385,22 @@ Login response
 - Never let the phone SEND straight to `/topic/...` or put a user id in a
   body the server trusts: always an `/app/...` handler that uses the
   principal.
+- **Message actions (5.6):** long-press → `MessageActionsSheet` (react ·
+  copy · edit · seen by · delete). Edit mode = `editing` in
+  `ConversationLoadedState` (composer banner, ✓). `canEdit` = mine · TEXT
+  · < 15 min (server rule; it still checks). Reactions are optimistic with
+  rollback; the server's full list wins. A failed edit / delete / reaction
+  = `ConversationActionFailedState` → snackbar (never the load banner).
+  Deleted messages are REMOVED (history leaves them out), live too.
+- **Presence (5.6):** one `PresenceStore` (chat, `ValueNotifier`): `watch(ids)`
+  batches `GET /chats/presence?ids=`, follows `/topic/presence`, reloads on
+  reconnect, clears on logout. Inbox → 🟢 `PresenceDot`; direct chat title →
+  `presenceLine` ("online" · "in a call" · `ChatTime.lastSeen`); typing wins.
+  `RealtimeLifecycle` sends `POST /chats/presence/background` on paused and
+  `/foreground` on resumed (needed for calls to ring by push).
+- **Search (5.6):** `MessageSearchViewModelBloc` — 350 ms debounce, drop
+  answers for an old query, paged. Match highlighted with `Text.rich`. No
+  jump-to-message yet.
 
 ### Chat & call (Steps 5–7): lessons from the old app
 

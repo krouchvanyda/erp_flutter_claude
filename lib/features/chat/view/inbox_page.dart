@@ -10,6 +10,7 @@ import '../../../core/widgets/app_error_banner.dart';
 import '../../../core/widgets/app_realtime_title.dart';
 import '../../../core/widgets/app_error_view.dart';
 import '../model/conversation_model.dart';
+import '../repository/presence_store.dart';
 import '../viewmodel/inbox/inbox_view_model_bloc.dart';
 import 'conversation_page.dart';
 import 'member_picker_page.dart';
@@ -119,6 +120,7 @@ class InboxPage extends StatelessWidget {
                                   bloc.add(OnInboxLoadMoreEvent()),
                               onOpen: (conversation) =>
                                   _open(context, conversation),
+                              presence: getIt<PresenceStore>().presence,
                             ),
                     ),
                   ),

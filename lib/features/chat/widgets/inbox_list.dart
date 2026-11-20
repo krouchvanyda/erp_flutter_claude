@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_spacing.dart';
 import '../model/conversation_model.dart';
+import '../model/presence_model.dart';
 import 'inbox_tile.dart';
 
 /// The scrolling list of [InboxTile]s + "load more" at the bottom.
@@ -17,6 +19,7 @@ class InboxList extends StatelessWidget {
     required this.isLoadingMore,
     required this.onLoadMore,
     required this.onOpen,
+    this.presence,
   });
 
   final List<ConversationModel> conversations;
@@ -26,6 +29,9 @@ class InboxList extends StatelessWidget {
 
   /// A tile was tapped → the page opens the conversation (Step 5.2).
   final ValueChanged<ConversationModel> onOpen;
+
+  /// Online dots (5.6).
+  final ValueListenable<Map<String, PresenceModel>>? presence;
 
   static const double maxWidth = 720; // the page aligns the banner to it
   static const double _loadMoreBefore = 300; // px from the end
@@ -71,6 +77,7 @@ class InboxList extends StatelessWidget {
                 conversation: conversation,
                 myId: myId,
                 onTap: () => onOpen(conversation),
+                presence: presence,
               );
             },
           ),

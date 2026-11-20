@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/network/api_endpoints.dart';
@@ -8,6 +9,8 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/chat_time.dart';
 import '../../../core/widgets/app_avatar.dart';
 import '../model/conversation_model.dart';
+import '../model/presence_model.dart';
+import 'presence_dot.dart';
 
 /// One inbox row.
 ///
@@ -23,11 +26,15 @@ class InboxTile extends StatelessWidget {
     required this.conversation,
     required this.myId,
     this.onTap,
+    this.presence,
   });
 
   final ConversationModel conversation;
   final String? myId;
   final VoidCallback? onTap;
+
+  /// Online dots (5.6): direct chats show the other person's status.
+  final ValueListenable<Map<String, PresenceModel>>? presence;
 
   /// The preview line. The "You: " / "Dara: " prefix is added HERE and only
   /// here (CLAUDE.md: one place), never stored in the model.
@@ -49,6 +56,10 @@ class InboxTile extends StatelessWidget {
     final unread = conversation.unreadCount > 0;
     final title = conversation.title(myId);
     final time = conversation.lastMessageAt ?? conversation.createdAt;
+    // direct chat → the other person's dot (a group has no single status)
+    final dotFor = presence == null || conversation.isGroup
+        ? null
+        : conversation.otherMember(myId)?.userId;
 
     return InkWell(
       onTap: onTap,
@@ -59,10 +70,23 @@ class InboxTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            AppAvatar(
-              name: title,
-              imageUrl: ApiEndPoint.fileUrl(conversation.avatarUrlFor(myId)),
-              size: 52,
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                AppAvatar(
+                  name: title,
+                  imageUrl: ApiEndPoint.fileUrl(
+                    conversation.avatarUrlFor(myId),
+                  ),
+                  size: 52,
+                ),
+                if (dotFor != null)
+                  PositionedDirectional(
+                    end: 0,
+                    bottom: 0,
+                    child: PresenceDot(userId: dotFor, presence: presence!),
+                  ),
+              ],
             ),
             const SizedBox(width: AppSpacing.md),
             Expanded(

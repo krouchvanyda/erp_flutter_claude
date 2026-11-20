@@ -36,6 +36,27 @@ abstract final class ChatTime {
     return DateFormat('d MMM y').format(time); // 12 Nov 2025
   }
 
+  /// Under a direct chat's title when the person is offline.
+  ///
+  /// ```
+  /// < 1 min ago → "last seen just now"
+  /// today       → "last seen 10:42"
+  /// yesterday   → "last seen yesterday 22:10"
+  /// this year   → "last seen 12 Nov"     · older → "last seen 12 Nov 2025"
+  /// ```
+  static String lastSeen(DateTime time, {DateTime? now}) {
+    final today = now ?? DateTime.now();
+    if (today.difference(time).inSeconds < 60) return 'last seen just now';
+    final daysAgo = _daysAgo(time, today);
+    final hm = DateFormat('HH:mm').format(time);
+    if (daysAgo <= 0) return 'last seen $hm';
+    if (daysAgo == 1) return 'last seen yesterday $hm';
+    if (time.year == today.year) {
+      return 'last seen ${DateFormat('d MMM').format(time)}';
+    }
+    return 'last seen ${DateFormat('d MMM y').format(time)}';
+  }
+
   /// Same calendar day? (for "start a new day divider here")
   static bool sameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;

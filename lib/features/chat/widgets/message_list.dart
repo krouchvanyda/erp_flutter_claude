@@ -18,6 +18,7 @@ import 'chat_file_content.dart';
 import 'chat_image_content.dart';
 import 'chat_voice_content.dart';
 import 'message_bubble.dart';
+import 'reaction_chips.dart';
 
 /// The scrolling messages of one conversation.
 ///
@@ -43,6 +44,8 @@ class MessageList extends StatefulWidget {
     required this.onLoadOlder,
     required this.onRetry,
     required this.audioPlayer,
+    this.onLongPress,
+    this.onReact,
   });
 
   final List<MessageModel> messages; // newest first
@@ -56,6 +59,13 @@ class MessageList extends StatefulWidget {
 
   /// Plays voice messages, one at a time (Step 5.5).
   final AppAudioPlayer audioPlayer;
+
+  /// Long-press a SERVER message → the actions sheet (5.6). Bubbles still
+  /// sending have no server id yet, so they can't be edited / reacted to.
+  final ValueChanged<MessageModel>? onLongPress;
+
+  /// Tap a reaction chip → toggle MY reaction (messageId, emoji).
+  final void Function(String messageId, String emoji)? onReact;
 
   static const double maxWidth = 720;
   static const double _loadOlderBefore = 300; // px from the top
@@ -212,6 +222,19 @@ class _MessageListState extends State<MessageList> {
                     ),
                   )
                 : null,
+            onLongPress: e.message == null || widget.onLongPress == null
+                ? null
+                : () => widget.onLongPress!(e.message!),
+            footer:
+                e.message == null ||
+                    e.message!.reactions.isEmpty ||
+                    widget.onReact == null
+                ? null
+                : ReactionChips(
+                    reactions: e.message!.reactions,
+                    myId: widget.myId,
+                    onTap: (emoji) => widget.onReact!(e.message!.id, emoji),
+                  ),
             body: e.deleted
                 ? null
                 : switch (e.type) {
@@ -257,7 +280,8 @@ class _MessageListState extends State<MessageList> {
 /// list code above doesn't care which. (Data, not a widget.)
 class _Entry {
   _Entry.server(MessageModel m, String? myId)
-    : key = m.id,
+    : message = m,
+      key = m.id,
       localId = null,
       senderId = m.senderId,
       isMine = m.senderId == myId,
@@ -280,7 +304,8 @@ class _Entry {
           : BubbleStatus.sent;
 
   _Entry.outgoing(OutgoingMessage o, String? myId)
-    : key = o.localId,
+    : message = null,
+      key = o.localId,
       localId = o.localId,
       senderId = myId ?? '',
       isMine = true,
@@ -297,6 +322,8 @@ class _Entry {
       durationSeconds = o.durationSeconds,
       status = o.failed ? BubbleStatus.failed : BubbleStatus.sending;
 
+  /// The server's message (null while still sending).
+  final MessageModel? message;
   final String key;
   final String? localId; // only outgoing
   final String senderId;

@@ -50,7 +50,7 @@ void main() {
   });
 
   test('unknown events and bad payloads → null (ignored)', () {
-    expect(parse('reaction.toggle', {'x': 1}), isNull);
+    expect(parse('call.invite', {'x': 1}), isNull); // Step 6
     expect(parse('message.send', 'not a map'), isNull);
   });
 
@@ -59,5 +59,19 @@ void main() {
         parse('typing', {'conversationId': 42, 'userId': 7, 'typing': false})!
             as TypingChanged;
     expect((u.conversationId, u.userId, u.typing), ('42', '7', false));
+  });
+
+  test('reaction.toggle → ReactionsChanged with the FULL list', () {
+    final u =
+        parse('reaction.toggle', {
+              'messageId': 9,
+              'reactions': [
+                {'userId': 2, 'emoji': '👍'},
+                {'userId': 3, 'emoji': '😂'},
+              ],
+            })!
+            as ReactionsChanged;
+    expect(u.messageId, '9');
+    expect(u.reactions.map((r) => r.emoji), ['👍', '😂']);
   });
 }
