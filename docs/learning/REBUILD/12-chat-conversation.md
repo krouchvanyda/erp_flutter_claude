@@ -1,6 +1,6 @@
 # Step 5.2 — Chat: one conversation
 
-> ← Previous: [11-chat-inbox.md](11-chat-inbox.md) · Roadmap: [README.md](README.md)
+> ← Previous: [11-chat-inbox.md](11-chat-inbox.md) · Next: [13-chat-realtime.md](13-chat-realtime.md) → · Roadmap: [README.md](README.md)
 
 ```
 5.1 Inbox (REST)       ✅

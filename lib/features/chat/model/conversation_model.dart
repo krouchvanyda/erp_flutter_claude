@@ -59,6 +59,23 @@ class ConversationModel {
     return members.firstWhereOrNull((m) => m.userId == senderId)?.displayName;
   }
 
+  /// A live message arrived (Step 5.3) → new preview, time, unread count.
+  ConversationModel copyWith({
+    MessageModel? lastMessage,
+    DateTime? lastMessageAt,
+    int? unreadCount,
+  }) => ConversationModel(
+    id: id,
+    type: type,
+    name: name,
+    avatarUrl: avatarUrl,
+    members: members,
+    lastMessage: lastMessage ?? this.lastMessage,
+    lastMessageAt: lastMessageAt ?? this.lastMessageAt,
+    unreadCount: unreadCount ?? this.unreadCount,
+    createdAt: createdAt,
+  );
+
   /// Sort key: newest activity first.
   DateTime get activityAt =>
       lastMessageAt ??

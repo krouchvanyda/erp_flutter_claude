@@ -17,3 +17,19 @@ final class OnInboxLoadEvent extends InboxViewModelEvent {
 
 /// Scrolled near the end → the next page (if there is one).
 final class OnInboxLoadMoreEvent extends InboxViewModelEvent {}
+
+/// A live change from the server (Step 5.3). Added by the bloc itself from
+/// `ChatRepository.inboxUpdates()`, not by the page.
+final class OnInboxLiveUpdateEvent extends InboxViewModelEvent {
+  OnInboxLiveUpdateEvent(this.update);
+
+  final ChatUpdate update;
+}
+
+/// The user opened ([conversationId]) or closed (null) a conversation.
+/// While it's open, its new messages don't count as unread.
+final class OnInboxConversationOpenedEvent extends InboxViewModelEvent {
+  OnInboxConversationOpenedEvent(this.conversationId);
+
+  final String? conversationId;
+}

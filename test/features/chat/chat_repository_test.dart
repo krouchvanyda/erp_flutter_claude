@@ -6,6 +6,7 @@ import 'package:erp_mobile/core/network/api_endpoints.dart';
 import 'package:erp_mobile/core/network/app_service.dart';
 import 'package:erp_mobile/core/network/auth_tokens.dart';
 import 'package:erp_mobile/core/network/token_storage.dart';
+import 'package:erp_mobile/core/realtime/realtime_service.dart';
 import 'package:erp_mobile/features/chat/repository/chat_repository.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -56,6 +57,10 @@ void main() {
     repo = ChatRepository(
       appService: AppService(dio, hasInternet: () async => true),
       tokenStorage: storage,
+      realtime: RealtimeService(
+        url: 'ws://test/ws',
+        accessToken: () async => null, // never started in these tests
+      ),
     );
   });
 

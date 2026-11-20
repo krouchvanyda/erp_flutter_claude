@@ -44,6 +44,7 @@ class ConversationPage extends StatelessWidget {
       create: (_) => ConversationViewModelBloc(
         getIt<ChatRepository>(),
         conversationId: conversation.id,
+        myId: myId,
       )..add(OnConversationLoadEvent()),
       child: Scaffold(
         appBar: AppBar(

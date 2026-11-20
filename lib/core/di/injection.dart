@@ -6,7 +6,11 @@ import '../config/flavor.dart';
 import '../network/app_service.dart';
 import '../network/auth_interceptor.dart';
 import '../network/dio_factory.dart';
+import '../network/token_refresher.dart';
 import '../network/token_storage.dart';
+import '../network/api_endpoints.dart';
+import '../realtime/realtime_lifecycle.dart';
+import '../realtime/realtime_service.dart';
 import '../router/auth_session.dart';
 import '../storage/user_cache.dart';
 import 'service_locator.dart';
@@ -24,6 +28,8 @@ import 'service_locator.dart';
 ///   │                          Dio, AppService     (Step 2.1)
 ///   │                          TokenStorage, AuthInterceptor (Step 2.2)
 ///   │                          UserCache           (Step 4.1)
+///   │                          TokenRefresher, RealtimeService,
+///   │                          RealtimeLifecycle   (Step 5.3)
 ///   ├── registerAuthModule()   (Step 3)
 ///   ├── registerProfileModule()(Step 4)
 ///   ├── registerChatModule()   (Step 5)
@@ -55,6 +61,20 @@ Future<void> _registerCore() async {
     () => UserCache(getIt<SharedPreferences>()),
   );
 
+  // ONE refresher for REST + the socket → never two refreshes at once.
+  getIt.registerLazySingleton<TokenRefresher>(
+    () => TokenRefresher(
+      tokenStorage: getIt<TokenStorage>(),
+      // separate Dio WITHOUT the interceptor → refresh can't loop
+      refreshDio: createDio(Flavor.current),
+      // session really over → forget the user, AuthGate shows Login
+      onSessionExpired: () {
+        getIt<UserCache>().clear();
+        getIt<AuthSession>().markLoggedOut();
+      },
+    ),
+  );
+
   // ONE app Dio, with the auth interceptor. AppService wraps it.
   getIt.registerLazySingleton<Dio>(
     () => createDio(
@@ -62,16 +82,27 @@ Future<void> _registerCore() async {
       interceptors: [
         AuthInterceptor(
           tokenStorage: getIt<TokenStorage>(),
-          // separate Dio WITHOUT the interceptor → refresh can't loop
-          refreshDio: createDio(Flavor.current),
-          // session really over → forget the user, AuthGate shows Login
-          onSessionExpired: () {
-            getIt<UserCache>().clear();
-            getIt<AuthSession>().markLoggedOut();
-          },
+          refresher: getIt<TokenRefresher>(),
+          retryDio: createDio(Flavor.current),
         ),
       ],
     ),
   );
   getIt.registerLazySingleton<AppService>(() => AppService(getIt<Dio>()));
+
+  // ONE live connection (Step 5.3), with a token that is still valid.
+  getIt.registerLazySingleton<RealtimeService>(
+    () => RealtimeService(
+      url: ApiEndPoint.websocketUrl,
+      accessToken: () async =>
+          (await getIt<TokenRefresher>().validTokens())?.accessToken,
+    ),
+  );
+  // Starts / stops it with the session, the app and the network.
+  getIt.registerLazySingleton<RealtimeLifecycle>(
+    () => RealtimeLifecycle(
+      session: getIt<AuthSession>(),
+      realtime: getIt<RealtimeService>(),
+    ),
+  );
 }

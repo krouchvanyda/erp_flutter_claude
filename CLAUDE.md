@@ -157,7 +157,7 @@ lib/
 │   │              AuthSession
 │   ├── network/   AppService + Dio + interceptors (Step 2)
 │   ├── storage/   UserCache (logged-in user JSON) (Step 4.1)
-│   ├── realtime/  STOMP client                    (Step 5)
+│   ├── realtime/  RealtimeService (STOMP), lifecycle (Step 5.3)
 │   └── push/      FCM / VoIP                      (Step 7)
 ├── shared/widgets/                 reusable UI, no feature logic
 ├── localization/                   english.dart / khmer.dart  (Step 8)
@@ -211,6 +211,10 @@ Login response
   in `finally`, `TokenStorage.clear()` + `markLoggedOut()`. Server first: the
   interceptor needs the stored access token to authorize the call. Ask
   "Log out?" before calling it.
+- Token refresh = ONE shared `TokenRefresher` (single flight: a second
+  caller waits for the running one). REST (`AuthInterceptor`) and the socket
+  both use it; never call `/auth/refresh` anywhere else (the refresh token
+  is rotated → two refreshes = the second is rejected = logout).
 - Logout and any failed refresh **must** call `TokenStorage.clear()`.
   Skipping it re-enables auto-login, which is a security bug. Clear
   `UserCache` in the same places (logout `finally`, expired refresh token on
@@ -323,8 +327,22 @@ Login response
   mark only that bubble (⚠ "Not sent · Tap to retry"), never a page error,
   never lose the text. After every `await` in a handler, read `state.data`
   again (handlers run at the same time).
-- `markRead(newestId)` once per newest id, not awaited, result ignored. The
-  server wants a number (`lastReadMessageId`).
+- `markRead(newestId)` only for a NEWER id than the last one sent, not
+  awaited, result ignored. The server wants a number (`lastReadMessageId`).
+- **Realtime (5.3):** ONE `RealtimeService` (`core/realtime`, STOMP on the
+  flavor's `realtimeUrl` = backend `/ws`) knows STOMP, not chat. Started /
+  stopped by `RealtimeLifecycle` (session, app resume, network back →
+  `reconnectNow`). Own reconnect loop (backoff 1→30 s, a FRESH token each
+  try via `TokenRefresher.validTokens()`); the package's `reconnectDelay` is
+  0. Subscriptions are replayed after a reconnect, and `reconnected` → the
+  inbox and the open chat reload page 1 (events during a drop are lost).
+- Frames `{event, payload}` → `ChatUpdate` (sealed, in `ChatRepository`).
+  BLoCs listen in their constructor, turn each update into an
+  `On…LiveUpdateEvent`, and cancel in `close()`. Inbox: keep OUR
+  `unreadCount` on `conversation.update` (the server sends the actor's).
+  Conversation: my own `message.send` echo replaces the oldest 🕓 bubble
+  with the same text; `message.read` → ✓✓ (compare ids as numbers).
+- Destinations live in `ApiEndPoint` (`inboxQueue`, `conversationTopic(id)`).
 
 ### Chat & call (Steps 5–7): lessons from the old app
 

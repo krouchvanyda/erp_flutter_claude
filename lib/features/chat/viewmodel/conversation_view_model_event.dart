@@ -29,3 +29,11 @@ final class OnMessageRetryEvent extends ConversationViewModelEvent {
 
   final String localId;
 }
+
+/// A live change from the server (Step 5.3), from
+/// `ChatRepository.conversationUpdates(id)`. Added by the bloc itself.
+final class OnConversationLiveUpdateEvent extends ConversationViewModelEvent {
+  OnConversationLiveUpdateEvent(this.update);
+
+  final ChatUpdate update;
+}

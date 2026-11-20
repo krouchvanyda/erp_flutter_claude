@@ -5,6 +5,7 @@ import 'app/app.dart';
 import 'app/app_di.dart';
 import 'core/config/flavor.dart';
 import 'core/di/service_locator.dart';
+import 'core/realtime/realtime_lifecycle.dart';
 import 'core/router/auth_session.dart';
 
 /// Plain `flutter run`: flavor comes from `--flavor` (dev when none).
@@ -22,6 +23,9 @@ Future<void> bootstrap(Flavor flavor) async {
   Flavor.pin(flavor);
   WidgetsFlutterBinding.ensureInitialized(); // plugins need the bridge first
   await configureAppDependencies(); // fill the DI box: core + features
+
+  // Live connection follows the session / app / network (Step 5.3).
+  getIt<RealtimeLifecycle>().attach();
 
   // Edge: take services from the box, pass them in by constructor.
   runApp(App(session: getIt<AuthSession>()));

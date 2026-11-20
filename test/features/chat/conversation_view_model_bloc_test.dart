@@ -5,6 +5,7 @@ import 'package:dartz/dartz.dart' show Left, Right;
 import 'package:erp_mobile/core/network/network_error_model.dart';
 import 'package:erp_mobile/core/network/page_model.dart';
 import 'package:erp_mobile/features/chat/model/chat_enums.dart';
+import 'package:erp_mobile/features/chat/model/chat_update.dart';
 import 'package:erp_mobile/features/chat/model/message_model.dart';
 import 'package:erp_mobile/features/chat/repository/chat_repository.dart';
 import 'package:erp_mobile/features/chat/viewmodel/conversation_view_model_bloc.dart';
@@ -36,17 +37,25 @@ PageModel<MessageModel> pageOf(
 
 void main() {
   late _MockChatRepository repo;
+  late StreamController<ChatUpdate> updates;
+  late StreamController<void> reconnected;
   late Completer<void> gate;
 
   setUp(() {
     repo = _MockChatRepository();
+    updates = StreamController<ChatUpdate>.broadcast();
+    reconnected = StreamController<void>.broadcast();
+    when(
+      () => repo.conversationUpdates(any()),
+    ).thenAnswer((_) => updates.stream);
+    when(() => repo.reconnected).thenAnswer((_) => reconnected.stream);
     when(
       () => repo.markRead(any(), any()),
     ).thenAnswer((_) async => const Right(null));
   });
 
   ConversationViewModelBloc build() =>
-      ConversationViewModelBloc(repo, conversationId: 'c1');
+      ConversationViewModelBloc(repo, conversationId: 'c1', myId: '1');
 
   ConversationLoadedState loaded(
     List<String> ids, {
@@ -260,4 +269,109 @@ void main() {
       expect(bloc.state.data!.outgoing.single.text, 'Hi');
     },
   );
+
+  // ─────────────── Step 5.3: live ───────────────
+
+  group('live', () {
+    blocTest<ConversationViewModelBloc, ConversationViewModelState>(
+      'someone writes → new bubble at the bottom + marked read',
+      build: build,
+      seed: () => loaded(['3']),
+      act: (_) => updates.add(MessageArrived(msg('4', body: 'yo'))),
+      expect: () => [
+        isA<ConversationLoadedState>().having(
+          (s) => s.messages.map((m) => m.id),
+          'ids',
+          ['4', '3'],
+        ),
+      ],
+      verify: (_) => verify(() => repo.markRead('c1', '4')).called(1),
+    );
+
+    blocTest<ConversationViewModelBloc, ConversationViewModelState>(
+      'my own echo arrives BEFORE the HTTP answer → replaces the 🕓 bubble, no double',
+      setUp: () {
+        gate = Completer<void>();
+        when(() => repo.sendText('c1', 'Hi')).thenAnswer((_) async {
+          await gate.future;
+          return Right(msg('4', sender: '1', body: 'Hi'));
+        });
+      },
+      build: build,
+      seed: () => loaded(['3']),
+      act: (bloc) async {
+        bloc.add(OnMessageSendEvent('Hi'));
+        await Future<void>.delayed(Duration.zero);
+        updates.add(MessageArrived(msg('4', sender: '1', body: 'Hi'))); // echo
+        await Future<void>.delayed(Duration.zero);
+        gate.complete(); // then the HTTP answer
+      },
+      verify: (bloc) {
+        final data = bloc.state.data!;
+        expect(data.outgoing, isEmpty);
+        expect(data.messages.map((m) => m.id), ['4', '3']); // once
+        verifyNever(() => repo.markRead('c1', '4')); // mine: no read call
+      },
+    );
+
+    blocTest<ConversationViewModelBloc, ConversationViewModelState>(
+      'message.read → my messages up to that id get ✓✓ (theirs do not)',
+      build: build,
+      seed: () => ConversationLoadedState(
+        messages: [
+          msg('12', sender: '1'),
+          msg('11', sender: '1'),
+          msg('9', sender: '1'),
+          msg('8'),
+        ],
+        page: 1,
+        hasMore: false,
+      ),
+      act: (_) => updates.add(
+        const MessagesRead(
+          conversationId: 'c1',
+          userId: '2',
+          lastReadMessageId: '11',
+        ),
+      ),
+      verify: (bloc) {
+        final read = {
+          for (final m in bloc.state.data!.messages)
+            m.id: m.readByUserIds.contains('2'),
+        };
+        // '9' < '11' as NUMBERS (as text "9" > "11")
+        expect(read, {'12': false, '11': true, '9': true, '8': false});
+      },
+    );
+
+    blocTest<ConversationViewModelBloc, ConversationViewModelState>(
+      'edit keeps the ✓✓ we already know',
+      build: build,
+      seed: () => ConversationLoadedState(
+        messages: [
+          msg('5', sender: '1').copyWith(readByUserIds: {'2'}),
+        ],
+        page: 1,
+        hasMore: false,
+      ),
+      act: (_) =>
+          updates.add(MessageChanged(msg('5', sender: '1', body: 'edited'))),
+      verify: (bloc) {
+        final m = bloc.state.data!.messages.single;
+        expect(m.body, 'edited');
+        expect(m.readByUserIds, {'2'});
+      },
+    );
+
+    blocTest<ConversationViewModelBloc, ConversationViewModelState>(
+      'connection back → reload (catch-up)',
+      setUp: () => when(
+        () => repo.loadMessages('c1'),
+      ).thenAnswer((_) async => Right(pageOf(['3']))),
+      build: build,
+      seed: () => loaded(['3']),
+      act: (_) => reconnected.add(null),
+      verify: (_) => verify(() => repo.loadMessages('c1')).called(1),
+    );
+  });
 }

@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:erp_mobile/core/network/api_endpoints.dart';
 import 'package:erp_mobile/core/network/auth_interceptor.dart';
 import 'package:erp_mobile/core/network/auth_tokens.dart';
+import 'package:erp_mobile/core/network/token_refresher.dart';
 import 'package:erp_mobile/core/network/token_storage.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -72,8 +73,12 @@ void main() {
       ..interceptors.add(
         AuthInterceptor(
           tokenStorage: storage,
-          refreshDio: refreshDio,
-          onSessionExpired: () => sessionExpired++,
+          refresher: TokenRefresher(
+            tokenStorage: storage,
+            refreshDio: refreshDio,
+            onSessionExpired: () => sessionExpired++,
+          ),
+          retryDio: refreshDio,
         ),
       );
 

@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/di/service_locator.dart';
+import '../../../core/realtime/realtime_service.dart';
 import '../../../core/router/config_router.dart';
-import '../../../core/theme/app_font_size.dart';
-import '../../../core/theme/app_label.dart';
 import '../../../core/widgets/app_error_banner.dart';
+import '../../../core/widgets/app_realtime_title.dart';
 import '../../../core/widgets/app_error_view.dart';
 import '../viewmodel/inbox_view_model_bloc.dart';
 import 'conversation_page.dart';
@@ -39,10 +39,10 @@ class InboxPage extends StatelessWidget {
       create: (_) => getIt<InboxViewModelBloc>()..add(OnInboxLoadEvent()),
       child: Scaffold(
         appBar: AppBar(
-          title: const AppLabel(
-            text: 'Chats',
-            fontSize: AppFontSize.value24,
-            fontWeight: FontWeight.w700,
+          // "⟳ Connecting…" while live updates are down (Step 5.3).
+          title: AppRealtimeTitle(
+            title: 'Chats',
+            status: getIt<RealtimeService>().status,
           ),
           centerTitle: false,
           actions: [
@@ -108,6 +108,11 @@ class InboxPage extends StatelessWidget {
                               onLoadMore: () =>
                                   bloc.add(OnInboxLoadMoreEvent()),
                               onOpen: (conversation) async {
+                                bloc.add(
+                                  OnInboxConversationOpenedEvent(
+                                    conversation.id,
+                                  ),
+                                );
                                 await ConfigRouter.pushPageAnimation<void>(
                                   context,
                                   ConversationPage(
@@ -115,11 +120,12 @@ class InboxPage extends StatelessWidget {
                                     myId: data.myId,
                                   ),
                                 );
-                                // Back → reload: new last message, and the
-                                // unread badge is gone (the page marked it
-                                // read). Real time replaces this in 5.3.
+                                // Back: no reload any more — live updates
+                                // (5.3) keep the inbox fresh.
                                 if (!bloc.isClosed) {
-                                  bloc.add(OnInboxLoadEvent());
+                                  bloc.add(
+                                    OnInboxConversationOpenedEvent(null),
+                                  );
                                 }
                               },
                             ),

@@ -28,6 +28,19 @@ abstract final class ApiEndPoint {
   static String markRead(String conversationId) =>
       '$conversations/$conversationId/read';
 
+  /// One conversation (GET) — for a chat that isn't in the loaded inbox yet.
+  static String conversation(String conversationId) =>
+      '$conversations/$conversationId';
+
+  // ── Realtime (Step 5.3) ──
+  /// STOMP over WebSocket, per flavor (`Environments.*RealtimeUrl`, the
+  /// backend's `/ws`). The token goes in the CONNECT frame, not the URL.
+  static String get websocketUrl => Flavor.current.realtimeUrl;
+
+  static const String inboxQueue = '/user/queue/inbox';
+  static String conversationTopic(String conversationId) =>
+      '/topic/conversations/$conversationId';
+
   /// Endpoints that never carry a token and never trigger a refresh.
   /// (The backend answers 401 for a WRONG PASSWORD on login — that must not
   /// look like "token expired".)

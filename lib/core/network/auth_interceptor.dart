@@ -1,8 +1,8 @@
 import 'package:dio/dio.dart';
 
 import 'api_endpoints.dart';
-import 'api_envelope.dart';
 import 'auth_tokens.dart';
+import 'token_refresher.dart';
 import 'token_storage.dart';
 
 /// Adds the token to every request, and fixes an expired token by itself.
@@ -17,23 +17,24 @@ import 'token_storage.dart';
 /// requests get 401 together, the 1st refreshes; the 2nd and 3rd wait, then
 /// see the token already changed and just retry — ONE refresh, not three.
 /// (Our refresh token is rotated, so 3 parallel refreshes would make 2 fail.)
+///
+/// The refresh itself lives in [TokenRefresher] (Step 5.3), shared with the
+/// realtime socket, so the two can never refresh at the same time.
 class AuthInterceptor extends QueuedInterceptor {
   AuthInterceptor({
     required TokenStorage tokenStorage,
-    required Dio refreshDio,
-    required void Function() onSessionExpired,
+    required TokenRefresher refresher,
+    required Dio retryDio,
   }) : _tokenStorage = tokenStorage,
-       _refreshDio = refreshDio,
-       _onSessionExpired = onSessionExpired;
+       _refresher = refresher,
+       _retryDio = retryDio;
 
   final TokenStorage _tokenStorage;
+  final TokenRefresher _refresher;
 
-  /// A SEPARATE Dio without this interceptor, for the refresh call and the
-  /// retry — so they can never loop back into this interceptor.
-  final Dio _refreshDio;
-
-  /// Called when the session is really over (AuthSession.markLoggedOut).
-  final void Function() _onSessionExpired;
+  /// A SEPARATE Dio without this interceptor, for the retry — so it can
+  /// never loop back into this interceptor.
+  final Dio _retryDio;
 
   /// Marks a request we already retried once — never retry it again.
   static const String _retriedKey = 'auth.retried';
@@ -73,7 +74,7 @@ class AuthInterceptor extends QueuedInterceptor {
 
     final stored = await _tokenStorage.read();
     if (stored == null) {
-      _onSessionExpired(); // no tokens at all → nothing to refresh
+      await _refresher.expireSession(); // no tokens → nothing to refresh
       return handler.next(err);
     }
 
@@ -82,15 +83,13 @@ class AuthInterceptor extends QueuedInterceptor {
       // Another queued request already refreshed while we waited.
       fresh = stored;
     } else {
-      final result = await _refresh(stored.refreshToken);
-      switch (result) {
+      // Saves the new pair, or clears + logs out when refused (see
+      // TokenRefresher).
+      switch (await _refresher.refresh()) {
         case RefreshOk(:final tokens):
-          await _tokenStorage.write(tokens);
           fresh = tokens;
         case RefreshRejected():
           // Server says the refresh token is dead → the session is over.
-          await _tokenStorage.clear();
-          _onSessionExpired();
           return handler.next(err);
         case RefreshFailed():
           // Offline / timeout during refresh → NOT the user's fault.
@@ -107,28 +106,6 @@ class AuthInterceptor extends QueuedInterceptor {
   }
 
   // ── Helpers ─────────────────────────────────────────────────────
-  Future<RefreshResult> _refresh(String refreshToken) async {
-    try {
-      final response = await _refreshDio.post<Object?>(
-        ApiEndPoint.refresh,
-        data: {'refreshToken': refreshToken},
-      );
-      final envelope = ApiEnvelope.tryParse(response.data);
-      if (envelope != null && !envelope.success) return const RefreshRejected();
-      final data = envelope?.data ?? response.data;
-      return RefreshOk(AuthTokens.fromJson(data as Map<String, dynamic>));
-    } on DioException catch (e) {
-      final status = e.response?.statusCode;
-      // 400/401/403 = the server REFUSED the refresh token.
-      if (status == 400 || status == 401 || status == 403) {
-        return const RefreshRejected();
-      }
-      return const RefreshFailed(); // no answer: network, timeout, 5xx
-    } catch (_) {
-      return const RefreshFailed(); // unexpected body shape
-    }
-  }
-
   Future<Response<dynamic>> _retry(RequestOptions request, AuthTokens tokens) {
     final data = request.data;
     final options = request.copyWith(
@@ -139,26 +116,6 @@ class AuthInterceptor extends QueuedInterceptor {
       // fresh copy (Step 4.2 avatar upload).
       data: data is FormData ? data.clone() : data,
     );
-    return _refreshDio.fetch<dynamic>(options);
+    return _retryDio.fetch<dynamic>(options);
   }
-}
-
-/// The 3 possible outcomes of a refresh call.
-sealed class RefreshResult {
-  const RefreshResult();
-}
-
-final class RefreshOk extends RefreshResult {
-  const RefreshOk(this.tokens);
-  final AuthTokens tokens;
-}
-
-/// The server said NO (refresh token expired / revoked) → log out.
-final class RefreshRejected extends RefreshResult {
-  const RefreshRejected();
-}
-
-/// We couldn't ask (offline, timeout, 5xx) → keep the session.
-final class RefreshFailed extends RefreshResult {
-  const RefreshFailed();
 }

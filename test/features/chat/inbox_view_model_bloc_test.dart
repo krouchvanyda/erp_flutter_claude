@@ -5,7 +5,9 @@ import 'package:dartz/dartz.dart' show Left, Right;
 import 'package:erp_mobile/core/network/network_error_model.dart';
 import 'package:erp_mobile/core/network/page_model.dart';
 import 'package:erp_mobile/features/chat/model/chat_enums.dart';
+import 'package:erp_mobile/features/chat/model/chat_update.dart';
 import 'package:erp_mobile/features/chat/model/conversation_model.dart';
+import 'package:erp_mobile/features/chat/model/message_model.dart';
 import 'package:erp_mobile/features/chat/repository/chat_repository.dart';
 import 'package:erp_mobile/features/chat/viewmodel/inbox_view_model_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -30,9 +32,15 @@ PageModel<ConversationModel> pageOf(
 
 void main() {
   late _MockChatRepository repo;
+  late StreamController<ChatUpdate> updates;
+  late StreamController<void> reconnected;
 
   setUp(() {
     repo = _MockChatRepository();
+    updates = StreamController<ChatUpdate>.broadcast();
+    reconnected = StreamController<void>.broadcast();
+    when(repo.inboxUpdates).thenAnswer((_) => updates.stream);
+    when(() => repo.reconnected).thenAnswer((_) => reconnected.stream);
     when(repo.myUserId).thenAnswer((_) async => '1');
   });
 
@@ -146,5 +154,121 @@ void main() {
     await done.future.timeout(const Duration(seconds: 1));
     expect(bloc.state, isA<InboxErrorState>());
     await bloc.close();
+  });
+
+  // ─────────────── Step 5.3: live ───────────────
+
+  group('live', () {
+    MessageModel incoming(String conv, {String from = '2', String id = '99'}) =>
+        MessageModel(
+          id: id,
+          conversationId: conv,
+          senderId: from,
+          type: MessageType.text,
+          body: 'new',
+        );
+
+    InboxLoadedState seeded(List<ConversationModel> list) => InboxLoadedState(
+      conversations: list,
+      myId: '1',
+      page: 1,
+      hasMore: false,
+    );
+
+    List<String> ids(InboxViewModelState s) => [
+      for (final c in s.data!.conversations) c.id,
+    ];
+
+    blocTest<InboxViewModelBloc, InboxViewModelState>(
+      'a message from someone → preview, unread +1, moved to the TOP',
+      build: () => InboxViewModelBloc(repo),
+      seed: () => seeded([chat('a'), chat('b')]),
+      act: (_) => updates.add(MessageArrived(incoming('b'))),
+      expect: () => [
+        isA<InboxLoadedState>()
+            .having(ids, 'order', ['b', 'a'])
+            .having((s) => s.conversations.first.unreadCount, 'unread', 1)
+            .having(
+              (s) => s.conversations.first.lastMessage?.body,
+              'preview',
+              'new',
+            ),
+      ],
+    );
+
+    blocTest<InboxViewModelBloc, InboxViewModelState>(
+      'my own message, or one in the OPEN chat → no unread',
+      build: () => InboxViewModelBloc(repo),
+      seed: () => seeded([chat('a'), chat('b')]),
+      act: (bloc) async {
+        updates.add(MessageArrived(incoming('a', from: '1', id: '1')));
+        await Future<void>.delayed(Duration.zero);
+        bloc.add(OnInboxConversationOpenedEvent('b'));
+        await Future<void>.delayed(Duration.zero);
+        updates.add(MessageArrived(incoming('b', id: '2')));
+      },
+      verify: (bloc) {
+        expect(
+          bloc.state.data!.conversations.every((c) => c.unreadCount == 0),
+          isTrue,
+        );
+        expect(ids(bloc.state), ['b', 'a']);
+      },
+    );
+
+    blocTest<InboxViewModelBloc, InboxViewModelState>(
+      'a chat we never loaded → GET it, then insert at the top',
+      setUp: () => when(
+        () => repo.loadConversation('z'),
+      ).thenAnswer((_) async => Right(chat('z'))),
+      build: () => InboxViewModelBloc(repo),
+      seed: () => seeded([chat('a')]),
+      act: (_) => updates.add(MessageArrived(incoming('z'))),
+      expect: () => [
+        isA<InboxLoadedState>().having(ids, 'order', ['z', 'a']),
+      ],
+    );
+
+    blocTest<InboxViewModelBloc, InboxViewModelState>(
+      'conversation.update keeps OUR unread count; remove drops it',
+      build: () => InboxViewModelBloc(repo),
+      seed: () => seeded([
+        const ConversationModel(
+          id: 'a',
+          type: ConversationType.group,
+          unreadCount: 4,
+        ),
+        chat('b'),
+      ]),
+      act: (bloc) async {
+        updates.add(
+          const ConversationChanged(
+            ConversationModel(
+              id: 'a',
+              type: ConversationType.group,
+              name: 'New name',
+            ),
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+        updates.add(const ConversationRemoved('b'));
+      },
+      verify: (bloc) {
+        final a = bloc.state.data!.conversations.single;
+        expect(a.name, 'New name');
+        expect(a.unreadCount, 4); // not the sender's count from the server
+      },
+    );
+
+    blocTest<InboxViewModelBloc, InboxViewModelState>(
+      'connection back → reload page 1 (catch-up)',
+      setUp: () => when(
+        () => repo.loadInbox(),
+      ).thenAnswer((_) async => Right(pageOf(['a']))),
+      build: () => InboxViewModelBloc(repo),
+      seed: () => seeded([chat('a')]),
+      act: (_) => reconnected.add(null),
+      verify: (_) => verify(() => repo.loadInbox()).called(1),
+    );
   });
 }

@@ -6,6 +6,8 @@ import '../../../core/network/helper_service.dart';
 import '../../../core/network/network_error_model.dart';
 import '../../../core/network/page_model.dart';
 import '../../../core/network/token_storage.dart';
+import '../../../core/realtime/realtime_service.dart';
+import '../model/chat_update.dart';
 import '../model/chat_enums.dart';
 import '../model/conversation_model.dart';
 import '../model/message_model.dart';
@@ -15,11 +17,14 @@ class ChatRepository {
   ChatRepository({
     required AppService appService,
     required TokenStorage tokenStorage,
+    required RealtimeService realtime,
   }) : _appService = appService,
-       _tokenStorage = tokenStorage;
+       _tokenStorage = tokenStorage,
+       _realtime = realtime;
 
   final AppService _appService;
   final TokenStorage _tokenStorage;
+  final RealtimeService _realtime;
 
   /// How many conversations per page.
   static const int inboxPageSize = 20;
@@ -87,4 +92,35 @@ class ChatRepository {
       parse: (_) {},
     );
   }
+
+  /// One conversation — for a live message from a chat the inbox hasn't
+  /// loaded (a new chat, or one on a later page).
+  Future<Either<NetworkErrorModel, ConversationModel>> loadConversation(
+    String conversationId,
+  ) {
+    return _appService.send(
+      httpMethods: HttpMethods.get,
+      endPoint: ApiEndPoint.conversation(conversationId),
+      parse: (data) => ConversationModel.fromJson(data as Map<String, dynamic>),
+    );
+  }
+
+  // ─────────────── Step 5.3: live updates ───────────────
+
+  /// MY inbox: new messages in any chat, chats created / changed / removed.
+  Stream<ChatUpdate> inboxUpdates() => _updates(ApiEndPoint.inboxQueue);
+
+  /// One OPEN conversation: messages, edits, deletes, read receipts.
+  Stream<ChatUpdate> conversationUpdates(String conversationId) =>
+      _updates(ApiEndPoint.conversationTopic(conversationId));
+
+  /// The connection came back after a drop. Events sent meanwhile are lost,
+  /// so listeners reload (catch-up).
+  Stream<void> get reconnected => _realtime.reconnected;
+
+  Stream<ChatUpdate> _updates(String destination) => _realtime
+      .subscribe(destination)
+      .map(ChatUpdate.fromRealtime)
+      .where((u) => u != null)
+      .cast<ChatUpdate>();
 }

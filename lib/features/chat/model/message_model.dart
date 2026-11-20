@@ -44,6 +44,31 @@ class MessageModel {
   final Set<String> readByUserIds;
   final DateTime? createdAt; // local time
 
+  /// Server ids are numbers sent as text: compare them as numbers
+  /// ("9" < "10"). Used for "read up to id X".
+  int get idNumber => int.tryParse(id) ?? 0;
+
+  MessageModel copyWith({
+    Set<String>? readByUserIds,
+    List<ReactionModel>? reactions,
+  }) => MessageModel(
+    id: id,
+    conversationId: conversationId,
+    senderId: senderId,
+    type: type,
+    body: body,
+    attachmentUrl: attachmentUrl,
+    attachmentContentType: attachmentContentType,
+    attachmentSizeBytes: attachmentSizeBytes,
+    durationSeconds: durationSeconds,
+    replyToMessageId: replyToMessageId,
+    editedAt: editedAt,
+    deleted: deleted,
+    reactions: reactions ?? this.reactions,
+    readByUserIds: readByUserIds ?? this.readByUserIds,
+    createdAt: createdAt,
+  );
+
   /// Short text for the inbox, WITHOUT "You: " — the tile adds that, in
   /// ONE place (CLAUDE.md).
   String get previewText {
