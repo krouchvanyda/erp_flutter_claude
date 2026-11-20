@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/di/service_locator.dart';
+import '../../../core/router/config_router.dart';
 import '../../../core/theme/app_font_size.dart';
 import '../../../core/theme/app_label.dart';
 import '../../../core/widgets/app_error_banner.dart';
 import '../../../core/widgets/app_error_view.dart';
 import '../viewmodel/inbox_view_model_bloc.dart';
+import 'conversation_page.dart';
 import '../widgets/inbox_empty_view.dart';
 import '../widgets/inbox_list.dart';
 
@@ -105,6 +107,21 @@ class InboxPage extends StatelessWidget {
                               isLoadingMore: data.isLoadingMore,
                               onLoadMore: () =>
                                   bloc.add(OnInboxLoadMoreEvent()),
+                              onOpen: (conversation) async {
+                                await ConfigRouter.pushPageAnimation<void>(
+                                  context,
+                                  ConversationPage(
+                                    conversation: conversation,
+                                    myId: data.myId,
+                                  ),
+                                );
+                                // Back → reload: new last message, and the
+                                // unread badge is gone (the page marked it
+                                // read). Real time replaces this in 5.3.
+                                if (!bloc.isClosed) {
+                                  bloc.add(OnInboxLoadEvent());
+                                }
+                              },
                             ),
                     ),
                   ),

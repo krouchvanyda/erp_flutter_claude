@@ -20,6 +20,14 @@ abstract final class ApiEndPoint {
   // ── Chat (Step 5) ──
   static const String conversations = '$_v1/chats/conversations';
 
+  /// History (GET, newest first) and send (POST) for one conversation.
+  static String messages(String conversationId) =>
+      '$conversations/$conversationId/messages';
+
+  /// "I've read up to message X" (POST `{ lastReadMessageId }`).
+  static String markRead(String conversationId) =>
+      '$conversations/$conversationId/read';
+
   /// Endpoints that never carry a token and never trigger a refresh.
   /// (The backend answers 401 for a WRONG PASSWORD on login — that must not
   /// look like "token expired".)

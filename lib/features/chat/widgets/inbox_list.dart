@@ -16,12 +16,16 @@ class InboxList extends StatelessWidget {
     required this.myId,
     required this.isLoadingMore,
     required this.onLoadMore,
+    required this.onOpen,
   });
 
   final List<ConversationModel> conversations;
   final String? myId;
   final bool isLoadingMore;
   final VoidCallback onLoadMore;
+
+  /// A tile was tapped → the page opens the conversation (Step 5.2).
+  final ValueChanged<ConversationModel> onOpen;
 
   static const double maxWidth = 720; // the page aligns the banner to it
   static const double _loadMoreBefore = 300; // px from the end
@@ -66,7 +70,7 @@ class InboxList extends StatelessWidget {
                 key: ValueKey(conversation.id),
                 conversation: conversation,
                 myId: myId,
-                onTap: null, // Step 5.2 opens the conversation
+                onTap: () => onOpen(conversation),
               );
             },
           ),

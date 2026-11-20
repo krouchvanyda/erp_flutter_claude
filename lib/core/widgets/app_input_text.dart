@@ -26,6 +26,9 @@ class AppInputText extends StatelessWidget {
     this.enabled = true,
     this.autofillHints,
     this.label,
+    this.minLines,
+    this.maxLines = 1,
+    this.textCapitalization = TextCapitalization.none,
   });
 
   final TextEditingController controller;
@@ -51,6 +54,12 @@ class AppInputText extends StatelessWidget {
   /// Optional label ABOVE the field ("Email"). Stays visible while typing —
   /// clearer than a hint that disappears.
   final String? label;
+
+  /// Multi-line (chat composer): `minLines: 1, maxLines: 5` grows with the
+  /// text, then scrolls. Default: one line.
+  final int? minLines;
+  final int? maxLines;
+  final TextCapitalization textCapitalization;
 
   @override
   Widget build(BuildContext context) {
@@ -83,6 +92,9 @@ class AppInputText extends StatelessWidget {
       validator: validator,
       forceErrorText: errorText,
       autofillHints: autofillHints,
+      minLines: minLines,
+      maxLines: maxLines,
+      textCapitalization: textCapitalization,
       decoration: InputDecoration(
         hintText: hintText,
         prefixIcon: prefixIcon,

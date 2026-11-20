@@ -88,4 +88,62 @@ void main() {
     );
     expect(await repo.myUserId(), '7');
   });
+
+  // ─────────────── Step 5.2 ───────────────
+
+  test('loadMessages → GET …/{id}/messages?page&pageSize=30', () async {
+    server.data = {
+      'items': [
+        {
+          'id': 9,
+          'conversationId': 5,
+          'senderId': 2,
+          'type': 'TEXT',
+          'body': 'hi',
+        },
+      ],
+      'page': 1,
+      'pageSize': 30,
+      'totalItems': 1,
+      'totalPages': 1,
+    };
+
+    final page = (await repo.loadMessages(
+      '5',
+    )).getOrElse(() => throw StateError('expected Right'));
+
+    expect(server.last!.method, 'GET');
+    expect(server.last!.path, '/api/v1/chats/conversations/5/messages');
+    expect(server.last!.queryParameters, {'page': 1, 'pageSize': 30});
+    expect(page.items.single.body, 'hi');
+    expect(page.hasMore, isFalse);
+  });
+
+  test('sendText → POST {type: TEXT, body} → the saved message', () async {
+    server.data = {
+      'id': 10,
+      'conversationId': 5,
+      'senderId': 1,
+      'type': 'TEXT',
+      'body': 'Hello',
+    };
+
+    final sent = (await repo.sendText(
+      '5',
+      'Hello',
+    )).getOrElse(() => throw StateError('expected Right'));
+
+    expect(server.last!.method, 'POST');
+    expect(server.last!.path, ApiEndPoint.messages('5'));
+    expect(server.last!.data, {'type': 'TEXT', 'body': 'Hello'});
+    expect(sent.id, '10');
+  });
+
+  test('markRead → POST …/read {lastReadMessageId: NUMBER}', () async {
+    await repo.markRead('5', '42');
+
+    expect(server.last!.method, 'POST');
+    expect(server.last!.path, '/api/v1/chats/conversations/5/read');
+    expect(server.last!.data, {'lastReadMessageId': 42}); // int, not "42"
+  });
 }

@@ -311,6 +311,20 @@ Login response
   an unchanged list emits nothing and the spinner turns forever.
 - The inbox is the home after login. `InboxPage(onOpenProfile:)` gets the
   profile route from `app/` (chat never imports profile).
+- **Conversation (5.2):** `ConversationPage(conversation, myId)` gets the
+  whole `ConversationModel` from the inbox (no extra request). The bloc is
+  built in the page (`ConversationViewModelBloc(getIt<ChatRepository>(),
+  conversationId:)`): the locator has no factory parameters. Messages are
+  newest first in a `ListView(reverse: true)`; older pages load near the
+  top. Back → the inbox reloads.
+- **Send = optimistic.** Server data (`MessageModel`) and my unconfirmed
+  texts (`OutgoingMessage`, `local-N` ids, `failed` flag) are separate
+  lists. Success → swap for the server message (drop duplicate ids). Failure →
+  mark only that bubble (⚠ "Not sent · Tap to retry"), never a page error,
+  never lose the text. After every `await` in a handler, read `state.data`
+  again (handlers run at the same time).
+- `markRead(newestId)` once per newest id, not awaited, result ignored. The
+  server wants a number (`lastReadMessageId`).
 
 ### Chat & call (Steps 5–7): lessons from the old app
 

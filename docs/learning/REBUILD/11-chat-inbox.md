@@ -1,6 +1,6 @@
 # Step 5.1 — Chat: the inbox
 
-> ← Previous: [10-profile-avatar.md](10-profile-avatar.md) · Roadmap: [README.md](README.md)
+> ← Previous: [10-profile-avatar.md](10-profile-avatar.md) · Next: [12-chat-conversation.md](12-chat-conversation.md) → · Roadmap: [README.md](README.md)
 
 Step 5 is the biggest step, so it's split:
 
