@@ -1,6 +1,7 @@
 import '../../core/di/service_locator.dart';
 import '../../core/network/app_service.dart';
 import '../../core/network/token_storage.dart';
+import '../../core/push/push_registrar.dart';
 import '../../core/router/auth_session.dart';
 import '../../core/storage/user_cache.dart';
 import 'repository/auth_repository.dart';
@@ -17,6 +18,8 @@ void registerAuthModule(ServiceLocator getIt) {
         tokenStorage: getIt<TokenStorage>(),
         userCache: getIt<UserCache>(),
         session: getIt<AuthSession>(),
+        // logout → this phone stops getting the user's pushes (7.1)
+        beforeLogout: () => getIt<PushRegistrar>().unregister(),
       ),
     )
     // a FRESH bloc each time the login page opens

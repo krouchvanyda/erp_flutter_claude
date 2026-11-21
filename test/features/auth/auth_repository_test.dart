@@ -51,6 +51,7 @@ Map<String, dynamic> env(Object? data, {bool success = true, String? msg}) => {
 
 void main() {
   late _FakeServer server;
+  late Dio dio;
   late TokenStorage storage;
   late AuthSession session;
   late UserCache userCache;
@@ -63,8 +64,7 @@ void main() {
     server = _FakeServer();
     storage = TokenStorage(const FlutterSecureStorage());
     session = AuthSession();
-    final dio = Dio(BaseOptions(baseUrl: 'http://test'))
-      ..httpClientAdapter = server;
+    dio = Dio(BaseOptions(baseUrl: 'http://test'))..httpClientAdapter = server;
     repo = AuthRepository(
       appService: AppService(dio, hasInternet: () async => true),
       tokenStorage: storage,
@@ -195,6 +195,28 @@ void main() {
         expect(session.isAuthenticated, isFalse);
       },
     );
+
+    test('beforeLogout (unregister push, 7.1) runs FIRST, while the tokens '
+        'are still stored; if it throws, the logout still happens', () async {
+      server.body = env(null);
+      bool? hadTokens;
+      final withHook = AuthRepository(
+        appService: AppService(dio, hasInternet: () async => true),
+        tokenStorage: storage,
+        userCache: userCache,
+        session: session,
+        beforeLogout: () async {
+          hadTokens = await storage.read() != null;
+          throw StateError('offline');
+        },
+      );
+
+      await withHook.logout();
+
+      expect(hadTokens, isTrue); // the DELETE could still be authorized
+      expect(await storage.read(), isNull);
+      expect(session.isAuthenticated, isFalse);
+    });
 
     test('server error (500) → STILL logs out locally', () async {
       server

@@ -60,7 +60,8 @@ the same data count as equal. Why, and what breaks without them:
 | 6.3b | Call: reconnecting | ✅ |
 | 6.3c | Call: group calls | ✅ |
 | 6.3d | Call: call line in the chat | ✅ |
-| 7 | Call when the app is killed | ⏳ |
+| 7.1 | Push setup (device token) | ✅ |
+| 7.2 – 7.4 | Call when the app is minimized / killed | ⏳ |
 | 8 | Translations, tests, polish | ⏳ |
 
 The full table with lesson links is in

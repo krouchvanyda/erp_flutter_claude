@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/flavor.dart';
@@ -11,6 +13,9 @@ import '../network/token_refresher.dart';
 import '../network/token_storage.dart';
 import '../network/api_endpoints.dart';
 import '../network/helper_service.dart';
+import '../push/device_id_store.dart';
+import '../push/push_messaging.dart';
+import '../push/push_registrar.dart';
 import '../realtime/realtime_lifecycle.dart';
 import '../realtime/realtime_service.dart';
 import '../router/auth_session.dart';
@@ -104,6 +109,21 @@ Future<void> _registerCore() async {
   getIt.registerLazySingleton<AppAudioPlayer>(AppAudioPlayer.new);
 
   // Starts / stops it with the session, the app and the network.
+  // Push (Step 7.1): this install's id, the FCM wrapper, the registrar.
+  getIt.registerLazySingleton<DeviceIdStore>(
+    () => DeviceIdStore(getIt<SharedPreferences>()),
+  );
+  getIt.registerLazySingleton<PushMessaging>(PushMessaging.new);
+  getIt.registerLazySingleton<PushRegistrar>(
+    () => PushRegistrar(
+      appService: getIt<AppService>(),
+      session: getIt<AuthSession>(),
+      deviceIds: getIt<DeviceIdStore>(),
+      messaging: getIt<PushMessaging>(),
+      platform: defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android',
+    ),
+  );
+
   getIt.registerLazySingleton<RealtimeLifecycle>(
     () => RealtimeLifecycle(
       session: getIt<AuthSession>(),

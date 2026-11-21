@@ -1,6 +1,6 @@
 # Step 6.3d — Call: the call line in the chat (backend + app)
 
-> ← Previous: [22-call-groups.md](22-call-groups.md) · Roadmap: [README.md](README.md)
+> ← Previous: [22-call-groups.md](22-call-groups.md) · Next: [24-push-setup.md](24-push-setup.md) → · Roadmap: [README.md](README.md)
 
 ```
 6.3a sounds ✅ · 6.3b reconnecting ✅ · 6.3c groups ✅

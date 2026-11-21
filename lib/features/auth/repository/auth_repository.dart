@@ -21,7 +21,9 @@ class AuthRepository {
     required TokenStorage tokenStorage,
     required UserCache userCache,
     required AuthSession session,
+    Future<void> Function()? beforeLogout,
   }) : _appService = appService,
+       _beforeLogout = beforeLogout,
        _tokenStorage = tokenStorage,
        _userCache = userCache,
        _session = session;
@@ -30,6 +32,10 @@ class AuthRepository {
   final TokenStorage _tokenStorage;
   final UserCache _userCache;
   final AuthSession _session;
+
+  /// Runs at the START of [logout], while the tokens are still stored
+  /// (Step 7.1: `PushRegistrar.unregister`). Given by DI.
+  final Future<void> Function()? _beforeLogout;
 
   Future<Either<NetworkErrorModel, UserModel>> login({
     required String email,
@@ -94,6 +100,11 @@ class AuthRepository {
   ///    `TokenStorage.clear()` re-enables auto-login = security bug).
   Future<void> logout() async {
     try {
+      // e.g. stop this phone's pushes (Step 7.1). Needs the access token,
+      // so it runs FIRST; a failure never stops the logout.
+      try {
+        await _beforeLogout?.call();
+      } catch (_) {}
       final tokens = await _tokenStorage.read();
       if (tokens != null) {
         await _appService

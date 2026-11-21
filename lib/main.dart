@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/services.dart' show appFlavor;
 
 import 'app/app.dart';
 import 'app/app_di.dart';
 import 'core/config/flavor.dart';
 import 'core/di/service_locator.dart';
+import 'core/push/push_registrar.dart';
 import 'core/realtime/realtime_lifecycle.dart';
 import 'core/router/auth_session.dart';
 
@@ -22,10 +24,20 @@ Future<void> bootstrap(Flavor flavor) async {
   );
   Flavor.pin(flavor);
   WidgetsFlutterBinding.ensureInitialized(); // plugins need the bridge first
+  // Push (Step 7): reads google-services.json / GoogleService-Info.plist.
+  // A broken Firebase setup must not stop the app: chat and calls in the
+  // app still work, only pushes don't.
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint('[Push] Firebase not available: $e');
+  }
   await configureAppDependencies(); // fill the DI box: core + features
 
   // Live connection follows the session / app / network (Step 5.3).
   getIt<RealtimeLifecycle>().attach();
+  // This phone's push token follows the session (Step 7.1).
+  getIt<PushRegistrar>().attach();
 
   // Edge: take services from the box, pass them in by constructor.
   runApp(App(session: getIt<AuthSession>()));

@@ -130,7 +130,10 @@ current one works.
 | 6.3b | Call: "Reconnecting…" (mine / theirs, give up after 30 s) | [21-call-reconnecting.md](21-call-reconnecting.md) | ✅ |
 | 6.3c | Call: group calls (who is calling, faces row, video grid) | [22-call-groups.md](22-call-groups.md) | ✅ |
 | 6.3d | Call: call line in the chat (backend `CALL` message + app) | [23-call-line.md](23-call-line.md) | ✅ |
-| 7 | Call in background / killed app | see `../IOS_CALL`, `../ANDROID_CALL` | ⏳ |
+| 7.1 | Push: Firebase + this phone's FCM token (`POST /me/devices`, `DELETE` on logout) | [24-push-setup.md](24-push-setup.md) | ✅ |
+| 7.2 | Call: Android rings when minimized / killed (our FCM `call.invite`) | — | ⏳ |
+| 7.3 | Call: iOS rings (Stream VoIP push + CallKit) | — | ⏳ |
+| 7.4 | Call: accept from the ring → straight into the call | — | ⏳ |
 | 8 | Translations, tests, polish | — | ⏳ |
 
 ## 📖 How each lesson is written

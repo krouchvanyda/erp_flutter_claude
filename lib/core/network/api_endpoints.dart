@@ -17,6 +17,14 @@ abstract final class ApiEndPoint {
   static const String employeesMe = '$_v1/employees/me';
   static const String employeesMeAvatar = '$_v1/employees/me/avatar';
 
+  // ── Push (Step 7.1) ──
+  /// POST `{deviceId, fcmToken, platform}` = save / update this phone's
+  /// push token (same user + deviceId → updated, not duplicated).
+  static const String myDevices = '$_v1/me/devices';
+
+  /// DELETE = this phone stops getting pushes (logout).
+  static String myDevice(String deviceId) => '$myDevices/$deviceId';
+
   /// Everyone I can chat with (5.4 member picker). Open to every logged-in
   /// user. NOTE: the backend ignores `search` → we filter on the phone.
   static const String users = '$_v1/users';

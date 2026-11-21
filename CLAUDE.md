@@ -480,6 +480,21 @@ Login response
   SAME chat called me while my start was pending (crossed calls, #18): then
   `busy`, so both phones say "Busy in another call".
 
+### Push (Step 7)
+
+- **Decision (option B):** Android rings from OUR backend's FCM data push
+  (`call.invite` / `call.cancel`); iOS from Stream's VoIP push (+ CallKit).
+  Android must NOT be registered with Stream's push, or it rings twice.
+- **7.1:** `Firebase.initializeApp()` in `bootstrap` (failure is logged, the
+  app still runs). `core/push`: `DeviceIdStore` (this install's UUID,
+  SharedPreferences), `PushMessaging` (the ONLY FirebaseMessaging user:
+  token · onTokenRefresh · permission), `PushRegistrar` (follows
+  `AuthSession`: logged in → permission → `POST /me/devices {deviceId,
+  fcmToken, platform}`; token refresh → again; at every start = upsert).
+  Logout: `AuthRepository(beforeLogout:)` → `PushRegistrar.unregister()` =
+  `DELETE /me/devices/{deviceId}` BEFORE the tokens are cleared (3 s limit,
+  best effort).
+
 ### Chat & call (Steps 5–7): lessons from the old app
 
 These bugs cost many rounds of fixes on `feature/call`. Build them in from the
