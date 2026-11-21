@@ -173,6 +173,7 @@ class CallMedia {
       final token = await _loadToken();
       if (token == null || !token.isUsable) return;
       final client = await _clientFor(token);
+      unawaited(_logPushSetup(client, token.userId));
       final calls = await client.pushNotificationManager?.activeCalls();
       for (final c in calls ?? const <CallData>[]) {
         final callId = CallKitAction.callIdOf(c.callCid);
@@ -182,6 +183,46 @@ class CallMedia {
       }
     } catch (e) {
       debugPrint('[CallMedia] connectForRinging failed: $e');
+    }
+  }
+
+  /// DIAGNOSTIC (Xcode console, filter `[CallMedia]`): does Stream have
+  /// this iPhone's VoIP token? Waits a few seconds: the SDK registers it
+  /// in the background after connecting. Only token TAILS are printed.
+  ///
+  /// ```
+  /// [CallMedia] push · user 12 · VoIP token …a1b2c3 · Stream devices (1):
+  /// [CallMedia]   apn "apn" voip=true disabled=false token …a1b2c3 ✅ this iPhone
+  /// ```
+  Future<void> _logPushSetup(StreamVideo client, String userId) async {
+    await Future<void>.delayed(const Duration(seconds: 5));
+    try {
+      String tail(String? t) =>
+          t == null || t.length < 6 ? '(none)' : '…${t.substring(t.length - 6)}';
+      final voip = await client.pushNotificationManager
+          ?.getDevicePushTokenVoIP();
+      final devices =
+          (await client.getDevices()).getDataOrNull() ?? const <PushDevice>[];
+      debugPrint(
+        '[CallMedia] push · user $userId · VoIP token ${tail(voip)} · '
+        'Stream devices (${devices.length}):',
+      );
+      for (final d in devices) {
+        final mine = voip != null && d.pushToken == voip;
+        debugPrint(
+          '[CallMedia]   ${d.pushProvider.name} "${d.pushProviderName}" '
+          'voip=${d.voip} disabled=${d.disabled ?? false}'
+          '${d.disabledReason == null ? '' : ' (${d.disabledReason})'} '
+          'token ${tail(d.pushToken)}${mine ? ' ✅ this iPhone' : ''}',
+        );
+      }
+      if (voip == null) {
+        debugPrint('[CallMedia]   ❌ iOS gave NO VoIP token (PushKit / voip mode)');
+      } else if (!devices.any((d) => d.pushToken == voip)) {
+        debugPrint('[CallMedia]   ❌ this iPhone is NOT registered at Stream');
+      }
+    } catch (e) {
+      debugPrint('[CallMedia] push diagnostic failed: $e');
     }
   }
 
