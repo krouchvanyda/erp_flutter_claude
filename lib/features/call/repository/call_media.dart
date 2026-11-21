@@ -296,6 +296,14 @@ class CallMedia {
           reconnectTimeout: CallConfig.reconnectTimeout,
           networkAvailabilityTimeout: CallConfig.reconnectTimeout,
         ),
+        // DIAGNOSTIC (iOS ring, 7.3): Stream's own logs for the socket
+        // (SV:Client: "close connection" on minimize) and the ring
+        // (SV:PNManager: incoming / ended). Xcode console → filter [Stream].
+        logPriority: _ringsWithCallKit ? Priority.debug : Priority.none,
+        logHandlerFunction: (priority, tag, message, [error, stk]) {
+          if (tag != 'SV:Client' && tag != 'SV:PNManager') return;
+          debugPrint('[Stream] $tag ${priority.name}: ${message()}');
+        },
       ),
       // iOS only (7.3): registers the VoIP token with Stream at connect,
       // and removes it at disconnect (logout). Android: none, on purpose.
