@@ -450,6 +450,67 @@ void main() {
     });
   });
 
+  group('calls cross (#18, phone test Min ⇄ Rin)', () {
+    test(
+      'their invite arrives while MY start is pending, then the server '
+      'refuses mine → "Busy in another call" (not "still in a call")',
+      () async {
+        final answer = Completer<Either<NetworkErrorModel, CallModel>>();
+        when(() => repo.start(any(), any())).thenAnswer((_) => answer.future);
+        final bloc = build();
+        startCall(bloc); // me → Jane, conversation 42
+        await tick();
+        queue.add(
+          CallInvited(_call(id: '8', callerId: _jane)),
+        ); // Jane → me, 42
+        await tick();
+        expect(sent.last, 'reject 8 busy'); // Jane's phone: "Busy"
+        answer.complete(
+          const Left(
+            ServerError(
+              statusCode: 400,
+              description: 'Caller is already in an active call',
+            ),
+          ),
+        );
+        await tick();
+        expect(endedWith(bloc), CallEndReason.busy); // mine: "Busy" too
+        await bloc.close();
+      },
+    );
+
+    test('an invite from ANOTHER chat does not count as crossing', () async {
+      final answer = Completer<Either<NetworkErrorModel, CallModel>>();
+      when(() => repo.start(any(), any())).thenAnswer((_) => answer.future);
+      final bloc = build();
+      startCall(bloc); // conversation 42
+      await tick();
+      queue.add(
+        CallInvited(
+          const CallModel(
+            id: '9',
+            conversationId: '77',
+            callerId: '3',
+            type: CallType.voice,
+            status: CallStatus.ringing,
+          ),
+        ),
+      );
+      await tick();
+      answer.complete(
+        const Left(
+          ServerError(
+            statusCode: 400,
+            description: 'Caller is already in an active call',
+          ),
+        ),
+      );
+      await tick();
+      expect(endedWith(bloc), CallEndReason.stillInCall);
+      await bloc.close();
+    });
+  });
+
   group('in call', () {
     Future<CallViewModelBloc> connected() async {
       final bloc = build();

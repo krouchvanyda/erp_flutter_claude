@@ -117,6 +117,12 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
   /// `POST /calls` answer on a fast network).
   final Set<String> _earlyRinging = {};
 
+  /// Calls crossed (#18): while I was calling this conversation, ITS other
+  /// person called me too (I rejected theirs as busy). If the server then
+  /// refuses mine ("already in an active call"), it's that crossing, not a
+  /// stuck call → show "Busy in another call", like the other phone.
+  String? _crossedConversationId;
+
   void _live(CallUpdate update) {
     if (!isClosed) add(OnCallLiveUpdateEvent(update));
   }
@@ -190,6 +196,7 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     if (state.isActive) return; // one call at a time
     _stopTimers();
     _earlyRinging.clear();
+    _crossedConversationId = null;
     emit(
       CallOutgoingState(
         conversationId: event.conversationId,
@@ -213,7 +220,13 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
         // The server's raw "Caller is already in an active call" means ME
         // → our own, clearer words (CallEndReason.stillInCall).
         if (error.description.contains('already in an active call')) {
-          _end(emit, CallEndReason.stillInCall);
+          // they called me at the same moment → both phones say "Busy"
+          _end(
+            emit,
+            _crossedConversationId == event.conversationId
+                ? CallEndReason.busy
+                : CallEndReason.stillInCall,
+          );
         } else {
           _end(emit, CallEndReason.failed, message: error.description);
         }
@@ -244,6 +257,10 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     if (state.isActive) {
       // Busy: no screen, no ring — the caller sees "Busy".
       _repository.reject(call.id, reason: 'busy');
+      final s = state;
+      if (s is CallOutgoingState && s.conversationId == call.conversationId) {
+        _crossedConversationId = call.conversationId; // we called each other
+      }
       return;
     }
     _stopTimers();

@@ -189,7 +189,7 @@ THIS happens → do that". Events for another call id are dropped first.
 | # | Rule | Code |
 |---|---|---|
 | 11 Busy | An invite while `isActive` → `reject(reason: 'busy')`, no screen | `_onInvite` |
-| 18 Both call at once | No special code: each phone is busy → both see "Busy" | test "both call each other" |
+| 18 Both call at once | Each phone is busy → both see "Busy". If one start is refused by the server ("already in an active call") because the OTHER person called me in the same chat meanwhile, that's a crossing → also "Busy", not "still in another call" (`_crossedConversationId`, found testing Min ⇄ Rin) | tests "both call each other", "calls cross" |
 | 13 Cancel while "Calling…" | Hang up before the POST answers → `end(id)` as soon as the id arrives | `_onStart` (`stillWaiting`) |
 | 19 No answer | The callee's backstop only **closes** the screen, never `reject` (else saved as "declined") | `_onBackstop` |
 | 10 Callee offline | Stays "Calling…" (no `ringing`) → the server's `no_answer` at 60 s | `CallHungUp` → `noAnswer` |

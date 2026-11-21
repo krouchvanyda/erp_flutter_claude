@@ -476,7 +476,9 @@ Login response
 - Stuck calls: the backend hangs up for a user whose socket is gone 30 s
   during an ANSWERED call (`answered-disconnect-grace-seconds`, backend
   `CallDisconnectHandler`). The raw "Caller is already in an active call"
-  is shown as `CallEndReason.stillInCall`.
+  is shown as `CallEndReason.stillInCall` — unless the other person of the
+  SAME chat called me while my start was pending (crossed calls, #18): then
+  `busy`, so both phones say "Busy in another call".
 
 ### Chat & call (Steps 5–7): lessons from the old app
 
