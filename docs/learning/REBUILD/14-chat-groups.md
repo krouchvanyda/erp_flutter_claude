@@ -247,6 +247,22 @@ It only **hides** buttons. The server still checks; a 403 becomes `Failed`
 **For the backend team:** `GET /users?search=` is ignored
 (`UserService.list`, "paginate only").
 
+### Fixed after testing (Step 6): a new chat showed "Chat"
+
+Opening a NEW direct chat with Mr Van showed **"Chat"** (and a "C" avatar),
+in the inbox and in the chat title. The backend's
+`ConversationService.create` saved each member to the database but never
+added it to the conversation object in memory, and its "reload" returned that
+SAME object (Hibernate's first-level cache). So the reply and the live
+`conversation.create` carried `"members": []`, and `title(myId)` had no other
+member to name → its fallback "Chat". Pull to refresh fixed it (a new request
+reads the database).
+
+Fix (backend): `c.getMembers().add(m)` in the create loop. Test:
+`ConversationServiceCreateMembersTest` (direct + group). The same bug was in
+`ChatCallService.start` (lesson 18): **after saving the children of a new
+parent in one transaction, add them to the parent's collection too.**
+
 ## 5. Try it
 
 ```bash
