@@ -116,3 +116,12 @@ final class OnCallOpenedFromPushEvent extends CallViewModelEvent {
   /// Step 7.4; for now the incoming screen opens.
   final bool answer;
 }
+
+// ── iOS CallKit (Step 7.3) ──
+
+/// A button on the iOS CallKit screen (from `CallMedia.callKit`, internal).
+final class OnCallKitActionEvent extends CallViewModelEvent {
+  OnCallKitActionEvent(this.action);
+
+  final CallKitAction action;
+}

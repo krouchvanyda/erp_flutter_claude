@@ -8,6 +8,7 @@ import 'package:erp_mobile/features/call/model/call_enums.dart';
 import 'package:erp_mobile/features/call/model/call_model.dart';
 import 'package:erp_mobile/features/call/model/call_peer.dart';
 import 'package:erp_mobile/features/call/model/call_update.dart';
+import 'package:erp_mobile/features/call/model/call_kit_action.dart';
 import 'package:erp_mobile/features/call/repository/call_media.dart';
 import 'package:erp_mobile/features/call/repository/call_notifications.dart';
 import 'package:erp_mobile/features/call/repository/call_repository.dart';
@@ -49,6 +50,7 @@ void main() {
   late _MockCallMedia media;
   late StreamController<List<String>> peer; // the others in the media call
   late StreamController<MediaLink> link; // MY link to the media call
+  late StreamController<CallKitAction> callKit; // iOS CallKit buttons
 
   setUpAll(() => registerFallbackValue(CallType.voice));
 
@@ -72,6 +74,10 @@ void main() {
     ).thenAnswer((_) async => (ok: true, micOn: true, cameraOn: false));
     when(() => media.leave()).thenAnswer((_) async {});
     when(() => media.signOut()).thenAnswer((_) async {});
+    callKit = StreamController<CallKitAction>.broadcast();
+    when(() => media.callKit).thenAnswer((_) => callKit.stream);
+    when(() => media.connectForRinging()).thenAnswer((_) async {});
+    when(() => media.endRing(any())).thenAnswer((_) async {});
 
     when(() => repo.myUserId()).thenAnswer((_) async => _me);
     when(() => repo.callsQueue()).thenAnswer((_) => queue.stream);
@@ -107,6 +113,7 @@ void main() {
     await reconnected.close();
     await peer.close();
     await link.close();
+    await callKit.close();
   });
 
   CallViewModelBloc build({
@@ -585,6 +592,121 @@ void main() {
       await tick();
       verifyNever(() => repo.load(any()));
       expect(sent, ['ringing 7']); // only once
+      await bloc.close();
+    });
+  });
+
+  group('iOS CallKit (7.3)', () {
+    CallModel ringingForMe() => CallModel(
+      id: '7',
+      conversationId: '42',
+      callerId: _jane,
+      type: CallType.voice,
+      status: CallStatus.ringing,
+      streamCallCid: 'default:erp-call-7',
+      participants: const [
+        CallParticipantModel(userId: _jane, status: ParticipantStatus.answered),
+        CallParticipantModel(userId: _me, status: ParticipantStatus.ringing),
+      ],
+    );
+
+    test('logged in → connect for ringing (VoIP token → Stream)', () async {
+      final bloc = build();
+      await tick();
+      verify(() => media.connectForRinging()).called(1);
+      await bloc.close();
+    });
+
+    test('Accept on CallKit, app was killed (no invite seen) → load → '
+        'accept → in the call, ONE tap', () async {
+      when(() => repo.load('7')).thenAnswer((_) async => Right(ringingForMe()));
+      final bloc = build();
+      callKit.add(const CallKitAction(CallKitButton.accept, '7'));
+      await tick(20);
+      expect(sent, ['ringing 7', 'accept 7']);
+      expect(bloc.state, isA<CallInCallState>());
+      verify(
+        () => media.join(cid: 'default:call-7', video: false),
+      ).called(1);
+      await bloc.close();
+    });
+
+    test('Accept on CallKit for the call already on screen → accept, '
+        'no extra load', () async {
+      final bloc = build();
+      queue.add(CallInvited(_call(callerId: _jane)));
+      await tick();
+      callKit.add(const CallKitAction(CallKitButton.accept, '7'));
+      await tick(20);
+      verifyNever(() => repo.load(any()));
+      expect(sent, ['ringing 7', 'accept 7']);
+      expect(bloc.state, isA<CallInCallState>());
+      await bloc.close();
+    });
+
+    test('Accept twice (live event + the start-up check) → accepted once',
+        () async {
+      when(() => repo.load('7')).thenAnswer((_) async => Right(ringingForMe()));
+      final bloc = build();
+      callKit
+        ..add(const CallKitAction(CallKitButton.accept, '7'))
+        ..add(const CallKitAction(CallKitButton.accept, '7'));
+      await tick(20);
+      expect(sent.where((e) => e == 'accept 7'), hasLength(1));
+      await bloc.close();
+    });
+
+    test('Accept too late (the call is over) → CallKit closed, no screen',
+        () async {
+      when(
+        () => repo.load('7'),
+      ).thenAnswer((_) async => Right(_call(status: CallStatus.missed)));
+      final bloc = build();
+      callKit.add(const CallKitAction(CallKitButton.accept, '7'));
+      await tick(20);
+      expect(bloc.state, const CallIdleState());
+      verify(() => media.endRing('7')).called(1);
+      expect(sent, isEmpty);
+      await bloc.close();
+    });
+
+    test('Decline on CallKit for an unknown call → POST reject', () async {
+      final bloc = build();
+      callKit.add(const CallKitAction(CallKitButton.decline, '7'));
+      await tick();
+      expect(sent, ['reject 7 -']);
+      expect(bloc.state, const CallIdleState());
+      await bloc.close();
+    });
+
+    test('End on CallKit during the call → hang up (POST end)', () async {
+      final bloc = build();
+      queue.add(CallInvited(_call(callerId: _jane)));
+      await tick();
+      bloc.add(OnCallAcceptEvent());
+      await tick(20);
+      callKit.add(const CallKitAction(CallKitButton.end, '7'));
+      await tick();
+      expect(sent.last, 'end 7');
+      expect(bloc.state, isA<CallEndedState>());
+      await bloc.close();
+    });
+
+    test('End for a call that is not on screen → ignored', () async {
+      final bloc = build();
+      callKit.add(const CallKitAction(CallKitButton.end, '7'));
+      await tick();
+      expect(sent, isEmpty);
+      await bloc.close();
+    });
+
+    test('every end closes the CallKit screen too', () async {
+      final bloc = build();
+      queue.add(CallInvited(_call(callerId: _jane)));
+      await tick();
+      bloc.add(OnCallDeclineEvent());
+      await tick();
+      verify(() => media.endRing('7')).called(1);
       await bloc.close();
     });
   });

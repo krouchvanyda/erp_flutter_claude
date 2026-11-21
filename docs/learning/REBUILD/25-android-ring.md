@@ -1,6 +1,6 @@
 # Step 7.2 — Android: ring when the app is minimized or killed
 
-> ← Previous: [24-push-setup.md](24-push-setup.md) · Roadmap: [README.md](README.md)
+> ← Previous: [24-push-setup.md](24-push-setup.md) · Next: [26-ios-ring.md](26-ios-ring.md) → · Roadmap: [README.md](README.md)
 
 ```
 7.1 push setup ✅

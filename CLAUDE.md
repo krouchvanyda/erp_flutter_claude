@@ -509,7 +509,24 @@ Login response
   (cancel when the app is in front / the call leaves Incoming). Manifest:
   `ActionBroadcastReceiver`, MainActivity `showWhenLocked` /
   `turnScreenOn`, NO extra FirebaseMessagingService (it steals pushes).
-  Backend needs `FCM_ENABLED=true` + the service-account JSON.
+  Backend: FCM is on by default (`application.yml`, key in the git-ignored
+  `secrets/`); a server sets `FCM_ENABLED` + `FCM_SERVICE_ACCOUNT_JSON_PATH`.
+- **7.3 iOS ring:** the backend rings (Stream `ring: true`) only OFFLINE
+  callees (a minimized app sends `/presence/background`). `CallMedia` makes
+  the Stream client AT LOGIN on iOS (`connectForRinging`, from the bloc's
+  session listener) with `StreamVideoPushNotificationManager` (provider
+  `apn`, iOS ONLY — Android has no push manager, so Stream never rings it).
+  Logout → `signOut` → Stream removes the VoIP token. CallKit buttons →
+  `CallMedia.callKit` (`CallKitAction`, Stream cid `default:erp-call-<id>` →
+  our id) → `OnCallKitActionEvent`: Accept = load if unknown → `_onInvite`
+  → `_onAccept` (ONE tap; mic only CHECKED — iOS can't ask on the lock
+  screen); Decline = decline / `POST /reject`; End = our red button (unknown
+  call → ignored). `connectForRinging` also reports calls ALREADY accepted
+  in CallKit (cold start). Every `_end` → `endRing` (silent). Decline / End
+  while the app is resumed are dropped (the AppDelegate closes a racing
+  ring while on screen). `AppDelegate.swift` = Firebase · PushKit register
+  · that one rule; no method channels. Test the killed case with
+  `--release` (a debug build can't start without the debugger).
 
 ### Chat & call (Steps 5–7): lessons from the old app
 

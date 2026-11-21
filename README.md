@@ -62,7 +62,8 @@ the same data count as equal. Why, and what breaks without them:
 | 6.3d | Call: call line in the chat | ✅ |
 | 7.1 | Push setup (device token) | ✅ |
 | 7.2 | Android rings when minimized / killed | ✅ |
-| 7.3 – 7.4 | iOS ring, answer from the ring | ⏳ |
+| 7.3 | iOS rings when minimized / killed (CallKit) | ✅ |
+| 7.4 | Android: Answer → straight into the call | ⏳ |
 | 8 | Translations, tests, polish | ⏳ |
 
 The full table with lesson links is in

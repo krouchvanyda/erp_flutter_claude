@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/router/auth_session.dart';
 import '../../model/call_config.dart';
 import '../../model/call_end_reason.dart';
+import '../../model/call_kit_action.dart';
 import '../../model/call_enums.dart';
 import '../../model/call_model.dart';
 import '../../model/call_peer.dart';
@@ -47,6 +48,11 @@ typedef CallPeerLoader = Future<CallPeer?> Function(CallModel call);
 /// timer starts at 00:00 (CALL_SCENARIOS.md #8). Every end path leaves it.
 ///
 /// Sounds (Step 6.3a): every state change → [soundFor] → [CallSounds].
+///
+/// iOS CallKit (Step 7.3): logged in → [CallMedia.connectForRinging] (the
+/// VoIP token reaches Stream). CallKit Accept / Decline / End →
+/// [OnCallKitActionEvent] → the SAME paths as our own buttons. Every end
+/// closes the CallKit screen too ([CallMedia.endRing]).
 class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
   CallViewModelBloc(
     this._repository, {
@@ -85,13 +91,18 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     on<OnCallMediaLinkEvent>(_onMediaLink);
     on<OnCallReconnectTimeoutEvent>(_onReconnectTimeout);
     on<OnCallOpenedFromPushEvent>(_onOpenedFromPush);
+    on<OnCallKitActionEvent>(_onCallKitAction);
 
     // Invites can come at any time → listen for the whole session.
     _queue = _repository.callsQueue().listen(_live);
     _reconnected = _repository.reconnected.listen(
       (_) => add(OnCallResyncEvent()),
     );
+    _callKit = _media.callKit.listen((action) {
+      if (!isClosed) add(OnCallKitActionEvent(action));
+    });
     _session.addListener(_onSession);
+    _onSession(); // already logged in (auto-login ran first)
   }
 
   final CallRepository _repository;
@@ -110,6 +121,7 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
 
   late final StreamSubscription<CallUpdate> _queue;
   late final StreamSubscription<void> _reconnected;
+  late final StreamSubscription<CallKitAction> _callKit;
   StreamSubscription<CallUpdate>? _topic; // the current call's conversation
   StreamSubscription<List<String>>? _peerMedia; // who else is in the media?
   StreamSubscription<MediaLink>? _mediaLink; // is MY media link up?
@@ -132,8 +144,16 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     if (!isClosed) add(OnCallLiveUpdateEvent(update));
   }
 
+  bool _ringReady = false; // connectForRinging ran for this login
+
   void _onSession() {
-    if (!_session.isAuthenticated) add(OnCallResetEvent());
+    if (!_session.isAuthenticated) {
+      _ringReady = false;
+      add(OnCallResetEvent());
+    } else if (!_ringReady) {
+      _ringReady = true;
+      _media.connectForRinging(); // iOS: VoIP token → Stream (Android: no-op)
+    }
   }
 
   Future<String?> _me() async => _myId ??= await _repository.myUserId();
@@ -194,6 +214,7 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     await _media.leave();
     await _queue.cancel();
     await _reconnected.cancel();
+    await _callKit.cancel();
     inCall.dispose();
     return super.close();
   }
@@ -650,21 +671,70 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     Emitter<CallViewModelState> emit,
   ) async {
     if (state.callId == event.callId || state.isActive) return;
-    final result = await _repository.load(event.callId);
-    final me = await _me();
+    final call = await _ringingForMe(event.callId);
     if (state.callId == event.callId || state.isActive) return; // raced
+    if (call == null) {
+      _notifications?.cancel(event.callId); // stale: stop ringing
+      return;
+    }
+    await _onInvite(call, emit);
+  }
+
+  // ───────────── iOS CallKit (7.3) ─────────────
+
+  /// A CallKit button. The app may have been KILLED a second ago (iOS
+  /// starts it in the background for the VoIP push), so the STOMP invite
+  /// was never seen: Accept on an unknown call loads it first.
+  ///
+  /// | button  | the call on screen          | unknown call                |
+  /// |---------|-----------------------------|-----------------------------|
+  /// | Accept  | accept (no 2nd tap)         | load → still ringing → accept |
+  /// | Decline | decline                     | `POST /reject`              |
+  /// | End     | hang up (= our red button)  | ignored (already over)      |
+  Future<void> _onCallKitAction(
+    OnCallKitActionEvent event,
+    Emitter<CallViewModelState> emit,
+  ) async {
+    final CallKitAction(:button, :callId) = event.action;
+    final onScreen = state.callId == callId;
+    switch (button) {
+      case CallKitButton.accept:
+        if (!onScreen) {
+          if (state.isActive) return; // busy: CallKit's own "end & accept"
+          final call = await _ringingForMe(callId);
+          if (call == null) {
+            _media.endRing(callId); // too late: the call is over
+            return;
+          }
+          if (state.isActive) return; // raced
+          await _onInvite(call, emit);
+        }
+        if (state case CallIncomingState(:final call) when call.id == callId) {
+          await _onAccept(OnCallAcceptEvent(), emit);
+        }
+      case CallKitButton.decline:
+        if (onScreen) {
+          _onDecline(OnCallDeclineEvent(), emit);
+        } else {
+          _repository.reject(callId); // result ignored: CallKit closed
+        }
+      case CallKitButton.end:
+        if (onScreen) _onHangUp(OnCallHangUpEvent(), emit);
+    }
+  }
+
+  /// The call [callId] if it still rings for ME (asked to the server).
+  Future<CallModel?> _ringingForMe(String callId) async {
+    final result = await _repository.load(callId);
+    final me = await _me();
     final call = result.fold((_) => null, (c) => c);
-    final stillRingingForMe =
+    final ringing =
         call != null &&
         call.status == CallStatus.ringing &&
         call.participants.any(
           (p) => p.userId == me && p.status == ParticipantStatus.ringing,
         );
-    if (!stillRingingForMe) {
-      _notifications?.cancel(event.callId); // stale: stop ringing
-      return;
-    }
-    await _onInvite(call, emit);
+    return ringing ? call : null;
   }
 
   // ───────────── helpers ─────────────
@@ -675,6 +745,8 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     CallEndReason reason, {
     String? message,
   }) {
+    final callId = state.callId;
+    if (callId != null) _media.endRing(callId); // CallKit screen goes too
     final (peer, type) = switch (state) {
       CallOutgoingState(:final peer, :final type) => (peer, type),
       CallIncomingState(:final peer, :final call) ||

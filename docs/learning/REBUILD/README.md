@@ -132,8 +132,8 @@ current one works.
 | 6.3d | Call: call line in the chat (backend `CALL` message + app) | [23-call-line.md](23-call-line.md) | ✅ |
 | 7.1 | Push: Firebase + this phone's FCM token (`POST /me/devices`, `DELETE` on logout) | [24-push-setup.md](24-push-setup.md) | ✅ |
 | 7.2 | Call: Android rings when minimized / killed (our FCM `call.invite` → full-screen notification, Decline in the background) | [25-android-ring.md](25-android-ring.md) | ✅ |
-| 7.3 | Call: iOS rings (Stream VoIP push + CallKit) | — | ⏳ |
-| 7.4 | Call: accept from the ring → straight into the call | — | ⏳ |
+| 7.3 | Call: iOS rings when minimized / killed (Stream VoIP push + CallKit; Accept / Decline / End → our backend) | [26-ios-ring.md](26-ios-ring.md) · [handbook](26b-ios-ring-handbook.md) | ✅ |
+| 7.4 | Call: Android "Answer" → straight into the call (iOS already does it in 7.3) | — | ⏳ |
 | 8 | Translations, tests, polish | — | ⏳ |
 
 ## 📖 How each lesson is written

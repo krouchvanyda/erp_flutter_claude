@@ -2,10 +2,13 @@ import 'dart:async';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleState, WidgetsBinding;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart';
+import 'package:stream_video_push_notification/stream_video_push_notification.dart';
 
 import '../model/call_config.dart';
+import '../model/call_kit_action.dart';
 import '../model/stream_token_model.dart';
 
 /// MY link to the media call (Step 6.3b).
@@ -32,13 +35,29 @@ typedef MediaJoin = ({bool ok, bool micOn, bool cameraOn});
 /// peerPresent        true while someone else is in the media call
 /// setMicrophone · setCamera · flipCamera · setSpeaker
 /// leave()            every end path calls it (safe to call twice)
+///
+/// iOS ring (7.3):
+/// connectForRinging()  at login: the client + its VoIP token → Stream
+/// callKit              CallKit Accept / Decline / End → our call id
+/// endRing(callId)      close a CallKit screen we no longer need
 /// ```
 ///
 /// Signalling (who rings, who accepted, who hung up) is NOT here: that's our
-/// backend, in `CallRepository`. Stream only carries the media.
+/// backend, in `CallRepository`. Stream only carries the media — and, on iOS
+/// only, the VoIP ring push (Step 7.3). Android rings from OUR FCM (7.2) and
+/// must never be registered with Stream, or it would ring twice.
 class CallMedia {
-  CallMedia({required Future<StreamTokenModel?> Function() loadToken})
-    : _loadToken = loadToken;
+  CallMedia({
+    required Future<StreamTokenModel?> Function() loadToken,
+    bool Function()? onScreen,
+  }) : _loadToken = loadToken,
+       _onScreen = onScreen ?? _appResumed;
+
+  /// Is the app on screen right now? (a parameter for tests)
+  final bool Function() _onScreen;
+
+  static bool _appResumed() =>
+      WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
 
   final Future<StreamTokenModel?> Function() _loadToken;
 
@@ -46,8 +65,17 @@ class CallMedia {
   String? _clientUserId;
   StreamSubscription<List<String>>? _stateSub;
   StreamSubscription<MediaLink>? _linkSub;
+  StreamSubscription<RingingEvent>? _ringSub;
   final _peers = StreamController<List<String>>.broadcast();
   final _link = StreamController<MediaLink>.broadcast();
+  final _callKit = StreamController<CallKitAction>.broadcast();
+
+  /// The push provider's name in the Stream dashboard (Push Notifications).
+  static const String apnProvider = 'apn';
+
+  /// Only iOS rings through Stream (VoIP push + CallKit).
+  static bool get _ringsWithCallKit =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
   /// Bumped by [leave]: a join that finishes after it must not stay.
   int _generation = 0;
@@ -61,6 +89,9 @@ class CallMedia {
 
   /// MY connection to the media call: connected · reconnecting · lost.
   Stream<MediaLink> get link => _link.stream;
+
+  /// iOS: the user pressed Accept / Decline / End on the CallKit screen.
+  Stream<CallKitAction> get callKit => _callKit.stream;
 
   /// Stream's call status → our 3 words. Other statuses (joining, idle…)
   /// → null (not interesting during a call).
@@ -131,10 +162,84 @@ class CallMedia {
     }
   }
 
+  /// iOS, after login: make the Stream client NOW (not at the first call),
+  /// so it gives Stream this iPhone's VoIP token and CallKit can ring.
+  /// Then: a call ANSWERED on CallKit before Dart was ready (a killed app
+  /// woken by the push) → reported as Accept, so it isn't lost.
+  /// Android: nothing (it rings from our FCM). Never throws.
+  Future<void> connectForRinging() async {
+    if (!_ringsWithCallKit) return;
+    try {
+      final token = await _loadToken();
+      if (token == null || !token.isUsable) return;
+      final client = await _clientFor(token);
+      final calls = await client.pushNotificationManager?.activeCalls();
+      for (final c in calls ?? const <CallData>[]) {
+        final callId = CallKitAction.callIdOf(c.callCid);
+        if (c.isAccepted && callId != null) {
+          _callKit.add(CallKitAction(CallKitButton.accept, callId));
+        }
+      }
+    } catch (e) {
+      debugPrint('[CallMedia] connectForRinging failed: $e');
+    }
+  }
+
+  /// Closes the CallKit screen of [callId], if one is showing (the call
+  /// ended in the app, or the caller gave up). Silent: CallKit must not
+  /// report it back to us as an "End" press.
+  Future<void> endRing(String callId) async {
+    if (!_ringsWithCallKit) return;
+    try {
+      await _client?.pushNotificationManager?.endCallByCid(
+        CallKitAction.cidOf(callId),
+        silent: true,
+      );
+    } catch (_) {}
+  }
+
+  /// CallKit's events → ours. Only the 3 buttons; the rest (incoming,
+  /// mute…) is handled by Stream itself.
+  void _listenToCallKit(StreamVideo client) {
+    _ringSub?.cancel();
+    _ringSub = client.pushNotificationManager?.onCallEvent.listen((event) {
+      final (button, cid) = switch (event) {
+        ActionCallAccept(:final data) => (CallKitButton.accept, data.callCid),
+        ActionCallDecline(:final data) => (CallKitButton.decline, data.callCid),
+        ActionCallEnded(:final data) => (CallKitButton.end, data.callCid),
+        _ => (null, null),
+      };
+      final callId = CallKitAction.callIdOf(cid);
+      if (button == null || callId == null) return;
+      // App ON SCREEN: CallKit's buttons can't be seen, so a Decline / End
+      // now is the AppDelegate closing a racing ring (our screen shows the
+      // call). Passing it on would decline the call the user is looking at.
+      if (button != CallKitButton.accept && _onScreen()) return;
+      _callKit.add(CallKitAction(button, callId));
+    });
+  }
+
   /// One client per user. A different user (logout → login) → a new one.
+  /// Two callers at once (login + a first call) share ONE creation.
   Future<StreamVideo> _clientFor(StreamTokenModel token) async {
     final current = _client;
     if (current != null && _clientUserId == token.userId) return current;
+    final pending = _creating;
+    if (pending != null && _creatingFor == token.userId) return pending;
+    _creatingFor = token.userId;
+    final created = _create(token);
+    _creating = created;
+    try {
+      return await created;
+    } finally {
+      if (identical(_creating, created)) _creating = null;
+    }
+  }
+
+  Future<StreamVideo>? _creating;
+  String? _creatingFor;
+
+  Future<StreamVideo> _create(StreamTokenModel token) async {
     await StreamVideo.reset(disconnect: true); // the SDK keeps a singleton
     final client = StreamVideo(
       token.apiKey,
@@ -151,9 +256,23 @@ class CallMedia {
           networkAvailabilityTimeout: CallConfig.reconnectTimeout,
         ),
       ),
+      // iOS only (7.3): registers the VoIP token with Stream at connect,
+      // and removes it at disconnect (logout). Android: none, on purpose.
+      pushNotificationManagerProvider: _ringsWithCallKit
+          ? StreamVideoPushNotificationManager.create(
+              iosPushProvider: const StreamVideoPushProvider.apn(
+                name: apnProvider,
+              ),
+              // required by the API, never used on iOS
+              androidPushProvider: const StreamVideoPushProvider.firebase(
+                name: 'firebase',
+              ),
+            )
+          : null,
     );
     _client = client;
     _clientUserId = token.userId;
+    if (_ringsWithCallKit) _listenToCallKit(client);
     return client;
   }
 
@@ -219,9 +338,12 @@ class CallMedia {
     }
   }
 
-  /// Logout → forget the Stream user.
+  /// Logout → forget the Stream user (on iOS this also removes the VoIP
+  /// token from Stream: the next user of this iPhone won't get my calls).
   Future<void> signOut() async {
     await leave();
+    await _ringSub?.cancel();
+    _ringSub = null;
     _client = null;
     _clientUserId = null;
     try {
