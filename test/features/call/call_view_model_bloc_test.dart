@@ -9,6 +9,7 @@ import 'package:erp_mobile/features/call/model/call_model.dart';
 import 'package:erp_mobile/features/call/model/call_peer.dart';
 import 'package:erp_mobile/features/call/model/call_update.dart';
 import 'package:erp_mobile/features/call/repository/call_media.dart';
+import 'package:erp_mobile/features/call/repository/call_notifications.dart';
 import 'package:erp_mobile/features/call/repository/call_repository.dart';
 import 'package:erp_mobile/features/call/viewmodel/call/call_view_model_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,6 +18,8 @@ import 'package:mocktail/mocktail.dart';
 class _MockCallRepository extends Mock implements CallRepository {}
 
 class _MockCallMedia extends Mock implements CallMedia {}
+
+class _MockNotifications extends Mock implements CallNotifications {}
 
 const _me = '1';
 const _jane = '2';
@@ -507,6 +510,81 @@ void main() {
       );
       await tick();
       expect(endedWith(bloc), CallEndReason.stillInCall);
+      await bloc.close();
+    });
+  });
+
+  group('opened from the ring notification (7.2)', () {
+    CallModel ringingForMe() => CallModel(
+      id: '7',
+      conversationId: '42',
+      callerId: _jane,
+      type: CallType.voice,
+      status: CallStatus.ringing,
+      participants: const [
+        CallParticipantModel(userId: _jane, status: ParticipantStatus.answered),
+        CallParticipantModel(userId: _me, status: ParticipantStatus.ringing),
+      ],
+    );
+
+    test(
+      'still ringing for me → the incoming screen (+ "ringing" sent)',
+      () async {
+        when(
+          () => repo.load('7'),
+        ).thenAnswer((_) async => Right(ringingForMe()));
+        final bloc = build();
+        bloc.add(OnCallOpenedFromPushEvent('7'));
+        await tick();
+        expect((bloc.state as CallIncomingState).call.id, '7');
+        expect(sent, ['ringing 7']);
+        await bloc.close();
+      },
+    );
+
+    test('the ring notification follows the screen: ringing → its id; '
+        'declined → null (it stops)', () async {
+      final notifications = _MockNotifications();
+      final seen = <String?>[];
+      when(() => notifications.onIncoming(any())).thenAnswer((i) {
+        seen.add(i.positionalArguments.first as String?);
+      });
+      final bloc = CallViewModelBloc(
+        repo,
+        media: media,
+        loadPeer: (_) async => _jane$,
+        session: session,
+        notifications: notifications,
+        endedScreen: const Duration(milliseconds: 30),
+      );
+      queue.add(CallInvited(_call(callerId: _jane)));
+      await tick();
+      bloc.add(OnCallDeclineEvent());
+      await tick();
+      expect(seen.first, '7');
+      expect(seen.last, isNull);
+      await bloc.close();
+    });
+
+    test('already over (caller gave up) → stays idle', () async {
+      when(
+        () => repo.load('7'),
+      ).thenAnswer((_) async => Right(_call(status: CallStatus.missed)));
+      final bloc = build();
+      bloc.add(OnCallOpenedFromPushEvent('7'));
+      await tick();
+      expect(bloc.state, const CallIdleState());
+      await bloc.close();
+    });
+
+    test('the same call is already on screen → nothing new', () async {
+      final bloc = build();
+      queue.add(CallInvited(_call(callerId: _jane))); // STOMP got it first
+      await tick();
+      bloc.add(OnCallOpenedFromPushEvent('7'));
+      await tick();
+      verifyNever(() => repo.load(any()));
+      expect(sent, ['ringing 7']); // only once
       await bloc.close();
     });
   });

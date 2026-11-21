@@ -4,6 +4,7 @@ import 'package:flutter/services.dart' show appFlavor;
 
 import 'app/app.dart';
 import 'app/app_di.dart';
+import 'app/call_push.dart';
 import 'core/config/flavor.dart';
 import 'core/di/service_locator.dart';
 import 'core/push/push_registrar.dart';
@@ -27,8 +28,12 @@ Future<void> bootstrap(Flavor flavor) async {
   // Push (Step 7): reads google-services.json / GoogleService-Info.plist.
   // A broken Firebase setup must not stop the app: chat and calls in the
   // app still work, only pushes don't.
+  var pushReady = false;
   try {
     await Firebase.initializeApp();
+    pushReady = true;
+    // Pushes while minimized / killed → a background isolate (Step 7.2).
+    setUpCallPushBackground();
   } catch (e) {
     debugPrint('[Push] Firebase not available: $e');
   }
@@ -37,8 +42,11 @@ Future<void> bootstrap(Flavor flavor) async {
   // Live connection follows the session / app / network (Step 5.3).
   getIt<RealtimeLifecycle>().attach();
   // This phone's push token follows the session (Step 7.1).
-  getIt<PushRegistrar>().attach();
+  if (pushReady) getIt<PushRegistrar>().attach();
 
   // Edge: take services from the box, pass them in by constructor.
   runApp(App(session: getIt<AuthSession>()));
+
+  // Call ring notifications ↔ the call bloc (Step 7.2).
+  await attachCallPush(fcm: pushReady);
 }

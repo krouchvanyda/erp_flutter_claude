@@ -24,6 +24,17 @@ class PushMessaging {
   /// Google can change the token (app data cleared, restore…) → save again.
   Stream<String> get onTokenRefresh => _messaging.onTokenRefresh;
 
+  /// Data of pushes that arrive while the app is OPEN (7.2). Calls are
+  /// shown by STOMP then; a `call.cancel` still stops a ring notification.
+  Stream<Map<String, dynamic>> get onForegroundData =>
+      FirebaseMessaging.onMessage.map((m) => m.data);
+
+  /// The TOP-LEVEL function run in a background isolate for pushes that
+  /// arrive while the app is minimized / killed. Call before `runApp`.
+  static void setBackgroundHandler(
+    Future<void> Function(RemoteMessage message) handler,
+  ) => FirebaseMessaging.onBackgroundMessage(handler);
+
   /// Android 13+ / iOS: may we SHOW notifications (the ring in 7.2)?
   /// Asked once after login; later calls return the saved answer.
   Future<void> requestPermission() async {

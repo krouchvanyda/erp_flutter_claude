@@ -21,8 +21,8 @@
     <!-- For apps with targetSDK 31 (Android 12) and newer -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/> <!-- For android 13-->
 
-    <!-- Full-screen incoming-call notification (erp_callkit) so the
-         ringer shows OVER the lock screen and turns the screen on. -->
+    <!-- Full-screen incoming-call notification (Step 7.2) so the ring
+         shows OVER the lock screen and turns the screen on. -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
     <uses-permission android:name="android.permission.TURN_SCREEN_ON"/>
 
@@ -36,12 +36,9 @@
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon"
         android:usesCleartextTraffic="true">
-        <!-- usesCleartextTraffic: the killed-app Reject receiver
-             (packages/erp_callkit) POSTs over plain HTTP to the LAN
-             backend via java.net/HttpURLConnection, which — unlike Dart's
-             dart:io HttpClient that Dio uses — enforces Android's
-             NetworkSecurityPolicy. Without this the reject is blocked with
-             "Cleartext HTTP traffic not permitted". -->
+        <!-- usesCleartextTraffic: the dev / uat backend is plain HTTP on
+             the LAN. Native code (Stream, image loaders) obeys Android's
+             NetworkSecurityPolicy; without this they can't reach it. -->
         <!-- Add this inside the <application> tag -->  <!--    Add to check notification background-->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
@@ -53,7 +50,11 @@
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
-            android:windowSoftInputMode="adjustResize">
+            android:windowSoftInputMode="adjustResize"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true">
+            <!-- showWhenLocked + turnScreenOn: the ring notification's
+                 full-screen intent opens the app OVER the lock screen (7.2). -->
             <!-- change this when call minimize and open have 2 app background form        
                 android:launchMode="singleTop"
                 android:taskAffinity="" 
@@ -74,15 +75,14 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <!-- Firebase Messaging Service -->
-        <service
-            android:name="com.google.firebase.messaging.FirebaseMessagingService"
+        <!-- Step 7.2: the ring notification's buttons (Decline / Answer).
+             Decline runs Dart in a background isolate even when the app is
+             killed (flutter_local_notifications). firebase_messaging declares
+             its own FCM service: don't add another one here, it would steal
+             the pushes from the plugin. -->
+        <receiver
             android:exported="false"
-            tools:ignore="MissingClass">
-            <intent-filter>
-                <action android:name="com.google.firebase.MESSAGING_EVENT"/>
-            </intent-filter>
-        </service>
+            android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

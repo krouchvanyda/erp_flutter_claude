@@ -494,6 +494,22 @@ Login response
   Logout: `AuthRepository(beforeLogout:)` → `PushRegistrar.unregister()` =
   `DELETE /me/devices/{deviceId}` BEFORE the tokens are cleared (3 s limit,
   best effort).
+- **7.2 Android ring:** `app/call_push.dart`: `callPushBackgroundHandler`
+  (TOP-LEVEL, `@pragma('vm:entry-point')`, background isolate: NO DI;
+  `Firebase.initializeApp()` first) turns FCM `call.invite` into the ring
+  notification and `call.cancel` into cancel. `CallNotifications`
+  (`flutter_local_notifications`, Android only): full-screen, category
+  call, ongoing, insistent ringtone, 60 s, Decline / Answer. Decline with
+  the app not running → `callDeclineInBackground` → `BackgroundCallApi`
+  (tokens from secure storage, refresh ONCE, NEVER clears tokens). App
+  running: Decline → the bloc; tap / Answer / resumed while ringing →
+  `OnCallOpenedFromPushEvent` → `GET /calls/{id}` → still ringing for me →
+  the incoming screen. One ring at a time: `CallSounds` holds the ringtone
+  in the background; the bloc's `onChange` → `notifications.onIncoming`
+  (cancel when the app is in front / the call leaves Incoming). Manifest:
+  `ActionBroadcastReceiver`, MainActivity `showWhenLocked` /
+  `turnScreenOn`, NO extra FirebaseMessagingService (it steals pushes).
+  Backend needs `FCM_ENABLED=true` + the service-account JSON.
 
 ### Chat & call (Steps 5–7): lessons from the old app
 

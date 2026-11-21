@@ -4,6 +4,7 @@ import '../../core/network/token_storage.dart';
 import '../../core/realtime/realtime_service.dart';
 import '../../core/router/auth_session.dart';
 import 'repository/call_media.dart';
+import 'repository/call_notifications.dart';
 import 'repository/call_repository.dart';
 import 'repository/call_sounds.dart';
 import 'viewmodel/call/call_view_model_bloc.dart';
@@ -33,12 +34,15 @@ void registerCallModule(
     )
     // Ringback · ringtone · beeps (6.3a)
     ..registerLazySingleton<CallSounds>(CallSounds.new)
+    // The Android ring notification (7.2)
+    ..registerLazySingleton<CallNotifications>(CallNotifications.new)
     // ONE bloc for the whole app: a call outlives every page.
     ..registerLazySingleton<CallViewModelBloc>(
       () => CallViewModelBloc(
         getIt<CallRepository>(),
         media: getIt<CallMedia>(),
         sounds: getIt<CallSounds>(),
+        notifications: getIt<CallNotifications>(),
         loadPeer: loadPeer,
         session: getIt<AuthSession>(),
       ),

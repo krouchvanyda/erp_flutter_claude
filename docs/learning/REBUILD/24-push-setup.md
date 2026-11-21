@@ -1,6 +1,6 @@
 # Step 7.1 — Push: setup + this phone's token
 
-> ← Previous: [23-call-line.md](23-call-line.md) · Roadmap: [README.md](README.md)
+> ← Previous: [23-call-line.md](23-call-line.md) · Next: [25-android-ring.md](25-android-ring.md) → · Roadmap: [README.md](README.md)
 
 ```
 7.1 push setup      Firebase · this phone's FCM token → POST /me/devices · DELETE on logout   ← this lesson

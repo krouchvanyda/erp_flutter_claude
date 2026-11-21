@@ -103,3 +103,16 @@ final class OnCallReconnectTimeoutEvent extends CallViewModelEvent {
 
   final String callId;
 }
+
+// ── push (Step 7.2) ──
+
+/// The app was opened from the ring notification (or while it rang).
+final class OnCallOpenedFromPushEvent extends CallViewModelEvent {
+  OnCallOpenedFromPushEvent(this.callId, {this.answer = false});
+
+  final String callId;
+
+  /// The user tapped "Answer" (not just the notification). Auto-accept is
+  /// Step 7.4; for now the incoming screen opens.
+  final bool answer;
+}

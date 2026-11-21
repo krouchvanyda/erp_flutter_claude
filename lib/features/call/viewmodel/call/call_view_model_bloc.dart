@@ -13,6 +13,7 @@ import '../../model/call_peer.dart';
 import '../../model/call_sound.dart';
 import '../../model/call_update.dart';
 import '../../repository/call_media.dart';
+import '../../repository/call_notifications.dart';
 import '../../repository/call_repository.dart';
 import '../../repository/call_sounds.dart';
 
@@ -52,6 +53,7 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     required CallMedia media,
     required CallPeerLoader loadPeer,
     CallSounds? sounds,
+    CallNotifications? notifications,
     required AuthSession session,
     this.ringBackstop = CallConfig.ringBackstop,
     this.endedScreen = CallConfig.endedScreen,
@@ -59,6 +61,7 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     DateTime Function()? clock,
   }) : _media = media,
        _sounds = sounds,
+       _notifications = notifications,
        _loadPeer = loadPeer,
        _session = session,
        _now = clock ?? DateTime.now,
@@ -81,6 +84,7 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     on<OnCallFlipCameraEvent>(_onFlipCamera);
     on<OnCallMediaLinkEvent>(_onMediaLink);
     on<OnCallReconnectTimeoutEvent>(_onReconnectTimeout);
+    on<OnCallOpenedFromPushEvent>(_onOpenedFromPush);
 
     // Invites can come at any time → listen for the whole session.
     _queue = _repository.callsQueue().listen(_live);
@@ -93,6 +97,7 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
   final CallRepository _repository;
   final CallMedia _media;
   final CallSounds? _sounds; // null = silent (tests)
+  final CallNotifications? _notifications; // Android ring (7.2), null in tests
   final CallPeerLoader _loadPeer;
   final AuthSession _session;
   final Duration ringBackstop;
@@ -139,6 +144,12 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     inCall.value = change.nextState.isActive;
     final sound = soundFor(change.currentState, change.nextState);
     if (sound != null) _sounds?.play(sound);
+    // The ring notification follows the screen: answered / ended → it stops.
+    final ringing = switch (change.nextState) {
+      CallIncomingState(:final call) => call.id,
+      _ => null,
+    };
+    _notifications?.onIncoming(ringing);
   }
 
   /// Which sound a state change makes (null = leave the player alone).
@@ -627,6 +638,34 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     (s) => s.copyWith(frontCamera: !s.frontCamera),
     (_) => _media.flipCamera(),
   );
+
+  // ───────────── opened from a push (7.2) ─────────────
+
+  /// The app was opened from the ring notification (tap / Answer), or opened
+  /// while it rang. The invite over STOMP was missed (the app wasn't
+  /// running), so ask the server and show the incoming screen like a live
+  /// invite. Already over → nothing ("Missed call" is in the chat).
+  Future<void> _onOpenedFromPush(
+    OnCallOpenedFromPushEvent event,
+    Emitter<CallViewModelState> emit,
+  ) async {
+    if (state.callId == event.callId || state.isActive) return;
+    final result = await _repository.load(event.callId);
+    final me = await _me();
+    if (state.callId == event.callId || state.isActive) return; // raced
+    final call = result.fold((_) => null, (c) => c);
+    final stillRingingForMe =
+        call != null &&
+        call.status == CallStatus.ringing &&
+        call.participants.any(
+          (p) => p.userId == me && p.status == ParticipantStatus.ringing,
+        );
+    if (!stillRingingForMe) {
+      _notifications?.cancel(event.callId); // stale: stop ringing
+      return;
+    }
+    await _onInvite(call, emit);
+  }
 
   // ───────────── helpers ─────────────
 
