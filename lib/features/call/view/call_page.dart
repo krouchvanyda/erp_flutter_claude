@@ -38,20 +38,32 @@ import '../widgets/call_video_view.dart';
 class CallPage extends StatelessWidget {
   const CallPage({super.key});
 
+  /// Remove this page: on top → pop with its animation; under something →
+  /// just remove it. Safe to call twice.
+  static void _close(BuildContext context) {
+    final route = ModalRoute.of(context);
+    if (route == null || !route.isActive) return;
+    final navigator = Navigator.of(context);
+    route.isCurrent ? navigator.pop() : navigator.removeRoute(route);
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<CallViewModelBloc, CallViewModelState>(
       listenWhen: (previous, current) => current is CallIdleState,
-      listener: (context, state) {
-        final route = ModalRoute.of(context);
-        if (route == null || !route.isActive) return;
-        final navigator = Navigator.of(context);
-        // on top → pop with its animation; under something → just remove
-        route.isCurrent ? navigator.pop() : navigator.removeRoute(route);
-      },
+      listener: (context, state) => _close(context),
       buildWhen: (previous, current) =>
           current is! CallIdleState && previous != current,
       builder: (context, state) {
+        // Built for the FIRST time when the call is already over: pushed
+        // while the app was minimized (no frames → never built), and the
+        // call ended meanwhile. The listener above never saw that Idle, so
+        // close after this frame (else: a stuck "…" screen with no buttons).
+        if (state is CallIdleState) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) _close(context);
+          });
+        }
         final bloc = context.read<CallViewModelBloc>();
         final (peer, type) = switch (state) {
           CallOutgoingState(:final peer, :final type) => (peer, type),
