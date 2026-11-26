@@ -5,11 +5,79 @@
 Read the stages **in order**. Each stage says what to read, what to look for,
 and a ❓ question to answer before you move on.
 
-Suggested pace: Stages 0–2 on day 1 · 3–5 on day 2 · 6–8 on day 3.
+Suggested pace: Stages 0–2 on day 1 · 3–5 on day 2 · 6–8 on day 3 · Stage 9 = the setup (backend ↔ phone).
+
+## 📑 Contents
+
+- [**Stage 0: the idea (no code)**](#stage-0-the-idea-no-code)
+  - [Part 1: what is a "request"? (HTTP)](#part-1-what-is-a-request-http)
+  - [Part 2: the problem](#part-2-the-problem)
+  - [Part 3: the bad fix: "keep asking" (polling)](#part-3-the-bad-fix-keep-asking-polling)
+  - [Part 4: the good fix: WebSocket (a phone call that stays on)](#part-4-the-good-fix-websocket-a-phone-call-that-stays-on)
+  - [Part 5: STOMP: the rules for talking on the line](#part-5-stomp-the-rules-for-talking-on-the-line)
+  - [Part 6: the addresses (mailboxes)](#part-6-the-addresses-mailboxes)
+  - [Part 7: we still use HTTP too](#part-7-we-still-use-http-too)
+- [**Stage 1: the server side (the post office)**](#stage-1-the-server-side-the-post-office)
+  - [① `WebSocketConfig.java`: build the post office](#①-websocketconfigjava-build-the-post-office)
+  - [② `StompAuthChannelInterceptor.java`: the guard at the door](#②-stompauthchannelinterceptorjava-the-guard-at-the-door)
+  - [③ `ChatBroadcaster.java`: the postman](#③-chatbroadcasterjava-the-postman)
+  - [④ `MessageController.send()`: where a letter is born](#④-messagecontrollersend-where-a-letter-is-born)
+- [**Stage 2: the phone opens ONE connection**](#stage-2-the-phone-opens-one-connection)
+  - [Part A: `StompConnection`, a remote with 3 buttons](#part-a-stompconnection-a-remote-with-3-buttons)
+  - [Part B: `connectStomp()`, open the line](#part-b-connectstomp-open-the-line)
+  - [Part C: `_StompClientConnection`, the real remote](#part-c-_stompclientconnection-the-real-remote)
+- [**Stage 3: keep the line alive (the heart)**](#stage-3-keep-the-line-alive-the-heart)
+  - [Step 1: the caretaker's notebook (the variables)](#step-1-the-caretakers-notebook-the-variables)
+  - [Step 2: `start()`: go on duty (after login)](#step-2-start-go-on-duty-after-login)
+  - [Step 3: `_connect()`: dial the server (the main part)](#step-3-_connect-dial-the-server-the-main-part)
+  - [Step 4: it broke → wait, try again](#step-4-it-broke--wait-try-again)
+  - [Step 5: the address book: `subscribe()` + `_attach()`](#step-5-the-address-book-subscribe--_attach)
+  - [Step 6: `stop()` and `reconnectNow()`](#step-6-stop-and-reconnectnow)
+  - [Step 7: `_generation`: ticket numbers 🎫](#step-7-_generation-ticket-numbers-)
+- [**Stage 4: the token problem**](#stage-4-the-token-problem)
+  - [Part 1: two tokens (two cards)](#part-1-two-tokens-two-cards)
+  - [Part 2: the danger: the membership card works only ONCE](#part-2-the-danger-the-membership-card-works-only-once)
+  - [Part 3: the fix: single flight (ONE refresh at a time)](#part-3-the-fix-single-flight-one-refresh-at-a-time)
+  - [Part 4: `validTokens()`: what the socket asks for](#part-4-validtokens-what-the-socket-asks-for)
+  - [Part 5: three answers from the desk](#part-5-three-answers-from-the-desk)
+  - [Part 6: a separate Dio (no loop)](#part-6-a-separate-dio-no-loop)
+- [**Stage 5: when to connect (who presses the buttons)**](#stage-5-when-to-connect-who-presses-the-buttons)
+  - [Part 1: `attach()`: listen to the 3 alarms (once, at start)](#part-1-attach-listen-to-the-3-alarms-once-at-start)
+  - [Part 2: 🔔 1: login / logout](#part-2--1-login--logout)
+  - [Part 3: 🔔 2: app front / back](#part-3--2-app-front--back)
+  - [Part 4: 🔔 3: internet back](#part-4--3-internet-back)
+  - [Part 5: the wiring](#part-5-the-wiring)
+- [**Stage 6: from text to meaning (the chat feature)**](#stage-6-from-text-to-meaning-the-chat-feature)
+  - [① → ② `RealtimeEvent.tryParse`: open the outer box](#①--②-realtimeeventtryparse-open-the-outer-box)
+  - [② → ③ `ChatUpdate.fromRealtime`: understand the contents](#②--③-chatupdatefromrealtime-understand-the-contents)
+  - [③ → ④ the repository: deliver it](#③--④-the-repository-deliver-it)
+  - [④ → ⑤ the BLoC: turn the stream into EVENTS](#④--⑤-the-bloc-turn-the-stream-into-events)
+  - [⑤ → ⑥ what each BLoC does](#⑤--⑥-what-each-bloc-does)
+- [**Stage 7: follow ONE message, from start to end**](#stage-7-follow-one-message-from-start-to-end)
+  - [Scene 1: Mr Lin taps send](#scene-1-mr-lin-taps-send)
+  - [Scene 2: the server (Stage 1)](#scene-2-the-server-stage-1)
+  - [Scene 3: Mr Lin gets two answers](#scene-3-mr-lin-gets-two-answers)
+  - [Scene 4: your phone, on the inbox](#scene-4-your-phone-on-the-inbox)
+  - [Scene 5: you open chat 5 → ✓✓](#scene-5-you-open-chat-5--)
+  - [🧩 "What if" puzzles](#-what-if-puzzles)
+- [**Stage 8: learn by doing**](#stage-8-learn-by-doing)
+  - [Exercise 1: the tests are stories about the caretaker](#exercise-1-the-tests-are-stories-about-the-caretaker)
+  - [Exercise 2: see the real letters](#exercise-2-see-the-real-letters)
+  - [Exercise 3: break the connection](#exercise-3-break-the-connection)
+  - [Exercise 4: two phones](#exercise-4-two-phones)
+  - [✅ You finished the reading path](#-you-finished-the-reading-path)
+- [**Stage 9: set it up from zero (backend ↔ phone)**](#stage-9-set-it-up-from-zero-backend--phone)
+  - [Backend](#backend)
+  - [Phone](#phone)
+  - [⑨ Make them meet: the network](#⑨-make-them-meet-the-network)
+
+---
 
 ---
 
 ## Stage 0: the idea (no code)
+
+[↑ Contents](#-contents)
 
 ### Part 1: what is a "request"? (HTTP)
 
@@ -140,6 +208,8 @@ was saved, so there's no news).
 ---
 
 ## Stage 1: the server side (the post office)
+
+[↑ Contents](#-contents)
 
 The backend is the **post office**: it lets people in, keeps the mailboxes
 and delivers letters. Only 4 files, in
@@ -290,6 +360,8 @@ list → the chat jumps to the top with "Hello" (3).
 ---
 
 ## Stage 2: the phone opens ONE connection
+
+[↑ Contents](#-contents)
 
 One small file:
 [`lib/core/realtime/stomp_connection.dart`](../../../lib/core/realtime/stomp_connection.dart)
@@ -486,6 +558,8 @@ subscribe again) = `RealtimeService`, Stage 3.
 ---
 
 ## Stage 3: keep the line alive (the heart)
+
+[↑ Contents](#-contents)
 
 Lines break (Wi-Fi drops, the phone sleeps, the server restarts). Someone
 must **call back again and again**: `RealtimeService`, a **caretaker** whose
@@ -712,6 +786,8 @@ stateDiagram-v2
 
 ## Stage 4: the token problem
 
+[↑ Contents](#-contents)
+
 Stage 3 starts every try with `_accessToken()`: "a fresh ID card". Where
 does it come from, and why is it tricky?
 [`lib/core/network/token_refresher.dart`](../../../lib/core/network/token_refresher.dart)
@@ -858,6 +934,8 @@ sequenceDiagram
 ---
 
 ## Stage 5: when to connect (who presses the buttons)
+
+[↑ Contents](#-contents)
 
 The caretaker (`RealtimeService`, Stage 3) has buttons: `start()`, `stop()`,
 `reconnectNow()`. Its **manager** presses them:
@@ -1027,6 +1105,8 @@ flowchart LR
 ---
 
 ## Stage 6: from text to meaning (the chat feature)
+
+[↑ Contents](#-contents)
 
 A letter arrives as **plain text**:
 
@@ -1235,6 +1315,8 @@ flowchart TD
 
 ## Stage 7: follow ONE message, from start to end
 
+[↑ Contents](#-contents)
+
 Put Stages 0–6 together, like a detective 🕵️.
 
 **The story:** **Mr Lin** (user 7) sends **"Hi"** to **you** (user 5) in
@@ -1364,6 +1446,8 @@ sequenceDiagram
 
 ## Stage 8: learn by doing
 
+[↑ Contents](#-contents)
+
 ### Exercise 1: the tests are stories about the caretaker
 
 ```bash
@@ -1464,6 +1548,8 @@ in [13-chat-realtime.md](13-chat-realtime.md) §5.
 | 9 | the setup: backend library + `/ws` + `permitAll`, the phone's URL (`ws://<mac-ip>:8080/ws`), cleartext / Local Network, same Wi-Fi |
 
 ## Stage 9: set it up from zero (backend ↔ phone)
+
+[↑ Contents](#-contents)
 
 The stages explain HOW it works. This is how to SET IT UP so they find each
 other.
