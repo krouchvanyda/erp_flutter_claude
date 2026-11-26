@@ -1461,5 +1461,174 @@ in [13-chat-realtime.md](13-chat-realtime.md) §5.
 | 6 | text → `RealtimeEvent` → `ChatUpdate` → BLoC event → screen; the echo |
 | 7 | one message end to end, ✓✓ included |
 | 8 | the tests, the real frames, a real drop |
+| 9 | the setup: backend library + `/ws` + `permitAll`, the phone's URL (`ws://<mac-ip>:8080/ws`), cleartext / Local Network, same Wi-Fi |
+
+## Stage 9: set it up from zero (backend ↔ phone)
+
+The stages explain HOW it works. This is how to SET IT UP so they find each
+other.
+
+```
+🖥 BACKEND (your Mac)                                📱 PHONE
+① add the WebSocket library                         ⑤ add the STOMP library
+② open the door /ws  (WebSocketConfig)              ⑥ write the server address (environments.dart)
+③ let /ws through security (SecurityConfig)         ⑦ allow plain ws:// (Android + iOS settings)
+④ the guard checks the token (Stage 1)              ⑧ wire it up (injection.dart + main.dart)
+                     └──── ⑨ same Wi-Fi + the right IP + port 8080 open ────┘
+```
+
+### Backend
+
+**① `build.gradle`**
+
+```gradle
+implementation 'org.springframework.boot:spring-boot-starter-websocket'
+```
+
+**② `chats/ws/WebSocketConfig.java`** (Stage 1)
+
+```java
+@Configuration
+@EnableWebSocketMessageBroker                                    // STOMP on
+public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+  public void registerStompEndpoints(StompEndpointRegistry r) {
+    r.addEndpoint("/ws").setAllowedOriginPatterns("*");          // the door
+  }
+  public void configureMessageBroker(MessageBrokerRegistry r) {
+    r.enableSimpleBroker("/topic", "/queue").setHeartbeatValue(…10 s…);
+    r.setApplicationDestinationPrefixes("/app");
+    r.setUserDestinationPrefix("/user");
+  }
+  public void configureClientInboundChannel(ChannelRegistration r) {
+    r.interceptors(authInterceptor);                             // the guard
+  }
+}
+```
+
+**③ `core/security/SecurityConfig.java`**
+
+```java
+.requestMatchers("/health", …, "/ws/**", …, "/api/v1/auth/login", …).permitAll()
+```
+
+The WebSocket starts with a plain HTTP "upgrade" request WITHOUT an
+`Authorization` header. Not `permitAll` → 401/403 → the line never opens.
+Still safe: the token is checked one step later, on the STOMP CONNECT (④).
+
+```
+HTTP upgrade to /ws    → permitAll (anyone may knock)
+STOMP CONNECT + token  → the guard checks the ID card
+```
+
+**④ `StompAuthChannelInterceptor`**: Stage 1.
+
+**Port:** `server.port: ${SERVER_PORT:8080}`. The WebSocket uses the SAME
+port as HTTP.
+
+### Phone
+
+**⑤ `pubspec.yaml`**
+
+```yaml
+stomp_dart_client: ^2.1.0     # STOMP over WebSocket (Stage 2)
+connectivity_plus: ^7.0.0     # "internet back" (Stage 5)
+```
+
+**⑥ `lib/core/config/environments.dart`**
+
+```dart
+static const String localApiBaseUrl  = 'http://172.26.17.118:8080';    // REST
+static const String localRealtimeUrl = 'ws://172.26.17.118:8080/ws';   // STOMP
+```
+
+| Part | Means |
+|---|---|
+| `ws://` | plain WebSocket (like `http://`); HTTPS server → **`wss://`** |
+| `172.26.17.118` | your Mac's IP on the Wi-Fi |
+| `8080` | the backend port |
+| `/ws` | the door from ② |
+
+Rule: same host + port as `apiBaseUrl`; `http`→`ws` (`https`→`wss`) + `/ws`.
+`flavor.dart` picks one per flavor; `ApiEndPoint.websocketUrl` reads it.
+
+```bash
+ipconfig getifaddr en0        # your Mac's Wi-Fi IP (changes with the network!)
+```
+
+**⑦ Allow plain `ws://` / `http://` (dev, no HTTPS)**
+
+```xml
+<!-- Android: AndroidManifest.xml -->
+<application … android:usesCleartextTraffic="true">
+
+<!-- iOS: Info.plist -->
+<key>NSAppTransportSecurity</key>
+<dict><key>NSAllowsArbitraryLoads</key><true/></dict>
+<key>NSLocalNetworkUsageDescription</key>
+<string>ERP uses the local network …</string>
+```
+
+iOS asks **"Allow … local network?"** on the first connection to a LAN IP;
+until Allow, everything fails. The splash pings `/health` early
+(`LocalNetworkProbe`) so the question comes before login. A real `https` /
+`wss` server doesn't need these exceptions.
+
+**⑧ Wire it (once)**: `lib/core/di/injection.dart`:
+
+```dart
+RealtimeService(
+  url: ApiEndPoint.websocketUrl,
+  accessToken: () async => (await getIt<TokenRefresher>().validTokens())?.accessToken,
+)
+RealtimeLifecycle(session: getIt<AuthSession>(), realtime: getIt<RealtimeService>(), …)
+```
+
+`lib/main.dart`: `getIt<RealtimeLifecycle>().attach();`. After that, login
+connects by itself.
+
+### ⑨ Make them meet: the network
+
+```
+📱 phone ── Wi-Fi "Office" ──► 🖥 Mac 172.26.17.118:8080   (the SAME Wi-Fi)
+```
+
+| Check | How |
+|---|---|
+| backend running? | `curl http://localhost:8080/health` on the Mac |
+| phone reaches the Mac? | open `http://<mac-ip>:8080/health` in the **phone's browser** |
+| same Wi-Fi? | not 4G, not a guest network |
+| right IP? | `ipconfig getifaddr en0` = `environments.dart` |
+| Mac firewall | allow Java (or off while testing) |
+| iOS Local Network | Settings → app → Local Network ON |
+| Android emulator | `10.0.2.2` = the Mac (`localhost` = the emulator) |
+| iOS simulator | `localhost` works |
+
+| You see | Likely cause |
+|---|---|
+| timeout; `/health` fails in the phone's browser too | network: IP / Wi-Fi / firewall |
+| `/health` works in the browser, app fails on iOS | Local Network permission off |
+| HTTP works, WebSocket doesn't | `realtimeUrl` wrong (no `/ws`, `http` not `ws`) or `/ws/**` not `permitAll` |
+| connects, then closes (STOMP ERROR) | bad / expired token on CONNECT (Stage 4) |
+
+### ❓ Check yourself
+
+1. Your Mac's IP becomes `192.168.1.20`. What do you change, where?
+2. Why is `/ws/**` `permitAll`, and why is it still safe?
+3. The phone's browser can't open `http://<mac-ip>:8080/health`: app bug or network?
+4. A real HTTPS server: what does the realtime URL start with?
+
+<details><summary>Answers</summary>
+
+1. Both lines in `lib/core/config/environments.dart`
+   (`localApiBaseUrl` → `http://192.168.1.20:8080`, `localRealtimeUrl` →
+   `ws://192.168.1.20:8080/ws`), then run the app again.
+2. The upgrade request has no token header; the token is checked on the STOMP
+   CONNECT by the guard, so nobody without a valid token gets in.
+3. Network (the app isn't even involved): IP, Wi-Fi, firewall.
+4. `wss://` (e.g. `wss://api.example.com/ws`).
+
+</details>
+
+---
 
 When you finish a stage, write down your answers to its ❓ questions.
