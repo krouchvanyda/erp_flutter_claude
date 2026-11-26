@@ -135,6 +135,33 @@ void main() {
     },
   );
 
+  test('start-up: login hook + iOS onTokenRefresh with the SAME token '
+      'at once → ONE POST (no duplicate-key 500)', () async {
+    session.markAuthenticated();
+    registrar.attach();
+    refresh.add('fcm-1'); // iOS emits the current token at start
+    await tick();
+    await tick();
+    expect(server.requests.where((r) => r.method == 'POST'), hasLength(1));
+  });
+
+  test('the same token again later → not sent again; after logout + '
+      'login → sent again', () async {
+    session.markAuthenticated();
+    registrar.attach();
+    await tick();
+    await tick();
+    refresh.add('fcm-1');
+    await tick();
+    expect(server.requests, hasLength(1));
+
+    session.markLoggedOut();
+    session.markAuthenticated(); // maybe another user on this phone
+    await tick();
+    await tick();
+    expect(server.requests, hasLength(2));
+  });
+
   test(
     'no FCM token (no Play services / APNs) → no request, no crash',
     () async {

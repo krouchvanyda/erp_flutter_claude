@@ -45,6 +45,16 @@ class PushRegistrar {
 
   StreamSubscription<String>? _refresh;
 
+  /// The token the server already has (this login). Same token again → skip.
+  String? _sentToken;
+
+  /// The POST running now, and its token: a second caller with the SAME
+  /// token waits for it instead of sending a twin. At start-up iOS fires
+  /// `onTokenRefresh` at the same moment as the login hook, and two
+  /// parallel POSTs both "insert" on the server → duplicate key → 500.
+  Future<void>? _inFlight;
+  String? _inFlightToken;
+
   /// How long logout waits for the DELETE before going on.
   static const Duration unregisterTimeout = Duration(seconds: 3);
 
@@ -63,7 +73,11 @@ class PushRegistrar {
   }
 
   void _onSession() {
-    if (_session.isAuthenticated) unawaited(register());
+    if (_session.isAuthenticated) {
+      unawaited(register());
+    } else {
+      _sentToken = null; // next login → send again (maybe another user)
+    }
   }
 
   /// Ask for the permission, get the token, save it on the server.
@@ -75,7 +89,22 @@ class PushRegistrar {
     await _register(token);
   }
 
-  Future<void> _register(String token) async {
+  Future<void> _register(String token) {
+    if (token == _sentToken) return Future.value();
+    final running = _inFlight;
+    if (running != null && _inFlightToken == token) return running;
+    final sending = _send(token);
+    _inFlight = sending;
+    _inFlightToken = token;
+    return sending.whenComplete(() {
+      if (identical(_inFlight, sending)) {
+        _inFlight = null;
+        _inFlightToken = null;
+      }
+    });
+  }
+
+  Future<void> _send(String token) async {
     final result = await _appService.send<void>(
       httpMethods: HttpMethods.post,
       endPoint: ApiEndPoint.myDevices,
@@ -88,13 +117,14 @@ class PushRegistrar {
     );
     result.fold(
       (error) => debugPrint('[Push] register failed: ${error.description}'),
-      (_) {},
+      (_) => _sentToken = token,
     );
   }
 
   /// Logout: this phone stops getting the user's pushes. MUST run while the
   /// access token is still stored (the request needs it). Best effort.
   Future<void> unregister() async {
+    _sentToken = null;
     try {
       await _appService
           .send<void>(
