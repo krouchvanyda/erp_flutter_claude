@@ -1364,21 +1364,102 @@ sequenceDiagram
 
 ## Stage 8: learn by doing
 
-1. **Tests as examples.** `test/core/realtime/realtime_service_test.dart`
-   uses a fake connection: `connections.first.onLost()` = a drop.
-   ```bash
-   flutter test test/core/realtime/realtime_service_test.dart
-   ```
-   Change the backoff and see what breaks.
-2. **See the frames.** In `stomp_connection.dart`, add to `StompConfig` for a
-   moment:
-   ```dart
-   onDebugMessage: (m) => debugPrint('STOMP $m'),
-   ```
-   Run the app and watch CONNECT / CONNECTED / SUBSCRIBE / MESSAGE. Remove
-   it afterwards (it can print message text).
-3. **Break it on purpose.** App open → stop the backend → after ~20 s (two
-   missed heartbeats) "Connecting…". Start it again → reconnect + reload.
-4. **Two phones.** Do "Try it" in [13-chat-realtime.md](13-chat-realtime.md) §5.
+### Exercise 1: the tests are stories about the caretaker
+
+```bash
+flutter test test/core/realtime/realtime_service_test.dart -r expanded   # 7 tests, < 1 s
+```
+
+| Test | Checks |
+|---|---|
+| start → connects with a token → connected | Stage 3 `start` → `_connect` |
+| subscribe → typed events; unknown frames are ignored | address book + `tryParse` → null for junk |
+| drop → retry with a FRESH token → re-subscribed → reconnected | `_onLost` → new token → book replayed → `reconnected` |
+| server down → keeps trying with backoff | `_scheduleRetry` |
+| stop (logout) → closed, no more tries | `stop()` |
+| reconnectNow skips the backoff wait | `reconnectNow()` |
+| send: JSON while connected; dropped when not | `send()` (typing) |
+
+The **toy remote 🧸** from Stage 2 is `_FakeConnection` (same 3 buttons,
+`push(...)` = "a letter arrived"). The caretaker gets fake tools: tokens
+`token-1, token-2…`, a 10 ms backoff, and a `serverUp` switch. No server.
+
+**Break it on purpose:** comment out the address-book loop in
+`realtime_service.dart` (`for (final entry in _topics.entries) _attach(…)`):
+
+```
+❌ subscribe → typed events …      (an EARLY subscribe is never attached)
+❌ drop → retry … → re-subscribed
+     Expected: ['/topic/conversations/5']
+       Actual: []                  ← the new line subscribed to NOTHING 🙉
+```
+
+That loop covers subscribing **before** the first connect AND **after** a
+reconnect. A user would see no error, just a chat that silently stops
+updating. Put it back → green.
+
+### Exercise 2: see the real letters
+
+Temporarily, in `stomp_connection.dart` → `StompConfig`:
+
+```dart
+onDebugMessage: (m) => debugPrint('STOMP $m'),   // TEMP: prints the token + message text!
+```
+
+What a real message looks like (`>>>` phone → server, `<<<` server → phone):
+
+```
+STOMP <<< PONG                         💓 server heartbeat (10 s)
+STOMP <<< MESSAGE                      ④ a letter arrives
+destination:/user/queue/inbox          my private inbox (server: toUsers)
+content-type:application/json
+subscription:sub-1                     subscription #1 = the inbox (address book)
+message-id:c9988d19-…-569              STOMP's own id
+content-length:198
+
+{"event":"message.send","payload":{"id":264,"conversationId":1,"senderId":3,
+ "type":"TEXT","body":"Hello","deleted":false,"reactions":[],
+ "readByUserIds":[],"createdAt":"2026-11-26T09:45:26.227443Z"}}
+STOMP >>> PING                         💓 my heartbeat
+```
+
+Then (Stage 6): `tryParse` → `MessageArrived(264, "Hello")` → inbox BLoC →
+chat 1 to the top, unread +1. **Remove the debug line afterwards** (`git
+checkout -- lib/core/realtime/stomp_connection.dart`); never commit it.
+
+### Exercise 3: break the connection
+
+1. App on the inbox → **stop the backend**.
+2. ~20 s (missed heartbeats) → **"Connecting…"**; retries 1, 2, 4, 8 … s.
+3. **Start the backend** → the next retry connects by itself → "Connecting…"
+   goes → the inbox reloads (`reconnected`).
+4. In a long wait, Home → open the app → connects at once (`reconnectNow`).
+
+```
+backend stopped → heartbeats stop → ~20 s → onLost()       (1 · 2)
+                → "Connecting…" → backoff retries           (3)
+backend back    → fresh token → CONNECT ✅                   (3 · 4)
+                → address book replayed → reconnected → reload   (3 · 6)
+```
+
+### Exercise 4: two phones
+
+Send between two accounts and watch: the inbox moves (Stage 7 scene 4),
+"typing…", ✓ → ✓✓ when the other opens the chat (scene 5). See also "Try it"
+in [13-chat-realtime.md](13-chat-realtime.md) §5.
+
+### ✅ You finished the reading path
+
+| Stage | You can now explain |
+|---|---|
+| 0 | HTTP vs WebSocket vs STOMP; send = HTTP, news = WebSocket |
+| 1 | the server: door `/ws`, guard (token → user id), postman, where a message is broadcast |
+| 2 | opening ONE line: the remote, the buzzer, `fail()` before / after |
+| 3 | the caretaker: fresh token, backoff, address book, `reconnected`, tickets |
+| 4 | two tokens, rotation, single flight, Ok / Rejected / Failed |
+| 5 | the manager: login, app front/back, internet back, presence beacons |
+| 6 | text → `RealtimeEvent` → `ChatUpdate` → BLoC event → screen; the echo |
+| 7 | one message end to end, ✓✓ included |
+| 8 | the tests, the real frames, a real drop |
 
 When you finish a stage, write down your answers to its ❓ questions.
