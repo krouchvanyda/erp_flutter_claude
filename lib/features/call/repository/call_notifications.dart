@@ -46,11 +46,18 @@ class CallNotifications with WidgetsBindingObserver {
   static int notificationId(String callId) =>
       (int.tryParse(callId) ?? callId.hashCode) & 0x7fffffff;
 
-  /// This class is Android only: iOS rings through CallKit (7.3), and the
-  /// plugin CRASHES on iOS without iOS settings. So on iOS every method
-  /// does nothing.
+  /// TEST BRANCH (test/ios-local-call-notification): iOS shows the same
+  /// ring as a LOCAL notification too, from our FCM `call.invite` push. FCM
+  /// works with `flutter run` builds (sandbox), CallKit's `apn` doesn't.
+  /// Not for release: an Ad Hoc / App Store build would ring twice
+  /// (CallKit + this banner).
   static bool get _android =>
-      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
+
+  /// iOS: the category that gives the banner its Decline / Answer buttons.
+  static const String iosCategory = 'incoming_call';
 
   /// Set up the plugin. [onOpen] = the user tapped the notification or
   /// Answer (main isolate); [onBackgroundAction] = a TOP-LEVEL function for
@@ -63,8 +70,31 @@ class CallNotifications with WidgetsBindingObserver {
     if (!_android) return;
     _onOpen = onOpen;
     await _plugin.initialize(
-      const InitializationSettings(
-        android: AndroidInitializationSettings('@mipmap/launcher_icon'),
+      InitializationSettings(
+        android: const AndroidInitializationSettings('@mipmap/launcher_icon'),
+        // false: "Allow notifications?" is already asked in bootstrap (FCM).
+        iOS: DarwinInitializationSettings(
+          requestAlertPermission: false,
+          requestBadgePermission: false,
+          requestSoundPermission: false,
+          notificationCategories: [
+            DarwinNotificationCategory(
+              iosCategory,
+              actions: [
+                DarwinNotificationAction.plain(
+                  actionDecline,
+                  'Decline',
+                  options: {DarwinNotificationActionOption.destructive},
+                ),
+                DarwinNotificationAction.plain(
+                  actionAnswer,
+                  'Answer',
+                  options: {DarwinNotificationActionOption.foreground},
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
       onDidReceiveNotificationResponse: (r) {
         final callId = callIdOf(r.payload);
@@ -150,6 +180,16 @@ class CallNotifications with WidgetsBindingObserver {
             ),
           ],
         ),
+        // iOS: a banner + one default sound (no loop, no full screen; a
+        // real ring on iOS = CallKit). Long-press / pull down → buttons.
+        iOS: const DarwinNotificationDetails(
+          categoryIdentifier: iosCategory,
+          presentAlert: true,
+          presentBanner: true,
+          presentList: true,
+          presentSound: true,
+          interruptionLevel: InterruptionLevel.active,
+        ),
       ),
       payload: jsonEncode({'callId': invite.callId}),
     );
@@ -179,11 +219,7 @@ class CallNotifications with WidgetsBindingObserver {
   /// launcher while it rang) → its call id.
   Future<String?> ringingNow() async {
     if (!_android) return null;
-    final android = _plugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >();
-    final active = await android?.getActiveNotifications() ?? const [];
+    final active = await _plugin.getActiveNotifications();
     for (final n in active) {
       if (n.channelId == channelId) return callIdOf(n.payload);
     }

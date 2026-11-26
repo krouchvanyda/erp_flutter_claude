@@ -3,6 +3,7 @@ import 'dart:ui' show DartPluginRegistrant;
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart' show RemoteMessage;
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart'
     show NotificationResponse;
 
@@ -31,6 +32,8 @@ import '../features/call/viewmodel/call/call_view_model_bloc.dart';
 @pragma('vm:entry-point')
 Future<void> callPushBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
+  // TEST BRANCH: see on the iPad that FCM reached the background handler.
+  debugPrint('[CallPush] background ${message.data['type']}');
   final push = CallPush.fromData(message.data);
   if (push == null) return; // a chat message push: not handled yet
   final notifications = CallNotifications();
@@ -69,18 +72,20 @@ Future<void> attachCallPush({required bool fcm}) async {
   void open(String callId, {required bool answer}) =>
       calls.add(OnCallOpenedFromPushEvent(callId, answer: answer));
 
+  void decline(String callId) {
+    // ringing on screen too → the bloc declines (and closes its screen)
+    if (calls.state case CallIncomingState(
+      :final call,
+    ) when call.id == callId) {
+      calls.add(OnCallDeclineEvent());
+    } else {
+      unawaited(BackgroundCallApi.reject(callId));
+    }
+  }
+
   await notifications.init(
     onOpen: open,
-    onDecline: (callId) {
-      // ringing on screen too → the bloc declines (and closes its screen)
-      if (calls.state case CallIncomingState(
-        :final call,
-      ) when call.id == callId) {
-        calls.add(OnCallDeclineEvent());
-      } else {
-        unawaited(BackgroundCallApi.reject(callId));
-      }
-    },
+    onDecline: decline,
     onBackgroundAction: callDeclineInBackground,
   );
   notifications.attach();
@@ -92,6 +97,29 @@ Future<void> attachCallPush({required bool fcm}) async {
         notifications.cancel(callId);
       }
     });
+  }
+
+  // TEST BRANCH: iOS call banner (a visible FCM push, drawn by iOS):
+  // Decline → reject · Answer → Accept (7.4 path) · the banner → the
+  // incoming screen. The same when the tap STARTED the app.
+  if (fcm) {
+    final push = getIt<PushMessaging>();
+    void fromBanner(({Map<String, dynamic> data, String? action}) tap) {
+      debugPrint('[CallPush] banner ${tap.data['type']} action=${tap.action}');
+      final invite = CallPush.fromData(tap.data);
+      if (invite is! CallPushInvite) return;
+      switch (tap.action) {
+        case CallNotifications.actionDecline:
+          decline(invite.callId);
+        case CallNotifications.actionAnswer:
+          open(invite.callId, answer: true);
+        default:
+          open(invite.callId, answer: false);
+      }
+    }
+
+    push.onOpened.listen(fromBanner);
+    if (await push.launchedBy() case final tap?) fromBanner(tap);
   }
 
   // Started by tapping the notification / Answer, or opened while it rings.

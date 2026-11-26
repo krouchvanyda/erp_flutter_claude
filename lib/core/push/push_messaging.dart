@@ -29,6 +29,24 @@ class PushMessaging {
   Stream<Map<String, dynamic>> get onForegroundData =>
       FirebaseMessaging.onMessage.map((m) => m.data);
 
+  /// TEST BRANCH: the user TAPPED a visible push (iOS call banner) or one
+  /// of its buttons while the app was minimized → its data + the button id
+  /// (null / iOS's default id = the banner itself).
+  Stream<({Map<String, dynamic> data, String? action})> get onOpened =>
+      FirebaseMessaging.onMessageOpenedApp.map(
+        (m) => (data: m.data, action: m.actionIdentifier),
+      );
+
+  /// TEST BRANCH: the app was STARTED by tapping a visible push (or a button).
+  Future<({Map<String, dynamic> data, String? action})?> launchedBy() async {
+    try {
+      final m = await _messaging.getInitialMessage();
+      return m == null ? null : (data: m.data, action: m.actionIdentifier);
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// The TOP-LEVEL function run in a background isolate for pushes that
   /// arrive while the app is minimized / killed. Call before `runApp`.
   static void setBackgroundHandler(
@@ -39,7 +57,13 @@ class PushMessaging {
   /// Asked once after login; later calls return the saved answer.
   Future<void> requestPermission() async {
     try {
-      await _messaging.requestPermission();
+      final settings = await _messaging.requestPermission();
+      // TEST BRANCH: authorized / denied / provisional / notDetermined
+      debugPrint(
+        '[Push] permission=${settings.authorizationStatus.name} '
+        'alert=${settings.alert.name} lockScreen=${settings.lockScreen.name} '
+        'center=${settings.notificationCenter.name}',
+      );
     } catch (e) {
       debugPrint('[Push] permission request failed: $e');
     }
