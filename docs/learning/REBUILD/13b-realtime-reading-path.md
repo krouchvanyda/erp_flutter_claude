@@ -1028,32 +1028,208 @@ flowchart LR
 
 ## Stage 6: from text to meaning (the chat feature)
 
-Follow ONE frame as it changes shape:
+A letter arrives as **plain text**:
 
 ```
-'{"event":"message.send","payload":{…}}'   raw text
-   ▼ RealtimeEvent.tryParse        core/realtime/realtime_event.dart   (only the envelope)
-RealtimeEvent(event, payload)
-   ▼ ChatUpdate.fromRealtime        chat/model/chat_update.dart         (what it MEANS)
-MessageArrived(MessageModel)
-   ▼ ChatRepository._updates        chat/repository/chat_repository.dart
-Stream<ChatUpdate>
-   ▼ bloc constructor .listen → add(On…LiveUpdateEvent)
-   ▼ _onLiveUpdate                   inbox_view_model_bloc · conversation_view_model_bloc
-new state → the screen redraws
+'{"event":"message.send","payload":{"id":123,"conversationId":5,"senderId":7,"body":"Hello",…}}'
 ```
 
-| File | Look for |
-|---|---|
-| `realtime_event.dart` → `tryParse` | Bad JSON → `null`, never a crash. |
-| `chat_update.dart` → `fromRealtime` | `switch` from event name to a sealed class. Unknown → `null`. |
-| `chat_repository.dart` | `inboxUpdates`, `conversationUpdates`, `reconnected`. |
-| `inbox_view_model_bloc.dart` constructor | Stream → events. `reconnected` → reload (catch-up). |
-| `inbox_view_model_bloc.dart` → `_onLiveUpdate` | Move to the top, unread +1, `GET` an unknown chat. |
-| `conversation_view_model_bloc.dart` → `_onLiveUpdate` | New bubble; your own **echo** replaces 🕓; `message.read` → ✓✓. |
+Follow ONE letter as it changes shape, like a parcel in a warehouse:
 
-❓ Why does the BLoC turn the stream into EVENTS instead of calling `emit`
-straight from `.listen`?
+```
+① raw text           📦 a sealed box arrives
+② RealtimeEvent      📋 open the outer box: read the label ("message.send")
+③ ChatUpdate         🏷 understand it: "a new message from Mr Lin"
+④ the repository     🚚 deliver it to who ordered it (the inbox / the open chat)
+⑤ the BLoC           🧑‍💼 the page's manager updates its list
+⑥ the screen         🖼 the new bubble / the inbox moves
+```
+
+### ① → ② `RealtimeEvent.tryParse`: open the outer box
+
+[`lib/core/realtime/realtime_event.dart`](../../../lib/core/realtime/realtime_event.dart)
+(called in Stage 3's `_attach`):
+
+```dart
+static RealtimeEvent? tryParse(String? body) {
+  if (body == null || body.isEmpty) return null;
+  try {
+    final json = jsonDecode(body);
+    if (json is! Map<String, dynamic>) return null;
+    final event = json['event'];
+    if (event is! String) return null;                 // no label → ignore
+    return RealtimeEvent(event: event, payload: json['payload']);
+  } catch (_) {
+    return null;                                       // broken JSON → ignore
+  }
+}
+```
+
+- **It never crashes**: every bad case → `null` = ignore. One broken letter
+  must never crash the app.
+- **It reads only the LABEL.** It lives in `core/`, which knows nothing about
+  chat: a post office reads the address, never opens the box.
+
+### ② → ③ `ChatUpdate.fromRealtime`: understand the contents
+
+[`lib/features/chat/model/chat_update.dart`](../../../lib/features/chat/model/chat_update.dart):
+the CHAT feature opens the inner box.
+
+```dart
+return switch (event.event) {
+  'message.send'   => MessageArrived(MessageModel.fromJson(p)),
+  'message.edit' || 'message.delete' => MessageChanged(MessageModel.fromJson(p)),
+  'message.read'   => MessagesRead(…),
+  'conversation.create' || 'conversation.update' => ConversationChanged(…),
+  'conversation.remove' => ConversationRemoved(…),
+  'reaction.toggle' => ReactionsChanged(…),
+  'typing'         => TypingChanged(…),
+  _ => null,                                   // unknown label (e.g. call.invite) → ignore
+};
+// + try/catch → a payload we can't read never crashes the chat
+```
+
+| Label | Becomes | Meaning |
+|---|---|---|
+| `message.send` | `MessageArrived` | a new message |
+| `message.edit` / `.delete` | `MessageChanged` | edited / deleted |
+| `message.read` | `MessagesRead` | read up to X → ✓✓ |
+| `conversation.create` / `.update` | `ConversationChanged` | chat made / changed |
+| `conversation.remove` | `ConversationRemoved` | left / removed / deleted |
+| `typing` | `TypingChanged` | "… is typing" |
+| `reaction.toggle` | `ReactionsChanged` | the emoji list |
+
+- **`sealed class`** = a fixed list of 7 kinds. A `switch` over it must handle
+  every kind, or the app won't compile: a safety net when a kind is added.
+- After this, nobody touches raw JSON: a message from the socket and from
+  `GET /messages` are the SAME `MessageModel`.
+
+### ③ → ④ the repository: deliver it
+
+[`chat_repository.dart`](../../../lib/features/chat/repository/chat_repository.dart):
+
+```dart
+Stream<ChatUpdate> inboxUpdates() => _updates(ApiEndPoint.inboxQueue);         // /user/queue/inbox
+Stream<ChatUpdate> conversationUpdates(String id) =>
+    _updates(ApiEndPoint.conversationTopic(id));                                // /topic/conversations/5
+Stream<void> get reconnected => _realtime.reconnected;                          // Stage 3
+
+Stream<ChatUpdate> _updates(String destination) => _realtime
+    .subscribe(destination)            // ① ② subscribe + tryParse
+    .map(ChatUpdate.fromRealtime)      // ③ understand (or null)
+    .where((u) => u != null)           //   drop the nulls
+    .cast<ChatUpdate>();
+```
+
+A pipe with filters. Pages don't know STOMP or addresses: they ask "my inbox
+updates" / "updates for chat 5".
+
+### ④ → ⑤ the BLoC: turn the stream into EVENTS
+
+[`inbox_view_model_bloc.dart`](../../../lib/features/chat/viewmodel/inbox/inbox_view_model_bloc.dart):
+
+```dart
+_subscriptions = [
+  _repository.inboxUpdates().listen(
+    (update) => add(OnInboxLiveUpdateEvent(update)),      // a letter → an EVENT
+  ),
+  _repository.reconnected.listen((_) => add(OnInboxLoadEvent())),   // came back → RELOAD
+];
+…
+Future<void> close() async {
+  for (final s in _subscriptions) await s.cancel();      // → STOMP unsubscribes
+  return super.close();
+}
+```
+
+- The BLoC listens **itself**, in its constructor; the page connects nothing.
+- **Why an event, not `emit` straight away?** One door for every change (taps
+  AND letters go through handlers) · events run one by one, in order (a letter
+  during a reload can't mix up and get lost) · `emit` only works inside a
+  handler. Like a ticket counter: everyone takes a ticket.
+- `reconnected` → reload page 1 with HTTP = the catch-up for lost letters.
+- `close()` → cancel → the address book (Stage 3) unsubscribes.
+
+### ⑤ → ⑥ what each BLoC does
+
+**Inbox** (`_onLiveUpdate`):
+
+```
+MessageArrived       → unknown chat? GET it · lastMessage + unread +1 (not mine / not open) · move to TOP
+ConversationChanged  → replace it (keep OUR unread count)
+ConversationRemoved  → remove it
+MessageChanged       → fix the preview if it's the last message
+read / typing / reactions → ignore (only the open chat cares)
+```
+
+```
+┌────────────────────┐                          ┌────────────────────┐
+│ Dara     Hi…       │                          │ Mr Lin   Hello  (1)│ ← top, unread +1
+│ Mr Lin   ok        │  ── MessageArrived ──►   │ Dara     Hi…       │
+│ Sok      👍        │                          │ Sok      👍        │
+└────────────────────┘                          └────────────────────┘
+```
+
+**Open chat** (`conversation_view_model_bloc.dart`, `_onLiveUpdate`):
+
+```
+MessageArrived   → not this chat / already shown → ignore
+                   mine → the ECHO: remove my 🕓 bubble with the same text
+                   theirs → markRead · add the new bubble
+MessagesRead     → my bubbles up to X get ✓✓
+MessageChanged   → edited: replace · deleted: remove
+ReactionsChanged → the new emoji list
+```
+
+**The echo:** you send "Hello" → 🕓 bubble at once (5.2) → HTTP POST → the
+server broadcasts to `/topic/conversations/5` → you're subscribed too → your
+own message comes back. It REPLACES the 🕓 bubble (and ids already shown are
+dropped), so you never see it twice, even if the echo beats the HTTP answer.
+
+```mermaid
+flowchart TD
+    A["📦 raw text<br/>{event:'message.send', payload:{…}}"] -->|"RealtimeEvent.tryParse<br/>(core: the label only)"| B["RealtimeEvent<br/>event + payload"]
+    B -->|"ChatUpdate.fromRealtime<br/>(chat: what it MEANS)"| C["MessageArrived(MessageModel)"]
+    C -->|"ChatRepository._updates<br/>.map · .where(not null)"| D["Stream#60;ChatUpdate#62;"]
+    D -->|"bloc constructor .listen<br/>add(On…LiveUpdateEvent)"| E["handler _onLiveUpdate"]
+    E -->|"emit(new state)"| F["🖼 BlocBuilder redraws<br/>new bubble / inbox moves"]
+    X["bad JSON / unknown event"] -.->|"null → ignored"| B
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    classDef none fill:#eeeeee,stroke:#999,color:#555
+    class A,B,C,D,E app
+    class F ok
+    class X none
+```
+
+| Step | Where | Knows about |
+|---|---|---|
+| ① → ② | `core/realtime` | only the envelope |
+| ② → ③ | `chat/model` | what each event means |
+| ③ → ④ | `chat/repository` | which address = inbox / chat 5 |
+| ④ → ⑤ | `chat/viewmodel` | how the list changes |
+| ⑥ | `chat/view` | how it looks |
+
+### ❓ Check yourself
+
+1. Broken JSON from the server: what happens, and why is it good?
+2. Why does `RealtimeEvent` (core) read only the label?
+3. What does `"message.send"` become?
+4. Why `add(OnInboxLiveUpdateEvent(update))` instead of `emit` straight away?
+5. Your own message comes back on the socket: why not shown twice?
+6. The line came back: how does the inbox get what it missed?
+
+<details><summary>Answers</summary>
+
+1. `tryParse` → null → ignored. One bad letter never crashes the app.
+2. `core/` knows nothing about chat; it reads the address, never opens the box.
+3. `MessageArrived(MessageModel)`, the same model HTTP gives.
+4. One door for every change; events run one by one in order; `emit` only
+   works inside a handler.
+5. The echo replaces my 🕓 bubble with the same text, and shown ids are dropped.
+6. `reconnected` → the inbox reloads page 1 with HTTP (catch-up).
+
+</details>
 
 ---
 
