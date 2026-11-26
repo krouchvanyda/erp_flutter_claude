@@ -621,6 +621,27 @@ void main() {
       },
     );
 
+    test('the name arrives AFTER a fast accept ("Answer") → InCall gets it '
+        '(no "?" screen)', () async {
+      when(() => repo.load('7')).thenAnswer((_) async => Right(ringingForMe()));
+      final slowName = Completer<CallPeer?>();
+      final bloc = CallViewModelBloc(
+        repo,
+        media: media,
+        loadPeer: (_) => slowName.future,
+        session: session,
+      );
+      bloc.add(OnCallOpenedFromPushEvent('7', answer: true));
+      await tick();
+      bloc.add(OnCallAcceptEvent()); // what CallAutoAnswer does at once
+      await tick();
+      expect((bloc.state as CallInCallState).peer, CallPeer.unknown);
+      slowName.complete(_jane$); // the name comes late
+      await tick();
+      expect((bloc.state as CallInCallState).peer, _jane$);
+      await bloc.close();
+    });
+
     test(
       'mic refused after "Answer" → back to the normal incoming screen',
       () async {

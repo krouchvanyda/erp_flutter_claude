@@ -155,6 +155,7 @@ final class CallInCallState extends CallViewModelState {
   bool get isConnecting => connectedAt == null;
 
   CallInCallState copyWith({
+    CallPeer? peer,
     DateTime? connectedAt,
     bool? micOn,
     bool? cameraOn,
@@ -165,7 +166,7 @@ final class CallInCallState extends CallViewModelState {
     List<String>? others,
   }) => CallInCallState(
     call: call,
-    peer: peer,
+    peer: peer ?? this.peer,
     connectedAt: connectedAt ?? this.connectedAt,
     micOn: micOn ?? this.micOn,
     cameraOn: cameraOn ?? this.cameraOn,

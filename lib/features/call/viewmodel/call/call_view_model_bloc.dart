@@ -322,9 +322,15 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     OnCallPeerLoadedEvent event,
     Emitter<CallViewModelState> emit,
   ) {
-    final s = state;
-    if (s is CallIncomingState && s.call.id == event.callId) {
-      emit(s.copyWith(peer: event.peer));
+    // The name can arrive AFTER the call was accepted ("Answer" accepts at
+    // once, 7.4) → apply it in InCall too, or the screen keeps "?" / "…".
+    switch (state) {
+      case final CallIncomingState s when s.call.id == event.callId:
+        emit(s.copyWith(peer: event.peer));
+      case final CallInCallState s when s.call.id == event.callId:
+        emit(s.copyWith(peer: event.peer));
+      default:
+        break;
     }
   }
 
