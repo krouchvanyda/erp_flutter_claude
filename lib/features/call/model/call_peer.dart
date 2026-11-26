@@ -1,5 +1,8 @@
 import 'package:collection/collection.dart';
 
+import '../../../core/network/api_endpoints.dart';
+import 'call_model.dart';
+
 /// One person's name + photo, for group calls (Stream only knows user ids).
 class CallMember {
   const CallMember({required this.name, this.avatarUrl});
@@ -39,8 +42,17 @@ class CallPeer {
     this.members = const {},
   });
 
-  /// Shown until the name is loaded (an incoming call carries only ids).
+  /// Nothing known yet (no name, no photo).
   static const unknown = CallPeer(name: '');
+
+  /// WHO is calling, straight from the call (the backend sends
+  /// `callerName` + `callerAvatarUrl`): the ringing screen shows it at once.
+  /// A group call shows the caller first; the chat lookup then fills in the
+  /// group's name and members (`loadPeer`).
+  factory CallPeer.callerOf(CallModel call) => CallPeer(
+    name: call.callerName?.trim() ?? '',
+    avatarUrl: ApiEndPoint.fileUrl(call.callerAvatarUrl),
+  );
 
   /// A person's name, or the group's name.
   final String name;

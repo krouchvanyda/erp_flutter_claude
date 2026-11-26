@@ -308,7 +308,13 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
       return;
     }
     _stopTimers();
-    emit(CallIncomingState(call: call, autoAnswer: autoAnswer));
+    emit(
+      CallIncomingState(
+        call: call,
+        peer: CallPeer.callerOf(call), // name + photo from the invite, at once
+        autoAnswer: autoAnswer,
+      ),
+    );
     _watchTopic(call.conversationId);
     _media.prepare(); // warm up Stream while it rings → short "Connecting…"
     _repository.ringing(call.id); // caller: "Calling…" → "Ringing…"

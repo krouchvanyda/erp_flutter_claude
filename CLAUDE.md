@@ -473,6 +473,12 @@ Login response
   own model) → outcome → words per viewer (`mine` = I called; missed for the
   others = red); `ChatCallContent` in the bubble (no ✓✓), tap = call back via
   `ChatCallLauncher`; inbox preview "📞 Missed voice call" (no "You:").
+- **Who is calling:** the call itself carries it (`ChatCallDto.callerName`
+  + `callerAvatarUrl`, STOMP invite and `GET /calls/{id}`; backend
+  `ChatCallController.toDto`). `_onInvite` starts with
+  `CallPeer.callerOf(call)` → the name + photo are on the ringing screen at
+  once. `loadPeer` (the chat) still runs for a group's name / photo /
+  members; it fails → the invite's name stays.
 - Stuck calls: the backend hangs up for a user whose socket is gone 30 s
   during an ANSWERED call (`answered-disconnect-grace-seconds`, backend
   `CallDisconnectHandler`). The raw "Caller is already in an active call"

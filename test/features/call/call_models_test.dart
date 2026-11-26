@@ -131,4 +131,27 @@ void main() {
     expect(a.member('2').firstName, 'Dara');
     expect(a.member('99').name, '');
   });
+
+  test('WHO is calling comes with the call: callerName + callerAvatarUrl '
+      '→ CallPeer.callerOf (photo → full URL)', () {
+    final call = CallModel.fromJson({
+      'id': 7,
+      'conversationId': 3,
+      'callerId': 2,
+      'type': 'VOICE',
+      'status': 'RINGING',
+      'callerName': ' Mr Bin ',
+      'callerAvatarUrl': '/uploads/avatars/2.jpg',
+    });
+    expect(call.callerName, ' Mr Bin ');
+    final peer = CallPeer.callerOf(call);
+    expect(peer.name, 'Mr Bin');
+    expect(peer.avatarUrl, endsWith('/uploads/avatars/2.jpg'));
+    expect(peer.avatarUrl, startsWith('http'));
+    expect(peer.isGroup, isFalse);
+
+    // an old backend (no name) → empty: the chat lookup fills it in
+    final old = CallModel.fromJson({'id': 7, 'callerId': 2});
+    expect(CallPeer.callerOf(old), CallPeer.unknown);
+  });
 }

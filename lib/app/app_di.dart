@@ -30,8 +30,9 @@ Future<void> configureAppDependencies() async {
   registerCallModule(getIt, loadPeer: _callPeer);
 }
 
-/// An incoming call carries only ids → the chat's conversation gives the
-/// name + photo (a person, or the group). Fails → null (the screen shows "…").
+/// The invite already has the caller's name + photo (`CallPeer.callerOf`,
+/// shown at once). The chat's conversation adds the rest: a group's name,
+/// photo and every member (6.3c). Fails → null (the invite's name stays).
 Future<CallPeer?> _callPeer(CallModel call) async {
   final chat = getIt<ChatRepository>();
   final (result, myId) = await (

@@ -674,6 +674,32 @@ void main() {
     await bloc.close();
   });
 
+  test('the invite carries the caller → name + photo on the ringing '
+      'screen AT ONCE (before the chat lookup)', () async {
+    final neverLoads = Completer<CallPeer?>(); // the chat lookup is slow
+    final bloc = CallViewModelBloc(
+      repo,
+      media: media,
+      loadPeer: (_) => neverLoads.future,
+      session: session,
+    );
+    queue.add(
+      CallInvited(
+        CallModel.fromJson({
+          'id': 7,
+          'conversationId': 42,
+          'callerId': _jane,
+          'type': 'VOICE',
+          'status': 'RINGING',
+          'callerName': 'Jane Doe',
+        }),
+      ),
+    );
+    await tick();
+    expect((bloc.state as CallIncomingState).peer.name, 'Jane Doe');
+    await bloc.close();
+  });
+
   group('iOS CallKit (7.3)', () {
     CallModel ringingForMe() => CallModel(
       id: '7',

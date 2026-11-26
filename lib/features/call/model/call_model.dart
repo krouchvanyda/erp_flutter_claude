@@ -45,6 +45,7 @@ class CallModel {
     this.endReason,
     this.streamCallCid,
     this.callerAvatarUrl,
+    this.callerName,
     this.participants = const [],
   });
 
@@ -60,6 +61,11 @@ class CallModel {
   final String? endReason;
   final String? streamCallCid;
   final String? callerAvatarUrl;
+
+  /// WHO is calling, sent by the backend in the call itself (with
+  /// [callerAvatarUrl]): the ringing screen shows it at once, no chat
+  /// lookup. Null from an old backend.
+  final String? callerName;
   final List<CallParticipantModel> participants;
 
   bool get isVideo => type == CallType.video;
@@ -75,6 +81,7 @@ class CallModel {
     endReason: json['endReason'] as String?,
     streamCallCid: json['streamCallCid'] as String?,
     callerAvatarUrl: json['callerAvatarUrl'] as String?,
+    callerName: json['callerName'] as String?,
     participants: [
       for (final p in json['participants'] as List? ?? const [])
         CallParticipantModel.fromJson(p as Map<String, dynamic>),
@@ -95,6 +102,7 @@ class CallModel {
     endReason: endReason ?? this.endReason,
     streamCallCid: streamCallCid,
     callerAvatarUrl: callerAvatarUrl,
+    callerName: callerName,
     participants: participants,
   );
 
@@ -113,6 +121,7 @@ class CallModel {
       other.endReason == endReason &&
       other.streamCallCid == streamCallCid &&
       other.callerAvatarUrl == callerAvatarUrl &&
+      other.callerName == callerName &&
       _list.equals(other.participants, participants);
 
   @override
@@ -127,6 +136,7 @@ class CallModel {
     endReason,
     streamCallCid,
     callerAvatarUrl,
+    callerName,
     _list.hash(participants),
   );
 
