@@ -289,20 +289,199 @@ list → the chat jumps to the top with "Hello" (3).
 
 ---
 
-## Stage 2: open one connection
+## Stage 2: the phone opens ONE connection
 
+One small file:
 [`lib/core/realtime/stomp_connection.dart`](../../../lib/core/realtime/stomp_connection.dart)
+(~105 lines), in 3 parts:
 
-| Where | Look for |
-|---|---|
-| `StompConnection` | Only `subscribe` + `close`. Tiny on purpose, so tests can fake it. |
-| `connectStomp()` | Builds the real `StompClient`. |
-| `stompConnectHeaders` | The CONNECT frame with your token. |
-| `onConnect` | CONNECTED arrived → the `Completer` finishes → "you're in". |
-| `reconnectDelay: Duration.zero` | We switch OFF the package's own reconnect (why? Stage 3). |
-| `onWebSocketError` / `onWebSocketDone` / `onDisconnect` | Before CONNECTED = "couldn't connect" (error). After = "lost it" (`onLost`). |
+```
+Part A  StompConnection         the "remote control": what you can DO with an open line
+Part B  connectStomp()          OPENS the line: CONNECT → wait for CONNECTED
+Part C  _StompClientConnection  the real remote control (uses the package)
+```
 
-❓ What does the `Completer` turn into, and when does it finish?
+### Part A: `StompConnection`, a remote with 3 buttons
+
+```dart
+abstract interface class StompConnection {
+  void Function() subscribe(String destination, void Function(String? body) onMessage);
+  void send(String destination, String body);
+  void close();
+}
+```
+
+| Button | STOMP letter (Stage 0) | Means |
+|---|---|---|
+| `subscribe(address, onMessage)` | ③ SUBSCRIBE | "send me letters for this address" |
+| `send(address, body)` | a letter TO the server | e.g. "I'm typing" → `/app/conversations/5/typing` |
+| `close()` | — | hang up |
+
+- `abstract interface class` = only a **list of buttons**, no code: WHAT you
+  can do, not HOW.
+- **Why so small?** Tests. The app only knows "a remote with 3 buttons", so a
+  test gives it a **toy remote** (no server, no internet):
+  ```
+  real app → real remote 📡 (talks to the server)
+  tests    → toy remote 🧸  (we press "a message arrived" ourselves)
+  ```
+- `subscribe` returns `void Function()` = a **stop button**:
+  ```dart
+  final stop = conn.subscribe('/user/queue/inbox', (body) => print(body));
+  stop();   // UNSUBSCRIBE
+  ```
+
+### Part B: `connectStomp()`, open the line
+
+**In and out:**
+
+```dart
+Future<StompConnection> connectStomp({
+  required String url,              // the door: ws://<server>:8080/ws
+  required String token,            // the ID card
+  required void Function() onLost,  // "call me if the line breaks LATER"
+})
+```
+
+A `Future` = "I'll give you the remote control **later**", when the line is ready.
+
+**The `Completer` = a restaurant buzzer 📟:**
+
+```
+You order           → you get a buzzer      (opened.future)          you wait…
+Food is ready       → buzz ✅               (opened.complete(...))   "here's your remote"
+Kitchen problem     → buzz ❌               (opened.completeError)   "sorry, it failed"
+```
+
+The package doesn't give a Future; it calls our functions later. The
+Completer turns that into a simple `await connectStomp(...)`.
+
+**The settings:**
+
+```dart
+StompConfig(
+  url: url,
+  reconnectDelay: Duration.zero,                           // ❗ don't reconnect by yourself
+  connectionTimeout: const Duration(seconds: 10),          // give up after 10 s
+  heartbeatIncoming: const Duration(seconds: 10),          // same as the server (Stage 1)
+  heartbeatOutgoing: const Duration(seconds: 10),
+  stompConnectHeaders: {'Authorization': 'Bearer $token'}, // ① = the CONNECT letter
+  …
+)
+```
+
+**Why `reconnectDelay: Duration.zero`?** The package would reconnect with the
+**same old token**. Tokens **expire** → the guard says "No!" forever. So WE
+reconnect (Stage 3), with a **fresh** token each time:
+
+```
+🪪 old ID card (expired) → 🚪 "No!"   ← the package would do this
+🪪 new ID card           → 🚪 "OK"    ← we do this
+```
+
+**The callbacks (what happens when):**
+
+```dart
+onConnect: (_) { opened.complete(_StompClientConnection(client)); }, // ② CONNECTED → buzz ✅
+onStompError:     (frame) => fail(StateError('STOMP error')),  // server said ERROR (bad token…)
+onWebSocketError: (error) => fail(error ?? 'socket error'),    // network problem
+onWebSocketDone:  ()      => fail(StateError('socket closed')),
+onDisconnect:     (_)     => fail(StateError('disconnected')),
+```
+
+**`fail()`: the same problem means 2 things, depending on WHEN:**
+
+```dart
+void fail(Object error) {
+  if (!opened.isCompleted) {        // BEFORE we got in
+    opened.completeError(error);    //   → buzz ❌ "couldn't connect"
+    client.deactivate();
+  } else if (!lost) {               // AFTER we got in, and only the first time
+    lost = true;
+    onLost();                       //   → "the line broke, call back"
+  }
+}
+```
+
+Like a phone call: **before** = you dial and nobody answers ("the call
+failed"); **after** = you're talking and the call drops ("lost", call back).
+
+**Why `lost`?** One break often gives 3 callbacks (error → done →
+disconnected). `lost` makes sure `onLost()` runs **only once** (one
+reconnect, not 3):
+
+```
+"error!"        → lost=false → onLost() ✅, lost=true
+"closed!"       → lost=true  → ignore
+"disconnected!" → lost=true  → ignore
+```
+
+**Start:** `)..activate();` = create the client AND start it. Then
+`return opened.future;` (the buzzer).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant R as RealtimeService
+    participant C as connectStomp()
+    participant S as 🖥 server /ws
+    R->>C: await connectStomp(url, token, onLost)
+    C->>S: open WebSocket + CONNECT (Bearer token)
+    alt the guard says OK
+        S-->>C: CONNECTED
+        C-->>R: buzz ✅ the remote control
+        R->>C: subscribe('/user/queue/inbox')
+        Note over C,S: … later the line breaks (Wi-Fi gone)
+        C-->>R: onLost() (once)
+    else server down / bad token
+        C-->>R: buzz ❌ error
+    end
+```
+
+### Part C: `_StompClientConnection`, the real remote
+
+```dart
+subscribe(destination, onMessage) {
+  final unsubscribe = _client.subscribe(
+    destination: destination,
+    callback: (frame) => onMessage(frame.body),   // ④ MESSAGE → pass the TEXT on
+  );
+  return () { try { unsubscribe(); } catch (_) {} };  // the stop button
+}
+send(destination, body) => _client.send(destination: destination, body: body);
+close() => _client.deactivate();
+```
+
+- `frame.body` = `{"event":"message.send","payload":{…}}`. This file doesn't
+  READ it, it passes it on (reading it = Stage 6).
+- `try/catch` in stop: the line may already be closed → nothing to undo.
+- `_` = private: everyone else only knows the 3-button remote (Part A).
+
+**This file opens ONE line, ONCE.** Keeping it alive (retry, fresh token,
+subscribe again) = `RealtimeService`, Stage 3.
+
+### ❓ Check yourself
+
+1. Why is `StompConnection` so small?
+2. What does the `Completer` do, and when does it ring ✅?
+3. Which setting is the CONNECT letter with your ID card?
+4. Why `reconnectDelay: Duration.zero`?
+5. "socket closed" before CONNECTED, then again after: what does `fail()` do each time?
+6. Why the `lost` variable?
+
+<details><summary>Answers</summary>
+
+1. So tests can use a toy (fake) remote with the same 3 buttons: no server needed.
+2. It's a buzzer: it turns "the package calls me later" into a Future. It
+   rings ✅ when the server says CONNECTED (❌ on an error before that).
+3. `stompConnectHeaders: {'Authorization': 'Bearer $token'}`.
+4. The package would retry with the same old token; tokens expire → refused
+   forever. We retry ourselves with a fresh token.
+5. Before → the Future fails (error: "couldn't connect"). After → `onLost()`
+   ("line lost, call back").
+6. One break gives several callbacks; `lost` makes `onLost()` run only once.
+
+</details>
 
 ---
 
