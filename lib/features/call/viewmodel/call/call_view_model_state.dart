@@ -83,28 +83,39 @@ final class CallIncomingState extends CallViewModelState {
     required this.call,
     this.peer = CallPeer.unknown,
     this.accepting = false,
+    this.autoAnswer = false,
   });
 
   final CallModel call;
   final CallPeer peer;
   final bool accepting;
 
-  CallIncomingState copyWith({CallPeer? peer, bool? accepting}) =>
-      CallIncomingState(
-        call: call,
-        peer: peer ?? this.peer,
-        accepting: accepting ?? this.accepting,
-      );
+  /// The user already said yes: "Answer" on the Android ring notification
+  /// (Step 7.4). The call page runs the Accept path by itself (mic check →
+  /// accept) and shows "Connecting…" instead of the Accept button.
+  final bool autoAnswer;
+
+  CallIncomingState copyWith({
+    CallPeer? peer,
+    bool? accepting,
+    bool? autoAnswer,
+  }) => CallIncomingState(
+    call: call,
+    peer: peer ?? this.peer,
+    accepting: accepting ?? this.accepting,
+    autoAnswer: autoAnswer ?? this.autoAnswer,
+  );
 
   @override
   bool operator ==(Object other) =>
       other is CallIncomingState &&
       other.call == call &&
       other.peer == peer &&
-      other.accepting == accepting;
+      other.accepting == accepting &&
+      other.autoAnswer == autoAnswer;
 
   @override
-  int get hashCode => Object.hash(call, peer, accepting);
+  int get hashCode => Object.hash(call, peer, accepting, autoAnswer);
 }
 
 /// Both sides agreed (Accept). [connectedAt] is null while "Connecting…"

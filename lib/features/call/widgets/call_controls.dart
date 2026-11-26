@@ -51,6 +51,12 @@ class CallControls extends StatelessWidget {
     );
 
     final Widget buttons = switch (state) {
+      // "Answer" was tapped on the notification (7.4): accepting by itself,
+      // only Decline stays (to change your mind).
+      CallIncomingState(:final autoAnswer) when autoAnswer => Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [end],
+      ),
       CallIncomingState(:final accepting, :final call) => Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [

@@ -53,6 +53,20 @@ void main() {
     );
   });
 
+  test('"Answer" on the notification (7.4): no ring; mic refused → ring', () {
+    final answered = _incoming.copyWith(autoAnswer: true);
+    expect(_sound(_idle, answered), CallSound.silence); // opened by Answer
+    expect(_sound(_incoming, answered), CallSound.silence); // already ringing
+    expect(
+      _sound(answered, answered.copyWith(autoAnswer: false)), // mic refused
+      CallSound.ringtone,
+    );
+    expect(
+      _sound(answered, answered.copyWith(accepting: true)),
+      CallSound.silence,
+    );
+  });
+
   test('InCall: "Connecting…" is silent, the beep when they are really in', () {
     expect(_sound(_ringing, _connecting), CallSound.silence); // ring stops
     expect(_sound(_connecting, _talking), CallSound.connected);

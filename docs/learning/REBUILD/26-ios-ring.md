@@ -1,6 +1,6 @@
 # Step 7.3 — iOS: ring when the app is minimized or killed (CallKit)
 
-> ← Previous: [25-android-ring.md](25-android-ring.md) · Roadmap: [README.md](README.md)
+> ← Previous: [25-android-ring.md](25-android-ring.md) · Next: [27-answer-from-ring.md](27-answer-from-ring.md) → · Roadmap: [README.md](README.md)
 >
 > 🛠 Do it yourself, step by step (setup · every file · troubleshooting): [26b-ios-ring-handbook.md](26b-ios-ring-handbook.md)
 

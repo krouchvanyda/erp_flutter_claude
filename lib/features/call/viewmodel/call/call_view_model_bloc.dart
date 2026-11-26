@@ -91,6 +91,7 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     on<OnCallMediaLinkEvent>(_onMediaLink);
     on<OnCallReconnectTimeoutEvent>(_onReconnectTimeout);
     on<OnCallOpenedFromPushEvent>(_onOpenedFromPush);
+    on<OnCallAutoAnswerFailedEvent>(_onAutoAnswerFailed);
     on<OnCallKitActionEvent>(_onCallKitAction);
 
     // Invites can come at any time → listen for the whole session.
@@ -179,6 +180,8 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
   /// | → Outgoing "Calling…"                   | — (silent)     |
   /// | Outgoing: their phone rings "Ringing…"  | ringback loop  |
   /// | → Incoming (a new call)                 | ringtone loop  |
+  /// | → Incoming from "Answer" (autoAnswer)    | silence (7.4)  |
+  /// | Incoming: autoAnswer refused (mic)      | ringtone loop  |
   /// | Incoming: I tap Accept                  | silence        |
   /// | → InCall "Connecting…"                  | silence        |
   /// | InCall: they're in the media (00:00)    | connected beep |
@@ -188,11 +191,18 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
       case CallOutgoingState(:final peerRinging):
         final wasRinging = prev is CallOutgoingState && prev.peerRinging;
         return peerRinging && !wasRinging ? CallSound.ringback : null;
-      case CallIncomingState(:final call, :final accepting):
+      case CallIncomingState(:final call, :final accepting, :final autoAnswer):
         if (prev is! CallIncomingState || prev.call.id != call.id) {
+          // already answered on the notification → don't ring again
+          return autoAnswer ? CallSound.silence : CallSound.ringtone;
+        }
+        if (accepting && !prev.accepting) return CallSound.silence;
+        if (autoAnswer && !prev.autoAnswer) return CallSound.silence;
+        // mic refused → a normal incoming call again: ring
+        if (prev.autoAnswer && !autoAnswer && !accepting) {
           return CallSound.ringtone;
         }
-        return accepting && !prev.accepting ? CallSound.silence : null;
+        return null;
       case CallInCallState(:final connectedAt):
         if (prev is! CallInCallState) return CallSound.silence;
         return prev.connectedAt == null && connectedAt != null
@@ -238,6 +248,7 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     );
     // Listen BEFORE asking, so no "ringing" / "accept" can slip past.
     _watchTopic(event.conversationId);
+    _media.prepare(); // warm up Stream while it rings → short "Connecting…"
 
     final result = await _repository.start(event.conversationId, event.type);
     final now = state;
@@ -281,8 +292,9 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
 
   Future<void> _onInvite(
     CallModel call,
-    Emitter<CallViewModelState> emit,
-  ) async {
+    Emitter<CallViewModelState> emit, {
+    bool autoAnswer = false,
+  }) async {
     final me = await _me();
     if (call.callerId == me) return; // my own invite on the topic
     if (call.status.isOver || state.callId == call.id) return;
@@ -296,8 +308,9 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
       return;
     }
     _stopTimers();
-    emit(CallIncomingState(call: call));
+    emit(CallIncomingState(call: call, autoAnswer: autoAnswer));
     _watchTopic(call.conversationId);
+    _media.prepare(); // warm up Stream while it rings → short "Connecting…"
     _repository.ringing(call.id); // caller: "Calling…" → "Ringing…"
     _startBackstop(call.id);
     _loadPeer(call).then((peer) {
@@ -666,10 +679,20 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
   /// while it rang. The invite over STOMP was missed (the app wasn't
   /// running), so ask the server and show the incoming screen like a live
   /// invite. Already over → nothing ("Missed call" is in the chat).
+  ///
+  /// "Answer" (Step 7.4) → the incoming state carries `autoAnswer: true`:
+  /// the call page runs the Accept path itself (mic check → accept), so the
+  /// user taps ONCE. The bloc never asks for permissions (no context here).
   Future<void> _onOpenedFromPush(
     OnCallOpenedFromPushEvent event,
     Emitter<CallViewModelState> emit,
   ) async {
+    // Already ringing on screen (STOMP was first) + "Answer" → answer it.
+    final s = state;
+    if (s is CallIncomingState && s.call.id == event.callId) {
+      if (event.answer && !s.accepting) emit(s.copyWith(autoAnswer: true));
+      return;
+    }
     if (state.callId == event.callId || state.isActive) return;
     final call = await _ringingForMe(event.callId);
     if (state.callId == event.callId || state.isActive) return; // raced
@@ -677,7 +700,18 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
       _notifications?.cancel(event.callId); // stale: stop ringing
       return;
     }
-    await _onInvite(call, emit);
+    await _onInvite(call, emit, autoAnswer: event.answer);
+  }
+
+  /// The mic was refused after "Answer" → the normal incoming screen.
+  void _onAutoAnswerFailed(
+    OnCallAutoAnswerFailedEvent event,
+    Emitter<CallViewModelState> emit,
+  ) {
+    final s = state;
+    if (s is CallIncomingState && s.call.id == event.callId && s.autoAnswer) {
+      emit(s.copyWith(autoAnswer: false));
+    }
   }
 
   // ───────────── iOS CallKit (7.3) ─────────────

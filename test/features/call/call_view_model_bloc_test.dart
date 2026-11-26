@@ -77,6 +77,7 @@ void main() {
     callKit = StreamController<CallKitAction>.broadcast();
     when(() => media.callKit).thenAnswer((_) => callKit.stream);
     when(() => media.connectForRinging()).thenAnswer((_) async {});
+    when(() => media.prepare()).thenAnswer((_) async {});
     when(() => media.endRing(any())).thenAnswer((_) async {});
 
     when(() => repo.myUserId()).thenAnswer((_) async => _me);
@@ -594,6 +595,62 @@ void main() {
       expect(sent, ['ringing 7']); // only once
       await bloc.close();
     });
+
+    test('"Answer" (7.4) → the incoming screen with autoAnswer', () async {
+      when(() => repo.load('7')).thenAnswer((_) async => Right(ringingForMe()));
+      final bloc = build();
+      bloc.add(OnCallOpenedFromPushEvent('7', answer: true));
+      await tick();
+      final s = bloc.state as CallIncomingState;
+      expect(s.autoAnswer, isTrue);
+      expect(s.accepting, isFalse); // the PAGE accepts (mic check first)
+      await bloc.close();
+    });
+
+    test(
+      '"Answer" for the call already on screen → autoAnswer, no load',
+      () async {
+        final bloc = build();
+        queue.add(CallInvited(_call(callerId: _jane)));
+        await tick();
+        bloc.add(OnCallOpenedFromPushEvent('7', answer: true));
+        await tick();
+        verifyNever(() => repo.load(any()));
+        expect((bloc.state as CallIncomingState).autoAnswer, isTrue);
+        await bloc.close();
+      },
+    );
+
+    test(
+      'mic refused after "Answer" → back to the normal incoming screen',
+      () async {
+        when(
+          () => repo.load('7'),
+        ).thenAnswer((_) async => Right(ringingForMe()));
+        final bloc = build();
+        bloc.add(OnCallOpenedFromPushEvent('7', answer: true));
+        await tick();
+        bloc.add(OnCallAutoAnswerFailedEvent('7'));
+        await tick();
+        expect((bloc.state as CallIncomingState).autoAnswer, isFalse);
+        expect(sent, ['ringing 7']); // no accept, no reject
+        await bloc.close();
+      },
+    );
+  });
+
+  test('a call rings (mine OR theirs) → Stream is warmed up at once '
+      '(short "Connecting…" after Accept)', () async {
+    final bloc = build();
+    queue.add(CallInvited(_call(callerId: _jane))); // they call me
+    await tick();
+    verify(() => media.prepare()).called(1);
+    bloc.add(OnCallDeclineEvent());
+    await tick(40);
+    startCall(bloc); // I call
+    await tick();
+    verify(() => media.prepare()).called(1);
+    await bloc.close();
   });
 
   group('iOS CallKit (7.3)', () {
@@ -625,9 +682,7 @@ void main() {
       await tick(20);
       expect(sent, ['ringing 7', 'accept 7']);
       expect(bloc.state, isA<CallInCallState>());
-      verify(
-        () => media.join(cid: 'default:call-7', video: false),
-      ).called(1);
+      verify(() => media.join(cid: 'default:call-7', video: false)).called(1);
       await bloc.close();
     });
 
@@ -644,31 +699,37 @@ void main() {
       await bloc.close();
     });
 
-    test('Accept twice (live event + the start-up check) → accepted once',
-        () async {
-      when(() => repo.load('7')).thenAnswer((_) async => Right(ringingForMe()));
-      final bloc = build();
-      callKit
-        ..add(const CallKitAction(CallKitButton.accept, '7'))
-        ..add(const CallKitAction(CallKitButton.accept, '7'));
-      await tick(20);
-      expect(sent.where((e) => e == 'accept 7'), hasLength(1));
-      await bloc.close();
-    });
+    test(
+      'Accept twice (live event + the start-up check) → accepted once',
+      () async {
+        when(
+          () => repo.load('7'),
+        ).thenAnswer((_) async => Right(ringingForMe()));
+        final bloc = build();
+        callKit
+          ..add(const CallKitAction(CallKitButton.accept, '7'))
+          ..add(const CallKitAction(CallKitButton.accept, '7'));
+        await tick(20);
+        expect(sent.where((e) => e == 'accept 7'), hasLength(1));
+        await bloc.close();
+      },
+    );
 
-    test('Accept too late (the call is over) → CallKit closed, no screen',
-        () async {
-      when(
-        () => repo.load('7'),
-      ).thenAnswer((_) async => Right(_call(status: CallStatus.missed)));
-      final bloc = build();
-      callKit.add(const CallKitAction(CallKitButton.accept, '7'));
-      await tick(20);
-      expect(bloc.state, const CallIdleState());
-      verify(() => media.endRing('7')).called(1);
-      expect(sent, isEmpty);
-      await bloc.close();
-    });
+    test(
+      'Accept too late (the call is over) → CallKit closed, no screen',
+      () async {
+        when(
+          () => repo.load('7'),
+        ).thenAnswer((_) async => Right(_call(status: CallStatus.missed)));
+        final bloc = build();
+        callKit.add(const CallKitAction(CallKitButton.accept, '7'));
+        await tick(20);
+        expect(bloc.state, const CallIdleState());
+        verify(() => media.endRing('7')).called(1);
+        expect(sent, isEmpty);
+        await bloc.close();
+      },
+    );
 
     test('Decline on CallKit for an unknown call → POST reject', () async {
       final bloc = build();

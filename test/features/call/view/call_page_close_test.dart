@@ -13,8 +13,9 @@ void main() {
   // iOS minimized: the page is pushed but never drawn, and the call ends
   // meanwhile. When the app comes back, the page is built for the first
   // time with the bloc ALREADY Idle → it must close by itself.
-  testWidgets('first built while Idle → closes itself (no stuck "…" screen)',
-      (tester) async {
+  testWidgets('first built while Idle → closes itself (no stuck "…" screen)', (
+    tester,
+  ) async {
     final bloc = _MockCallBloc();
     whenListen(
       bloc,

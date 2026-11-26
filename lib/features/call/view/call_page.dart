@@ -8,6 +8,7 @@ import '../model/call_enums.dart';
 import '../model/call_peer.dart';
 import '../repository/call_media.dart';
 import '../viewmodel/call/call_view_model_bloc.dart';
+import '../widgets/call_auto_answer.dart';
 import '../widgets/call_background.dart';
 import '../widgets/call_controls.dart';
 import '../widgets/call_participants_row.dart';
@@ -73,14 +74,19 @@ class CallPage extends StatelessWidget {
           CallIdleState() => (CallPeer.unknown, CallType.voice),
         };
         final video = type == CallType.video;
+        // Microphone (+ camera) first, THEN accept. The Accept button AND
+        // "Answer" on the Android notification (7.4) both go through here.
+        Future<void> accept() async {
+          if (await CallPermissionGate.ensure(context, video: video)) {
+            bloc.add(OnCallAcceptEvent());
+          } else if (state case CallIncomingState(:final call)) {
+            bloc.add(OnCallAutoAnswerFailedEvent(call.id)); // buttons back
+          }
+        }
+
         final controls = CallControls(
           state: state,
-          // Microphone (+ camera) first, THEN accept.
-          onAccept: () async {
-            if (await CallPermissionGate.ensure(context, video: video)) {
-              bloc.add(OnCallAcceptEvent());
-            }
-          },
+          onAccept: accept,
           onDecline: () => bloc.add(OnCallDeclineEvent()),
           onHangUp: () => bloc.add(OnCallHangUpEvent()),
           onToggleMic: () => bloc.add(OnCallToggleMicEvent()),
@@ -138,6 +144,7 @@ class CallPage extends StatelessWidget {
                             CallParticipantsRow(userIds: others, peer: peer),
                           ],
                           const Spacer(flex: 2),
+                          CallAutoAnswer(state: state, onAnswer: accept),
                           controls,
                           const SizedBox(height: AppSpacing.xxl),
                         ],

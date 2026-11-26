@@ -63,7 +63,7 @@ the same data count as equal. Why, and what breaks without them:
 | 7.1 | Push setup (device token) | ✅ |
 | 7.2 | Android rings when minimized / killed | ✅ |
 | 7.3 | iOS rings when minimized / killed (CallKit) | ✅ |
-| 7.4 | Android: Answer → straight into the call | ⏳ |
+| 7.4 | Android: Answer → straight into the call | ✅ |
 | 8 | Translations, tests, polish | ⏳ |
 
 The full table with lesson links is in

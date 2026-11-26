@@ -534,6 +534,18 @@ Login response
   ring while on screen). `AppDelegate.swift` = Firebase · PushKit register
   · that one rule; no method channels. Test the killed case with
   `--release` (a debug build can't start without the debugger).
+- **7.4 Answer = Accept (Android):** `OnCallOpenedFromPushEvent(answer:
+  true)` → `CallIncomingState(autoAnswer: true)` (also for a call already on
+  screen). The bloc NEVER accepts by itself (the mic question needs a
+  context): `CallAutoAnswer` (stateful, checks in `initState` AND
+  `didUpdateWidget`, once per call id, after the frame) runs the page's ONE
+  `accept()` = the Accept button's path (`CallPermissionGate` →
+  `OnCallAcceptEvent`). Mic refused → `OnCallAutoAnswerFailedEvent` →
+  `autoAnswer: false` (buttons + ringtone back). UI: "Connecting…", only
+  Decline. Sounds: Incoming with autoAnswer = silence.
+  Short "Connecting…": the bloc calls `CallMedia.prepare()` as soon as a
+  call rings (Outgoing AND Incoming) = token + Stream client + socket
+  BEFORE Accept; `join` reuses that client (no token request).
 
 ### Chat & call (Steps 5–7): lessons from the old app
 

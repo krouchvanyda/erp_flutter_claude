@@ -111,9 +111,10 @@ class CallMedia {
     const failed = (ok: false, micOn: false, cameraOn: false);
     final generation = ++_generation;
     try {
-      final token = await _loadToken();
-      if (token == null || !token.isUsable) return failed;
-      final client = await _clientFor(token);
+      // Warmed up while it rang ([prepare]) → no token request, no new
+      // client, socket already open: only the join is left.
+      final client = _client ?? await _newClient();
+      if (client == null) return failed;
 
       // CallPermissionGate already asked (at 📞 / Accept). Only CHECK here:
       // a "no" turns that track off instead of failing the whole join.
@@ -197,8 +198,9 @@ class CallMedia {
   Future<void> _logPushSetup(StreamVideo client, String userId) async {
     await Future<void>.delayed(const Duration(seconds: 5));
     try {
-      String tail(String? t) =>
-          t == null || t.length < 6 ? '(none)' : '…${t.substring(t.length - 6)}';
+      String tail(String? t) => t == null || t.length < 6
+          ? '(none)'
+          : '…${t.substring(t.length - 6)}';
       final voip = await client.pushNotificationManager
           ?.getDevicePushTokenVoIP();
       final devices =
@@ -217,7 +219,9 @@ class CallMedia {
         );
       }
       if (voip == null) {
-        debugPrint('[CallMedia]   ❌ iOS gave NO VoIP token (PushKit / voip mode)');
+        debugPrint(
+          '[CallMedia]   ❌ iOS gave NO VoIP token (PushKit / voip mode)',
+        );
       } else if (!devices.any((d) => d.pushToken == voip)) {
         debugPrint('[CallMedia]   ❌ this iPhone is NOT registered at Stream');
       }
@@ -258,6 +262,26 @@ class CallMedia {
       if (button != CallKitButton.accept && _onScreen()) return;
       _callKit.add(CallKitAction(button, callId));
     });
+  }
+
+  /// WARM UP while the phone rings (Outgoing / Incoming), so "Connecting…"
+  /// after Accept is short: token request + Stream client + its socket are
+  /// done BEFORE the tap, and [join] only joins. Never throws; nothing
+  /// happens if a client already exists (iOS makes it at login, 7.3).
+  Future<void> prepare() async {
+    if (_client != null) return;
+    try {
+      await _newClient();
+    } catch (e) {
+      debugPrint('[CallMedia] prepare failed: $e');
+    }
+  }
+
+  /// A token from our server → the client for that user (null: no token).
+  Future<StreamVideo?> _newClient() async {
+    final token = await _loadToken();
+    if (token == null || !token.isUsable) return null;
+    return _clientFor(token);
   }
 
   /// One client per user. A different user (logout → login) → a new one.

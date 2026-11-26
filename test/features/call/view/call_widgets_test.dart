@@ -91,6 +91,17 @@ void main() {
     expect(taps, isEmpty); // no double accept
   });
 
+  testWidgets('"Answer" on the notification (7.4): "Connecting…", only '
+      'Decline (no Accept to tap twice)', (tester) async {
+    final taps = <String>[];
+    const s = CallIncomingState(call: _call, autoAnswer: true);
+    expect(CallStatusText.textFor(s), 'Connecting…');
+    await tester.pumpWidget(host(s, taps));
+    expect(find.byIcon(Icons.call_rounded), findsNothing);
+    await tester.tap(find.byIcon(Icons.call_end_rounded));
+    expect(taps, ['decline']); // can still change your mind
+  });
+
   testWidgets('in a voice call: Mute + Speaker + End (no camera)', (
     tester,
   ) async {

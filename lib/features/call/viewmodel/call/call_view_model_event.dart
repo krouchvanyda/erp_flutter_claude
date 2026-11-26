@@ -112,9 +112,17 @@ final class OnCallOpenedFromPushEvent extends CallViewModelEvent {
 
   final String callId;
 
-  /// The user tapped "Answer" (not just the notification). Auto-accept is
-  /// Step 7.4; for now the incoming screen opens.
+  /// The user tapped "Answer" (not just the notification) → the incoming
+  /// screen accepts by itself (`autoAnswer`, Step 7.4).
   final bool answer;
+}
+
+/// "Answer" was tapped, but the microphone was refused on the call page →
+/// back to the normal incoming screen (⛔ 📞) (Step 7.4).
+final class OnCallAutoAnswerFailedEvent extends CallViewModelEvent {
+  OnCallAutoAnswerFailedEvent(this.callId);
+
+  final String callId;
 }
 
 // ── iOS CallKit (Step 7.3) ──

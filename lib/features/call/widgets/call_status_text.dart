@@ -29,7 +29,9 @@ class CallStatusText extends StatelessWidget {
   static String textFor(CallViewModelState state) => switch (state) {
     CallOutgoingState(:final peerRinging) =>
       peerRinging ? 'Ringing…' : 'Calling…',
-    CallIncomingState(:final accepting) when accepting => 'Connecting…',
+    CallIncomingState(:final accepting, :final autoAnswer)
+        when accepting || autoAnswer =>
+      'Connecting…',
     // a group: WHO is calling (the title is the group's name) (6.3c)
     CallIncomingState(:final peer, :final call)
         when peer.isGroup && peer.members.containsKey(call.callerId) =>
