@@ -1233,13 +1233,132 @@ flowchart TD
 
 ---
 
-## Stage 7: trace one real message (on paper)
+## Stage 7: follow ONE message, from start to end
 
-> A sends "Hi" to B. Write every step and file until B's inbox moves and A
-> sees ✓✓.
+Put Stages 0–6 together, like a detective 🕵️.
 
-Check yourself with the sequence diagram in
-[13-chat-realtime.md](13-chat-realtime.md) §2 "A message, end to end".
+**The story:** **Mr Lin** (user 7) sends **"Hi"** to **you** (user 5) in
+**chat 5**. You're on the **inbox**. Then you **open** chat 5 → Mr Lin sees
+**✓✓**. Both phones are logged in and connected:
+
+```
+📱 Mr Lin (chat 5 OPEN)   subscribed: /user/queue/inbox · /topic/conversations/5
+📱 You    (on the INBOX)  subscribed: /user/queue/inbox
+```
+
+### Scene 1: Mr Lin taps send
+
+1. **🕓 bubble at once** (5.2): `ConversationViewModelBloc` adds
+   `OutgoingMessage("Hi")`.
+2. **HTTP POST** (Stage 0): `ChatRepository.sendText` → `AppService.send` →
+   `POST /api/v1/chats/conversations/5/messages {body: "Hi"}`.
+   `AuthInterceptor` adds `Bearer …` (expired → 401 → `TokenRefresher`,
+   single flight, Stage 4).
+
+### Scene 2: the server (Stage 1)
+
+3. `MessageController.send()`: save → **id 123** · `toConversation(5, …)` →
+   `/topic/conversations/5` · `toUsers([5, 7], "inbox", …)` → each member's
+   `/user/queue/inbox` · `pushNotifier` → FCM for closed apps (you're open →
+   nothing) · HTTP **200 + id 123**.
+
+```
+                    ┌──► /topic/conversations/5        → Mr Lin (chat 5 open)
+"Hi" saved (123) ───┤
+                    ├──► /user/queue/inbox (user 5)    → YOU
+                    └──► /user/queue/inbox (user 7)    → Mr Lin's inbox list
+```
+
+### Scene 3: Mr Lin gets two answers
+
+4. **The echo** on `/topic/conversations/5` → `MessageArrived` → mine → it
+   REPLACES the 🕓 bubble → "Hi ✓" (Stage 6).
+5. **The HTTP 200** (id 123): already shown → dropped. Any order → shown once.
+
+### Scene 4: your phone, on the inbox
+
+6. Your line (Stage 2) gets MESSAGE on `/user/queue/inbox`.
+7. The caretaker (`_attach`, Stage 3) → `RealtimeEvent.tryParse`.
+8. `ChatUpdate.fromRealtime` → `MessageArrived` → `inboxUpdates()` (Stage 6).
+9. Inbox BLoC → `add(OnInboxLiveUpdateEvent)` → `_onLiveUpdate`: last message
+   "Hi", not mine + not open → **unread +1**, **move to top** → `emit`.
+10. `BlocBuilder` redraws, well under a second after the tap:
+
+```
+┌────────────────────┐        ┌────────────────────┐
+│ Dara     Hey       │        │ Mr Lin   Hi     (1)│
+│ Mr Lin   ok        │  ──►   │ Dara     Hey       │
+└────────────────────┘        └────────────────────┘
+```
+
+### Scene 5: you open chat 5 → ✓✓
+
+11. `ConversationPage` + its BLoC: **HTTP GET** messages + **SUBSCRIBE**
+    `/topic/conversations/5` (address book, Stage 3).
+12. `markRead` (newest, not mine) → **HTTP `POST /conversations/5/read
+    {lastReadMessageId: 123}`**, not awaited.
+13. Server (`ConversationController.markRead`): save "user 5 read up to 123"
+    · `toConversation(5, "message.read", {conversationId, userId: 5,
+    lastReadMessageId: 123})` · `toUser(5, "inbox", "conversation.update")`
+    → your other devices clear the badge.
+14. Mr Lin: `message.read` → `MessagesRead(userId 5, up to 123)` → his
+    messages ≤ 123 get `readByUserIds += 5`.
+15. **"Hi ✓" → "Hi ✓✓"** 🎉
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant L as 📱 Mr Lin (chat 5 open)
+    participant S as 🖥 Server
+    participant Y as 📱 You
+    L->>L: 🕓 "Hi" bubble (optimistic)
+    L->>S: HTTP POST /conversations/5/messages "Hi"
+    S->>S: save → id 123
+    S-->>L: /topic/conversations/5 message.send (the ECHO)
+    L->>L: echo replaces 🕓 → "Hi ✓"
+    S-->>Y: /user/queue/inbox message.send
+    Y->>Y: tryParse → MessageArrived → inbox bloc<br/>Mr Lin to the top, (1)
+    S-->>L: HTTP 200 (id 123, already shown → dropped)
+    Note over Y: you tap the chat
+    Y->>S: HTTP GET messages + SUBSCRIBE /topic/conversations/5
+    Y->>S: HTTP POST /conversations/5/read {123}
+    S-->>L: /topic/conversations/5 message.read (user 5, up to 123)
+    L->>L: MessagesRead → "Hi ✓✓"
+```
+
+| # | What | Stage |
+|---|---|---|
+| 1–2 | 🕓 bubble, HTTP POST (+ refresh if needed) | 0 · 4 |
+| 3 | save + topic AND every inbox | 1 |
+| 4–5 | echo replaces 🕓; HTTP answer dropped by id | 6 |
+| 6–7 | the letter on your line → `RealtimeEvent` | 2 · 3 |
+| 8–10 | → `MessageArrived` → inbox BLoC → screen | 6 |
+| 11 | open the chat: GET + SUBSCRIBE | 3 |
+| 12–13 | markRead (HTTP) → `message.read` broadcast | 0 · 1 |
+| 14–15 | `MessagesRead` → ✓✓ | 6 |
+
+### 🧩 "What if" puzzles
+
+- **A.** Chat 5 is already OPEN on your phone when "Hi" arrives. Which
+  addresses reach you? Does unread go up?
+- **B.** Your Wi-Fi was off 10:00–10:02; "Hi" was sent at 10:01. What
+  happens when it's back?
+- **C.** Your app is minimized (socket frozen). How are you told?
+
+<details><summary>Answers</summary>
+
+- **A.** Both `/user/queue/inbox` and `/topic/conversations/5`. The open chat
+  adds the bubble + `markRead` at once (Mr Lin gets ✓✓ fast). The inbox moves
+  it to the top but unread stays 0 (`open` = true).
+- **B.** At 10:01 the letter is LOST (nobody on the line). 10:02: internet
+  back → `RealtimeLifecycle` → `reconnectNow()` (Stage 5) → fresh token,
+  CONNECT, re-subscribe the address book (Stage 3) → `reconnected` → the inbox
+  reloads page 1 with HTTP → "Hi" appears (Stage 6).
+- **C.** Minimizing sent `POST /presence/background` (Stage 5). Step 3's
+  `pushNotifier` sends an FCM push → a notification. Opening the app →
+  `reconnectNow()` → `reconnected` → reload.
+
+</details>
 
 ---
 
