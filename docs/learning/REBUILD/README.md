@@ -135,6 +135,7 @@ current one works.
 | 7.3 | Call: iOS rings when minimized / killed (Stream VoIP push + CallKit; Accept / Decline / End → our backend) | [26-ios-ring.md](26-ios-ring.md) · [handbook](26b-ios-ring-handbook.md) | ✅ |
 | 7.4 | Call: Android "Answer" → straight into the call (`autoAnswer`; iOS already does it in 7.3) | [27-answer-from-ring.md](27-answer-from-ring.md) | ✅ |
 | 7.5 | Call: switch a voice call to video (tap 🎥; the layout follows whoever has a camera on) | [28-voice-to-video.md](28-voice-to-video.md) | ✅ |
+| 7.3b | 🧪 Test branch `test/ios-local-call-notification`: iOS call banner from our FCM push (works with `flutter run`; Decline / Answer on long-press) | [29-ios-call-banner-test.md](29-ios-call-banner-test.md) | ✅ (test only) |
 | 8 | Translations, tests, polish | — | ⏳ |
 
 ## 📖 How each lesson is written
