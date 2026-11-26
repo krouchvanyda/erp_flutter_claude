@@ -857,19 +857,172 @@ sequenceDiagram
 
 ---
 
-## Stage 5: when to connect
+## Stage 5: when to connect (who presses the buttons)
 
-1. [`lib/core/realtime/realtime_lifecycle.dart`](../../../lib/core/realtime/realtime_lifecycle.dart):
-   login → `start()`, logout → `stop()`, app back in front → `reconnectNow()`,
-   network back → `reconnectNow()`.
-2. `lib/main.dart`: `getIt<RealtimeLifecycle>().attach()`, called once at start.
-3. `lib/core/di/injection.dart`: `TokenRefresher`, `RealtimeService`,
-   `RealtimeLifecycle` wired together.
-4. `lib/core/network/api_endpoints.dart`: `websocketUrl` (from the flavor,
-   `/ws`), `inboxQueue`, `conversationTopic(id)`.
+The caretaker (`RealtimeService`, Stage 3) has buttons: `start()`, `stop()`,
+`reconnectNow()`. Its **manager** presses them:
+[`lib/core/realtime/realtime_lifecycle.dart`](../../../lib/core/realtime/realtime_lifecycle.dart)
+(~78 lines). It listens to **3 alarms**:
 
-❓ Why reconnect at once when the app is opened, instead of waiting for the
-backoff?
+```
+            🔔 1: login / logout      (AuthSession)
+manager ◄── 🔔 2: app front / back    (the phone's lifecycle)
+            🔔 3: internet back       (connectivity)
+   │
+   └──► caretaker (RealtimeService): start() · stop() · reconnectNow()
+```
+
+**Why a manager?** So no page thinks about the connection: the inbox just
+subscribes (Stage 3), never "connect" or "reconnect".
+
+### Part 1: `attach()`: listen to the 3 alarms (once, at start)
+
+```dart
+void attach() {
+  _session.addListener(_onSession);               // 🔔 1
+  WidgetsBinding.instance.addObserver(this);      // 🔔 2
+  _network = (_connectivityChanges ?? Connectivity().onConnectivityChanged)
+      .listen((results) {                         // 🔔 3
+        if (results.any((r) => r != ConnectivityResult.none)) {
+          _realtime.reconnectNow();
+        }
+      });
+  _onSession();                                   // already logged in?
+}
+```
+
+Called once in `lib/main.dart`: `getIt<RealtimeLifecycle>().attach();`.
+
+**Why `_onSession()` at the end?** Auto-login (splash, 3.2) may have logged
+you in BEFORE `attach()`. A listener only hears FUTURE changes → check once
+by hand (the same lesson as `CallAutoAnswer` in 7.4).
+
+### Part 2: 🔔 1: login / logout
+
+```dart
+void _onSession() =>
+    _session.isAuthenticated ? _realtime.start() : _realtime.stop();
+```
+
+`AuthSession` is what `AuthGate` watches too: ONE login → the screen changes
+AND the line opens.
+
+### Part 3: 🔔 2: app front / back
+
+```dart
+void didChangeAppLifecycleState(AppLifecycleState state) {
+  if (!_session.isAuthenticated) return;
+  switch (state) {
+    case AppLifecycleState.resumed:          // 📱 back in FRONT
+      _realtime.reconnectNow();              //    dial now (skip the wait)
+      unawaited(_onForeground?.call());      //    "I'm here"
+    case AppLifecycleState.paused:           // 📱 minimized
+      unawaited(_onBackground?.call());      //    "I'm away"
+    default:
+      break;                                 // inactive / hidden / detached
+  }
+}
+```
+
+```
+resumed  = on screen · inactive = in between (Control Center…) · paused = minimized
+```
+
+**Why `reconnectNow()` on resume?** iOS / Android often kill the socket in
+the background, and the caretaker may be in a 30 s wait. Open the app →
+connected in ~0.5 s → `reconnected` → the inbox reloads.
+
+**The two beacons (5.6):** `POST /chats/presence/background` ·
+`/foreground`. Without them the server notices you're gone only after ~30 s
+of missed heartbeats. With them, at once, and that matters for **calls**: the
+backend rings a minimized phone by **push** (CallKit / FCM). `unawaited` =
+send, don't wait (the app is leaving). `?.call()` = only if given (tests).
+
+### Part 4: 🔔 3: internet back
+
+```dart
+Connectivity().onConnectivityChanged.listen((results) {
+  if (results.any((r) => r != ConnectivityResult.none)) _realtime.reconnectNow();
+});
+```
+
+Out of the lift, Wi-Fi back → dial now. `any(…)` = is there ANY internet
+(a phone can have Wi-Fi + 4G). `reconnectNow()` does nothing if already
+connected / dialing, so calling it often is harmless.
+
+### Part 5: the wiring
+
+`lib/core/di/injection.dart`:
+
+```dart
+RealtimeLifecycle(
+  session: getIt<AuthSession>(),
+  realtime: getIt<RealtimeService>(),
+  onBackground: () => getIt<AppService>().send<void>(… ApiEndPoint.presenceBackground …),
+  onForeground: …,
+)
+```
+
+`lib/core/network/api_endpoints.dart` (all addresses in one place):
+
+```dart
+static String get websocketUrl => Flavor.current.realtimeUrl;   // the door (/ws)
+static const String inboxQueue = '/user/queue/inbox';
+static const String presenceTopic = '/topic/presence';
+static String conversationTopic(String id) => '/topic/conversations/$id';
+static const String callsQueue = '/user/queue/calls';
+```
+
+```mermaid
+flowchart LR
+    S["🔔 AuthSession<br/>login / logout"] --> L["RealtimeLifecycle<br/>(the manager)"]
+    A["🔔 app front / back"] --> L
+    N["🔔 internet back"] --> L
+    L -->|"login → start()<br/>logout → stop()"| R["RealtimeService<br/>(the caretaker)"]
+    L -->|"front / internet → reconnectNow()"| R
+    L -->|"minimized → /presence/background<br/>front → /presence/foreground"| B["🖥 backend"]
+    R -->|"STOMP /ws"| B
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef wait fill:#fff4d6,stroke:#d4a017,color:#5a4300
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    class S,A,N wait
+    class L,R app
+    class B ok
+```
+
+**A day in the life:**
+
+```
+08:00  open → auto-login → start() → connected 🟢
+08:30  Home → paused → POST /presence/background   (iOS freezes the app; socket dies)
+09:00  open → resumed → reconnectNow() → connected → reconnected → inbox reloads
+                      → POST /presence/foreground 🟢
+09:10  lift, no Wi-Fi → lost → wait 1, 2, 4 s …
+09:11  Wi-Fi back → reconnectNow() → connected at once
+18:00  logout → stop() → closed, no more tries
+```
+
+### ❓ Check yourself
+
+1. The 3 alarms?
+2. Why does `attach()` call `_onSession()` itself?
+3. Open the app after 1 hour minimized: why `reconnectNow()`?
+4. Why tell the server "I'm minimized"? What goes wrong for calls without it?
+5. Why does the inbox page never call `start()` / `reconnectNow()`?
+
+<details><summary>Answers</summary>
+
+1. Login/logout (`AuthSession`) · app front/back (lifecycle) · internet back
+   (connectivity).
+2. Auto-login may have run before `attach()`; a listener only hears future
+   changes.
+3. The socket is probably dead and the caretaker may be in a 30 s wait →
+   dial now so chat works at once.
+4. The server knows at once (not after ~30 s) → calls go by push. Without
+   it, a call in those 30 s goes only to the frozen socket → nothing rings.
+5. The manager does it for everyone; pages only subscribe.
+
+</details>
 
 ---
 
