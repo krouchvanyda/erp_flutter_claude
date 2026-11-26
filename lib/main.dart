@@ -7,6 +7,7 @@ import 'app/app_di.dart';
 import 'app/call_push.dart';
 import 'core/config/flavor.dart';
 import 'core/di/service_locator.dart';
+import 'core/push/push_messaging.dart';
 import 'core/push/push_registrar.dart';
 import 'core/realtime/realtime_lifecycle.dart';
 import 'core/router/auth_session.dart';
@@ -42,7 +43,14 @@ Future<void> bootstrap(Flavor flavor) async {
   // Live connection follows the session / app / network (Step 5.3).
   getIt<RealtimeLifecycle>().attach();
   // This phone's push token follows the session (Step 7.1).
-  if (pushReady) getIt<PushRegistrar>().attach();
+  if (pushReady) {
+    // "Allow notifications?" FIRST, before any screen (like feature/call):
+    // every question is answered before the login. Asked only once by iOS /
+    // Android; later starts return at once. A "no" is fine: the app runs
+    // (iOS CallKit doesn't need it; Android just can't show the ring).
+    await getIt<PushMessaging>().requestPermission();
+    getIt<PushRegistrar>().attach();
+  }
 
   // Edge: take services from the box, pass them in by constructor.
   runApp(App(session: getIt<AuthSession>()));

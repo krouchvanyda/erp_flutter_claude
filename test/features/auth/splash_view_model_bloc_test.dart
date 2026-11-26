@@ -29,6 +29,23 @@ void main() {
     verify: (_) => verify(repo.restoreSession).called(1),
   );
 
+  var pinged = 0;
+  blocTest<SplashViewModelBloc, SplashViewModelState>(
+    'start → onStart runs once (iOS "Local Network?" asked on the splash)',
+    setUp: () {
+      pinged = 0;
+      when(repo.restoreSession).thenAnswer((_) async => false);
+    },
+    build: () => SplashViewModelBloc(
+      repo,
+      minDuration: Duration.zero,
+      onStart: () => pinged++,
+    ),
+    act: (bloc) => bloc.add(OnSplashStartedEvent()),
+    expect: () => [isA<SplashFinishedState>()],
+    verify: (_) => expect(pinged, 1),
+  );
+
   blocTest<SplashViewModelBloc, SplashViewModelState>(
     'no session → Finished(isLoggedIn: false)',
     setUp: () => when(repo.restoreSession).thenAnswer((_) async => false),

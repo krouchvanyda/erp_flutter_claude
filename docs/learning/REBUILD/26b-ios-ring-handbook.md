@@ -82,7 +82,7 @@ capability in A4.)
 
    | Field | Value |
    |---|---|
-   | **Name** | `apn` ← must equal `CallMedia.apnProvider` in the code |
+   | **Name** | `apn` ← must equal the `apnProvider` in `CallMedia` (production: TestFlight / App Store builds) |
    | Auth key | the `.p8` file |
    | Key ID / Team ID | from A1 |
    | Bundle / Topic | `com.enterprise.erpMobile` |
@@ -548,7 +548,7 @@ Go **top to bottom**. Each row needs the row above it to work.
 | Backend log says `all callees ONLINE; skipping` | Is the callee app really minimized? It must send `POST /chats/presence/background` | Minimize (Home), wait 1–2 s, call again. Look for that request in the dev log |
 | Backend: `[stream] ring failed status=4xx` | the Stream request body / keys | read the message; the API key + secret must be the same app as the dashboard |
 | Backend rings, the iPhone shows nothing | Is a VoIP device registered? Console: `SV:PNManager` `createDevice` | 1) you logged in after this build? 2) `voip` in Background Modes? 3) B5 line present? |
-| Device registered, still nothing | Stream dashboard → the provider | name exactly `apn` · **sandbox** for `flutter run` · bundle id `com.enterprise.erpMobile` · right Key ID / Team ID |
+| Device registered, still nothing | Stream dashboard → the provider | **every `flutter run` build (even `--release`) is Development-signed = SANDBOX token**, which the production `apn` provider can't reach → test CallKit with a TestFlight / Ad Hoc build (or add a sandbox provider) · bundle id `com.enterprise.erpMobile` · right Key ID / Team ID |
 | Rings only when the app is minimized, not when killed | the build type | killed test needs `--release` |
 | Swiped away and still no ring | Low Power Mode / Focus / Do Not Disturb | turn them off; allow Notifications for the app |
 | CallKit rings, Accept → nothing happens, the caller stays "Calling…" | Dart got the Accept? Console: `OnCallKitActionEvent` / `[CallMedia]` | the start-up check (`connectForRinging` → `activeCalls`) must run after login; is the user still logged in (refresh token not expired)? |

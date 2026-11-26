@@ -1,5 +1,6 @@
 import '../../core/di/service_locator.dart';
 import '../../core/network/app_service.dart';
+import '../../core/network/local_network_probe.dart';
 import '../../core/network/token_storage.dart';
 import '../../core/push/push_registrar.dart';
 import '../../core/router/auth_session.dart';
@@ -28,6 +29,9 @@ void registerAuthModule(ServiceLocator getIt) {
     )
     // a FRESH bloc each cold start (auto-login check)
     ..registerFactory<SplashViewModelBloc>(
-      () => SplashViewModelBloc(getIt<AuthRepository>()),
+      () => SplashViewModelBloc(
+        getIt<AuthRepository>(),
+        onStart: getIt<LocalNetworkProbe>().ping,
+      ),
     );
 }

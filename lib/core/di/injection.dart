@@ -13,6 +13,7 @@ import '../network/token_refresher.dart';
 import '../network/token_storage.dart';
 import '../network/api_endpoints.dart';
 import '../network/helper_service.dart';
+import '../network/local_network_probe.dart';
 import '../push/device_id_store.dart';
 import '../push/push_messaging.dart';
 import '../push/push_registrar.dart';
@@ -96,6 +97,14 @@ Future<void> _registerCore() async {
     ),
   );
   getIt.registerLazySingleton<AppService>(() => AppService(getIt<Dio>()));
+
+  // iOS: ask "Local Network?" on the splash, not at login (dev on a LAN).
+  getIt.registerLazySingleton<LocalNetworkProbe>(
+    () => LocalNetworkProbe(
+      getIt<AppService>(),
+      baseUrl: Flavor.current.apiBaseUrl,
+    ),
+  );
 
   // ONE live connection (Step 5.3), with a token that is still valid.
   getIt.registerLazySingleton<RealtimeService>(

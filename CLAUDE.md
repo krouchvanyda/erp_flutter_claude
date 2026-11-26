@@ -488,8 +488,9 @@ Login response
 - **7.1:** `Firebase.initializeApp()` in `bootstrap` (failure is logged, the
   app still runs). `core/push`: `DeviceIdStore` (this install's UUID,
   SharedPreferences), `PushMessaging` (the ONLY FirebaseMessaging user:
-  token · onTokenRefresh · permission), `PushRegistrar` (follows
-  `AuthSession`: logged in → permission → `POST /me/devices {deviceId,
+  token · onTokenRefresh · permission; "Allow notifications?" is asked in
+  `bootstrap` BEFORE `runApp`, like feature/call), `PushRegistrar` (follows
+  `AuthSession`: logged in → `POST /me/devices {deviceId,
   fcmToken, platform}`; token refresh → again; at every start = upsert).
   Logout: `AuthRepository(beforeLogout:)` → `PushRegistrar.unregister()` =
   `DELETE /me/devices/{deviceId}` BEFORE the tokens are cleared (3 s limit,
@@ -514,8 +515,14 @@ Login response
 - **7.3 iOS ring:** the backend rings (Stream `ring: true`) only OFFLINE
   callees (a minimized app sends `/presence/background`). `CallMedia` makes
   the Stream client AT LOGIN on iOS (`connectForRinging`, from the bloc's
-  session listener) with `StreamVideoPushNotificationManager` (provider
-  `apn`, iOS ONLY — Android has no push manager, so Stream never rings it).
+  session listener) with `StreamVideoPushNotificationManager` (iOS ONLY —
+  Android has no push manager, so Stream never rings it). Provider `apn`
+  (PRODUCTION, the old app's): CallKit only rings on TestFlight / App Store
+  builds. Any `flutter run` build (even `--release`) is Development-signed
+  = a SANDBOX VoIP token that `apn` can't reach (a sandbox `apn-dev`
+  provider would be needed; the user chose not to add one). A token not
+  registered / under another provider is re-registered at login
+  (`_checkPushSetup`).
   Logout → `signOut` → Stream removes the VoIP token. CallKit buttons →
   `CallMedia.callKit` (`CallKitAction`, Stream cid `default:erp-call-<id>` →
   our id) → `OnCallKitActionEvent`: Accept = load if unknown → `_onInvite`
