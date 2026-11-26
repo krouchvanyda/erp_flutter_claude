@@ -11,50 +11,281 @@ Suggested pace: Stages 0–2 on day 1 · 3–5 on day 2 · 6–8 on day 3.
 
 ## Stage 0: the idea (no code)
 
-**HTTP** = the phone asks, the server answers, done. The server can never
-speak first.
+### Part 1: what is a "request"? (HTTP)
+
+Your phone and the server are two computers talking through the internet.
+Most of our app talks with **HTTP**, like a **shop counter**:
 
 ```
-phone ──GET /messages──► server
-phone ◄────── 200 ────── server      (done, closed)
+📱 phone:  "Give me my chats."         (request)
+🖥 server: "Here: chat 1, chat 2."      (response)
+           … the talk is finished …
 ```
 
-**WebSocket** = ONE connection that stays open. Both sides can send at any
-time.
+**The rule:** only the phone can START a talk. The shopkeeper never runs
+after you. In our code, every `AppService.send(...)` is one trip to the counter.
+
+### Part 2: the problem
+
+Mr Lin sends you "Hello" at 10:00. The server saves it, but it **can't tell
+you**: it has to wait until your phone asks.
 
 ```
-phone ══════════ one open pipe ══════════ server
-       ◄── "new message!"  (server speaks first)
+10:00  Mr Lin ──"Hello"──► 🖥 server   (saved)
+       📱 your phone: … nothing … (doesn't know)
 ```
 
-**STOMP** = small rules on top of a WebSocket: named frames and addresses
-(destinations), like letters with an address. Spring speaks STOMP. You need
-5 frames:
+### Part 3: the bad fix: "keep asking" (polling)
 
 ```
-phone  ── CONNECT  (Authorization: Bearer <token>) ──►  server   "let me in"
-phone  ◄─ CONNECTED ──────────────────────────────────  server   "you're in"
-phone  ── SUBSCRIBE /user/queue/inbox ───────────────►  server   "send me this address"
-phone  ◄─ MESSAGE  {"event":"message.send","payload":{…}}         (any time, many times)
-both   ── \n (heartbeat every 10 s) ──────────────────            "I'm still alive"
+10:00:00  📱 "Anything new?"   🖥 "No."
+10:00:03  📱 "Anything new?"   🖥 "No."
+10:00:06  📱 "Anything new?"   🖥 "Yes: Hello"   ← late
 ```
 
-❓ Why can't plain HTTP tell you about a new message?
+- 🐢 **Late:** you see the message only at the next ask.
+- 🔋 **Wasteful:** most answers are "No", but each ask costs battery + internet.
+- 🖥 **Heavy:** many phones × many asks = the server works for nothing.
+
+Like walking to the post office every 3 seconds: "Is my parcel here?"
+
+### Part 4: the good fix: WebSocket (a phone call that stays on)
+
+The phone opens **one line and keeps it open**. Now **both sides** can talk
+at any time:
+
+```
+📱 phone ═══════════ the line stays open ═══════════ 🖥 server
+10:00  🖥 ──"New message: Hello"──► 📱   (at once!)
+```
+
+| HTTP | WebSocket |
+|---|---|
+| a trip to the shop counter | a phone call that stays on |
+| only the phone starts | **both** can start |
+| closed after each answer | stays open |
+
+In our app, `RealtimeService` keeps this line open (it opens it at login).
+
+### Part 5: STOMP: the rules for talking on the line
+
+The line only carries text. STOMP adds rules, like **letters** with a
+**type** and an **address**. Only 5 kinds of letter, in this order:
+
+| # | Letter | Direction | Means | Carries |
+|---|---|---|---|---|
+| ① | `CONNECT` | 📱 → 🖥 | "Let me in, this is me" | `Authorization: Bearer <token>` (your ID card) |
+| ② | `CONNECTED` | 🖥 → 📱 | "OK, you're in" | — |
+| ③ | `SUBSCRIBE` | 📱 → 🖥 | "Send me letters for this address" | the address, e.g. `/user/queue/inbox` |
+| ④ | `MESSAGE` | 🖥 → 📱 | a letter arrives (any time, many times) | `{"event": what happened, "payload": the details}` |
+| ⑤ | heartbeat `\n` | both, every 10 s | "I'm still here" | nothing |
+
+If one side stops hearing the heartbeat, it knows **the line is broken**
+(Wi-Fi lost, phone asleep), and our app reconnects.
+
+### Part 6: the addresses (mailboxes)
+
+| Address | Who gets it | Example |
+|---|---|---|
+| `/user/queue/inbox` | **only you** (private mailbox) | a new message in one of your chats → the inbox updates |
+| `/topic/conversations/5` | **everyone who has chat 5 open** (notice board) | messages, "typing…", ✓✓ |
+| `/user/queue/calls` | **only you** | "Mr Lin is calling you" |
+
+`/user/...` = private: the server knows it's you from the token in CONNECT.
+`/topic/...` = shared by everyone who subscribed.
+
+### Part 7: we still use HTTP too
+
+```
+Send a message      → HTTP POST    a clear answer: "saved ✅ id 123" or "error ❌"
+Load old messages   → HTTP GET     pages of history
+Hear news LIVE      → WebSocket    the server tells you the moment it happens
+```
+
+| | Like | Gives you |
+|---|---|---|
+| **HTTP** | asking a question at a counter | **the answer to YOUR question** (OK or error) |
+| **WebSocket** | a radio station | **news** of what happened (new message, typing, call) |
+
+> Errors for what **I** did → **HTTP**. News of what **others** did → **WebSocket**.
+
+That's why the ⚠ "Not sent · Tap to retry" bubble (5.2) works: the HTTP POST
+tells us clearly that OUR send failed. The WebSocket says nothing (nothing
+was saved, so there's no news).
+
+### ❓ Check yourself
+
+1. With only HTTP, why doesn't your phone know about a new message?
+2. Polling works, but why is it bad? (2 reasons)
+3. What does the CONNECT letter carry?
+4. `/user/queue/inbox` or `/topic/conversations/5`: which is only for you?
+5. Why do we SEND with HTTP POST, not the WebSocket?
+6. You tap send, the server answers "500 error": HTTP or WebSocket tells you?
+
+<details><summary>Answers</summary>
+
+1. HTTP: only the phone can start a talk. The server has the message but must
+   wait until the phone asks.
+2. Late (you only learn at the next ask) · wastes battery and internet (most
+   answers are "no").
+3. Your token (`Authorization: Bearer …`) = who you are. (`event` is in the
+   MESSAGE letters.)
+4. `/user/queue/inbox`.
+5. Sending needs a clear answer to MY question (saved / failed). HTTP gives
+   that; the WebSocket only announces news.
+6. HTTP: it's the answer to your own request.
+
+</details>
 
 ---
 
-## Stage 1: the server side
+## Stage 1: the server side (the post office)
 
-Backend repo: `erp_java_backend_claude/src/main/java/com/company/erp/features/chats/ws/`
+The backend is the **post office**: it lets people in, keeps the mailboxes
+and delivers letters. Only 4 files, in
+`erp_java_backend_claude/src/main/java/com/company/erp/features/chats/`:
 
-| # | File | Look for |
+```
+① ws/WebSocketConfig              → builds the post office (door, mailboxes, heartbeat)
+② ws/StompAuthChannelInterceptor  → the guard at the door (checks your ID card)
+③ ws/ChatBroadcaster              → the postman (puts letters in mailboxes)
+④ controller/MessageController.send() → where a new letter is born
+```
+
+```mermaid
+flowchart LR
+    P["📱 phone"] -->|"CONNECT + token"| G["② guard<br/>StompAuthChannelInterceptor"]
+    G -->|"this line = user 5"| B["SimpleBroker<br/>(mailboxes, ①)"]
+    M["④ MessageController.send()<br/>HTTP POST"] -->|"save, then"| C["③ ChatBroadcaster"]
+    C -->|"/topic/conversations/5"| B
+    C -->|"/user/queue/inbox"| B
+    B -->|"MESSAGE"| P
+    classDef app fill:#dbe9ff,stroke:#3b6fd8,color:#123
+    classDef ok fill:#d9f7e6,stroke:#00a86b,color:#063
+    class P app
+    class G,B,C,M ok
+```
+
+### ① `WebSocketConfig.java`: build the post office
+
+**The door** (where the phone connects):
+
+```java
+registry.addEndpoint("/ws")      // → ws://<server>:8080/ws  (the flavor's realtimeUrl)
+```
+
+**The mailboxes:**
+
+```java
+registry.enableSimpleBroker("/topic", "/queue")    // letters TO phones
+registry.setApplicationDestinationPrefixes("/app") // letters FROM phones to the server
+registry.setUserDestinationPrefix("/user")         // private mailboxes
+```
+
+| Address starts with | Means | Example |
 |---|---|---|
-| 1 | `WebSocketConfig.java` | The top comment lists every address. `addEndpoint("/ws")` = the URL. `enableSimpleBroker("/topic", "/queue")` = address prefixes. `HEARTBEAT_INTERVAL` = 10 s. |
-| 2 | `StompAuthChannelInterceptor.java` | On CONNECT: reads `Authorization: Bearer …`, checks the token, remembers WHO you are (your user id) → that's why `/user/queue/inbox` reaches only you. |
-| 3 | `ChatBroadcaster.java` | `toConversation` → `/topic/conversations/{id}` (everyone in the chat). `toUser` → `/user/queue/...` (one person). Every frame = `ChatEvent(event, payload)`. |
-| 4 | `controller/MessageController.java` → `send()` | After saving: `broadcaster.toConversation(...)` AND `toUsers(..., "inbox", ...)`. That's where a live message is born. |
+| `/topic/...` | a **notice board**: everyone subscribed reads it | `/topic/conversations/5` |
+| `/user/queue/...` | a **private mailbox**: one person | `/user/queue/inbox` |
+| `/app/...` | a letter **from the phone to the server** | `/app/conversations/5/typing` |
 
-❓ `/topic/...` vs `/user/queue/...`: who receives each one?
+"SimpleBroker" = Spring's built-in post office: it remembers, in memory, who
+subscribed to what.
+
+**The heartbeat:**
+
+```java
+HEARTBEAT_INTERVAL = { 10_000L, 10_000L };   // 10 s, both ways
+```
+
+A killed phone can't say "bye". Without heartbeats the server would think
+it's online **for hours**; with them it notices in **~20–30 s** and marks the
+user offline (the 🟢 dot goes away).
+
+**The guard:** `registration.interceptors(authInterceptor)` = every letter
+from a phone passes ② first.
+
+### ② `StompAuthChannelInterceptor.java`: the guard at the door
+
+```java
+if (StompCommand.CONNECT.equals(accessor.getCommand())) {        // 1. "let me in"?
+    String header = firstNativeHeader(accessor, "Authorization"); // 2. take the ID card
+    String token = header.substring("Bearer ".length()).trim();
+    AuthenticatedUser principal = jwt.parseAccess(token);         // 3. check it → user 5
+    … getName() { return String.valueOf(principal.userId()); }    // 4. "this line = user 5"
+    accessor.setUser(auth);                                       // 5. remember it
+}
+```
+
+Because the server remembers "this line = user 5", a letter to **user 5's
+private mailbox** goes down **this line only**. An expired token → not let in
+(→ Stage 4).
+
+### ③ `ChatBroadcaster.java`: the postman
+
+The rest of the backend never touches STOMP; it asks the postman:
+
+| Method | Goes to | Who reads it |
+|---|---|---|
+| `toConversation(5, event, payload)` | `/topic/conversations/5` | everyone who **opened** chat 5 |
+| `toCall(5, …)` | `/topic/conversations/5/call` | everyone watching that chat's call |
+| `toUser(5, "inbox", …)` | user 5's `/user/queue/inbox` | only user 5 |
+| `toUsers([5, 7], "inbox", …)` | each person's private inbox | 5 and 7, each privately |
+
+Every letter has the same shape (`ChatEvent`):
+
+```json
+{ "event": "message.send", "payload": { "id": 123, "body": "Hello" } }
+```
+
+### ④ `MessageController.send()`: where a letter is born
+
+This is the HTTP POST from Stage 0. Look what happens **after** saving:
+
+```java
+@PostMapping("/conversations/{convId}/messages")
+public MessageDto send(@PathVariable Long convId, …) {
+    Message m = messages.send(convId, me, body);                     // 1. SAVE
+    broadcaster.toConversation(convId, "message.send", dto);         // 2. the chat's notice board
+    broadcaster.toUsers(conversations.memberUserIds(convId),
+                        "inbox", "message.send", dto);               // 3. every member's inbox
+    pushNotifier.notifyNewMessage(m);                                // 4. FCM for closed apps
+    return dto;                                                      // 5. HTTP answer to the SENDER
+}
+```
+
+```
+📱 Mr Lin ──HTTP POST "Hello"──► send()
+                                   1. save in the database
+                                   2. ──► /topic/conversations/5   (who has chat 5 OPEN: new bubble)
+                                   3. ──► /user/queue/inbox        (each member's INBOX: moves to top)
+                                   4. ──► FCM push                 (app closed)
+📱 Mr Lin ◄──HTTP 200 + message── 5. "saved ✅"
+```
+
+**Why both 2 and 3?** Inside chat 5 → the bubble appears (2). On the inbox
+list → the chat jumps to the top with "Hello" (3).
+
+### ❓ Check yourself
+
+1. What is the door address the phone connects to?
+2. `/topic/conversations/5` vs `/user/queue/inbox`: who receives each one?
+3. Why does the server need a heartbeat? What goes wrong without it?
+4. How does the guard know a line belongs to user 5?
+5. When Mr Lin sends "Hello", the server sends it to two places. Which, and why?
+
+<details><summary>Answers</summary>
+
+1. `/ws` (`addEndpoint("/ws")`) → `ws://<server>:8080/ws`.
+2. `/topic/...`: everyone who subscribed (has chat 5 open). `/user/queue/...`:
+   only that one user.
+3. To notice a dead phone (killed / no Wi-Fi) in ~20–30 s. Without it the
+   server thinks the user is online for hours.
+4. On CONNECT it reads the token, checks it (`jwt.parseAccess`) and saves the
+   user id as the line's owner (`setUser`, `getName()` = user id).
+5. `/topic/conversations/5` (people inside the chat see the bubble) and each
+   member's `/user/queue/inbox` (the inbox list moves the chat to the top).
+
+</details>
 
 ---
 
