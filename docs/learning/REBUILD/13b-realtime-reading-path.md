@@ -485,35 +485,228 @@ subscribe again) = `RealtimeService`, Stage 3.
 
 ---
 
-## Stage 3: keep it alive (the heart)
+## Stage 3: keep the line alive (the heart)
 
+Lines break (Wi-Fi drops, the phone sleeps, the server restarts). Someone
+must **call back again and again**: `RealtimeService`, a **caretaker** whose
+only job is "keep the line to the server open".
 [`lib/core/realtime/realtime_service.dart`](../../../lib/core/realtime/realtime_service.dart):
-read in THIS order, not top to bottom.
+read it in this order, not top to bottom.
 
-1. `start()`: running = true → `_connect()`.
-2. `_connect()`: the main path:
-   ```
-   status = connecting
-   token  = await _accessToken()      ← a FRESH token every try
-   conn   = await _connector(...)     ← Stage 2
-   subscribe every remembered address ← _attach
-   status = connected
-   if it's a RE-connect → _reconnected.add(null)
-   ```
-3. `_onLost()` → `_scheduleRetry()`: wait, then `_connect` again.
-4. `defaultBackoff`: 1, 2, 4, 8, 16, 30, 30 … seconds.
-5. `subscribe()` + `_attach()`: a page asks for an address ONCE. The service
-   remembers it and subscribes again after every reconnect. The last listener
-   cancels → unsubscribe.
-6. `stop()` and `reconnectNow()`.
-7. Last: `_generation`. Each try gets a number, so a late answer from an old
-   try is ignored.
+```
+start() ──► get token ──► connectStomp ──► connected ──► subscribe all addresses again
+               ▲                                │ line breaks
+               └──── wait 1, 2, 4 … 30 s ◄──────┘     (reconnectNow() skips the wait)
+```
 
-❓ Why does every retry get a NEW token? (Hint: the package's own reconnect
-re-sends the old CONNECT headers.)
+### Step 1: the caretaker's notebook (the variables)
 
-❓ Messages sent while you were offline are lost. Which line lets the app fix
-that? (→ Stage 6)
+```dart
+status          // 🚦 stopped / connecting / connected  (the inbox shows "Connecting…")
+_connection     // the remote control from Stage 2 (null = no line now)
+_topics         // 📒 the ADDRESS BOOK: every address a page asked for
+_retryTimer     // ⏰ "try again in X seconds"
+_attempt        // failed tries in a row (0, 1, 2 …)
+_running        // on duty? (true after login)
+_connecting     // dialing right now? (don't dial twice)
+_hadConnection  // ever connected before? (first time vs coming BACK)
+_generation     // 🎫 ticket number of the current try (Step 7)
+```
+
+### Step 2: `start()`: go on duty (after login)
+
+```dart
+void start() {
+  if (_running) return;
+  _running = true;
+  _attempt = 0;
+  _connect();
+}
+```
+
+### Step 3: `_connect()`: dial the server (the main part)
+
+```dart
+Future<void> _connect() async {
+  if (!_running || _connecting) return;
+  _connecting = true;
+  final generation = ++_generation;               // 🎫 new ticket
+  status.value = RealtimeStatus.connecting;       // 🚦 "Connecting…"
+  try {
+    final token = await _accessToken();           // ① a FRESH ID card
+    final connection = await _connector(          // ② Stage 2
+      url: url, token: token, onLost: () => _onLost(generation));
+    …
+    _connection = connection;                     // ③ keep the remote
+    _attempt = 0;
+    for (final entry in _topics.entries) {        // ④ SUBSCRIBE again to every
+      _attach(entry.key, entry.value);            //    address in the book
+    }
+    status.value = RealtimeStatus.connected;      // 🚦 green
+    if (_hadConnection) _reconnected.add(null);   // ⑤ came BACK → "reload!"
+    _hadConnection = true;
+  } catch (_) {
+    _connecting = false;
+    _scheduleRetry();                             // ❌ → try later (Step 4)
+  }
+}
+```
+
+| # | Plain words |
+|---|---|
+| ① | a **fresh** ID card (refreshed if almost expired), the reason Stage 2 turned the package's reconnect off |
+| ② | open the line, wait for the buzzer ✅ |
+| ③ | keep the remote control |
+| ④ | subscribe again to **everything** in the address book (Step 5) |
+| ⑤ | only when coming **back**: "I was away, reload your data" |
+
+**Why ⑤?** Letters sent while the line was down are **lost**; the server
+doesn't keep them:
+
+```
+10:00  line breaks ✖
+10:01  Mr Lin sends "Hello" → the server sends the letter → nobody on the line → LOST
+10:02  line back ✅ → reconnected → the inbox reloads with HTTP GET → "Hello" appears
+```
+
+### Step 4: it broke → wait, try again
+
+```dart
+void _onLost(int generation) {             // Stage 2's onLost() lands here
+  if (generation != _generation) return;   // an OLD line → ignore (Step 7)
+  _closeConnection();
+  _scheduleRetry();
+}
+
+void _scheduleRetry() {
+  if (!_running) return;                   // logged out → no retry
+  status.value = RealtimeStatus.connecting;
+  _retryTimer?.cancel();
+  _retryTimer = Timer(_backoff(_attempt++), _connect);   // ⏰
+}
+
+static Duration defaultBackoff(int attempt) =>
+    Duration(seconds: min(30, 1 << min(attempt, 5)));   // 1 << n = 2ⁿ, max 30
+```
+
+| Retry | 1st | 2nd | 3rd | 4th | 5th | 6th + |
+|---|---|---|---|---|---|---|
+| Wait | 1 s | 2 s | 4 s | 8 s | 16 s | 30 s forever |
+
+**Why longer each time?** Like calling a friend who doesn't answer. If the
+server is down, 1,000 phones dialing every second would hit it hard the
+moment it comes back; longer waits are kinder to it and to the battery.
+**Why never give up?** The user is logged in and expects chat to work.
+
+### Step 5: the address book: `subscribe()` + `_attach()`
+
+A page asks ONCE: `realtime.subscribe('/user/queue/inbox').listen(…)`. The
+caretaker writes it in `_topics` and subscribes on the line:
+
+```dart
+void _attach(String destination, _Topic topic) {
+  final connection = _connection;
+  if (connection == null || !topic.controller.hasListener) return;
+  topic.detach();                                          // old subscription off
+  topic.stop = connection.subscribe(destination, (body) {  // SUBSCRIBE
+    final event = RealtimeEvent.tryParse(body);            // text → event (Stage 6)
+    if (event != null && !topic.controller.isClosed) topic.controller.add(event);
+  });
+}
+```
+
+**Why a book?** A broken line takes all its subscriptions with it; the new
+line knows nothing:
+
+```
+Without the book:                       With it (our code):
+line back → inbox: "I'm deaf now" 🙉    line back → the caretaker opens the book:
+                                          SUBSCRIBE /user/queue/inbox       ✅
+                                          SUBSCRIBE /topic/conversations/5  ✅
+                                          SUBSCRIBE /user/queue/calls       ✅
+```
+
+An address leaves the book when its **last** listener cancels (`onCancel` →
+`_topics.remove` → UNSUBSCRIBE). Many listeners can share one address.
+
+### Step 6: `stop()` and `reconnectNow()`
+
+```dart
+void stop() {                  // LOGOUT: off duty, new ticket, alarm off, hang up
+  _running = false;
+  _generation++;
+  _retryTimer?.cancel();
+  _closeConnection();
+  status.value = RealtimeStatus.stopped;
+}
+
+void reconnectNow() {          // app back in FRONT / network back
+  if (!_running || _connection != null || _connecting) return;
+  _retryTimer?.cancel();       // forget "wait 30 s"
+  _attempt = 0;
+  _connect();                  // dial NOW
+}
+```
+
+The backoff may be at 30 s; when you open the app you don't want to wait
+that long (who calls it: Stage 5).
+
+### Step 7: `_generation`: ticket numbers 🎫
+
+```dart
+final generation = ++_generation;      // try #7
+… await _connector(...) …              // ⏳ up to 10 s
+if (generation != _generation || !_running) {
+  connection.close();                  // my ticket is OLD → throw this line away
+  return;
+}
+```
+
+```
+10:00:00  _connect() takes ticket #7, dialing … ⏳
+10:00:02  LOGOUT → stop() → counter #8
+10:00:05  #7 connects ✅ … but #7 ≠ #8 → "too late" → close it
+```
+
+Without tickets, a logged-out phone could keep a line subscribed to the old
+user's inbox. `_onLost` uses the same check (a broken OLD line is ignored).
+Like a bank queue number: a cancelled number isn't served.
+
+```mermaid
+stateDiagram-v2
+    [*] --> stopped
+    stopped --> connecting: start() (login)
+    connecting --> connected: fresh token + CONNECTED<br/>subscribe everything in the book
+    connecting --> waiting: failed
+    waiting --> connecting: alarm (1, 2, 4 … 30 s)<br/>or reconnectNow()
+    connected --> waiting: line lost (onLost)
+    connected --> stopped: stop() (logout)
+    waiting --> stopped: stop() (logout)
+    note right of connected: coming BACK → reconnected<br/>= pages reload (lost letters)
+```
+
+### ❓ Check yourself
+
+1. Who calls `connectStomp` again and again when the line breaks?
+2. Why does every try get a fresh token?
+3. The line was down 1 minute and Mr Lin sent a message then. Did it
+   arrive? How does the app get it?
+4. The waits between tries? Why longer each time?
+5. What is the address book (`_topics`) for?
+6. Logout WHILE connecting: what stops the old line from staying open?
+
+<details><summary>Answers</summary>
+
+1. `RealtimeService`: `_onLost` → `_scheduleRetry` → `_connect`.
+2. Tokens expire; an old one is refused by the guard.
+3. No, it's lost. On coming back `reconnected` fires and pages reload with HTTP.
+4. 1, 2, 4, 8, 16, then 30 s. Kinder to a server that's down; saves battery.
+5. It remembers every address so the caretaker subscribes again after every
+   reconnect; pages subscribe only once.
+6. The ticket (`_generation`): `stop()` makes a new one, the late line has an
+   old ticket and is closed.
+
+</details>
 
 ---
 
