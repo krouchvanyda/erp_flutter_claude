@@ -473,6 +473,13 @@ Login response
   own model) → outcome → words per viewer (`mine` = I called; missed for the
   others = red); `ChatCallContent` in the bubble (no ✓✓), tap = call back via
   `ChatCallLauncher`; inbox preview "📞 Missed voice call" (no "You:").
+- **7.5 voice → video:** `CallInCallState.showsVideo` = `call.isVideo ||
+  cameraOn || othersVideo.isNotEmpty` decides the layout (never
+  `call.isVideo` alone). `CallMedia.videoOn` = the OTHER participants with
+  `isVideoEnabled` (sorted, distinct) → `OnCallPeerVideoEvent` →
+  `othersVideo`. 🎥 is in EVERY call's controls (Flip only while my camera
+  is on). My camera on in a VOICE layout → loudspeaker on too. No backend
+  change; the call record stays VOICE.
 - **Who is calling:** the call itself carries it (`ChatCallDto.callerName`
   + `callerAvatarUrl`, STOMP invite and `GET /calls/{id}`; backend
   `ChatCallController.toDto`). `_onInvite` starts with

@@ -102,18 +102,27 @@ void main() {
     expect(taps, ['decline']); // can still change your mind
   });
 
-  testWidgets('in a voice call: Mute + Speaker + End (no camera)', (
-    tester,
-  ) async {
+  testWidgets('in a voice call: Mute + Camera (→ video, 7.5) + Speaker + '
+      'End; no Flip until the camera is on', (tester) async {
     final taps = <String>[];
     await tester.pumpWidget(
       host(const CallInCallState(call: _call, peer: _peer), taps),
     );
-    expect(find.text('Camera'), findsNothing);
+    expect(find.text('Camera'), findsOneWidget);
+    expect(find.text('Flip'), findsNothing);
     await tester.tap(find.byIcon(Icons.mic_rounded));
+    await tester.tap(find.byIcon(Icons.videocam_off_rounded));
     await tester.tap(find.byIcon(Icons.volume_down_rounded));
     await tester.tap(find.byIcon(Icons.call_end_rounded));
-    expect(taps, ['mic', 'speaker', 'hangUp']);
+    expect(taps, ['mic', 'camera', 'speaker', 'hangUp']);
+
+    await tester.pumpWidget(
+      host(
+        const CallInCallState(call: _call, peer: _peer, cameraOn: true),
+        taps,
+      ),
+    );
+    expect(find.text('Flip'), findsOneWidget);
   });
 
   test('InCall before the other person joins the media → "Connecting…"', () {

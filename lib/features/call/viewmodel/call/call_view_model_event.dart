@@ -75,6 +75,16 @@ final class OnCallPeerMediaEvent extends CallViewModelEvent {
   final List<String> userIds;
 }
 
+/// Who else has a camera on changed (internal, 7.5).
+final class OnCallPeerVideoEvent extends CallViewModelEvent {
+  OnCallPeerVideoEvent(this.callId, this.userIds);
+
+  final String callId;
+
+  /// The others with a camera on now (empty = nobody).
+  final List<String> userIds;
+}
+
 /// 🎙 mute / unmute.
 final class OnCallToggleMicEvent extends CallViewModelEvent {}
 

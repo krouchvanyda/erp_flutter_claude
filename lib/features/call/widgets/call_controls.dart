@@ -71,7 +71,6 @@ class CallControls extends StatelessWidget {
         ],
       ),
       CallInCallState(
-        :final call,
         :final micOn,
         :final speakerOn,
         :final cameraOn,
@@ -88,21 +87,21 @@ class CallControls extends StatelessWidget {
                   highlighted: !micOn,
                   onPressed: onToggleMic,
                 ),
-                if (call.isVideo) ...[
-                  CallToggleButton(
-                    icon: cameraOn
-                        ? Icons.videocam_rounded
-                        : Icons.videocam_off_rounded,
-                    label: 'Camera',
-                    highlighted: !cameraOn,
-                    onPressed: onToggleCamera,
-                  ),
+                // in EVERY call: a voice call becomes video with it (7.5)
+                CallToggleButton(
+                  icon: cameraOn
+                      ? Icons.videocam_rounded
+                      : Icons.videocam_off_rounded,
+                  label: 'Camera',
+                  highlighted: !cameraOn,
+                  onPressed: onToggleCamera,
+                ),
+                if (cameraOn)
                   CallToggleButton(
                     icon: Icons.cameraswitch_rounded,
                     label: 'Flip',
-                    onPressed: cameraOn ? onFlipCamera : null,
+                    onPressed: onFlipCamera,
                   ),
-                ],
                 CallToggleButton(
                   icon: speakerOn
                       ? Icons.volume_up_rounded

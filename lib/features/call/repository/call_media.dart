@@ -64,9 +64,11 @@ class CallMedia {
   StreamVideo? _client;
   String? _clientUserId;
   StreamSubscription<List<String>>? _stateSub;
+  StreamSubscription<List<String>>? _videoSub;
   StreamSubscription<MediaLink>? _linkSub;
   StreamSubscription<RingingEvent>? _ringSub;
   final _peers = StreamController<List<String>>.broadcast();
+  final _video = StreamController<List<String>>.broadcast();
   final _link = StreamController<MediaLink>.broadcast();
   final _callKit = StreamController<CallKitAction>.broadcast();
 
@@ -86,6 +88,10 @@ class CallMedia {
   /// The OTHER people in the media call right now (user ids, sorted).
   /// Empty = nobody else (yet, or they left). Groups: several (6.3c).
   Stream<List<String>> get peers => _peers.stream;
+
+  /// The OTHER people whose camera is on right now (user ids, sorted).
+  /// Someone turns a camera on in a voice call → the video layout (7.5).
+  Stream<List<String>> get videoOn => _video.stream;
 
   /// MY connection to the media call: connected · reconnecting · lost.
   Stream<MediaLink> get link => _link.stream;
@@ -150,6 +156,15 @@ class CallMedia {
           )
           .distinct(const ListEquality<String>().equals)
           .listen(_peers.add);
+      _videoSub = c.state.valueStream
+          .map(
+            (s) => {
+              for (final p in s.otherParticipants)
+                if (p.isVideoEnabled) p.userId,
+            }.toList()..sort(),
+          )
+          .distinct(const ListEquality<String>().equals)
+          .listen(_video.add);
       _linkSub = c.state.valueStream
           .map((s) => linkOf(s.status))
           .where((l) => l != null)
@@ -398,6 +413,8 @@ class CallMedia {
     _generation++;
     await _stateSub?.cancel();
     _stateSub = null;
+    await _videoSub?.cancel();
+    _videoSub = null;
     await _linkSub?.cancel();
     _linkSub = null;
     final c = call.value;

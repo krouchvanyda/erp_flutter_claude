@@ -84,6 +84,7 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     on<OnCallResetEvent>(_onReset);
     on<OnCallMediaStartEvent>(_onMediaStart);
     on<OnCallPeerMediaEvent>(_onPeerMedia);
+    on<OnCallPeerVideoEvent>(_onPeerVideo);
     on<OnCallToggleMicEvent>(_onToggleMic);
     on<OnCallToggleCameraEvent>(_onToggleCamera);
     on<OnCallToggleSpeakerEvent>(_onToggleSpeaker);
@@ -125,6 +126,7 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
   late final StreamSubscription<CallKitAction> _callKit;
   StreamSubscription<CallUpdate>? _topic; // the current call's conversation
   StreamSubscription<List<String>>? _peerMedia; // who else is in the media?
+  StreamSubscription<List<String>>? _peerVideo; // who else has a camera on?
   StreamSubscription<MediaLink>? _mediaLink; // is MY media link up?
   Timer? _reconnectGiveUp;
   Timer? _backstop;
@@ -221,6 +223,7 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     _stopTimers();
     await _topic?.cancel();
     await _peerMedia?.cancel();
+    await _peerVideo?.cancel();
     await _media.leave();
     await _queue.cancel();
     await _reconnected.cancel();
@@ -508,6 +511,8 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     _topic = null;
     _peerMedia?.cancel();
     _peerMedia = null;
+    _peerVideo?.cancel();
+    _peerVideo = null;
     _media.signOut(); // forget the Stream user too
     _myId = null;
     emit(const CallIdleState());
@@ -549,6 +554,10 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     _peerMedia?.cancel();
     _peerMedia = _media.peers.listen((ids) {
       if (!isClosed) add(OnCallPeerMediaEvent(event.callId, ids));
+    });
+    _peerVideo?.cancel();
+    _peerVideo = _media.videoOn.listen((ids) {
+      if (!isClosed) add(OnCallPeerVideoEvent(event.callId, ids));
     });
     _mediaLink?.cancel();
     _mediaLink = _media.link.listen((link) {
@@ -658,14 +667,38 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     (next) => _media.setMicrophone(next.micOn),
   );
 
+  /// Camera on / off. In a VOICE call this turns it into video (7.5): the
+  /// layout follows `showsVideo`, and the loudspeaker goes on (nobody holds
+  /// a video call to the ear — the same rule as starting a video call).
   Future<void> _onToggleCamera(
     OnCallToggleCameraEvent event,
     Emitter<CallViewModelState> emit,
-  ) => _toggle(
-    emit,
-    (s) => s.copyWith(cameraOn: !s.cameraOn),
-    (next) => _media.setCamera(next.cameraOn),
-  );
+  ) async {
+    final before = state;
+    final wasVideo = before is CallInCallState && before.showsVideo;
+    await _toggle(
+      emit,
+      (s) => s.copyWith(cameraOn: !s.cameraOn),
+      (next) => _media.setCamera(next.cameraOn),
+    );
+    // voice → video by MY camera: loudspeaker on (only then: a video call
+    // where I turned the speaker off myself keeps my choice)
+    final s = state;
+    if (!wasVideo && s is CallInCallState && s.cameraOn && !s.speakerOn) {
+      add(OnCallToggleSpeakerEvent());
+    }
+  }
+
+  /// Someone else turned a camera on / off → `othersVideo` (7.5).
+  void _onPeerVideo(
+    OnCallPeerVideoEvent event,
+    Emitter<CallViewModelState> emit,
+  ) {
+    final s = state;
+    if (s is CallInCallState && s.call.id == event.callId) {
+      emit(s.copyWith(othersVideo: event.userIds));
+    }
+  }
 
   Future<void> _onToggleSpeaker(
     OnCallToggleSpeakerEvent event,
@@ -805,6 +838,8 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
     _topic = null;
     _peerMedia?.cancel();
     _peerMedia = null;
+    _peerVideo?.cancel();
+    _peerVideo = null;
     _mediaLink?.cancel();
     _mediaLink = null;
     _media.leave(); // every end path leaves the sound / picture

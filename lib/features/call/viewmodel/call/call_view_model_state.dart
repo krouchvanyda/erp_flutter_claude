@@ -133,6 +133,7 @@ final class CallInCallState extends CallViewModelState {
     this.reconnecting = false,
     this.peerAway = false,
     this.others = const [],
+    this.othersVideo = const [],
   });
 
   final CallModel call;
@@ -152,7 +153,14 @@ final class CallInCallState extends CallViewModelState {
   /// Who else is in the media call (user ids) — the group row / grid (6.3c).
   final List<String> others;
 
+  /// Who ELSE has a camera on right now (user ids, sorted) (7.5).
+  final List<String> othersVideo;
+
   bool get isConnecting => connectedAt == null;
+
+  /// The video layout? Started as video, OR anyone turned a camera on
+  /// (a voice call can become video, 7.5). Nobody's camera → voice again.
+  bool get showsVideo => call.isVideo || cameraOn || othersVideo.isNotEmpty;
 
   CallInCallState copyWith({
     CallPeer? peer,
@@ -164,6 +172,7 @@ final class CallInCallState extends CallViewModelState {
     bool? reconnecting,
     bool? peerAway,
     List<String>? others,
+    List<String>? othersVideo,
   }) => CallInCallState(
     call: call,
     peer: peer ?? this.peer,
@@ -175,6 +184,7 @@ final class CallInCallState extends CallViewModelState {
     reconnecting: reconnecting ?? this.reconnecting,
     peerAway: peerAway ?? this.peerAway,
     others: others ?? this.others,
+    othersVideo: othersVideo ?? this.othersVideo,
   );
 
   static const _ids = ListEquality<String>();
@@ -191,7 +201,8 @@ final class CallInCallState extends CallViewModelState {
       other.frontCamera == frontCamera &&
       other.reconnecting == reconnecting &&
       other.peerAway == peerAway &&
-      _ids.equals(other.others, others);
+      _ids.equals(other.others, others) &&
+      _ids.equals(other.othersVideo, othersVideo);
 
   @override
   int get hashCode => Object.hash(
@@ -205,6 +216,7 @@ final class CallInCallState extends CallViewModelState {
     reconnecting,
     peerAway,
     _ids.hash(others),
+    _ids.hash(othersVideo),
   );
 }
 

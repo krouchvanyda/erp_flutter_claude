@@ -1,6 +1,6 @@
 # Step 7.4 — Android: "Answer" on the ring → straight into the call
 
-> ← Previous: [26-ios-ring.md](26-ios-ring.md) · Roadmap: [README.md](README.md)
+> ← Previous: [26-ios-ring.md](26-ios-ring.md) · Next: [28-voice-to-video.md](28-voice-to-video.md) → · Roadmap: [README.md](README.md)
 
 ```
 7.1 push setup ✅ · 7.2 Android ring ✅ · 7.3 iOS ring (CallKit) ✅

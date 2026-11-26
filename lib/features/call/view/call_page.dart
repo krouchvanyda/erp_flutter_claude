@@ -101,7 +101,8 @@ class CallPage extends StatelessWidget {
           status: CallStatusText(state: state),
         );
 
-        final onVideo = state is CallInCallState && video;
+        // a voice call becomes video when ANYONE turns a camera on (7.5)
+        final onVideo = state is CallInCallState && state.showsVideo;
         return PopScope(
           // Back must not drop a live call by accident.
           canPop: !state.isActive,

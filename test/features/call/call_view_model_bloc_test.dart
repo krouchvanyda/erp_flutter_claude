@@ -50,6 +50,7 @@ void main() {
   late _MockCallMedia media;
   late StreamController<List<String>> peer; // the others in the media call
   late StreamController<MediaLink> link; // MY link to the media call
+  late StreamController<List<String>> video; // who else has a camera on
   late StreamController<CallKitAction> callKit; // iOS CallKit buttons
 
   setUpAll(() => registerFallbackValue(CallType.voice));
@@ -65,6 +66,8 @@ void main() {
     peer = StreamController<List<String>>.broadcast();
     when(() => media.peers).thenAnswer((_) => peer.stream);
     link = StreamController<MediaLink>.broadcast();
+    video = StreamController<List<String>>.broadcast();
+    when(() => media.videoOn).thenAnswer((_) => video.stream);
     when(() => media.link).thenAnswer((_) => link.stream);
     when(
       () => media.join(
@@ -114,6 +117,7 @@ void main() {
     await reconnected.close();
     await peer.close();
     await link.close();
+    await video.close();
     await callKit.close();
   });
 
@@ -876,6 +880,64 @@ void main() {
       expect(endedWith(bloc), CallEndReason.hungUp);
       await bloc.close();
     });
+  });
+
+  group('voice → video (7.5)', () {
+    Future<CallViewModelBloc> inVoiceCall() async {
+      final bloc = build();
+      startCall(bloc); // a VOICE call
+      await tick();
+      topic.add(const CallAccepted('7', accepterId: _jane));
+      await tick();
+      return bloc;
+    }
+
+    CallInCallState inCall(CallViewModelBloc b) => b.state as CallInCallState;
+
+    test('a voice call shows the voice layout', () async {
+      final bloc = await inVoiceCall();
+      expect(inCall(bloc).showsVideo, isFalse);
+      await bloc.close();
+    });
+
+    test('I turn my camera on → video layout + loudspeaker on', () async {
+      when(() => media.setCamera(any())).thenAnswer((_) async => true);
+      when(() => media.setSpeaker(any())).thenAnswer((_) async => true);
+      final bloc = await inVoiceCall();
+      bloc.add(OnCallToggleCameraEvent());
+      await tick(20);
+      expect(inCall(bloc).cameraOn, isTrue);
+      expect(inCall(bloc).showsVideo, isTrue);
+      expect(inCall(bloc).speakerOn, isTrue);
+      verify(() => media.setSpeaker(true)).called(1);
+      await bloc.close();
+    });
+
+    test('camera refused (permission) → stays a voice call', () async {
+      when(() => media.setCamera(any())).thenAnswer((_) async => false);
+      final bloc = await inVoiceCall();
+      bloc.add(OnCallToggleCameraEvent());
+      await tick(20);
+      expect(inCall(bloc).cameraOn, isFalse);
+      expect(inCall(bloc).showsVideo, isFalse);
+      verifyNever(() => media.setSpeaker(any()));
+      await bloc.close();
+    });
+
+    test(
+      'THEY turn a camera on → my screen switches to video; off → back',
+      () async {
+        final bloc = await inVoiceCall();
+        video.add([_jane]);
+        await tick();
+        expect(inCall(bloc).othersVideo, [_jane]);
+        expect(inCall(bloc).showsVideo, isTrue);
+        video.add([]);
+        await tick();
+        expect(inCall(bloc).showsVideo, isFalse);
+        await bloc.close();
+      },
+    );
   });
 
   group('media (6.2)', () {
