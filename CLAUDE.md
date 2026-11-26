@@ -560,6 +560,36 @@ Login response
   call rings (Outgoing AND Incoming) = token + Stream client + socket
   BEFORE Accept; `join` reuses that client (no token request).
 
+### Track B: plain WebSocket (branch `feature/raw-websocket`, app + backend)
+
+- **Goal:** replace STOMP with our own small JSON protocol on a plain
+  WebSocket (chosen in /discussion as option B). **Keep every name**:
+  `ChatBroadcaster.toConversation / toCall / toUser(s)`,
+  `RealtimeService.subscribe / send / reconnected`, `RealtimeEvent`, and all
+  address strings (`/topic/conversations/{id}`, `/topic/conversations/{id}/call`,
+  `/user/queue/inbox`, `/user/queue/calls`, `/topic/presence`,
+  `/app/conversations/{id}/typing`). BLoCs, repositories and screens must not
+  change.
+- **Two doors until the end:** the new plain door `/realtime` lives NEXT TO
+  the STOMP door `/ws` (old builds and `feature/call` keep working). Remove
+  `/ws` only when the user asks.
+- **Letters (JSON, one per WebSocket text frame):** 📱 `auth {token}` (first,
+  within 10 s) → 🖥 `ready` · 📱 `subscribe` / `unsubscribe {destination}` ·
+  🖥 `message {destination, event, payload}` · 📱 `send {destination, body}`
+  (only `/app/...`, the server takes WHO from the line's user, never the body)
+  · 📱 `ping` every 10 s → 🖥 `pong`; silent 25 s = dead line · 🖥
+  `error {message}` then close. Bad token → `error` + close.
+- **Backend package** `features/chats/realtime/` (STOMP stays in
+  `chats/ws/`). **R1 ✅** `RealtimeClient` (id · send · close) +
+  `RealtimeSessions` (the phone book: line → user, line → addresses;
+  `sendTo(dest)`, `sendToUser(userId, "/queue/x")` reaches ONLY that user's
+  lines subscribed to `/user/queue/x`; `close` → `Closed(userId, lastLine)`).
+- **Risk:** R4 (presence + `CallDisconnectHandler` used STOMP session
+  events). Test calls ringing / "user gone 30 s → hang up" in R6.
+- Steps: R1 phone book ✅ · R2 door `/realtime` · R3 broadcaster + typing ·
+  R4 connect / disconnect → presence + calls · R5 app `ws_connection.dart` ·
+  R6 two-phone test. Lessons `30-raw-websocket-r1-…md` onwards.
+
 ### Chat & call (Steps 5–7): lessons from the old app
 
 These bugs cost many rounds of fixes on `feature/call`. Build them in from the

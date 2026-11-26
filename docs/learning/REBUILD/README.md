@@ -137,6 +137,21 @@ current one works.
 | 7.5 | Call: switch a voice call to video (tap 🎥; the layout follows whoever has a camera on) | [28-voice-to-video.md](28-voice-to-video.md) | ✅ |
 | 8 | Translations, tests, polish | — | ⏳ |
 
+### 🔀 Track B: realtime over a plain WebSocket (branch `feature/raw-websocket`)
+
+Replace STOMP with our own small JSON protocol on a plain WebSocket. Same
+addresses and method names, so BLoCs and screens don't change. The STOMP door
+`/ws` stays next to the new `/realtime` until the end.
+
+| Step | What you build | Lesson | Status |
+|---|---|---|---|
+| R1 | Backend: the phone book `RealtimeSessions` (line → user, line → addresses, private `/user/...` sends) | [30-raw-websocket-r1-sessions.md](30-raw-websocket-r1-sessions.md) | ✅ |
+| R2 | Backend: the door `/realtime` (auth first, subscribe, ping/pong, 25 s timeout) | — | ⏳ |
+| R3 | Backend: `ChatBroadcaster` also sends on the new door · typing over `send` | — | ⏳ |
+| R4 | Backend: connect / disconnect events → presence + `CallDisconnectHandler` | — | ⏳ |
+| R5 | App: `ws_connection.dart` (replaces `stomp_connection.dart`) + `realtimeUrl` → `/realtime` | — | ⏳ |
+| R6 | Two phones: chat, typing, presence, ✓✓, calls ringing | — | ⏳ |
+
 ## 📖 How each lesson is written
 
 1. **Why**: what problem this step solves.

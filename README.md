@@ -67,6 +67,18 @@ the same data count as equal. Why, and what breaks without them:
 | 7.5 | Switch a voice call to video | ✅ |
 | 8 | Translations, tests, polish | ⏳ |
 
+**Track B** (branch `feature/raw-websocket`): realtime over a plain WebSocket
+instead of STOMP.
+
+| Step | What | Status |
+|---|---|---|
+| R1 | Backend: the phone book (`RealtimeSessions`) | ✅ |
+| R2 | Backend: the door `/realtime` | ⏳ |
+| R3 | Backend: broadcaster on the new door · typing | ⏳ |
+| R4 | Backend: presence + calls on connect / disconnect | ⏳ |
+| R5 | App: `ws_connection.dart` | ⏳ |
+| R6 | Two-phone test | ⏳ |
+
 The full table with lesson links is in
 [`docs/learning/REBUILD/README.md`](docs/learning/REBUILD/README.md).
 
