@@ -46,6 +46,12 @@ class CallNotifications with WidgetsBindingObserver {
   static int notificationId(String callId) =>
       (int.tryParse(callId) ?? callId.hashCode) & 0x7fffffff;
 
+  /// This class is Android only: iOS rings through CallKit (7.3), and the
+  /// plugin CRASHES on iOS without iOS settings. So on iOS every method
+  /// does nothing.
+  static bool get _android =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
   /// Set up the plugin. [onOpen] = the user tapped the notification or
   /// Answer (main isolate); [onBackgroundAction] = a TOP-LEVEL function for
   /// Decline when the app isn't running.
@@ -54,6 +60,7 @@ class CallNotifications with WidgetsBindingObserver {
     void Function(String callId)? onDecline,
     DidReceiveBackgroundNotificationResponseCallback? onBackgroundAction,
   }) async {
+    if (!_android) return;
     _onOpen = onOpen;
     await _plugin.initialize(
       const InitializationSettings(
@@ -74,7 +81,9 @@ class CallNotifications with WidgetsBindingObserver {
 
   /// Start following the app: back to the front → the app shows the call
   /// itself, so the notification stops ringing.
-  void attach() => WidgetsBinding.instance.addObserver(this);
+  void attach() {
+    if (_android) WidgetsBinding.instance.addObserver(this);
+  }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -92,6 +101,7 @@ class CallNotifications with WidgetsBindingObserver {
 
   /// The bloc tells us when a call rings / stops ringing on screen.
   void onIncoming(String? callId) {
+    if (!_android) return;
     final old = _ringingCallId;
     if (old != null && old != callId) cancel(old); // answered / ended
     _ringingCallId = callId;
@@ -102,7 +112,7 @@ class CallNotifications with WidgetsBindingObserver {
 
   /// Ring (Android only; iOS rings through CallKit in 7.3).
   Future<void> showIncoming(CallPushInvite invite) async {
-    if (defaultTargetPlatform != TargetPlatform.android) return;
+    if (!_android) return;
     final kind = invite.video ? 'video' : 'voice';
     await _plugin.show(
       notificationId(invite.callId),
@@ -147,6 +157,7 @@ class CallNotifications with WidgetsBindingObserver {
 
   /// Stop ringing for [callId] (cancel push, answered, declined, ended).
   Future<void> cancel(String callId) async {
+    if (!_android) return;
     try {
       await _plugin.cancel(notificationId(callId));
     } catch (_) {}
@@ -155,6 +166,7 @@ class CallNotifications with WidgetsBindingObserver {
   /// The app was STARTED by tapping a call notification / Answer → its call
   /// id (and whether it was Answer), else null.
   Future<({String callId, bool answer})?> launchedFrom() async {
+    if (!_android) return null;
     final details = await _plugin.getNotificationAppLaunchDetails();
     final r = details?.notificationResponse;
     if (details?.didNotificationLaunchApp != true || r == null) return null;
@@ -166,6 +178,7 @@ class CallNotifications with WidgetsBindingObserver {
   /// A call notification still on screen (the app was opened from the
   /// launcher while it rang) → its call id.
   Future<String?> ringingNow() async {
+    if (!_android) return null;
     final android = _plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
