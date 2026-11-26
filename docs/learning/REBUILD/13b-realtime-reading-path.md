@@ -712,15 +712,148 @@ stateDiagram-v2
 
 ## Stage 4: the token problem
 
+Stage 3 starts every try with `_accessToken()`: "a fresh ID card". Where
+does it come from, and why is it tricky?
 [`lib/core/network/token_refresher.dart`](../../../lib/core/network/token_refresher.dart)
 
-- `validTokens()`: "a token good for 60 s more; refresh first if not". The
-  socket calls it before every connect (see `lib/core/di/injection.dart`).
-- `refresh()`: **single flight**. `_inFlight ??= …` = a second caller gets
-  the SAME running refresh.
+### Part 1: two tokens (two cards)
 
-❓ The refresh token can be used only once. What would happen if the socket
-and a REST call refreshed at the same moment?
+| Card | Like | Lives | Used for |
+|---|---|---|---|
+| **access token** | a gym **day pass** | short (e.g. 15 min) | every request + the WebSocket CONNECT |
+| **refresh token** | the **membership card** shown at the desk | long (e.g. 30 days) | ONLY `POST /auth/refresh`, to get a new pair |
+
+The day pass travels with every request: stolen, it's useless after
+15 minutes. The membership card is shown rarely.
+
+### Part 2: the danger: the membership card works only ONCE
+
+Our server **rotates** the refresh token: each use gives a NEW one and kills
+the old one.
+
+```
+refresh with card A       → ✅ new pass + card B   (card A is now DEAD)
+refresh with card A again → ❌ "card refused"     → logged out!
+```
+
+Two parts of the app at the same moment (opening the app after a while):
+
+```
+WebSocket: "need a fresh token to connect" → refresh with card A ✅ → card B
+HTTP 401:  "my pass expired"               → refresh with card A ❌ (dead)
+                                             → "refused" → logged out for no reason 😱
+```
+
+### Part 3: the fix: single flight (ONE refresh at a time)
+
+```dart
+Future<RefreshResult>? _inFlight;
+
+Future<RefreshResult> refresh() =>
+    _inFlight ??= _run().whenComplete(() => _inFlight = null);
+```
+
+| Code | Plain words |
+|---|---|
+| `_inFlight` | the refresh running right now (null = none) |
+| `??=` | none running → start one and save it; one running → **give me THAT one** |
+| `_run()` | go to the desk with the membership card |
+| `.whenComplete(… = null)` | finished (OK or not) → clear it for next time |
+
+```
+WebSocket: "new pass!" → nobody at the desk → GO with card A ⏳
+HTTP:      "new pass!" → someone is going   → "I'll wait for them" ⏳
+desk: ✅ new pass + card B → BOTH get the same new pass     (card A used ONCE)
+```
+
+That's why: **never call `/auth/refresh` anywhere else.** Both
+`AuthInterceptor` (HTTP 401) and `RealtimeService` go through this ONE
+`TokenRefresher`.
+
+### Part 4: `validTokens()`: what the socket asks for
+
+```dart
+Future<AuthTokens?> validTokens({Duration margin = const Duration(seconds: 60)}) async {
+  final tokens = await _tokenStorage.read();              // my cards
+  if (tokens == null) return null;                        // not logged in
+  final expiresAt = tokens.accessTokenExpiresAt;
+  if (expiresAt == null || expiresAt.isAfter(DateTime.now().add(margin))) {
+    return tokens;                                        // good for 60 s more → use it
+  }
+  return switch (await refresh()) {                       // almost expired → refresh (single flight)
+    RefreshOk(:final tokens) => tokens,
+    _ => null,
+  };
+}
+```
+
+**Why 60 s margin?** A pass that dies in 5 s may die WHILE we connect → the
+guard refuses it. "Almost expired" = expired.
+
+The socket uses it in `lib/core/di/injection.dart`: this is Stage 3's `_accessToken()`:
+
+```dart
+RealtimeService(
+  url: ApiEndPoint.websocketUrl,
+  accessToken: () async => (await getIt<TokenRefresher>().validTokens())?.accessToken,
+)
+```
+
+### Part 5: three answers from the desk
+
+| Answer | Means | We do | Why |
+|---|---|---|---|
+| ✅ `RefreshOk` | a new pair | **save** it | the old card is dead now |
+| ❌ `RefreshRejected` (400/401/403) | the server REFUSED the card (expired / revoked) | **clear** tokens + log out | the session is really over; keeping them = auto-login with a dead session (security bug) |
+| 🤷 `RefreshFailed` (offline, timeout, 5xx) | we couldn't ask | **keep** tokens | not the user's fault; works again later |
+
+Walking into a tunnel must NOT log you out; only a real "NO" does. For the
+socket: Failed → `validTokens` = null → `_connect` fails → retry later
+(Stage 3 backoff).
+
+### Part 6: a separate Dio (no loop)
+
+`_refreshDio` has NO auth interceptor. If the refresh used the normal Dio and
+got a 401, the interceptor would refresh again → again → forever 🔁. With its
+own plain Dio, a 401 there just means "Rejected".
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant W as 🔌 RealtimeService
+    participant H as 🌐 AuthInterceptor (HTTP 401)
+    participant T as TokenRefresher
+    participant S as 🖥 POST /auth/refresh
+    W->>T: validTokens() → almost expired → refresh()
+    T->>S: refresh with card A (the ONLY trip)
+    H->>T: refresh() (same moment)
+    Note over T: _inFlight running → H waits for THE SAME trip
+    S-->>T: ✅ new pass + card B (saved)
+    T-->>W: new pass → CONNECT
+    T-->>H: new pass → retry the request
+```
+
+### ❓ Check yourself
+
+1. Access token vs refresh token? (the gym idea)
+2. What goes wrong if the socket and an HTTP call refresh at the same moment?
+3. What does `_inFlight ??= …` do?
+4. Why refresh when the pass still has 30 s left?
+5. `RefreshFailed` vs `RefreshRejected`: which logs out, and why not the other?
+
+<details><summary>Answers</summary>
+
+1. Access = day pass (short, every request). Refresh = membership card
+   (long, only at the desk to get a new pass).
+2. The first uses card A and gets B; the second brings the dead card A →
+   refused → logged out for no reason.
+3. If a refresh is already running, everyone waits for THAT one; else it
+   starts one.
+4. It could expire while we connect → refused. 60 s margin.
+5. Rejected logs out (the server really said NO). Failed (offline) keeps the
+   tokens: not the user's fault, works again later.
+
+</details>
 
 ---
 
