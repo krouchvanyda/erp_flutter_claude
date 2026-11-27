@@ -1,42 +1,38 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
+# CI: on every push / PR to master → install Flutter → analyze → test.
+# A red ❌ here means: don't merge.
 
-name: Dart
+name: Flutter CI
 
 on:
   push:
-    branches: [ "master" ]
+    branches: ["master"]
   pull_request:
-    branches: [ "master" ]
+    branches: ["master"]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest # Linux = the cheapest runner; enough for analyze + test
 
     steps:
       - uses: actions/checkout@v4
 
-      # Note: This workflow uses the latest stable version of the Dart SDK.
-      # You can specify other versions if desired, see documentation here:
-      # https://github.com/dart-lang/setup-dart/blob/main/README.md
-      # - uses: dart-lang/setup-dart@v1
-      - uses: dart-lang/setup-dart@9a04e6d73cca37bd455e0608d7e5092f881fd603
+      # The runner has no Flutter. setup-dart gives ONLY Dart, so `flutter`
+      # was "command not found". This action installs the Flutter SDK
+      # (Dart comes inside it).
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          # master was made with Flutter 3.35 (pubspec.lock: flutter >=3.35.6,
+          # Dart ^3.9.2). A newer Flutter can't resolve its packages
+          # (freezed 2.x needs an old analyzer). 3.35.x = the newest 3.35 patch.
+          flutter-version: 3.35.x
+          cache: true # keep the SDK between runs → faster
 
       - name: Install dependencies
         run: flutter pub get
 
-      # Uncomment this step to verify the use of 'dart format' on each commit.
-      # - name: Verify formatting
-      #   run: dart format --output=none --set-exit-if-changed .
-
-      # Consider passing '--fatal-infos' for slightly stricter analysis.
       - name: Analyze project source
         run: flutter analyze
 
-      # Your project will need to have tests in test/ and a dependency on
-      # package:test for this step to succeed. Note that Flutter projects will
-      # want to change this to 'flutter test'.
       - name: Run tests
         run: flutter test
