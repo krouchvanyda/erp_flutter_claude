@@ -1,6 +1,12 @@
 # Enterprise ERP Mobile — Learning Rebuild
 
-> **Branch `feature/rebuild`** (started 2026-11-19 from `feature/call`).
+> **Branch `feature/raw-websocket`** (started 2026-11-26 from `feature/rebuild`,
+> which started 2026-11-19 from `feature/call`):
+> `feature/call` ─► `feature/rebuild` ─► `feature/raw-websocket`.
+> This branch = `feature/rebuild` + **Track B** (realtime over a plain
+> WebSocket instead of STOMP; see "Track B" below). The backend repo has a
+> branch with the same name.
+>
 > `lib/` is being rebuilt **from zero, step by step, to learn**. Only what is
 > listed in [`docs/learning/REBUILD/README.md`](docs/learning/REBUILD/README.md)
 > exists. Everything else is still to be built.
@@ -603,10 +609,20 @@ Login response
   `ChatBroadcaster`. `send` to `/app/conversations/{id}/typing` → the SAME
   `TypingController.typing(id, TypingRequest, principal = the line's user)`;
   other destinations → `error "Unknown destination"`.
+  **R4 ✅** ONE rule `presence/UserConnections`: `connected(userId, id)` →
+  `PresenceService.connect`; `disconnected(id)` → `PresenceService.disconnect`
+  and, if the user has NO live connection left (any door), →
+  `CallDisconnectHandler.onUserConnectionDropped`. Used by BOTH doors: the
+  STOMP `WebSocketSessionListener` (rule moved out of it) and
+  `RealtimeProtocol` (after a good `auth` → `connected(user, "rt:" + lineId)`;
+  `onClose` of a logged-in line → `disconnected("rt:" + lineId)`, once).
+  PresenceService counts connections across doors (STOMP phone + /realtime
+  tablet: closing one ≠ offline); don't use R1's `Closed.lastLine` for
+  presence (it only knows one door).
 - **Risk:** R4 (presence + `CallDisconnectHandler` used STOMP session
   events). Test calls ringing / "user gone 30 s → hang up" in R6.
 - Steps: R1 phone book ✅ · R2 door `/realtime` ✅ · R3 broadcaster + typing ✅ ·
-  R4 connect / disconnect → presence + calls · R5 app `ws_connection.dart` ·
+  R4 connect / disconnect → presence + calls ✅ · R5 app `ws_connection.dart` ·
   R6 two-phone test. Lessons `30-raw-websocket-r1-…md` onwards.
 
 ### Chat & call (Steps 5–7): lessons from the old app

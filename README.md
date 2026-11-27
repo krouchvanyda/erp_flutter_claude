@@ -1,8 +1,16 @@
 # erp_mobile — Learning Rebuild
 
-> 🧱 **Branch `feature/rebuild`**: rebuilding the app from zero, step by step,
-> to learn. Started 2026-11-19 from `feature/call`, where the old working app
-> still lives.
+> 🧱 **Branch `feature/raw-websocket`** (started 2026-11-26 from
+> `feature/rebuild`, which started 2026-11-19 from `feature/call`):
+>
+> ```
+> feature/call ─► feature/rebuild ─► feature/raw-websocket
+> (old working app)  (rebuild, step by step)  (+ Track B: plain WebSocket instead of STOMP)
+> ```
+>
+> `lib/` is being rebuilt **from zero, step by step, to learn**. Only what is
+> in the progress table below exists. The old working app still lives on
+> `feature/call`. The backend repo has a `feature/raw-websocket` branch too.
 
 **Start here:** [`docs/learning/REBUILD/README.md`](docs/learning/REBUILD/README.md)
 has the roadmap, progress and one lesson per step.
@@ -75,7 +83,7 @@ instead of STOMP.
 | R1 | Backend: the phone book (`RealtimeSessions`) | ✅ |
 | R2 | Backend: the door `/realtime` | ✅ |
 | R3 | Backend: broadcaster on the new door · typing | ✅ |
-| R4 | Backend: presence + calls on connect / disconnect | ⏳ |
+| R4 | Backend: presence + calls on connect / disconnect | ✅ |
 | R5 | App: `ws_connection.dart` | ⏳ |
 | R6 | Two-phone test | ⏳ |
 

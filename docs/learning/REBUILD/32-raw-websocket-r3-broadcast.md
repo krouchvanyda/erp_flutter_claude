@@ -1,7 +1,7 @@
 # Track B · R3 — plain WebSocket: letters go out through BOTH doors (backend)
 
 > Branch **`feature/raw-websocket`** (app AND backend).
-> ← Previous: [31-raw-websocket-r2-door.md](31-raw-websocket-r2-door.md) · Roadmap: [README.md](README.md)
+> ← Previous: [31-raw-websocket-r2-door.md](31-raw-websocket-r2-door.md) · Next: [33-raw-websocket-r4-connections.md](33-raw-websocket-r4-connections.md) → · Roadmap: [README.md](README.md)
 
 ```
 R1 the phone book ✅ · R2 the door /realtime ✅
