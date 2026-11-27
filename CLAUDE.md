@@ -513,7 +513,14 @@ Login response
   members; it fails → the invite's name stays.
 - Stuck calls: the backend hangs up for a user whose socket is gone 30 s
   during an ANSWERED call (`answered-disconnect-grace-seconds`, backend
-  `CallDisconnectHandler`). The raw "Caller is already in an active call"
+  `CallDisconnectHandler`).
+  **Swipe away = end of call (R6, backend, plain door only):** the OS closes
+  a killed app's socket AT ONCE, a network drop only goes silent.
+  `RealtimeProtocol.onClose` → `UserConnections.disconnected(id, Drop.CLOSED
+  | SILENT)` (SILENT = the 25 s sweep closed it) → `CallDisconnectHandler
+  .onUserConnectionDropped(user, lineClosed)`: CLOSED → hang up after
+  `closed-disconnect-grace-seconds` (3 s); SILENT / STOMP → 30 s.
+  The raw "Caller is already in an active call"
   is shown as `CallEndReason.stillInCall` — unless the other person of the
   SAME chat called me while my start was pending (crossed calls, #18): then
   `busy`, so both phones say "Busy in another call".
