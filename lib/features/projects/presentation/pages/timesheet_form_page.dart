@@ -9,7 +9,7 @@ import '../../domain/usecases/submit_timesheet.dart';
 
 /// Slice 8.2.1 — daily timesheet entry form.
 class TimesheetFormPage extends StatefulWidget {
-  const TimesheetFormPage({
+  const TimesheetFormPage({super.key, 
     this.employeeId = 'emp-001',
     this.employeeName = 'Demo Approver',
   });

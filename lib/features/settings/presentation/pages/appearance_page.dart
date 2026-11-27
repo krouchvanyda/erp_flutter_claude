@@ -6,7 +6,7 @@ import '../../domain/repositories/preferences_repository.dart';
 
 /// Slice 9.1.1 — light / dark / system toggle.
 class AppearancePage extends StatelessWidget {
-  const AppearancePage();
+  const AppearancePage({super.key});
 
   @override
   Widget build(BuildContext context) {

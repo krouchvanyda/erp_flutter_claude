@@ -16,7 +16,7 @@ import '../../domain/usecases/submit_timesheet.dart';
 /// - **Approvals**: pending submitted entries from anyone (manager view)
 /// - **All**: every entry — diagnostic / report view
 class TimesheetsListPage extends StatefulWidget {
-  const TimesheetsListPage({this.currentUserId = 'emp-001'});
+  const TimesheetsListPage({super.key, this.currentUserId = 'emp-001'});
   final String currentUserId;
 
   @override

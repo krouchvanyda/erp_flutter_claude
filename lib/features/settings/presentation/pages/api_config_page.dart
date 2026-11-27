@@ -8,7 +8,7 @@ import '../../domain/usecases/manage_environments.dart';
 
 /// Slice 9.2.3 — API environment / tenant switcher.
 class ApiConfigPage extends StatelessWidget {
-  const ApiConfigPage();
+  const ApiConfigPage({super.key});
 
   @override
   Widget build(BuildContext context) {

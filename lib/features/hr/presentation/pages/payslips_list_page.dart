@@ -11,7 +11,7 @@ import '../../domain/usecases/summarize_payslip.dart';
 /// top so the user sees overtime / deductions at a glance without
 /// drilling into individual slips.
 class PayslipsListPage extends StatelessWidget {
-  const PayslipsListPage({this.employeeId = 'emp-001'});
+  const PayslipsListPage({super.key, this.employeeId = 'emp-001'});
   final String employeeId;
 
   @override

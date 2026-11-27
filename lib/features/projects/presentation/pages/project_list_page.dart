@@ -19,7 +19,7 @@ import '../widgets/gantt_chart.dart';
 ///   built from the same filtered dataset as the list so the user can
 ///   filter once and see both views consistently.
 class ProjectListPage extends StatelessWidget {
-  const ProjectListPage();
+  const ProjectListPage({super.key});
 
   @override
   Widget build(BuildContext context) {

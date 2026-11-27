@@ -6,7 +6,7 @@ import '../../../../core/router/route_paths.dart';
 /// Module 9 settings hub. Groups every sub-page from Phases 9.1–9.3
 /// into three sections so the user can scan the surface at a glance.
 class SettingsHomePage extends StatelessWidget {
-  const SettingsHomePage();
+  const SettingsHomePage({super.key});
 
   @override
   Widget build(BuildContext context) {

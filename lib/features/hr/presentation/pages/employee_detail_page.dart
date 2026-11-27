@@ -8,7 +8,7 @@ import '../../domain/repositories/employees_repository.dart';
 
 /// Slice 7.1.2 — employee profile detail.
 class EmployeeDetailPage extends StatelessWidget {
-  const EmployeeDetailPage({required this.employeeId});
+  const EmployeeDetailPage({super.key, required this.employeeId});
   final String employeeId;
 
   @override

@@ -12,7 +12,7 @@ import '../../domain/usecases/compute_utilization.dart';
 /// target for the selected window. Window toggles between "this week"
 /// and "this month" without leaving the page.
 class UtilizationPage extends StatefulWidget {
-  const UtilizationPage();
+  const UtilizationPage({super.key});
 
   @override
   State<UtilizationPage> createState() => _UtilizationPageState();

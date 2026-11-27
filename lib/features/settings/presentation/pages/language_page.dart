@@ -10,7 +10,7 @@ import '../../domain/repositories/preferences_repository.dart';
 /// emoji belong to the UI only so we can add new locales without
 /// touching the entity.
 class LanguagePage extends StatelessWidget {
-  const LanguagePage();
+  const LanguagePage({super.key});
 
   @override
   Widget build(BuildContext context) {

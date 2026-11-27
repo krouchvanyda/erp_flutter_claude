@@ -12,7 +12,7 @@ import '../../domain/usecases/toggle_clock.dart';
 /// do next given the latest entry, so the page truth is the use case,
 /// not local UI state.
 class AttendancePage extends StatefulWidget {
-  const AttendancePage({this.employeeId = 'emp-001'});
+  const AttendancePage({super.key, this.employeeId = 'emp-001'});
   final String employeeId;
 
   @override

@@ -14,7 +14,7 @@ import '../../domain/usecases/manage_app_lock.dart';
 /// in prod). The PIN-enabled flag lives in [AppLockSettings] (drift in
 /// prod) so wiping drift never invalidates the secret on its own.
 class AppLockPage extends StatelessWidget {
-  const AppLockPage();
+  const AppLockPage({super.key});
 
   @override
   Widget build(BuildContext context) {

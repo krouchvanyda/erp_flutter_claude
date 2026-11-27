@@ -21,6 +21,3 @@ samples, guidance on mobile development, and a full API reference.
 -> Need to create file .md
 -> Put all what to do in .md file
 -> Ex: CLAUDE.md file in put data to do in file
-
-
--> Next Strt +> MODULE 7 — Human Resources

@@ -1,0 +1,38 @@
+# CI: on every push / PR to master → install Flutter → analyze → test.
+# A red ❌ here means: don't merge.
+
+name: Flutter CI
+
+on:
+  push:
+    branches: ["master", "develop"] # every push to these branches
+  pull_request:
+    branches: ["master", "develop"] # every PR INTO these branches
+
+jobs:
+  build:
+    runs-on: ubuntu-latest # Linux = the cheapest runner; enough for analyze + test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The runner has no Flutter. setup-dart gives ONLY Dart, so `flutter`
+      # was "command not found". This action installs the Flutter SDK
+      # (Dart comes inside it).
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          # master was made with Flutter 3.35 (pubspec.lock: flutter >=3.35.6,
+          # Dart ^3.9.2). A newer Flutter can't resolve its packages
+          # (freezed 2.x needs an old analyzer). 3.35.x = the newest 3.35 patch.
+          flutter-version: 3.35.x
+          cache: true # keep the SDK between runs → faster
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze project source
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test

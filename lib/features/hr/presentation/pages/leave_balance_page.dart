@@ -12,7 +12,7 @@ import '../../domain/usecases/compute_leave_balance.dart';
 /// [computeEffectiveBalances] so newly-approved requests in the demo
 /// session immediately decrement the displayed remainder.
 class LeaveBalancePage extends StatelessWidget {
-  const LeaveBalancePage({this.employeeId = 'emp-001'});
+  const LeaveBalancePage({super.key, this.employeeId = 'emp-001'});
   final String employeeId;
 
   @override
