@@ -36,8 +36,12 @@ Future<void> callPushBackgroundHandler(RemoteMessage message) async {
   final notifications = CallNotifications();
   await notifications.init(onBackgroundAction: callDeclineInBackground);
   switch (push) {
-    case CallPushInvite():
+    case CallPushInvite(:final callId):
       await notifications.showIncoming(push);
+      // The app may be KILLED (no call bloc): tell the caller it rings here,
+      // or their screen stays on "Calling…". If the app is alive too, its
+      // bloc also sends it — harmless (the caller just sees "Ringing…").
+      await BackgroundCallApi.ringing(callId);
     case CallPushCancel(:final callId):
       await notifications.cancel(callId); // answered elsewhere / gave up
   }
