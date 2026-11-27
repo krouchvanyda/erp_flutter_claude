@@ -130,7 +130,7 @@ Live status: [`docs/learning/REBUILD/README.md`](docs/learning/REBUILD/README.md
 | Architecture | MVVM + BLoC, flat | View ↔ BLoC ↔ Repository ↔ DataSource |
 | DI | In-house service locator (`core/di/`) | Hand-written, `getIt<T>()` style API, no package |
 | Networking | `dio` | Interceptors: auth, refresh, errors, logging |
-| Realtime | `web_socket_channel` (Track B: our JSON letters on `/realtime`); `stomp_dart_client` kept for the old door | Chat, presence, call signalling |
+| Realtime | `web_socket_channel` (Track B: our JSON letters on `/realtime`; `stomp_dart_client` removed after R6) + `connectivity_plus` (network back → reconnect now) | Chat, presence, call signalling |
 | Local cache | `shared_preferences` | Cached user, settings |
 | Secrets | `flutter_secure_storage` | Tokens only |
 | Navigation | `ConfigRouter` (`Navigator` + `page_transition`) + `AuthGate` | No go_router. `AuthGate` swaps Splash / Login / Home from `AuthSession` |
@@ -655,8 +655,8 @@ Login response
   reads `event` + `payload`); our JSON `ping` every 10 s (NOT WebSocket ping
   frames: the server sweep only sees letters); no letter for 25 s → lost.
   `close()` on purpose is never "lost". `RealtimeService` default connector =
-  `connectWebSocket`; `connectStomp` (stomp_connection.dart) is kept as the old
-  door. `Environments.*RealtimeUrl` = `ws://…:8080/realtime`. Repositories,
+  `connectWebSocket`. The app's STOMP connector + `stomp_dart_client` were
+  REMOVED after R6 (the backend `/ws` door stays for old builds). `Environments.*RealtimeUrl` = `ws://…:8080/realtime`. Repositories,
   BLoCs, screens unchanged.
 - **Risk:** R4 (presence + `CallDisconnectHandler` used STOMP session
   events). Test calls ringing / "user gone 30 s → hang up" in R6.

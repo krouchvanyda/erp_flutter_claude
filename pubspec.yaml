@@ -35,12 +35,9 @@ dependencies:
   dio: ^5.7.0
   connectivity_plus: ^7.0.0
   pretty_dio_logger: ^1.4.0
+  # Realtime (Track B): our JSON letters on the plain WebSocket `/realtime`
+  # (core/realtime/ws_connection.dart). STOMP (stomp_dart_client) was removed.
   web_socket_channel: ^3.0.1
-  # STOMP client for the chat module's real-backend integration
-  # (Prompt 1 of CHAT_MODULE_BACKEND_INTEGRATIONGUIDE.md). Subscribes
-  # to `/topic/conversations/{id}*` + `/user/queue/*` for inbound;
-  # outbound chat ops go through REST via dio.
-  stomp_dart_client: ^2.1.0
 
   # ── Real-time audio/video (call media) ──────────────────────────
   # Module 10 — Stream Video powers actual audio/video on calls.

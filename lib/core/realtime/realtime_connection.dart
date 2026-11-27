@@ -1,11 +1,9 @@
 /// ONE open live connection: the "remote control" with 3 buttons
 /// (13b Stage 2). Small on purpose, so tests can fake it.
 ///
-/// Two real ones exist (Track B, branch `feature/raw-websocket`):
-/// - `connectWebSocket` (ws_connection.dart): our JSON letters on the plain
-///   door `/realtime` — the one the app uses.
-/// - `connectStomp` (stomp_connection.dart): STOMP on `/ws` — the old door,
-///   kept until Track B is finished.
+/// The real one is `connectWebSocket` (ws_connection.dart): our JSON letters
+/// on the plain door `/realtime` (Track B). The old STOMP connector was
+/// removed after R6; to see it: `git show feature/rebuild:lib/core/realtime/stomp_connection.dart`.
 abstract interface class RealtimeConnection {
   /// Listen to [destination]. [onMessage] gets the letter's JSON text (it has
   /// `event` + `payload`, read by `RealtimeEvent.tryParse`). Returns a

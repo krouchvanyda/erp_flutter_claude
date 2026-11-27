@@ -25,14 +25,14 @@ lib/
 └── features/
     ├── auth/        login, auto-login, logout
     ├── profile/     my profile, avatar
-    ├── chat/        inbox, conversation, groups (STOMP)
+    ├── chat/        inbox, conversation, groups (realtime: plain WebSocket)
     └── call/        voice / video (Stream Video + CallKit + push)
 ```
 
 Architecture: **MVVM + BLoC**, flat.
 
 ```
-View ─► BLoC ─► Repository ─► DataSource (dio / STOMP / shared_preferences)
+View ─► BLoC ─► Repository ─► DataSource (dio / WebSocket / shared_preferences)
 ```
 
 Models are hand-written (no `freezed` / `equatable`). Every model writes its

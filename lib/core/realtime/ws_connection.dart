@@ -18,7 +18,7 @@ import 'realtime_connection.dart';
 ///        nothing from the server for 25 s → LOST (a dead line)
 /// ```
 ///
-/// Like `connectStomp`: no reconnect here. `RealtimeService` reconnects, with
+/// No reconnect here. `RealtimeService` reconnects, with
 /// a FRESH token each try (13b Stages 2–3).
 Future<RealtimeConnection> connectWebSocket({
   required String url,
