@@ -97,7 +97,7 @@ The full table with lesson links is in
 | `feature/call` | (older work) | before 2026-11-19 | The old, working app. Reference only: `git show feature/call:<path>` |
 | `feature/rebuild` | `feature/call` | 2026-11-19 | The main line of the rebuild (Steps 0–8) |
 | `test/ios-local-call-notification` | `feature/rebuild` | 2026-11-26 | Test only: an iOS call banner from our FCM push (works with `flutter run`). Never release it (it would ring twice with CallKit). Also has the 13b realtime reading-path docs and lesson 29 |
-| `feature/raw-websocket` | `feature/rebuild` | 2026-11-26 | **Track B**: realtime over a plain WebSocket (`/realtime`) instead of STOMP. Lessons 30–34 |
+| `feature/raw-websocket` | `feature/rebuild` | 2026-11-26 | **Track B**: realtime over a plain WebSocket (`/realtime`) instead of STOMP. Lessons 30–34 + 30b (set it up from zero) |
 | `chat_conversation`, `video_call` | (older work) | before the rebuild | Old experiments, not used by the rebuild |
 
 The backend repo (`erp_java_backend_claude`) has branches with the SAME names
