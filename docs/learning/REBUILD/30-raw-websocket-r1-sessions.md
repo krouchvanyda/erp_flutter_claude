@@ -1,7 +1,7 @@
 # Track B · R1 — plain WebSocket: the phone book (backend)
 
 > Branch **`feature/raw-websocket`** (app AND backend, from `feature/rebuild`).
-> ← Previous: [28-voice-to-video.md](28-voice-to-video.md) · Next: [31-raw-websocket-r2-door.md](31-raw-websocket-r2-door.md) → · Roadmap: [README.md](README.md)
+> ← Previous: [28-voice-to-video.md](28-voice-to-video.md) · Next: [31-raw-websocket-r2-door.md](31-raw-websocket-r2-door.md) → · All of Track B on one page: [30b-raw-websocket-from-zero.md](30b-raw-websocket-from-zero.md) · Roadmap: [README.md](README.md)
 
 ```
 Track B: realtime over a PLAIN WebSocket instead of STOMP

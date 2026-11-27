@@ -95,8 +95,9 @@ abstract final class ApiEndPoint {
   static const String callStreamToken = '$_v1/chats/calls/stream-token';
 
   // ── Realtime (Step 5.3) ──
-  /// STOMP over WebSocket, per flavor (`Environments.*RealtimeUrl`, the
-  /// backend's `/ws`). The token goes in the CONNECT frame, not the URL.
+  /// The plain WebSocket, per flavor (`Environments.*RealtimeUrl`, the
+  /// backend's `/realtime`, Track B). The token goes in the first letter
+  /// (`auth`), never in the URL.
   static String get websocketUrl => Flavor.current.realtimeUrl;
 
   static const String inboxQueue = '/user/queue/inbox';

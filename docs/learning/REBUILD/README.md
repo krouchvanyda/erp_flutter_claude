@@ -143,6 +143,10 @@ Replace STOMP with our own small JSON protocol on a plain WebSocket. Same
 addresses and method names, so BLoCs and screens don't change. The STOMP door
 `/ws` stays next to the new `/realtime` until the end.
 
+📑 **All of Track B on one page, in build order (contents with links):**
+[30b-raw-websocket-from-zero.md](30b-raw-websocket-from-zero.md): set it up
+from zero, backend ↔ phone.
+
 | Step | What you build | Lesson | Status |
 |---|---|---|---|
 | R1 | Backend: the phone book `RealtimeSessions` (line → user, line → addresses, private `/user/...` sends) | [30-raw-websocket-r1-sessions.md](30-raw-websocket-r1-sessions.md) | ✅ |
