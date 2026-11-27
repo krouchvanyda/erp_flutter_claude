@@ -1,4 +1,5 @@
-# CI: on every push / PR to master → install Flutter → analyze → test.
+# CI: on every push / PR to master or develop → Flutter → analyze → test.
+# CD: a push to master that passed → release APK on GitHub Releases.
 # A red ❌ here means: don't merge.
 
 name: Flutter CI
@@ -36,3 +37,60 @@ jobs:
 
       - name: Run tests
         run: flutter test
+
+  # CD: tests passed on a PUSH to master → build the APK → GitHub Release.
+  # (develop and PRs stop after the tests.)
+  release-apk:
+    needs: build # only if analyze + test above are green
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # needed to create the tag + the Release
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The Android build (Gradle) needs Java 17.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.35.x
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # versionName from pubspec (1.0.0), versionCode = the run number, so
+      # every build can be installed over the last one.
+      - name: Read the version
+        id: version
+        run: |
+          name=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      # Release signs with the DEBUG key for now (android/app/build.gradle.kts):
+      # fine for testers, NOT for the Play Store.
+      - name: Build the release APK
+        run: flutter build apk --release --build-number=${{ github.run_number }}
+
+      - name: Rename the APK
+        run: mv build/app/outputs/flutter-apk/app-release.apk "erp-${{ steps.version.outputs.name }}-${{ github.run_number }}.apk"
+
+      # Downloadable from the run page (kept 90 days by default).
+      - uses: actions/upload-artifact@v4
+        with:
+          name: erp-apk
+          path: erp-*.apk
+
+      # A Release page with the APK attached: Code → Releases.
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.name }}-build.${{ github.run_number }}
+          name: ERP ${{ steps.version.outputs.name }} (build ${{ github.run_number }})
+          body: "Built from ${{ github.sha }} after analyze + test passed."
+          files: erp-*.apk
