@@ -84,11 +84,27 @@ instead of STOMP.
 | R2 | Backend: the door `/realtime` | ✅ |
 | R3 | Backend: broadcaster on the new door · typing | ✅ |
 | R4 | Backend: presence + calls on connect / disconnect | ✅ |
-| R5 | App: `ws_connection.dart` | ⏳ |
+| R5 | App: `ws_connection.dart` | ✅ |
 | R6 | Two-phone test | ⏳ |
 
 The full table with lesson links is in
 [`docs/learning/REBUILD/README.md`](docs/learning/REBUILD/README.md).
+
+## Branches
+
+| Branch | From | Created | What it is |
+|---|---|---|---|
+| `feature/call` | (older work) | before 2026-11-19 | The old, working app. Reference only: `git show feature/call:<path>` |
+| `feature/rebuild` | `feature/call` | 2026-11-19 | The main line of the rebuild (Steps 0–8) |
+| `test/ios-local-call-notification` | `feature/rebuild` | 2026-11-26 | Test only: an iOS call banner from our FCM push (works with `flutter run`). Never release it (it would ring twice with CallKit). Also has the 13b realtime reading-path docs and lesson 29 |
+| `feature/raw-websocket` | `feature/rebuild` | 2026-11-26 | **Track B**: realtime over a plain WebSocket (`/realtime`) instead of STOMP. Lessons 30–34 |
+| `chat_conversation`, `video_call` | (older work) | before the rebuild | Old experiments, not used by the rebuild |
+
+The backend repo (`erp_java_backend_claude`) has branches with the SAME names
+for the same work.
+
+**Rule:** every new branch gets a row here (and in `CLAUDE.md`): its name,
+the branch it came from, the date, and what it's for.
 
 ## Look at the old code
 

@@ -1,7 +1,7 @@
 # Track B · R4 — plain WebSocket: presence + calls know the new door (backend)
 
 > Branch **`feature/raw-websocket`** (app AND backend).
-> ← Previous: [32-raw-websocket-r3-broadcast.md](32-raw-websocket-r3-broadcast.md) · Roadmap: [README.md](README.md)
+> ← Previous: [32-raw-websocket-r3-broadcast.md](32-raw-websocket-r3-broadcast.md) · Next: [34-raw-websocket-r5-app.md](34-raw-websocket-r5-app.md) → · Roadmap: [README.md](README.md)
 
 ```
 R1 phone book ✅ · R2 door /realtime ✅ · R3 both doors ✅

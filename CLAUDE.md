@@ -47,9 +47,28 @@ PLAN → BUILD (small) → EXPLAIN (what + WHY + other ways) → DOC → USER CH
   `README.md`.
 - `flutter analyze` must be clean, and the app must **run**, before a step is done.
 - **Commit only when the user says "commit".**
+- **New branch → write it down.** Every time a branch is created (app or
+  backend), add a row to the "Branches" table below AND in `README.md`:
+  name · the branch it came FROM · the date · what it's for. Update the
+  `> **Branch …**` note at the top of this file and `README.md` when the
+  current branch changes. The backend repo uses the SAME branch names for
+  the same work (its `README.md` top note says so too).
 - Use simple English (short sentences, easy words). Khmer words are fine.
 - Don't copy-paste big files from `feature/call`. Rebuild them smaller and
   explain them. Reuse hard-won fixes (see "Lessons from the old app").
+
+## Branches
+
+| Branch | From | Created | What it is |
+|---|---|---|---|
+| `feature/call` | (older work) | before 2026-11-19 | The old, working app. Reference only: `git show feature/call:<path>` |
+| `feature/rebuild` | `feature/call` | 2026-11-19 | The main line of the rebuild (Steps 0–8) |
+| `test/ios-local-call-notification` | `feature/rebuild` | 2026-11-26 | Test only: an iOS call banner from our FCM push (works with `flutter run`). Never release it (it would ring twice with CallKit). Also has the 13b realtime reading-path docs and lesson 29 |
+| `feature/raw-websocket` | `feature/rebuild` | 2026-11-26 | **Track B**: realtime over a plain WebSocket (`/realtime`) instead of STOMP. Lessons 30–34 |
+| `chat_conversation`, `video_call` | (older work) | before the rebuild | Old experiments, not used by the rebuild |
+
+The backend repo (`erp_java_backend_claude`) has branches with the SAME names
+for the same work.
 
 ## Role
 You are a senior Flutter developer and a patient teacher, working on this
@@ -111,7 +130,7 @@ Live status: [`docs/learning/REBUILD/README.md`](docs/learning/REBUILD/README.md
 | Architecture | MVVM + BLoC, flat | View ↔ BLoC ↔ Repository ↔ DataSource |
 | DI | In-house service locator (`core/di/`) | Hand-written, `getIt<T>()` style API, no package |
 | Networking | `dio` | Interceptors: auth, refresh, errors, logging |
-| Realtime | `stomp_dart_client` | Chat, presence, call signalling |
+| Realtime | `web_socket_channel` (Track B: our JSON letters on `/realtime`); `stomp_dart_client` kept for the old door | Chat, presence, call signalling |
 | Local cache | `shared_preferences` | Cached user, settings |
 | Secrets | `flutter_secure_storage` | Tokens only |
 | Navigation | `ConfigRouter` (`Navigator` + `page_transition`) + `AuthGate` | No go_router. `AuthGate` swaps Splash / Login / Home from `AuthSession` |
@@ -619,10 +638,23 @@ Login response
   PresenceService counts connections across doors (STOMP phone + /realtime
   tablet: closing one ≠ offline); don't use R1's `Closed.lastLine` for
   presence (it only knows one door).
+  **R5 ✅ (app)** `core/realtime/realtime_connection.dart` =
+  `RealtimeConnection` (subscribe · send · close) + `RealtimeConnector` (was
+  `StompConnection` / `StompConnector`). `ws_connection.dart`:
+  `connectWebSocket` (web_socket_channel, `channel.ready` 10 s) →
+  `WsLine.open(incoming, sendRaw, closeRaw, token, onLost)`: sends `auth`,
+  completes on `ready`, fails on `error` / close / no ready in 10 s; routes
+  `message` by `destination` and passes the RAW text on (`RealtimeEvent.tryParse`
+  reads `event` + `payload`); our JSON `ping` every 10 s (NOT WebSocket ping
+  frames: the server sweep only sees letters); no letter for 25 s → lost.
+  `close()` on purpose is never "lost". `RealtimeService` default connector =
+  `connectWebSocket`; `connectStomp` (stomp_connection.dart) is kept as the old
+  door. `Environments.*RealtimeUrl` = `ws://…:8080/realtime`. Repositories,
+  BLoCs, screens unchanged.
 - **Risk:** R4 (presence + `CallDisconnectHandler` used STOMP session
   events). Test calls ringing / "user gone 30 s → hang up" in R6.
 - Steps: R1 phone book ✅ · R2 door `/realtime` ✅ · R3 broadcaster + typing ✅ ·
-  R4 connect / disconnect → presence + calls ✅ · R5 app `ws_connection.dart` ·
+  R4 connect / disconnect → presence + calls ✅ · R5 app `ws_connection.dart` ✅ ·
   R6 two-phone test. Lessons `30-raw-websocket-r1-…md` onwards.
 
 ### Chat & call (Steps 5–7): lessons from the old app

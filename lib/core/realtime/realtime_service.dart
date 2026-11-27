@@ -5,7 +5,8 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 
 import 'realtime_event.dart';
-import 'stomp_connection.dart';
+import 'realtime_connection.dart';
+import 'ws_connection.dart';
 
 /// Is the live connection up? (The inbox shows "Connecting…" when not.)
 enum RealtimeStatus {
@@ -17,9 +18,10 @@ enum RealtimeStatus {
   connected,
 }
 
-/// The app's ONE live connection to the server (STOMP over WebSocket).
+/// The app's ONE live connection to the server (Track B: our JSON letters
+/// on a plain WebSocket, `/realtime`; it was STOMP on `/ws`).
 ///
-/// It knows STOMP, tokens and reconnecting — NOTHING about chat. Features
+/// It knows the connection, tokens and reconnecting — NOTHING about chat. Features
 /// ask for a destination and get a stream of [RealtimeEvent]s.
 ///
 /// ```
@@ -38,7 +40,7 @@ class RealtimeService {
   RealtimeService({
     required this.url,
     required Future<String?> Function() accessToken,
-    StompConnector connector = connectStomp,
+    RealtimeConnector connector = connectWebSocket,
     Duration Function(int attempt)? backoff,
   }) : _accessToken = accessToken,
        _connector = connector,
@@ -46,7 +48,7 @@ class RealtimeService {
 
   final String url;
   final Future<String?> Function() _accessToken;
-  final StompConnector _connector;
+  final RealtimeConnector _connector;
   final Duration Function(int attempt) _backoff;
 
   /// 1 s, 2 s, 4 s, 8 s, 16 s, then 30 s forever.
@@ -65,7 +67,7 @@ class RealtimeService {
   /// destination → its stream + the "stop" of its current STOMP subscription.
   final Map<String, _Topic> _topics = {};
 
-  StompConnection? _connection;
+  RealtimeConnection? _connection;
   Timer? _retryTimer;
   int _attempt = 0;
   bool _running = false;

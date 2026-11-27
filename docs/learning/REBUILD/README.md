@@ -149,7 +149,7 @@ addresses and method names, so BLoCs and screens don't change. The STOMP door
 | R2 | Backend: the door `/realtime` (auth first, subscribe with membership check, ping/pong, 10 s / 25 s sweep) | [31-raw-websocket-r2-door.md](31-raw-websocket-r2-door.md) | ✅ |
 | R3 | Backend: `ChatBroadcaster` sends through BOTH doors (+ `toPresence`) · typing over `send` → the same `TypingController` | [32-raw-websocket-r3-broadcast.md](32-raw-websocket-r3-broadcast.md) | ✅ |
 | R4 | Backend: ONE rule `UserConnections` for both doors → presence (counts all connections) + `CallDisconnectHandler` | [33-raw-websocket-r4-connections.md](33-raw-websocket-r4-connections.md) | ✅ |
-| R5 | App: `ws_connection.dart` (replaces `stomp_connection.dart`) + `realtimeUrl` → `/realtime` | — | ⏳ |
+| R5 | App: `RealtimeConnection` + `ws_connection.dart` (`WsLine`: our letters, ping 10 s, 25 s watchdog) + `realtimeUrl` → `/realtime` | [34-raw-websocket-r5-app.md](34-raw-websocket-r5-app.md) | ✅ |
 | R6 | Two phones: chat, typing, presence, ✓✓, calls ringing | — | ⏳ |
 
 ## 📖 How each lesson is written

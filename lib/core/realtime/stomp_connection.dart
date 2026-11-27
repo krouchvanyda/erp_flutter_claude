@@ -2,28 +2,11 @@ import 'dart:async';
 
 import 'package:stomp_dart_client/stomp_dart_client.dart';
 
-/// One OPEN STOMP connection. Small on purpose, so tests can fake it.
-abstract interface class StompConnection {
-  /// Listen to [destination]. Returns a function that stops listening.
-  void Function() subscribe(
-    String destination,
-    void Function(String? body) onMessage,
-  );
+import 'realtime_connection.dart';
 
-  /// SEND a frame to [destination] (e.g. "/app/conversations/42/typing").
-  void send(String destination, String body);
-
-  void close();
-}
-
-/// Opens ONE connection with [token]. Completes when STOMP says CONNECTED,
-/// throws if it can't. [onLost] is called once if it drops LATER.
-typedef StompConnector =
-    Future<StompConnection> Function({
-      required String url,
-      required String token,
-      required void Function() onLost,
-    });
+// The remote control (RealtimeConnection) + its connector type now live in
+// realtime_connection.dart (Track B). This file is the OLD door (STOMP on
+// /ws), kept until Track B is finished; the app uses ws_connection.dart.
 
 /// The real connector (`stomp_dart_client`).
 ///
@@ -32,12 +15,12 @@ typedef StompConnector =
 ///   (the package would reuse the old CONNECT headers).
 /// - Heartbeats 10 s, like the server (`WebSocketConfig`): a dead socket is
 ///   noticed in ~20 s instead of hours.
-Future<StompConnection> connectStomp({
+Future<RealtimeConnection> connectStomp({
   required String url,
   required String token,
   required void Function() onLost,
 }) {
-  final opened = Completer<StompConnection>();
+  final opened = Completer<RealtimeConnection>();
   late final StompClient client;
   var lost = false;
 
@@ -73,7 +56,7 @@ Future<StompConnection> connectStomp({
   return opened.future;
 }
 
-class _StompClientConnection implements StompConnection {
+class _StompClientConnection implements RealtimeConnection {
   _StompClientConnection(this._client);
 
   final StompClient _client;

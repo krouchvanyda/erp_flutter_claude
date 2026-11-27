@@ -2,11 +2,11 @@ import 'dart:convert';
 
 import 'package:erp_mobile/core/realtime/realtime_event.dart';
 import 'package:erp_mobile/core/realtime/realtime_service.dart';
-import 'package:erp_mobile/core/realtime/stomp_connection.dart';
+import 'package:erp_mobile/core/realtime/realtime_connection.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// A fake STOMP connection: remembers subscriptions, lets the test push frames.
-class _FakeConnection implements StompConnection {
+/// A fake connection: remembers subscriptions, lets the test push letters.
+class _FakeConnection implements RealtimeConnection {
   _FakeConnection(this.token, this.onLost);
 
   final String token;
