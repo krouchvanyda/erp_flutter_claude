@@ -59,8 +59,20 @@ class RealtimeLifecycle with WidgetsBindingObserver {
     _network?.cancel();
   }
 
-  void _onSession() =>
-      _session.isAuthenticated ? _realtime.start() : _realtime.stop();
+  void _onSession() {
+    if (!_session.isAuthenticated) return _realtime.stop();
+    _realtime.start();
+    // Logged in (or auto-login at a cold start) WITH the app on screen →
+    // say "foreground" once. The server keeps a "minimized" mark until a
+    // foreground beacon clears it; a phone that was minimized, then killed,
+    // then opened again never goes paused → resumed, so without this it
+    // stays OFFLINE for everyone (no 🟢) although it is open (R6 bug).
+    // Not on screen (a killed app woken by a push in the background) → no
+    // beacon: it must stay OFFLINE so the next call still rings by push.
+    if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+      unawaited(_onForeground?.call()); // best effort
+    }
+  }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
