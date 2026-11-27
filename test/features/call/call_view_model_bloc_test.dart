@@ -398,6 +398,35 @@ void main() {
       await bloc.close();
     });
 
+    test('I declined ELSEWHERE (Android notification / other device) → the '
+        'screen ends, and the NEXT call rings (not "busy")', () async {
+      final bloc = build();
+      queue.add(CallInvited(_call(callerId: _jane)));
+      await tick();
+      // The notification's Decline ran in the background helper: this bloc
+      // only hears the server's "rejected by ME" letter.
+      topic.add(
+        CallRejected(
+          '7',
+          rejecterId: _me,
+          call: _call(callerId: _jane, status: CallStatus.rejected),
+        ),
+      );
+      await tick();
+      expect(endedWith(bloc), CallEndReason.declined);
+      expect(sent, ['ringing 7']); // this screen sent no second reject
+
+      await tick(50); // → Idle
+      queue.add(CallInvited(_call(id: '8', callerId: _jane)));
+      await tick();
+      expect(bloc.state, isA<CallIncomingState>()); // rings, not busy
+      expect(
+        sent,
+        isNot(contains('reject 8 busy')),
+      ); // the bug: it was 'reject 8 busy'
+      await bloc.close();
+    });
+
     test('backstop only CLOSES — it never sends reject (#19)', () async {
       final bloc = build(backstop: const Duration(milliseconds: 30));
       queue.add(CallInvited(_call(callerId: _jane)));

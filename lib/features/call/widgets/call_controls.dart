@@ -70,11 +70,7 @@ class CallControls extends StatelessWidget {
           ),
         ],
       ),
-      CallInCallState(
-        :final micOn,
-        :final speakerOn,
-        :final cameraOn,
-      ) =>
+      CallInCallState(:final micOn, :final speakerOn, :final cameraOn) =>
         Column(
           mainAxisSize: MainAxisSize.min,
           children: [

@@ -439,6 +439,15 @@ class CallViewModelBloc extends Bloc<CallViewModelEvent, CallViewModelState> {
         if (accepterId == me && !accepting) {
           _end(emit, CallEndReason.answeredElsewhere);
         }
+      // I declined SOMEWHERE ELSE while this screen still rings: the
+      // Android notification's Decline (it always runs in the background
+      // helper, even when the app is open), or another device of mine.
+      // (A Decline on THIS screen ends it at once, so its echo never gets
+      // here.) Without this, the screen kept "ringing" → every next call
+      // was auto-rejected as "busy".
+      case (CallIncomingState(), CallRejected(:final rejecterId))
+          when rejecterId == me:
+        _end(emit, CallEndReason.declined);
       case (CallIncomingState(), CallRejected(:final rejecterId, :final call))
           when rejecterId != me && _isOver(call):
         _end(emit, CallEndReason.missed);
