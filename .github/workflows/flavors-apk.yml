@@ -56,14 +56,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # this branch needs Flutter 3.44+ (pubspec.lock: Dart >=3.12):
-      # the same version as our Mac → same analyze / test results
-      - uses: subosito/flutter-action@v2
+      # Flutter + pub get (shared: .github/actions/setup-flutter).
+      # This branch needs Flutter 3.44+ (pubspec.lock: Dart >=3.12):
+      # the same version as our Mac → same analyze / test results.
+      - uses: ./.github/actions/setup-flutter
         with:
-          channel: stable
           flutter-version: 3.47.5
-          cache: true
-      - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
 
@@ -78,18 +76,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      # A NEW machine → Java + Flutter + pub get again
+      - uses: ./.github/actions/setup-flutter
         with:
-          distribution: temurin
-          java-version: "17" # build.gradle.kts: JavaVersion.VERSION_17
-
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
           flutter-version: 3.47.5
-          cache: true
-
-      - run: flutter pub get
+          java: "true" # build.gradle.kts: JavaVersion.VERSION_17
 
       # prod is signed with the UPLOAD key (Play Store). build.gradle.kts stops
       # a prod release without android/key.properties, so we write it here
