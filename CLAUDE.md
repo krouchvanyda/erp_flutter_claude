@@ -593,11 +593,19 @@ Login response
   `/topic/conversations/{id}(/call)` only if `requireMember` passes (refused
   → `error "Not allowed"` + destination, line stays open); `ping` → `pong`;
   `@Scheduled` sweep every 5 s closes lines without auth after 10 s or silent
-  25 s. `send` answers "not supported yet" until R3. Server letters are built
-  only by `RealtimeLetters`.
+  25 s. Server letters are built only by `RealtimeLetters`.
+  **R3 ✅** `ChatBroadcaster` (same methods + new `toPresence`) sends EVERY
+  letter through BOTH doors: STOMP `ChatEvent` AND `RealtimeBroadcast`
+  (`toTopic` / `toUser`, JSON once per letter with Spring's `ObjectMapper`;
+  `{"type":"message","destination","event","payload"}`; a user-queue letter's
+  destination is `/user/queue/x`). `PresenceService` no longer uses
+  `SimpMessagingTemplate` (→ `toPresence`); nothing may send around
+  `ChatBroadcaster`. `send` to `/app/conversations/{id}/typing` → the SAME
+  `TypingController.typing(id, TypingRequest, principal = the line's user)`;
+  other destinations → `error "Unknown destination"`.
 - **Risk:** R4 (presence + `CallDisconnectHandler` used STOMP session
   events). Test calls ringing / "user gone 30 s → hang up" in R6.
-- Steps: R1 phone book ✅ · R2 door `/realtime` ✅ · R3 broadcaster + typing ·
+- Steps: R1 phone book ✅ · R2 door `/realtime` ✅ · R3 broadcaster + typing ✅ ·
   R4 connect / disconnect → presence + calls · R5 app `ws_connection.dart` ·
   R6 two-phone test. Lessons `30-raw-websocket-r1-…md` onwards.
 

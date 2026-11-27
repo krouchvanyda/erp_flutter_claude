@@ -1,7 +1,7 @@
 # Track B · R2 — plain WebSocket: the door `/realtime` (backend)
 
 > Branch **`feature/raw-websocket`** (app AND backend).
-> ← Previous: [30-raw-websocket-r1-sessions.md](30-raw-websocket-r1-sessions.md) · Roadmap: [README.md](README.md)
+> ← Previous: [30-raw-websocket-r1-sessions.md](30-raw-websocket-r1-sessions.md) · Next: [32-raw-websocket-r3-broadcast.md](32-raw-websocket-r3-broadcast.md) → · Roadmap: [README.md](README.md)
 
 ```
 R1 the phone book (RealtimeSessions) ✅

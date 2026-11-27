@@ -74,7 +74,7 @@ instead of STOMP.
 |---|---|---|
 | R1 | Backend: the phone book (`RealtimeSessions`) | ✅ |
 | R2 | Backend: the door `/realtime` | ✅ |
-| R3 | Backend: broadcaster on the new door · typing | ⏳ |
+| R3 | Backend: broadcaster on the new door · typing | ✅ |
 | R4 | Backend: presence + calls on connect / disconnect | ⏳ |
 | R5 | App: `ws_connection.dart` | ⏳ |
 | R6 | Two-phone test | ⏳ |
