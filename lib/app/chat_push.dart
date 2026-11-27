@@ -33,6 +33,11 @@ class ChatPushOpener {
   final ChatRepository _chat;
 
   /// The chat to open now. The inbox opens it, then sets it back to null.
+  ///
+  /// Where the page opens (this class has no screen / context):
+  /// toOpen → InboxOpenRequests (features/chat/widgets/inbox_open_requests.dart)
+  ///        → InboxPage goToChat → ConfigRouter.popToFirst
+  ///                             → ConfigRouter.pushPageAnimation(ConversationPage)
   final ValueNotifier<ConversationModel?> toOpen = ValueNotifier(null);
 
   /// A tapped chat id, waiting until we're logged in (a cold start shows the

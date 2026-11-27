@@ -164,16 +164,31 @@ Future<void> _tryOpen() async {
 ```
 
 ```dart
-// InboxPage
-InboxOpenRequests(
-  requests: openRequests,
-  onOpen: (conversation) {
-    final open = context.read<InboxViewModelBloc>().openConversationId;
-    if (open != conversation.id) _open(context, conversation);   // the normal path
-  },
-  child: scaffold,
-)
+// InboxPage — ONE goToChat for both taps (OS push and in-app banner)
+void goToChat(ConversationModel conversation) {
+  if (bloc.openConversationId == conversation.id) return;   // already on screen
+  if (!(calls?.inCall.value ?? false)) {
+    ConfigRouter.popToFirst(context);                        // ⑤ close Profile / other chat
+  }
+  _open(context, conversation);                              // ⑥ ConfigRouter.pushPageAnimation
+}
 ```
+
+**Where does the page open?** `ChatPushOpener` has no screen and no
+`context`, so it only says WHICH chat. Its comment names the next stop, and
+every page move goes through `ConfigRouter`, so a search for `ConfigRouter`
+finds it:
+
+```
+tap ─► chat_push.dart (toOpen) ─► inbox_open_requests.dart ─► InboxPage goToChat
+    ─► ConfigRouter.popToFirst ─► ConfigRouter.pushPageAnimation(ConversationPage)
+```
+
+**A race:** chat A is open, you tap a banner for chat B. `popToFirst` closes
+A, and B opens at once. A's `_open` finishes its `await` LATER. If it sent
+"nothing open" (`null`), B would count as closed (banners + unread inside B).
+So a closing page sends `OnInboxConversationClosedEvent(A)`, and the bloc
+clears it only if A is still the open chat.
 
 `InboxOpenRequests` checks on every change AND on the first frame: on a cold
 start the tap is known before the inbox exists (the splash comes first).

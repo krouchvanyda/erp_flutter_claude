@@ -33,3 +33,12 @@ final class OnInboxConversationOpenedEvent extends InboxViewModelEvent {
 
   final String? conversationId;
 }
+
+/// A chat page closed. Clears "open" ONLY if that chat is still the open one:
+/// a banner tap closes chat A and opens chat B, and A's "closed" arrives
+/// AFTER B's "opened" (5.7).
+final class OnInboxConversationClosedEvent extends InboxViewModelEvent {
+  OnInboxConversationClosedEvent(this.conversationId);
+
+  final String conversationId;
+}

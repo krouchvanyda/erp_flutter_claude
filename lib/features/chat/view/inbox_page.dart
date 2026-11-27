@@ -61,18 +61,26 @@ class InboxPage extends StatelessWidget {
       child: Builder(
         builder: (context) {
           final bloc = context.read<InboxViewModelBloc>();
-          // a banner / push for the chat already on screen → stay
-          void openUnlessOpen(ConversationModel conversation) {
-            if (bloc.openConversationId != conversation.id) {
-              _open(context, conversation);
+
+          /// A tapped banner: the in-app one (InboxMessageBanners) or the
+          /// OS push (ChatPushOpener.toOpen → InboxOpenRequests).
+          /// ⑤ ConfigRouter.popToFirst → close Profile / another chat
+          /// ⑥ _open → ConfigRouter.pushPageAnimation(ConversationPage)
+          void goToChat(ConversationModel conversation) {
+            // the chat already on screen → stay
+            if (bloc.openConversationId == conversation.id) return;
+            // in a call: keep the call page, open the chat on top of it
+            if (!(calls?.inCall.value ?? false)) {
+              ConfigRouter.popToFirst(context);
             }
+            _open(context, conversation);
           }
 
           // 🔔 in-app banner while the app is open, but not on the inbox (5.7)
           final page = InboxMessageBanners(
             incoming: bloc.incoming,
             myId: () => bloc.state.data?.myId,
-            onOpen: openUnlessOpen,
+            onOpen: goToChat,
             child: _scaffold(context),
           );
           final requests = openRequests;
@@ -80,7 +88,7 @@ class InboxPage extends StatelessWidget {
           // a tapped OS banner (app was closed) → open that chat
           return InboxOpenRequests(
             requests: requests,
-            onOpen: openUnlessOpen,
+            onOpen: goToChat,
             child: page,
           );
         },
@@ -197,7 +205,11 @@ class InboxPage extends StatelessWidget {
         calls: calls,
       ),
     );
-    if (!bloc.isClosed) bloc.add(OnInboxConversationOpenedEvent(null));
+    // "closed", not "open = null": a banner tap may already have opened
+    // ANOTHER chat (popToFirst closed this one first).
+    if (!bloc.isClosed) {
+      bloc.add(OnInboxConversationClosedEvent(conversation.id));
+    }
   }
 
   /// ✎ → the picker → it closes with the chat (new or existing) → open it.

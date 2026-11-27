@@ -13,7 +13,15 @@ import 'package:page_transition/page_transition.dart';
 /// - a page over the current one   → [pushPageOverlay] (dim + fade)
 /// - full-screen modal (close ✕)   → [pushPageDialog]
 /// - sheet from the bottom         → [pushPageOverlayBottomSheet]
+/// - close every page above home   → [popToFirst]
 class ConfigRouter {
+  /// Closes every page above the FIRST one (the home, e.g. Chats).
+  /// Used before opening a chat from a tapped banner / push (5.7), so Back
+  /// from that chat goes to Chats, not to the page you were on.
+  static void popToFirst(BuildContext context) {
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+
   static Future<T?> pushPageNotAnimation<T>(BuildContext context, Widget page) {
     return Navigator.push<T>(
       context,

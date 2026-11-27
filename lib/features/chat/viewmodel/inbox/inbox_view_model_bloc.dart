@@ -42,6 +42,7 @@ class InboxViewModelBloc
     on<OnInboxLoadMoreEvent>(_onLoadMore);
     on<OnInboxLiveUpdateEvent>(_onLiveUpdate);
     on<OnInboxConversationOpenedEvent>(_onOpened);
+    on<OnInboxConversationClosedEvent>(_onClosed);
 
     // Live: the bloc listens itself, and turns each update into an event,
     // so every change still goes through ONE place (the handlers).
@@ -151,6 +152,15 @@ class InboxViewModelBloc
   }
 
   // ─────────────── Step 5.3: live ───────────────
+
+  void _onClosed(
+    OnInboxConversationClosedEvent event,
+    Emitter<InboxViewModelState> emit,
+  ) {
+    if (_openConversationId == event.conversationId) {
+      _openConversationId = null;
+    }
+  }
 
   void _onOpened(
     OnInboxConversationOpenedEvent event,

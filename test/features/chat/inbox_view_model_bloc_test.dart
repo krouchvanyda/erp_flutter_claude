@@ -217,6 +217,20 @@ void main() {
       },
     );
 
+    test('5.7: A closes AFTER B opened (banner tap) → B stays open', () async {
+      final bloc = InboxViewModelBloc(repo)..emit(seeded([chat('a')]));
+      bloc
+        ..add(OnInboxConversationOpenedEvent('a'))
+        ..add(OnInboxConversationOpenedEvent('b')) // banner: open B
+        ..add(OnInboxConversationClosedEvent('a')); // A's page finished closing
+      await Future<void>.delayed(Duration.zero);
+      expect(bloc.openConversationId, 'b');
+      bloc.add(OnInboxConversationClosedEvent('b')); // Back from B
+      await Future<void>.delayed(Duration.zero);
+      expect(bloc.openConversationId, isNull);
+      await bloc.close();
+    });
+
     // ── 5.7: `incoming` = news for the in-app banner ──
 
     Future<List<String>> newsAfter(

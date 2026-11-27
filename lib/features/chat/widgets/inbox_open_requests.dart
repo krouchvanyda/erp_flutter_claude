@@ -9,6 +9,9 @@ import '../model/conversation_model.dart';
 /// calls [onOpen] — the same path as tapping the chat in the list. Also on
 /// the first frame: the tap may have happened before the inbox was built
 /// (a cold start shows the splash first).
+///
+/// [onOpen] = `InboxPage` goToChat → `ConfigRouter.popToFirst` +
+/// `ConfigRouter.pushPageAnimation(ConversationPage)`.
 class InboxOpenRequests extends StatefulWidget {
   const InboxOpenRequests({
     super.key,
