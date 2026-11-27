@@ -1,0 +1,46 @@
+# The shared setup for every job: (Java) → Flutter → pub get.
+#
+# Each job runs on a NEW empty machine, so every job must install Flutter
+# again. This file writes those steps ONCE; a job calls it with:
+#
+#   - uses: actions/checkout@v4            # FIRST: this file lives in the repo
+#   - uses: ./.github/actions/setup-flutter
+#     with:
+#       flutter-version: 3.35.x
+#       java: "true"                       # only jobs that build an APK
+#
+# (A "composite action": steps reused like a function. Inputs are strings.)
+
+name: Setup Flutter
+description: Install Java (optional), the Flutter SDK, and the packages
+
+inputs:
+  flutter-version:
+    description: Flutter version, e.g. 3.35.x or 3.47.5 (the one the branch was built with)
+    required: true
+  java:
+    description: '"true" = install Java 17 too (needed to build an Android APK)'
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    # The Android build (Gradle) needs Java 17.
+    - if: inputs.java == 'true'
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: "17"
+
+    # The runner has no Flutter (setup-dart gives ONLY Dart → "flutter:
+    # command not found"). This installs the Flutter SDK, Dart inside.
+    - uses: subosito/flutter-action@v2
+      with:
+        channel: stable
+        flutter-version: ${{ inputs.flutter-version }}
+        cache: true # keep the SDK between runs → the 2nd job is fast
+
+    - name: Install dependencies
+      shell: bash # composite "run" steps must name their shell
+      run: flutter pub get

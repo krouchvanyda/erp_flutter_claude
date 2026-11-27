@@ -17,20 +17,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The runner has no Flutter. setup-dart gives ONLY Dart, so `flutter`
-      # was "command not found". This action installs the Flutter SDK
-      # (Dart comes inside it).
-      - uses: subosito/flutter-action@v2
+      # Flutter + pub get (shared: .github/actions/setup-flutter).
+      # master was made with Flutter 3.35 (pubspec.lock: flutter >=3.35.6,
+      # Dart ^3.9.2). A newer Flutter can't resolve its packages
+      # (freezed 2.x needs an old analyzer). 3.35.x = the newest 3.35 patch.
+      - uses: ./.github/actions/setup-flutter
         with:
-          channel: stable
-          # master was made with Flutter 3.35 (pubspec.lock: flutter >=3.35.6,
-          # Dart ^3.9.2). A newer Flutter can't resolve its packages
-          # (freezed 2.x needs an old analyzer). 3.35.x = the newest 3.35 patch.
           flutter-version: 3.35.x
-          cache: true # keep the SDK between runs → faster
-
-      - name: Install dependencies
-        run: flutter pub get
 
       - name: Analyze project source
         run: flutter analyze
@@ -50,20 +43,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The Android build (Gradle) needs Java 17.
-      - uses: actions/setup-java@v4
+      # A NEW machine (jobs share nothing) → set up again: Java + Flutter + pub get
+      - uses: ./.github/actions/setup-flutter
         with:
-          distribution: temurin
-          java-version: "17"
-
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
           flutter-version: 3.35.x
-          cache: true
-
-      - name: Install dependencies
-        run: flutter pub get
+          java: "true" # the APK build (Gradle) needs Java 17
 
       # versionName from pubspec (1.0.0), versionCode = the run number, so
       # every build can be installed over the last one.
