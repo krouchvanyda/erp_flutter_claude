@@ -32,7 +32,7 @@ import '../features/call/viewmodel/call/call_view_model_bloc.dart';
 Future<void> callPushBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   final push = CallPush.fromData(message.data);
-  if (push == null) return; // a chat message push: not handled yet
+  if (push == null) return; // a chat push (5.7): the OS draws it, a tap opens the chat
   final notifications = CallNotifications();
   await notifications.init(onBackgroundAction: callDeclineInBackground);
   switch (push) {

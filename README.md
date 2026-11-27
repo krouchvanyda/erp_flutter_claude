@@ -1,16 +1,17 @@
 # erp_mobile — Learning Rebuild
 
-> 🧱 **Branch `feature/raw-websocket`** (started 2026-11-26 from
-> `feature/rebuild`, which started 2026-11-19 from `feature/call`):
+> 🔔 **Branch `feature/chat-notifications`** (started 2026-11-27 from
+> `feature/raw-websocket`, which started 2026-11-26 from `feature/rebuild`,
+> which started 2026-11-19 from `feature/call`):
 >
 > ```
-> feature/call ─► feature/rebuild ─► feature/raw-websocket
-> (old working app)  (rebuild, step by step)  (+ Track B: plain WebSocket instead of STOMP)
+> feature/call ─► feature/rebuild ─► feature/raw-websocket ─► feature/chat-notifications
+> (old working app)  (rebuild)  (+ Track B: plain WebSocket)  (+ 5.7: chat banners)
 > ```
 >
 > `lib/` is being rebuilt **from zero, step by step, to learn**. Only what is
 > in the progress table below exists. The old working app still lives on
-> `feature/call`. The backend repo has a `feature/raw-websocket` branch too.
+> `feature/call`. The backend repo has a `feature/chat-notifications` branch too.
 
 **Start here:** [`docs/learning/REBUILD/README.md`](docs/learning/REBUILD/README.md)
 has the roadmap, progress and one lesson per step.
@@ -62,6 +63,7 @@ the same data count as equal. Why, and what breaks without them:
 | 5.4 | Chat: new chat + groups | ✅ |
 | 5.5 | Chat: attachments (photo, PDF, voice) | ✅ |
 | 5.6 | Chat: typing · edit / delete · reactions · presence · search | ✅ |
+| 5.7 | Chat: notifications (banner when the app is closed, tap → the chat) | ⏳ |
 | 6.1 | Call: signalling (call screen, accept / decline, busy, timeouts) | ✅ |
 | 6.2 | Call: voice + video (Stream Video) | ✅ |
 | 6.3a | Call: sounds | ✅ |
@@ -98,6 +100,7 @@ The full table with lesson links is in
 | `feature/rebuild` | `feature/call` | 2026-11-19 | The main line of the rebuild (Steps 0–8) |
 | `test/ios-local-call-notification` | `feature/rebuild` | 2026-11-26 | Test only: an iOS call banner from our FCM push (works with `flutter run`). Never release it (it would ring twice with CallKit). Also has the 13b realtime reading-path docs and lesson 29 |
 | `feature/raw-websocket` | `feature/rebuild` | 2026-11-26 | **Track B**: realtime over a plain WebSocket (`/realtime`) instead of STOMP. Lessons 30–34 + 30b (set it up from zero) |
+| `feature/chat-notifications` | `feature/raw-websocket` | 2026-11-27 | Step 5.7: chat notifications — a visible push to OFFLINE members, tap → open the chat. Lesson 17b |
 | `chat_conversation`, `video_call` | (older work) | before the rebuild | Old experiments, not used by the rebuild |
 
 The backend repo (`erp_java_backend_claude`) has branches with the SAME names

@@ -42,7 +42,10 @@
         <!-- Add this inside the <application> tag -->  <!--    Add to check notification background-->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="default_channel" />
+            android:value="chat_messages" />
+        <!-- 5.7: chat banners use the channel "chat_messages" (the backend
+             names it in each push; core/push/chat_notification_channel.dart
+             creates it at start-up). -->
         <activity
             android:name=".MainActivity"
             android:exported="true"

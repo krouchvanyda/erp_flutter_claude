@@ -5,8 +5,10 @@ import 'package:flutter/services.dart' show appFlavor;
 import 'app/app.dart';
 import 'app/app_di.dart';
 import 'app/call_push.dart';
+import 'app/chat_push.dart';
 import 'core/config/flavor.dart';
 import 'core/di/service_locator.dart';
+import 'core/push/chat_notification_channel.dart';
 import 'core/push/push_messaging.dart';
 import 'core/push/push_registrar.dart';
 import 'core/realtime/realtime_lifecycle.dart';
@@ -57,4 +59,10 @@ Future<void> bootstrap(Flavor flavor) async {
 
   // Call ring notifications ↔ the call bloc (Step 7.2).
   await attachCallPush(fcm: pushReady);
+
+  // Chat banners (Step 5.7): the Android channel, and a tap opens the chat.
+  if (pushReady) {
+    await ChatNotificationChannel.ensure();
+    await getIt<ChatPushOpener>().attach(getIt<PushMessaging>());
+  }
 }

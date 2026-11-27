@@ -18,6 +18,7 @@ import 'member_picker_page.dart';
 import '../widgets/inbox_empty_view.dart';
 import '../widgets/inbox_list.dart';
 import '../widgets/inbox_new_chat_button.dart';
+import '../widgets/inbox_open_requests.dart';
 
 /// Chats — the app's home after login (Step 5.1).
 ///
@@ -36,107 +37,136 @@ import '../widgets/inbox_new_chat_button.dart';
 /// [onOpenProfile] comes from the app layer: the chat feature doesn't import
 /// the profile feature (CLAUDE.md: features don't use each other's insides).
 class InboxPage extends StatelessWidget {
-  const InboxPage({super.key, required this.onOpenProfile, this.calls});
+  const InboxPage({
+    super.key,
+    required this.onOpenProfile,
+    this.calls,
+    this.openRequests,
+  });
 
   final void Function(BuildContext context) onOpenProfile;
 
   /// 📞 / 🎥 in each chat (Step 6) — from `app/`; null → no call buttons.
   final ChatCallLauncher? calls;
 
+  /// "Open this chat" from outside: a tapped push banner (5.7) — from
+  /// `app/` (`ChatPushOpener`); null → nobody asks.
+  final ValueNotifier<ConversationModel?>? openRequests;
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => getIt<InboxViewModelBloc>()..add(OnInboxLoadEvent()),
-      child: Scaffold(
-        appBar: AppBar(
-          // "⟳ Connecting…" while live updates are down (Step 5.3).
-          title: AppRealtimeTitle(
-            title: 'Chats',
-            status: getIt<RealtimeService>().status,
-          ),
-          centerTitle: false,
-          actions: [
-            Builder(
-              builder: (context) => IconButton(
-                tooltip: 'My profile',
-                onPressed: () => onOpenProfile(context),
-                icon: const Icon(Icons.account_circle_outlined),
-              ),
+      child: Builder(
+        builder: (context) {
+          final requests = openRequests;
+          final scaffold = _scaffold(context);
+          if (requests == null) return scaffold;
+          return InboxOpenRequests(
+            requests: requests,
+            onOpen: (conversation) {
+              // already on screen (the banner was for the open chat) → stay
+              final open = context
+                  .read<InboxViewModelBloc>()
+                  .openConversationId;
+              if (open != conversation.id) _open(context, conversation);
+            },
+            child: scaffold,
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _scaffold(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        // "⟳ Connecting…" while live updates are down (Step 5.3).
+        title: AppRealtimeTitle(
+          title: 'Chats',
+          status: getIt<RealtimeService>().status,
+        ),
+        centerTitle: false,
+        actions: [
+          Builder(
+            builder: (context) => IconButton(
+              tooltip: 'My profile',
+              onPressed: () => onOpenProfile(context),
+              icon: const Icon(Icons.account_circle_outlined),
             ),
-            const SizedBox(width: 4),
-          ],
-        ),
-        // ✎ → pick a person (1-to-1) or "New group" (Step 5.4).
-        floatingActionButton: Builder(
-          builder: (context) =>
-              InboxNewChatButton(onPressed: () => _startNewChat(context)),
-        ),
-        body: BlocBuilder<InboxViewModelBloc, InboxViewModelState>(
-          buildWhen: (previous, current) =>
-              previous.runtimeType != current.runtimeType ||
-              previous.data != current.data, // InboxLoadedState has ==
-          builder: (context, state) {
-            final bloc = context.read<InboxViewModelBloc>();
-            final data = state.data;
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
+      // ✎ → pick a person (1-to-1) or "New group" (Step 5.4).
+      floatingActionButton: Builder(
+        builder: (context) =>
+            InboxNewChatButton(onPressed: () => _startNewChat(context)),
+      ),
+      body: BlocBuilder<InboxViewModelBloc, InboxViewModelState>(
+        buildWhen: (previous, current) =>
+            previous.runtimeType != current.runtimeType ||
+            previous.data != current.data, // InboxLoadedState has ==
+        builder: (context, state) {
+          final bloc = context.read<InboxViewModelBloc>();
+          final data = state.data;
 
-            // Pull-to-refresh AND the banner's "Try again" wait on this.
-            // Wait for "finished", not for a new state: an unchanged list is
-            // == the old one, so Bloc emits nothing.
-            Future<void> refresh() {
-              final done = Completer<void>();
-              bloc.add(OnInboxLoadEvent(done: done));
-              return done.future;
-            }
+          // Pull-to-refresh AND the banner's "Try again" wait on this.
+          // Wait for "finished", not for a new state: an unchanged list is
+          // == the old one, so Bloc emits nothing.
+          Future<void> refresh() {
+            final done = Completer<void>();
+            bloc.add(OnInboxLoadEvent(done: done));
+            return done.future;
+          }
 
-            if (data != null) {
-              return Column(
-                children: [
-                  // A load failed but we still have chats → keep them, and
-                  // show a small strip on top until a load works again.
-                  AnimatedSize(
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutCubic,
-                    alignment: Alignment.topCenter,
-                    child: state is InboxErrorState
-                        ? Center(
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(
-                                maxWidth: InboxList.maxWidth,
-                              ),
-                              child: AppErrorBanner(
-                                error: state.error,
-                                onRetry: refresh,
-                              ),
+          if (data != null) {
+            return Column(
+              children: [
+                // A load failed but we still have chats → keep them, and
+                // show a small strip on top until a load works again.
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  alignment: Alignment.topCenter,
+                  child: state is InboxErrorState
+                      ? Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              maxWidth: InboxList.maxWidth,
                             ),
-                          )
-                        : const SizedBox(width: double.infinity),
-                  ),
-                  Expanded(
-                    child: RefreshIndicator(
-                      onRefresh: refresh,
-                      child: data.conversations.isEmpty
-                          ? const InboxEmptyView()
-                          : InboxList(
-                              conversations: data.conversations,
-                              myId: data.myId,
-                              isLoadingMore: data.isLoadingMore,
-                              onLoadMore: () =>
-                                  bloc.add(OnInboxLoadMoreEvent()),
-                              onOpen: (conversation) =>
-                                  _open(context, conversation),
-                              presence: getIt<PresenceStore>().presence,
+                            child: AppErrorBanner(
+                              error: state.error,
+                              onRetry: refresh,
                             ),
-                    ),
+                          ),
+                        )
+                      : const SizedBox(width: double.infinity),
+                ),
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: refresh,
+                    child: data.conversations.isEmpty
+                        ? const InboxEmptyView()
+                        : InboxList(
+                            conversations: data.conversations,
+                            myId: data.myId,
+                            isLoadingMore: data.isLoadingMore,
+                            onLoadMore: () => bloc.add(OnInboxLoadMoreEvent()),
+                            onOpen: (conversation) =>
+                                _open(context, conversation),
+                            presence: getIt<PresenceStore>().presence,
+                          ),
                   ),
-                ],
-              );
-            }
-            if (state is InboxErrorState) {
-              return AppErrorView.fromError(state.error, onRetry: refresh);
-            }
-            return const Center(child: CircularProgressIndicator());
-          },
-        ),
+                ),
+              ],
+            );
+          }
+          if (state is InboxErrorState) {
+            return AppErrorView.fromError(state.error, onRetry: refresh);
+          }
+          return const Center(child: CircularProgressIndicator());
+        },
       ),
     );
   }

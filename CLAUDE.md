@@ -1,11 +1,13 @@
 # Enterprise ERP Mobile — Learning Rebuild
 
-> **Branch `feature/raw-websocket`** (started 2026-11-26 from `feature/rebuild`,
+> **Branch `feature/chat-notifications`** (started 2026-11-27 from
+> `feature/raw-websocket`, which started 2026-11-26 from `feature/rebuild`,
 > which started 2026-11-19 from `feature/call`):
-> `feature/call` ─► `feature/rebuild` ─► `feature/raw-websocket`.
-> This branch = `feature/rebuild` + **Track B** (realtime over a plain
-> WebSocket instead of STOMP; see "Track B" below). The backend repo has a
-> branch with the same name.
+> `feature/call` ─► `feature/rebuild` ─► `feature/raw-websocket` ─►
+> `feature/chat-notifications`.
+> This branch = `feature/raw-websocket` (Track B: realtime over a plain
+> WebSocket, see "Track B" below) + **Step 5.7 chat notifications** (see
+> "Chat" below). The backend repo has a branch with the same name.
 >
 > `lib/` is being rebuilt **from zero, step by step, to learn**. Only what is
 > listed in [`docs/learning/REBUILD/README.md`](docs/learning/REBUILD/README.md)
@@ -65,6 +67,7 @@ PLAN → BUILD (small) → EXPLAIN (what + WHY + other ways) → DOC → USER CH
 | `feature/rebuild` | `feature/call` | 2026-11-19 | The main line of the rebuild (Steps 0–8) |
 | `test/ios-local-call-notification` | `feature/rebuild` | 2026-11-26 | Test only: an iOS call banner from our FCM push (works with `flutter run`). Never release it (it would ring twice with CallKit). Also has the 13b realtime reading-path docs and lesson 29 |
 | `feature/raw-websocket` | `feature/rebuild` | 2026-11-26 | **Track B**: realtime over a plain WebSocket (`/realtime`) instead of STOMP. Lessons 30–34 + 30b (set it up from zero) |
+| `feature/chat-notifications` | `feature/raw-websocket` | 2026-11-27 | Step 5.7: chat notifications — a visible push to OFFLINE members, tap → open the chat. Lesson 17b |
 | `chat_conversation`, `video_call` | (older work) | before the rebuild | Old experiments, not used by the rebuild |
 
 The backend repo (`erp_java_backend_claude`) has branches with the SAME names
@@ -427,6 +430,22 @@ Login response
   `presenceLine` ("online" · "in a call" · `ChatTime.lastSeen`); typing wins.
   `RealtimeLifecycle` sends `POST /chats/presence/background` on paused and
   `/foreground` on resumed (needed for calls to ring by push).
+- **Notifications (5.7, branch `feature/chat-notifications`):** backend
+  `ChatMessageNotifier` sends a VISIBLE push (`FcmService
+  .sendNotificationToTokens`: Android `notification` in channel
+  `chat_messages` + `tag`, iOS `aps.alert` + `thread-id`; group =
+  `chat-<conversationId>` → one banner per chat, newest wins) only to members
+  who are not the sender, not muted, and **OFFLINE** (`PresenceService
+  .statusOf`; an open app updates live, no banner). Data `{type: "chat",
+  conversationId, messageId, senderId, senderName, isGroup, title, body}`.
+  App: `ChatNotificationChannel.ensure()` (Android channel, same id as the
+  manifest's default) · `PushMessaging.onOpened` / `launchedBy()` →
+  `app/chat_push.dart` `ChatPushOpener` (waits for login, `loadConversation`
+  → `toOpen` `ValueNotifier`) → `InboxPage(openRequests:)` →
+  `InboxOpenRequests` takes it ONCE (also on the first frame) → the normal
+  `_open`, skipped if that chat is already open
+  (`InboxViewModelBloc.openConversationId`). The background handler still
+  ignores `type: chat` (the OS draws it).
 - **Search (5.6):** `MessageSearchViewModelBloc` — 350 ms debounce, drop
   answers for an old query, paged. Match highlighted with `Text.rich`. No
   jump-to-message yet.

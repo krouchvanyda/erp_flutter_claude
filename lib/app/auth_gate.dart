@@ -14,6 +14,7 @@ import '../features/chat/model/chat_call_launcher.dart';
 import '../features/chat/view/inbox_page.dart';
 import '../features/profile/view/profile_page.dart';
 import 'call_peer_of.dart';
+import 'chat_push.dart';
 
 /// The app's first screen. Decides the BIG screen from the session:
 ///
@@ -96,6 +97,8 @@ class _AuthGateState extends State<AuthGate> {
           ProfilePage(onLogout: getIt<AuthRepository>().logout),
         ),
         calls: _callLauncher(),
+        // a tapped chat banner → that chat opens (5.7)
+        openRequests: getIt<ChatPushOpener>().toOpen,
       );
     } else {
       screen = const LoginPage();

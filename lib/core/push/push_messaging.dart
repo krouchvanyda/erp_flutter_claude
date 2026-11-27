@@ -29,6 +29,22 @@ class PushMessaging {
   Stream<Map<String, dynamic>> get onForegroundData =>
       FirebaseMessaging.onMessage.map((m) => m.data);
 
+  /// A push banner was TAPPED while the app was in the background (5.7):
+  /// its `data` (e.g. `{type: "chat", conversationId: "14", …}`).
+  Stream<Map<String, dynamic>> get onOpened =>
+      FirebaseMessaging.onMessageOpenedApp.map((m) => m.data);
+
+  /// The push banner whose tap STARTED the app (it was killed), or null.
+  /// Firebase keeps it for one read only. Never throws.
+  Future<Map<String, dynamic>?> launchedBy() async {
+    try {
+      return (await _messaging.getInitialMessage())?.data;
+    } catch (e) {
+      debugPrint('[Push] no launch message: $e');
+      return null;
+    }
+  }
+
   /// The TOP-LEVEL function run in a background isolate for pushes that
   /// arrive while the app is minimized / killed. Call before `runApp`.
   static void setBackgroundHandler(

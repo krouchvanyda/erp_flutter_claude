@@ -54,6 +54,10 @@ class InboxViewModelBloc
   /// The conversation on screen right now (its messages aren't "unread").
   String? _openConversationId;
 
+  /// Read-only, for the page: a tapped banner for the chat already on
+  /// screen must not open it twice (5.7).
+  String? get openConversationId => _openConversationId;
+
   @override
   Future<void> close() async {
     for (final s in _subscriptions) {

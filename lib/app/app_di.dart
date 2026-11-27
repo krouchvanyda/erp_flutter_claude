@@ -1,10 +1,12 @@
 import '../core/di/injection.dart';
 import '../core/di/service_locator.dart';
+import '../core/router/auth_session.dart';
 import '../features/auth/auth_di.dart';
 import '../features/call/call_di.dart';
 import '../features/call/model/call_model.dart';
 import '../features/call/model/call_peer.dart';
 import 'call_peer_of.dart';
+import 'chat_push.dart';
 import '../features/chat/chat_di.dart';
 import '../features/chat/repository/chat_repository.dart';
 import '../features/profile/profile_di.dart';
@@ -20,7 +22,8 @@ import '../features/profile/profile_di.dart';
 ///   ├── registerAuthModule()      Step 3
 ///   ├── registerProfileModule()   Step 4
 ///   ├── registerChatModule()      Step 5
-///   └── registerCallModule()      Step 6 (+ loadPeer: chat → name / photo)
+///   ├── registerCallModule()      Step 6 (+ loadPeer: chat → name / photo)
+///   └── ChatPushOpener            Step 5.7 (tap a chat banner → open the chat)
 /// ```
 Future<void> configureAppDependencies() async {
   await configureDependencies(); // core first: features depend on it
@@ -28,6 +31,12 @@ Future<void> configureAppDependencies() async {
   registerProfileModule(getIt);
   registerChatModule(getIt);
   registerCallModule(getIt, loadPeer: _callPeer);
+  getIt.registerLazySingleton<ChatPushOpener>(
+    () => ChatPushOpener(
+      session: getIt<AuthSession>(),
+      chat: getIt<ChatRepository>(),
+    ),
+  );
 }
 
 /// The invite already has the caller's name + photo (`CallPeer.callerOf`,
