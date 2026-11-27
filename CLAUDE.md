@@ -446,6 +446,14 @@ Login response
   `_open`, skipped if that chat is already open
   (`InboxViewModelBloc.openConversationId`). The background handler still
   ignores `type: chat` (the OS draws it).
+  **App open → in-app banner:** `InboxViewModelBloc.incoming` (a broadcast
+  stream: a live message from someone else, chat not open, not muted by me,
+  not a CALL line) → `InboxMessageBanners` (wraps the inbox) shows
+  `AppMessageBanner` (core/widgets: photo · title · text, top, 4 s, swipe up,
+  tap → open the chat) on EVERY screen while the app is resumed — the Chats
+  list too (the user's choice). Not shown: the chat I'm reading, muted chats,
+  call lines, an app that isn't on screen (the OS push does it).
+  Group text = "Sender: text" (`InboxMessageBanners.messageText`).
 - **Search (5.6):** `MessageSearchViewModelBloc` — 350 ms debounce, drop
   answers for an old query, paged. Match highlighted with `Text.rich`. No
   jump-to-message yet.

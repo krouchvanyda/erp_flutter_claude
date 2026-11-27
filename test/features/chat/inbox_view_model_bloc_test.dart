@@ -7,6 +7,7 @@ import 'package:erp_mobile/core/network/page_model.dart';
 import 'package:erp_mobile/features/chat/model/chat_enums.dart';
 import 'package:erp_mobile/features/chat/model/chat_update.dart';
 import 'package:erp_mobile/features/chat/model/conversation_model.dart';
+import 'package:erp_mobile/features/chat/model/member_model.dart';
 import 'package:erp_mobile/features/chat/model/message_model.dart';
 import 'package:erp_mobile/features/chat/repository/chat_repository.dart';
 import 'package:erp_mobile/features/chat/viewmodel/inbox/inbox_view_model_bloc.dart';
@@ -213,6 +214,68 @@ void main() {
           isTrue,
         );
         expect(ids(bloc.state), ['b', 'a']);
+      },
+    );
+
+    // ── 5.7: `incoming` = news for the in-app banner ──
+
+    Future<List<String>> newsAfter(
+      List<ConversationModel> chats,
+      Future<void> Function(InboxViewModelBloc bloc) act,
+    ) async {
+      final bloc = InboxViewModelBloc(repo)..emit(seeded(chats));
+      final got = <String>[];
+      final sub = bloc.incoming.listen((n) => got.add(n.message.id));
+      await act(bloc);
+      await Future<void>.delayed(Duration.zero);
+      await sub.cancel();
+      await bloc.close();
+      return got;
+    }
+
+    test(
+      '5.7: a message from someone else, chat not open → banner news',
+      () async {
+        final got = await newsAfter([chat('a')], (_) async {
+          updates.add(MessageArrived(incoming('a', id: '7')));
+        });
+        expect(got, ['7']);
+      },
+    );
+
+    test(
+      '5.7: mine · the OPEN chat · a call line · a MUTED chat → no news',
+      () async {
+        const muted = ConversationModel(
+          id: 'm',
+          type: ConversationType.direct,
+          members: [
+            MemberModel(userId: '1', muted: true),
+            MemberModel(userId: '2'),
+          ],
+        );
+        final got = await newsAfter([chat('a'), chat('b'), muted], (
+          bloc,
+        ) async {
+          updates.add(
+            MessageArrived(incoming('a', from: '1', id: '1')),
+          ); // mine
+          bloc.add(OnInboxConversationOpenedEvent('b'));
+          await Future<void>.delayed(Duration.zero);
+          updates.add(MessageArrived(incoming('b', id: '2'))); // open chat
+          updates.add(
+            MessageArrived(
+              const MessageModel(
+                id: '3',
+                conversationId: 'a',
+                senderId: '2',
+                type: MessageType.call,
+              ),
+            ),
+          ); // call line
+          updates.add(MessageArrived(incoming('m', id: '4'))); // muted
+        });
+        expect(got, isEmpty);
       },
     );
 

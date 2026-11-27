@@ -17,6 +17,7 @@ import 'conversation_page.dart';
 import 'member_picker_page.dart';
 import '../widgets/inbox_empty_view.dart';
 import '../widgets/inbox_list.dart';
+import '../widgets/inbox_message_banners.dart';
 import '../widgets/inbox_new_chat_button.dart';
 import '../widgets/inbox_open_requests.dart';
 
@@ -59,19 +60,28 @@ class InboxPage extends StatelessWidget {
       create: (_) => getIt<InboxViewModelBloc>()..add(OnInboxLoadEvent()),
       child: Builder(
         builder: (context) {
+          final bloc = context.read<InboxViewModelBloc>();
+          // a banner / push for the chat already on screen → stay
+          void openUnlessOpen(ConversationModel conversation) {
+            if (bloc.openConversationId != conversation.id) {
+              _open(context, conversation);
+            }
+          }
+
+          // 🔔 in-app banner while the app is open, but not on the inbox (5.7)
+          final page = InboxMessageBanners(
+            incoming: bloc.incoming,
+            myId: () => bloc.state.data?.myId,
+            onOpen: openUnlessOpen,
+            child: _scaffold(context),
+          );
           final requests = openRequests;
-          final scaffold = _scaffold(context);
-          if (requests == null) return scaffold;
+          if (requests == null) return page;
+          // a tapped OS banner (app was closed) → open that chat
           return InboxOpenRequests(
             requests: requests,
-            onOpen: (conversation) {
-              // already on screen (the banner was for the open chat) → stay
-              final open = context
-                  .read<InboxViewModelBloc>()
-                  .openConversationId;
-              if (open != conversation.id) _open(context, conversation);
-            },
-            child: scaffold,
+            onOpen: openUnlessOpen,
+            child: page,
           );
         },
       ),

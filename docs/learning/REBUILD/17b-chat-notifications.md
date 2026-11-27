@@ -30,6 +30,15 @@ This step teaches:
 - **A tap is a request.** The push layer doesn't open pages. It hands a
   conversation to the inbox, which opens it the normal way.
 
+### Where a banner shows
+
+| The app is… | Banner? | Who draws it |
+|---|---|---|
+| minimized / killed | ✅ | the OS (the backend's visible push) |
+| open, on the **Chats list** | ✅ | the app: `AppMessageBanner` (the user's choice: the same as other screens) |
+| open, on **another screen** (other chat, profile, call…) | ✅ | the app: `AppMessageBanner` |
+| open, in **that chat** | ❌ | — (the message is right there) |
+
 ## 2. Picture
 
 ```mermaid
@@ -81,6 +90,9 @@ lib/app/chat_push.dart                       NEW  ChatPushOpener: tap → load t
 lib/features/chat/widgets/inbox_open_requests.dart NEW  the inbox takes the request ONCE
 lib/features/chat/view/inbox_page.dart       + openRequests (skips the chat already open)
 lib/features/chat/viewmodel/inbox/…bloc.dart + openConversationId getter
+lib/features/chat/widgets/inbox_message_banners.dart NEW  app open, not on the inbox → banner
+lib/core/widgets/app_message_banner.dart     NEW  the in-app banner (photo · name · text, tap)
+lib/features/chat/viewmodel/inbox/…bloc.dart + incoming (news for the banner)
 lib/app/app_di.dart · auth_gate.dart · main.dart   wiring
 android/app/src/main/AndroidManifest.xml     default channel → chat_messages
 test: test/app/chat_push_test.dart (5) · test/features/chat/inbox_open_requests_test.dart (3)
@@ -166,6 +178,35 @@ InboxOpenRequests(
 `InboxOpenRequests` checks on every change AND on the first frame: on a cold
 start the tap is known before the inbox exists (the splash comes first).
 
+### App open: the in-app banner
+
+The backend sends no push to an ONLINE user, so the app draws its own banner
+from the live message. The inbox bloc already sees every new message
+(`/user/queue/inbox`); it passes on only the ones worth a banner:
+
+```dart
+// InboxViewModelBloc, MessageArrived
+if (!mine && !open && !mutedByMe && message.type != MessageType.call) {
+  _incoming.add((conversation: updated, message: message));   // one-time news
+}
+```
+
+The page only checks that the app is on screen:
+
+```dart
+// InboxMessageBanners
+if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) return; // OS push
+AppMessageBanner.show(context, title: …, message: …, imageUrl: …,
+                      onTap: () => openUnlessOpen(conversation));
+```
+
+The inbox page is the app's FIRST route and stays under every other page, so
+its bloc hears every message, wherever you are. (A first version skipped the
+banner while the Chats list was on top; the user wanted it there too.)
+
+**Debug lines** (dev builds) say why a banner did or didn't show:
+`[banner] msg 326 shown` · `skipped: app is paused` · `no news: mine=false open=true …` (the chat is open).
+
 ## 4. 🤔 Why like this? (other ways)
 
 | Choice we made | Other way | Why we didn't pick the other way |
@@ -175,6 +216,8 @@ start the tap is known before the inbox exists (the splash comes first).
 | `tag` / `thread-id` = `chat-<id>` | One notification per message | Ten messages from one chat = one banner (Android shows the newest), not ten |
 | `ChatPushOpener` in `app/` | Open the page right in the push code | Push would import chat; `core/` must never import `features/`; the inbox already knows how to open a chat (marks it read, "back" refreshes) |
 | A `ValueNotifier` the inbox takes once | A stream | A cold start's tap comes BEFORE the inbox exists; a stream would lose it, a value waits |
+| In-app banner drawn by the app (`AppMessageBanner`) | A local system notification while open (`flutter_local_notifications`) | On iOS that plugin takes over the notification delegate and can break FCM's tap handling; an Overlay is the same on both systems and follows the theme |
+| `incoming` as a stream on the bloc | A field in `InboxLoadedState` | It's one-time news, not screen state: a state field would need clearing, and `buildWhen` would rebuild the list for nothing |
 | Its own Android channel "Messages" | The default channel | Users can mute chat banners without muting calls; high importance = pops up |
 
 ## 5. Try it
@@ -193,7 +236,9 @@ flutter run --flavor dev -t lib/main_dev.dart
 
 | # | Do | Expect |
 |---|---|---|
-| 1 | B's app **open** (any screen); A sends "Hi" | NO banner on B; the inbox / chat update live |
+| 1 | B's app open **on the Chats list**; A sends "Hi" | 🔔 in-app banner + the chat moves to the top |
+| 1b | B open on **another screen** (profile, another chat) | 🔔 in-app banner at the top; tap → that chat |
+| 1c | B open **in that chat** | NO banner; the message appears in the chat |
 | 2 | B **minimizes**; A sends "Hi" | 🔔 "Mr A · Hi" on B (Android + iPhone) |
 | 3 | tap it | the app opens **that chat** |
 | 4 | B **kills** the app; A sends "Hello"; tap | the app starts, then opens that chat |

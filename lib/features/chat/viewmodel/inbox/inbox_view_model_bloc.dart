@@ -1,10 +1,11 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
-import 'package:flutter/foundation.dart' show immutable;
+import 'package:flutter/foundation.dart' show debugPrint, immutable, kDebugMode;
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/network/network_error_model.dart';
+import '../../model/chat_enums.dart';
 import '../../model/chat_update.dart';
 import '../../model/conversation_model.dart';
 import '../../model/message_model.dart';
@@ -13,6 +14,13 @@ import '../../repository/presence_store.dart';
 
 part 'inbox_view_model_event.dart';
 part 'inbox_view_model_state.dart';
+
+/// One live message for a banner (5.7): the chat (title, photo, members)
+/// and the message.
+typedef InboxIncomingMessage = ({
+  ConversationModel conversation,
+  MessageModel message,
+});
 
 /// The inbox's ViewModel (MVVM-template style).
 ///
@@ -58,8 +66,16 @@ class InboxViewModelBloc
   /// screen must not open it twice (5.7).
   String? get openConversationId => _openConversationId;
 
+  /// A message from SOMEONE ELSE arrived live, for a chat that is not open,
+  /// not muted by me, and not a call line (5.7). One-time news, not screen
+  /// state → a stream; the page decides whether to show a banner (only when
+  /// the inbox is NOT on top).
+  Stream<InboxIncomingMessage> get incoming => _incoming.stream;
+  final _incoming = StreamController<InboxIncomingMessage>.broadcast();
+
   @override
   Future<void> close() async {
+    await _incoming.close();
     for (final s in _subscriptions) {
       await s.cancel(); // stop listening → STOMP unsubscribes
     }
@@ -187,6 +203,19 @@ class InboxViewModelBloc
           unreadCount: mine || open ? 0 : current.unreadCount + 1,
         );
         _emitData(emit, data.copyWith(conversations: _toTop(data, updated)));
+        final mutedByMe =
+            updated.members
+                .firstWhereOrNull((m) => m.userId == data.myId)
+                ?.muted ??
+            false;
+        if (!mine && !open && !mutedByMe && message.type != MessageType.call) {
+          _incoming.add((conversation: updated, message: message));
+        } else if (kDebugMode) {
+          debugPrint(
+            '[banner] msg ${message.id} no news: mine=$mine open=$open '
+            'muted=$mutedByMe type=${message.type.name}',
+          );
+        }
 
       case ConversationChanged(:final conversation):
         final data = state.data!;
