@@ -146,7 +146,7 @@ addresses and method names, so BLoCs and screens don't change. The STOMP door
 | Step | What you build | Lesson | Status |
 |---|---|---|---|
 | R1 | Backend: the phone book `RealtimeSessions` (line → user, line → addresses, private `/user/...` sends) | [30-raw-websocket-r1-sessions.md](30-raw-websocket-r1-sessions.md) | ✅ |
-| R2 | Backend: the door `/realtime` (auth first, subscribe, ping/pong, 25 s timeout) | — | ⏳ |
+| R2 | Backend: the door `/realtime` (auth first, subscribe with membership check, ping/pong, 10 s / 25 s sweep) | [31-raw-websocket-r2-door.md](31-raw-websocket-r2-door.md) | ✅ |
 | R3 | Backend: `ChatBroadcaster` also sends on the new door · typing over `send` | — | ⏳ |
 | R4 | Backend: connect / disconnect events → presence + `CallDisconnectHandler` | — | ⏳ |
 | R5 | App: `ws_connection.dart` (replaces `stomp_connection.dart`) + `realtimeUrl` → `/realtime` | — | ⏳ |

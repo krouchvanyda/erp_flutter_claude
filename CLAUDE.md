@@ -584,9 +584,20 @@ Login response
   `RealtimeSessions` (the phone book: line → user, line → addresses;
   `sendTo(dest)`, `sendToUser(userId, "/queue/x")` reaches ONLY that user's
   lines subscribed to `/user/queue/x`; `close` → `Closed(userId, lastLine)`).
+  **R2 ✅** the door `/realtime` (`RealtimeConfig`, `@EnableWebSocket`, next
+  to STOMP; `SecurityConfig` permitAll `/realtime`). `RealtimeSocketHandler`
+  = Spring adapter only (`ConcurrentWebSocketSessionDecorator` 5 s / 512 KB);
+  `RealtimeProtocol` = the brain (plain Java, tested with toy lines + a fake
+  `Clock`): first letter must be `auth` (`jwt.parseAccess`, else error +
+  close); subscribe allowed for `/topic/presence`, `/user/queue/[a-z-]+`, and
+  `/topic/conversations/{id}(/call)` only if `requireMember` passes (refused
+  → `error "Not allowed"` + destination, line stays open); `ping` → `pong`;
+  `@Scheduled` sweep every 5 s closes lines without auth after 10 s or silent
+  25 s. `send` answers "not supported yet" until R3. Server letters are built
+  only by `RealtimeLetters`.
 - **Risk:** R4 (presence + `CallDisconnectHandler` used STOMP session
   events). Test calls ringing / "user gone 30 s → hang up" in R6.
-- Steps: R1 phone book ✅ · R2 door `/realtime` · R3 broadcaster + typing ·
+- Steps: R1 phone book ✅ · R2 door `/realtime` ✅ · R3 broadcaster + typing ·
   R4 connect / disconnect → presence + calls · R5 app `ws_connection.dart` ·
   R6 two-phone test. Lessons `30-raw-websocket-r1-…md` onwards.
 
