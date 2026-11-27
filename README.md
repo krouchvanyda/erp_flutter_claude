@@ -1,8 +1,17 @@
 # erp_mobile — Learning Rebuild
 
-> 🧱 **Branch `feature/rebuild`**: rebuilding the app from zero, step by step,
-> to learn. Started 2026-11-19 from `feature/call`, where the old working app
-> still lives.
+> 🧪 **Branch `test/ios-local-call-notification`** (started 2026-11-26 from
+> `feature/rebuild`, which started 2026-11-19 from `feature/call`):
+>
+> ```
+> feature/call ─► feature/rebuild ─► test/ios-local-call-notification
+> (old working app)  (rebuild, step by step)  (+ TEST ONLY: iOS call banner from FCM)
+> ```
+>
+> **Never release this branch:** with CallKit (7.3) an iPhone would ring
+> twice. `lib/` is being rebuilt **from zero, step by step, to learn**. Only
+> what is in the progress table below exists. The old working app still
+> lives on `feature/call`. The backend repo has a branch with the same name.
 
 **Start here:** [`docs/learning/REBUILD/README.md`](docs/learning/REBUILD/README.md)
 has the roadmap, progress and one lesson per step.
@@ -69,6 +78,22 @@ the same data count as equal. Why, and what breaks without them:
 
 The full table with lesson links is in
 [`docs/learning/REBUILD/README.md`](docs/learning/REBUILD/README.md).
+
+## Branches
+
+| Branch | From | Created | What it is |
+|---|---|---|---|
+| `feature/call` | (older work) | before 2026-11-19 | The old, working app. Reference only: `git show feature/call:<path>` |
+| `feature/rebuild` | `feature/call` | 2026-11-19 | The main line of the rebuild (Steps 0–8) |
+| `test/ios-local-call-notification` | `feature/rebuild` | 2026-11-26 | Test only: an iOS call banner from our FCM push (works with `flutter run`). Never release it (it would ring twice with CallKit). Also has the 13b realtime reading-path docs and lesson 29 |
+| `feature/raw-websocket` | `feature/rebuild` | 2026-11-26 | **Track B**: realtime over a plain WebSocket (`/realtime`) instead of STOMP. Lessons 30–34 + 30b (set it up from zero) |
+| `chat_conversation`, `video_call` | (older work) | before the rebuild | Old experiments, not used by the rebuild |
+
+The backend repo (`erp_java_backend_claude`) has branches with the SAME names
+for the same work.
+
+**Rule:** every new branch gets a row here (and in `CLAUDE.md`): its name,
+the branch it came from, the date, and what it's for.
 
 ## Look at the old code
 

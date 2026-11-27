@@ -1,6 +1,13 @@
 # Enterprise ERP Mobile — Learning Rebuild
 
-> **Branch `feature/rebuild`** (started 2026-11-19 from `feature/call`).
+> **Branch `test/ios-local-call-notification`** (started 2026-11-26 from
+> `feature/rebuild`, which started 2026-11-19 from `feature/call`):
+> `feature/call` ─► `feature/rebuild` ─► `test/ios-local-call-notification`.
+> This branch = `feature/rebuild` + a **TEST-ONLY** iOS call banner from our
+> FCM push (works with `flutter run`). **Never release it** (with CallKit it
+> would ring twice). It also has the 13b realtime reading path and lesson 29.
+> The backend repo has a branch with the same name.
+>
 > `lib/` is being rebuilt **from zero, step by step, to learn**. Only what is
 > listed in [`docs/learning/REBUILD/README.md`](docs/learning/REBUILD/README.md)
 > exists. Everything else is still to be built.
@@ -41,9 +48,28 @@ PLAN → BUILD (small) → EXPLAIN (what + WHY + other ways) → DOC → USER CH
   `README.md`.
 - `flutter analyze` must be clean, and the app must **run**, before a step is done.
 - **Commit only when the user says "commit".**
+- **New branch → write it down.** Every time a branch is created (app or
+  backend), add a row to the "Branches" table below AND in `README.md`:
+  name · the branch it came FROM · the date · what it's for. Update the
+  `> **Branch …**` note at the top of this file and `README.md` when the
+  current branch changes. The backend repo uses the SAME branch names for
+  the same work (its `README.md` top note says so too).
 - Use simple English (short sentences, easy words). Khmer words are fine.
 - Don't copy-paste big files from `feature/call`. Rebuild them smaller and
   explain them. Reuse hard-won fixes (see "Lessons from the old app").
+
+## Branches
+
+| Branch | From | Created | What it is |
+|---|---|---|---|
+| `feature/call` | (older work) | before 2026-11-19 | The old, working app. Reference only: `git show feature/call:<path>` |
+| `feature/rebuild` | `feature/call` | 2026-11-19 | The main line of the rebuild (Steps 0–8) |
+| `test/ios-local-call-notification` | `feature/rebuild` | 2026-11-26 | Test only: an iOS call banner from our FCM push (works with `flutter run`). Never release it (it would ring twice with CallKit). Also has the 13b realtime reading-path docs and lesson 29 |
+| `feature/raw-websocket` | `feature/rebuild` | 2026-11-26 | **Track B**: realtime over a plain WebSocket (`/realtime`) instead of STOMP. Lessons 30–34 + 30b (set it up from zero) |
+| `chat_conversation`, `video_call` | (older work) | before the rebuild | Old experiments, not used by the rebuild |
+
+The backend repo (`erp_java_backend_claude`) has branches with the SAME names
+for the same work.
 
 ## Role
 You are a senior Flutter developer and a patient teacher, working on this
