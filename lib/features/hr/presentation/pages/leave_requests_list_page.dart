@@ -12,7 +12,7 @@ import '../../domain/usecases/decide_leave_request.dart';
 /// approve / reject actions. Mine vs. Pending toggle keeps the same
 /// page useful for employees too.
 class LeaveRequestsListPage extends StatefulWidget {
-  const LeaveRequestsListPage({this.currentUserId = 'emp-001'});
+  const LeaveRequestsListPage({super.key, this.currentUserId = 'emp-001'});
   final String currentUserId;
 
   @override

@@ -6,7 +6,7 @@ import '../../domain/repositories/preferences_repository.dart';
 
 /// Slice 9.1.3 — push + email toggles per channel.
 class NotificationPreferencesPage extends StatelessWidget {
-  const NotificationPreferencesPage();
+  const NotificationPreferencesPage({super.key});
 
   @override
   Widget build(BuildContext context) {

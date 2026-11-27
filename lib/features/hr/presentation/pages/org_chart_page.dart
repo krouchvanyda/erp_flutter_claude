@@ -11,7 +11,7 @@ import '../../domain/usecases/build_org_chart.dart';
 /// recursive widget so deep org structures don't blow the build stack
 /// and so each row gets the standard list virtualisation.
 class OrgChartPage extends StatelessWidget {
-  const OrgChartPage();
+  const OrgChartPage({super.key});
 
   @override
   Widget build(BuildContext context) {

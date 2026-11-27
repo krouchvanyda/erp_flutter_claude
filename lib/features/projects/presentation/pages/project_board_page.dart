@@ -15,7 +15,7 @@ import '../../domain/usecases/move_task.dart';
 /// the task off to [moveTask] for the state-machine guard before
 /// persisting.
 class ProjectBoardPage extends StatefulWidget {
-  const ProjectBoardPage({required this.projectId});
+  const ProjectBoardPage({super.key, required this.projectId});
   final String projectId;
 
   @override

@@ -8,7 +8,7 @@ import '../../domain/usecases/manage_sessions.dart';
 
 /// Slice 9.3.1 — active devices list with revoke actions.
 class SessionsPage extends StatelessWidget {
-  const SessionsPage();
+  const SessionsPage({super.key});
 
   @override
   Widget build(BuildContext context) {

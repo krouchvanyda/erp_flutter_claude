@@ -26,7 +26,7 @@ const _knownScopes = <String>[
 ];
 
 class RoleEditorPage extends StatelessWidget {
-  const RoleEditorPage();
+  const RoleEditorPage({super.key});
 
   @override
   Widget build(BuildContext context) {

@@ -10,7 +10,7 @@ import '../../domain/repositories/tasks_repository.dart';
 import '../../domain/usecases/move_task.dart';
 
 class ProjectDetailPage extends StatelessWidget {
-  const ProjectDetailPage({required this.projectId});
+  const ProjectDetailPage({super.key, required this.projectId});
   final String projectId;
 
   @override

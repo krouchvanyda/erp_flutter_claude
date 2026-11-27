@@ -11,7 +11,7 @@ import '../../domain/usecases/summarize_payslip.dart';
 /// a print engine in the demo binary. Show structured data instead and
 /// surface a hint that the PDF will land with the server.
 class PayslipDetailPage extends StatelessWidget {
-  const PayslipDetailPage({required this.payslipId});
+  const PayslipDetailPage({super.key, required this.payslipId});
   final String payslipId;
 
   @override

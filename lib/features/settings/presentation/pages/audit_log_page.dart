@@ -7,7 +7,7 @@ import '../../domain/usecases/query_audit_log.dart';
 
 /// Slice 9.3.2 — read-only audit log with filter chips + search.
 class AuditLogPage extends StatefulWidget {
-  const AuditLogPage();
+  const AuditLogPage({super.key});
 
   @override
   State<AuditLogPage> createState() => _AuditLogPageState();

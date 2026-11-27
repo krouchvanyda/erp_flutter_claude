@@ -14,7 +14,7 @@ import '../bloc/employee_list_state.dart';
 /// Provides the bloc inline (not via outer-scope provider) so the page
 /// is self-contained and the bloc disposes when the route pops.
 class EmployeeListPage extends StatelessWidget {
-  const EmployeeListPage();
+  const EmployeeListPage({super.key});
 
   @override
   Widget build(BuildContext context) {

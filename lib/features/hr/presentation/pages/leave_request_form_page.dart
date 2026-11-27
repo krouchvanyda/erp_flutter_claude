@@ -13,7 +13,7 @@ import '../../domain/usecases/submit_leave_request.dart';
 /// [`ValidationFailure.fieldErrors`] so we can attach them per-input
 /// rather than dumping a single banner.
 class LeaveRequestFormPage extends StatefulWidget {
-  const LeaveRequestFormPage({
+  const LeaveRequestFormPage({super.key, 
     this.employeeId = 'emp-001',
     this.employeeName = 'Demo Approver',
   });

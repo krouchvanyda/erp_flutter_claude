@@ -12,7 +12,7 @@ import '../../domain/usecases/manage_users.dart';
 /// guard); this page assumes the caller already passed the `admin`
 /// permission gate.
 class UserManagementPage extends StatefulWidget {
-  const UserManagementPage({this.currentUserId = 'user-demo'});
+  const UserManagementPage({super.key, this.currentUserId = 'user-demo'});
   final String currentUserId;
 
   @override

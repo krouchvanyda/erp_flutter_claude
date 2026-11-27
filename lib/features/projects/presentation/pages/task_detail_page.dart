@@ -6,7 +6,7 @@ import '../../domain/repositories/tasks_repository.dart';
 
 /// Slice 8.1.3 — task detail + comment thread.
 class TaskDetailPage extends StatefulWidget {
-  const TaskDetailPage({required this.taskId, this.currentUserId = 'emp-001'});
+  const TaskDetailPage({super.key, required this.taskId, this.currentUserId = 'emp-001'});
   final String taskId;
   final String currentUserId;
 
